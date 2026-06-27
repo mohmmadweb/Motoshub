@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Vazirmatn", system-ui, sans-serif;
+
+  --color-brand-50: #f1f0ff;
+  --color-brand-100: #e3e1ff;
+  --color-brand-200: #c9c5ff;
+  --color-brand-300: #aaa3ff;
+  --color-brand-400: #8a7dff;
+  --color-brand-500: #6c5ce7;
+  --color-brand-600: #5641d8;
+  --color-brand-700: #4530b3;
+  --color-brand-800: #36258c;
+  --color-brand-900: #2a1d6b;
+
+  --color-ink-50: #f7f8fa;
+  --color-ink-100: #eef0f3;
+  --color-ink-200: #dfe2e8;
+  --color-ink-300: #c3c8d3;
+  --color-ink-400: #9aa1b1;
+  --color-ink-500: #717a8c;
+  --color-ink-600: #535c70;
+  --color-ink-700: #3c4356;
+  --color-ink-800: #262b3a;
+  --color-ink-900: #14161f;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--color-ink-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-ink-300);
+  border-radius: 8px;
+}
+
+.card {
+  background-color: #fff;
+  border: 1px solid var(--color-ink-100);
+  border-radius: 1rem;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
