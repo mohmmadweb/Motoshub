@@ -1,39 +1,63 @@
 import { useState } from "react";
-import { knowledgeDocs } from "../data/mock";
-import Badge from "../components/Badge";
+import { BookOpen, FileText, Upload, Clock, User, History } from "lucide-react";
+import { knowledgeDocs, type KnowledgeDoc } from "../data/mock";
+import PageHeader from "../components/ui/PageHeader";
+import Badge, { type BadgeTone } from "../components/ui/Badge";
+import Button from "../components/ui/Button";
+import DataTable, { type Column } from "../components/ui/DataTable";
+import Drawer from "../components/ui/Drawer";
 
 const categories = ["همه", ...Array.from(new Set(knowledgeDocs.map((d) => d.category)))];
 
-const typeTone: Record<string, "brand" | "green" | "yellow" | "red" | "ink"> = {
-  قرارداد: "yellow",
-  آموزشی: "green",
-  "صورت‌جلسه": "ink",
+const typeTone: Record<string, BadgeTone> = {
+  قرارداد: "warning",
+  آموزشی: "success",
+  "صورت‌جلسه": "neutral",
   گزارش: "brand",
 };
 
 export default function Knowledge() {
   const [active, setActive] = useState("همه");
+  const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
   const docs = active === "همه" ? knowledgeDocs : knowledgeDocs.filter((d) => d.category === active);
+
+  const columns: Column<KnowledgeDoc>[] = [
+    {
+      key: "title",
+      label: "عنوان سند",
+      render: (d) => (
+        <span className="flex items-center gap-2 font-medium text-ink-900">
+          <FileText size={14} className="text-ink-400" /> {d.title}
+        </span>
+      ),
+    },
+    { key: "category", label: "دسته‌بندی" },
+    { key: "type", label: "نوع", render: (d) => <Badge tone={typeTone[d.type]}>{d.type}</Badge> },
+    { key: "owner", label: "مالک" },
+    { key: "updatedAt", label: "بروزرسانی" },
+    { key: "size", label: "حجم" },
+  ];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold">مدیریت دانش</h1>
-          <p className="text-sm text-ink-400 mt-1">بانک اسناد سازمانی، آرشیو قراردادها و مستندات آموزشی با جستجوی پیشرفته</p>
-        </div>
-        <button className="bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-brand-700">
-          + بارگذاری سند
-        </button>
-      </div>
+      <PageHeader
+        title="مدیریت دانش"
+        description="بانک اسناد سازمانی، آرشیو قراردادها و مستندات آموزشی با جستجوی پیشرفته"
+        icon={<BookOpen size={18} />}
+        actions={
+          <Button variant="primary" icon={<Upload size={15} />}>
+            بارگذاری سند
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {categories.map((c) => (
           <button
             key={c}
             onClick={() => setActive(c)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full border ${
-              active === c ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
+            className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
+              active === c ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
             }`}
           >
             {c}
@@ -41,23 +65,40 @@ export default function Knowledge() {
         ))}
       </div>
 
-      <div className="card divide-y divide-ink-100">
-        {docs.map((d) => (
-          <div key={d.id} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="text-2xl">📄</span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{d.title}</p>
-                <p className="text-xs text-ink-400 mt-0.5">{d.category} · {d.owner} · بروزرسانی {d.updatedAt}</p>
+      <DataTable columns={columns} rows={docs} searchKeys={["title", "owner"]} searchPlaceholder="جستجو در عنوان یا مالک سند…" onRowClick={setSelected} />
+
+      <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.title ?? ""}>
+        {selected && (
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Badge tone={typeTone[selected.type]}>{selected.type}</Badge>
+              <Badge tone="neutral">{selected.category}</Badge>
+            </div>
+            <dl className="space-y-2.5 text-xs">
+              <div className="flex items-center gap-2 text-ink-500">
+                <User size={13} /> مالک: <span className="text-ink-800 font-medium">{selected.owner}</span>
               </div>
+              <div className="flex items-center gap-2 text-ink-500">
+                <Clock size={13} /> آخرین بروزرسانی: <span className="text-ink-800 font-medium">{selected.updatedAt}</span>
+              </div>
+              <div className="flex items-center gap-2 text-ink-500">
+                <FileText size={13} /> حجم: <span className="text-ink-800 font-medium">{selected.size}</span>
+              </div>
+            </dl>
+            <div className="border-t border-ink-100 pt-3">
+              <p className="text-xs font-semibold text-ink-600 mb-2 flex items-center gap-1.5">
+                <History size={13} /> تاریخچه‌ی نسخه‌ها
+              </p>
+              <ul className="text-xs text-ink-400 space-y-1">
+                <li>نسخه ۳ — {selected.updatedAt} — {selected.owner}</li>
+                <li>نسخه ۲ — یک ماه پیش — دبیرخانه</li>
+                <li>نسخه ۱ — ایجاد سند</li>
+              </ul>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs text-ink-400">{d.size}</span>
-              <Badge tone={typeTone[d.type]}>{d.type}</Badge>
-            </div>
+            <Button variant="primary" className="w-full justify-center">دانلود سند</Button>
           </div>
-        ))}
-      </div>
+        )}
+      </Drawer>
     </div>
   );
 }

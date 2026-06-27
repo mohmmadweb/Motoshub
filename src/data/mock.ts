@@ -12,7 +12,7 @@ export const currentTenant: Tenant = {
   id: "daneshmand",
   name: "هلدینگ دانشمند",
   domain: "daneshmand.motoshub.app",
-  logoColor: "#6c5ce7",
+  logoColor: "#1f4f99",
   plan: "سازمانی",
   users: 1280,
   modules: ["شبکه اجتماعی", "مدیریت دانش", "مدیریت پروژه", "گزارش‌گیری پیشرفته"],
@@ -24,7 +24,7 @@ export const tenants: Tenant[] = [
     id: "bank-mellat",
     name: "بانک ملت",
     domain: "bankmellat.motoshub.app",
-    logoColor: "#e17055",
+    logoColor: "#b45309",
     plan: "سازمانی",
     users: 4200,
     modules: ["شبکه اجتماعی", "مدیریت دانش"],
@@ -33,7 +33,7 @@ export const tenants: Tenant[] = [
     id: "vazarat-olum",
     name: "وزارت علوم",
     domain: "olum.motoshub.app",
-    logoColor: "#00b894",
+    logoColor: "#0d9488",
     plan: "حرفه‌ای",
     users: 860,
     modules: ["شبکه اجتماعی", "مدیریت دانش", "مدیریت پروژه"],
@@ -42,7 +42,7 @@ export const tenants: Tenant[] = [
     id: "fata",
     name: "پلیس فتا",
     domain: "fata.motoshub.app",
-    logoColor: "#2d3436",
+    logoColor: "#0f172a",
     plan: "پایه",
     users: 310,
     modules: ["شبکه اجتماعی"],
@@ -64,7 +64,7 @@ export const currentUser: UserProfile = {
   name: "رضا سمیع‌زاده",
   role: "مدیر فنی پروژه",
   org: "شرکت دانش‌افراز فاخر ایرانیان",
-  avatarColor: "#6c5ce7",
+  avatarColor: "#1f4f99",
   skills: ["معماری نرم‌افزار", "PHP/Oxwall", "React", "DevOps"],
   online: true,
 };
@@ -76,7 +76,7 @@ export const users: UserProfile[] = [
     name: "فرشاد حاج‌محمدی",
     role: "مدیرعامل",
     org: "شرکت دانش‌افراز فاخر ایرانیان",
-    avatarColor: "#00b894",
+    avatarColor: "#0d9488",
     skills: ["مدیریت محصول", "استراتژی"],
     online: true,
   },
@@ -85,7 +85,7 @@ export const users: UserProfile[] = [
     name: "جعفر حبیبی",
     role: "عضو هیات‌مدیره",
     org: "هلدینگ دانشمند",
-    avatarColor: "#e17055",
+    avatarColor: "#b45309",
     skills: ["سرمایه‌گذاری خطرپذیر", "نظارت فنی"],
     online: false,
   },
@@ -94,7 +94,7 @@ export const users: UserProfile[] = [
     name: "محمدرضا محمدخانی",
     role: "مدیرعامل و عضو هیات‌مدیره",
     org: "هلدینگ دانشمند",
-    avatarColor: "#0984e3",
+    avatarColor: "#1f4f99",
     skills: ["راهبری سازمانی"],
     online: false,
   },
@@ -103,7 +103,7 @@ export const users: UserProfile[] = [
     name: "یاسر علی‌مردانی",
     role: "توسعه‌دهنده بک‌اند",
     org: "شرکت دانش‌افراز فاخر ایرانیان",
-    avatarColor: "#fdcb6e",
+    avatarColor: "#7c3aed",
     skills: ["PHP", "SMS Gateways", "Smarty"],
     online: true,
   },
@@ -127,7 +127,7 @@ export const groups: Group[] = [
     description: "هماهنگی تیم فنی پروژه ادغام موتوشاب و میزیتو",
     members: 18,
     privacy: "خصوصی",
-    color: "#6c5ce7",
+    color: "#1f4f99",
     unread: 4,
     category: "فنی",
   },
@@ -137,7 +137,7 @@ export const groups: Group[] = [
     description: "پایش طرح‌های سرمایه‌گذاری و عملکرد شرکت‌های سرمایه‌پذیر",
     members: 9,
     privacy: "خصوصی",
-    color: "#00b894",
+    color: "#0d9488",
     unread: 0,
     category: "سرمایه‌گذاری",
   },
@@ -147,7 +147,7 @@ export const groups: Group[] = [
     description: "مدیریت مذاکره، داوری و زمان‌بندی تعهدات قراردادها",
     members: 12,
     privacy: "خصوصی",
-    color: "#e17055",
+    color: "#b45309",
     unread: 2,
     category: "حقوقی",
   },
@@ -157,7 +157,7 @@ export const groups: Group[] = [
     description: "کانال رسمی اخبار و اطلاعیه‌های هلدینگ دانشمند",
     members: 1280,
     privacy: "عمومی",
-    color: "#0984e3",
+    color: "#0f172a",
     unread: 1,
     category: "اطلاع‌رسانی",
   },
@@ -403,7 +403,8 @@ export type ChatThread = {
   lastMessage: string;
   time: string;
   unread: number;
-  messages: { from: "me" | "them"; text: string; time: string }[];
+  online?: boolean;
+  messages: { from: "me" | "them"; text: string; time: string; read?: boolean }[];
 };
 
 export const chatThreads: ChatThread[] = [
@@ -414,10 +415,11 @@ export const chatThreads: ChatThread[] = [
     lastMessage: "ماژول SMS رو وصل کردم به API جدید",
     time: "۱۰:۴۲",
     unread: 2,
+    online: true,
     messages: [
       { from: "them", text: "سلام، API گیت‌وی رو تست کردم برای پیامک‌ها", time: "۱۰:۳۰" },
-      { from: "me", text: "عالی، نتیجه چی شد؟", time: "۱۰:۳۵" },
-      { from: "them", text: "ماژول SMS رو وصل کردم به API جدید، کار می‌کنه ✅", time: "۱۰:۴۲" },
+      { from: "me", text: "عالی، نتیجه چی شد؟", time: "۱۰:۳۵", read: true },
+      { from: "them", text: "ماژول SMS رو وصل کردم به API جدید، کار می‌کنه", time: "۱۰:۴۲" },
     ],
   },
   {
@@ -427,8 +429,321 @@ export const chatThreads: ChatThread[] = [
     lastMessage: "جلسه فردا ساعت ۱۰",
     time: "دیروز",
     unread: 0,
+    online: false,
     messages: [
       { from: "them", text: "جلسه فردا ساعت ۱۰ با کارفرما هست، حاضر باش", time: "دیروز" },
+      { from: "me", text: "حتماً، یادداشت کردم", time: "دیروز", read: true },
     ],
   },
+  {
+    id: "c3",
+    with: "گروه توسعه موتوشاب",
+    avatarColor: "#1f4f99",
+    lastMessage: "محمدرضا: گزارش فاز اول آپلود شد",
+    time: "۰۹:۱۰",
+    unread: 5,
+    online: false,
+    messages: [
+      { from: "them", text: "گزارش فاز اول آپلود شد، در بخش مدیریت دانش", time: "۰۹:۱۰" },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Events & sessions (Phase 1 — مدیریت رویدادها و جلسات)
+// ---------------------------------------------------------------------------
+export type EventItem = {
+  id: string;
+  title: string;
+  date: string;
+  jalaliDate: string;
+  time: string;
+  location: string;
+  attendees: number;
+  hashtags: string[];
+  description: string;
+};
+
+export const events: EventItem[] = [
+  {
+    id: "e1",
+    title: "جلسه بازبینی فاز اول پروژه موتوشاب",
+    date: "2026-07-12",
+    jalaliDate: "۱۴۰۵/۰۴/۲۱",
+    time: "۱۰:۰۰ - ۱۱:۳۰",
+    location: "سالن جلسات طبقه ۱۵ / لینک برخط",
+    attendees: 12,
+    hashtags: ["فاز-اول", "ناظر"],
+    description: "ارائه گزارش پیشرفت کار به ناظر کارفرما و تصمیم‌گیری درباره تحویل موقت.",
+  },
+  {
+    id: "e2",
+    title: "کارگاه آموزشی کاربران موتوشاب",
+    date: "2026-07-20",
+    jalaliDate: "۱۴۰۵/۰۴/۲۹",
+    time: "۰۹:۰۰ - ۱۳:۰۰",
+    location: "سالن آموزش هلدینگ دانشمند",
+    attendees: 48,
+    hashtags: ["آموزش"],
+    description: "آموزش ۲۴ نفر-ساعت طبق ماده ۵ قرارداد برای راهبران و کاربران شبکه.",
+  },
+  {
+    id: "e3",
+    title: "داوری طرح‌های صندوق نوآوری — دور دوم",
+    date: "2026-08-02",
+    jalaliDate: "۱۴۰۵/۰۵/۱۲",
+    time: "۱۴:۰۰ - ۱۶:۰۰",
+    location: "برخط — اتاق گفتگوی صندوق",
+    attendees: 7,
+    hashtags: ["صندوق-نوآوری", "داوری"],
+    description: "بررسی و امتیازدهی طرح‌های ثبت‌شده در فراخوان دوم شتاب‌دهی.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Blog (Phase 1)
+// ---------------------------------------------------------------------------
+export type BlogPost = {
+  id: string;
+  title: string;
+  author: string;
+  excerpt: string;
+  date: string;
+  rating: number;
+  tags: string[];
+};
+
+export const blogPosts: BlogPost[] = [
+  {
+    id: "b1",
+    title: "چرا multi-tenancy هیبریدی برای موتوشاب انتخاب درستی است",
+    author: "رضا سمیع‌زاده",
+    excerpt: "مقایسه‌ی shared-schema و database-per-tenant برای سازمان‌های کوچک در برابر مشتریان حساس مثل بانک‌ها و نهادهای دولتی.",
+    date: "۱۴۰۵/۰۲/۱۸",
+    rating: 4.6,
+    tags: ["معماری", "SaaS"],
+  },
+  {
+    id: "b2",
+    title: "تجربه‌ی پیاده‌سازی ضد ویروس ClamAV روی پیوست‌های موتوشاب",
+    author: "یاسر علی‌مردانی",
+    excerpt: "گزارش از راه‌اندازی اسکن خودکار فایل‌های پیوست‌شده و جلوگیری از ذخیره‌ی فایل آلوده.",
+    date: "۱۴۰۵/۰۲/۰۵",
+    rating: 4.2,
+    tags: ["امنیت"],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Media — Photos & Video (Phase 1)
+// ---------------------------------------------------------------------------
+export type MediaItem = {
+  id: string;
+  kind: "photo" | "video";
+  title: string;
+  album: string;
+  uploadedBy: string;
+  date: string;
+  rating: number;
+  tags: string[];
+  color: string;
+};
+
+export const mediaItems: MediaItem[] = [
+  { id: "m1", kind: "photo", title: "افتتاحیه‌ی فاز اول پروژه", album: "رویدادهای رسمی", uploadedBy: "فرشاد حاج‌محمدی", date: "۱۴۰۵/۰۲/۰۱", rating: 4.8, tags: ["افتتاحیه"], color: "#82aee6" },
+  { id: "m2", kind: "photo", title: "کارگاه آموزشی تیم فنی", album: "آموزش", uploadedBy: "رضا سمیع‌زاده", date: "۱۴۰۵/۰۲/۱۰", rating: 4.5, tags: ["آموزش"], color: "#93a2b8" },
+  { id: "m3", kind: "video", title: "معرفی نسخه‌ی جدید موتوشاب", album: "معرفی محصول", uploadedBy: "تیم محصول", date: "۱۴۰۵/۰۲/۲۰", rating: 4.9, tags: ["محصول", "آپارات"], color: "#1f4f99" },
+  { id: "m4", kind: "video", title: "ضبط جلسه‌ی داوری صندوق نوآوری", album: "صندوق نوآوری", uploadedBy: "جعفر حبیبی", date: "۱۴۰۵/۰۳/۰۱", rating: 4.1, tags: ["صندوق"], color: "#5e7191" },
+];
+
+// ---------------------------------------------------------------------------
+// News (Phase 1)
+// ---------------------------------------------------------------------------
+export type NewsItem = {
+  id: string;
+  title: string;
+  summary: string;
+  date: string;
+  comments: number;
+  pinned?: boolean;
+};
+
+export const newsItems: NewsItem[] = [
+  {
+    id: "nw1",
+    title: "انتشار نسخه‌ی یکپارچه‌ی موتوشاب و میزیتو",
+    summary: "هسته‌ی اجتماعی موتوشاب با ماژول‌های مدیریت پروژه و دانش ادغام شد. اطلاعات کامل در بخش مدیریت دانش موجود است.",
+    date: "۱۴۰۵/۰۳/۰۵",
+    comments: 14,
+    pinned: true,
+  },
+  {
+    id: "nw2",
+    title: "برگزاری کارگاه آموزشی کاربران در هفته‌ی آینده",
+    summary: "زمان دقیق و سرفصل‌های کارگاه در بخش رویدادها منتشر شد.",
+    date: "۱۴۰۵/۰۳/۰۲",
+    comments: 6,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Security — sessions (Phase 1)
+// ---------------------------------------------------------------------------
+export type SessionItem = {
+  id: string;
+  device: string;
+  location: string;
+  ip: string;
+  lastActive: string;
+  current?: boolean;
+};
+
+export const activeSessions: SessionItem[] = [
+  { id: "s1", device: "Chrome on Windows", location: "تهران، ایران", ip: "37.32.10.21", lastActive: "هم‌اکنون", current: true },
+  { id: "s2", device: "Motoshub Android App", location: "تهران، ایران", ip: "5.210.44.18", lastActive: "۲ ساعت پیش" },
+  { id: "s3", device: "Safari on iPhone", location: "اصفهان، ایران", ip: "94.182.3.5", lastActive: "۳ روز پیش" },
+];
+
+// ---------------------------------------------------------------------------
+// Phase 3 — project/contract/fund/research registries
+// ---------------------------------------------------------------------------
+export type ContractRecord = {
+  id: string;
+  title: string;
+  vendor: string;
+  stage: "مذاکره" | "فراخوان" | "داوری" | "در حال اجرا" | "تسویه‌شده";
+  value: string;
+  deadline: string;
+  owner: string;
+};
+
+export const contracts: ContractRecord[] = [
+  { id: "ct1", title: "توسعه ماژول هوش مصنوعی تحلیل محتوا", vendor: "شرکت دانش‌بنیان نوآوران داده", stage: "در حال اجرا", value: "۴٬۲۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۶/۱۵", owner: "جعفر حبیبی" },
+  { id: "ct2", title: "تامین زیرساخت ابری منطقه‌ای", vendor: "ابرآروان", stage: "داوری", value: "۱٬۸۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۵/۰۱", owner: "رضا سمیع‌زاده" },
+  { id: "ct3", title: "مشاوره امنیت و تست نفوذ", vendor: "تیم امن‌افزار شریف", stage: "فراخوان", value: "—", deadline: "۱۴۰۵/۰۵/۲۰", owner: "یاسر علی‌مردانی" },
+  { id: "ct4", title: "قرارداد پشتیبانی سال اول موتوشاب", vendor: "دانش‌افراز فاخر ایرانیان", stage: "تسویه‌شده", value: "۲٬۵۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۲/۰۱", owner: "فرشاد حاج‌محمدی" },
+];
+
+export type FundRecord = {
+  id: string;
+  title: string;
+  applicant: string;
+  stage: "ثبت‌شده" | "انتخاب اولیه" | "داوری" | "تخصیص‌یافته" | "در حال پایش";
+  amount: string;
+  roi: string;
+};
+
+export const funds: FundRecord[] = [
+  { id: "fn1", title: "پلتفرم تحلیل داده‌های سلامت", applicant: "استارتاپ سلامت‌یار", stage: "در حال پایش", amount: "۸۰۰٬۰۰۰٬۰۰۰ ریال", roi: "۱۸٪" },
+  { id: "fn2", title: "ربات پاسخگوی هوشمند سازمانی", applicant: "تیم نوآوران زبان", stage: "تخصیص‌یافته", amount: "۵۵۰٬۰۰۰٬۰۰۰ ریال", roi: "۱۲٪" },
+  { id: "fn3", title: "سنسور هوشمند پایش انرژی", applicant: "گروه فناوری سبز", stage: "داوری", amount: "—", roi: "—" },
+];
+
+export type ResearchOpportunity = {
+  id: string;
+  title: string;
+  field: string;
+  stage: "فراخوان باز" | "بررسی درخواست‌ها" | "داوری" | "در حال اجرا" | "پایان‌یافته";
+  applicants: number;
+  deadline: string;
+};
+
+export const researchOpportunities: ResearchOpportunity[] = [
+  { id: "rs1", title: "پژوهش کاربرد یادگیری ماشین در تشخیص محتوای نامتعارف", field: "هوش مصنوعی", stage: "بررسی درخواست‌ها", applicants: 9, deadline: "۱۴۰۵/۰۵/۱۰" },
+  { id: "rs2", title: "بهینه‌سازی مصرف انرژی مراکز داده", field: "زیرساخت", stage: "فراخوان باز", applicants: 3, deadline: "۱۴۰۵/۰۶/۰۱" },
+  { id: "rs3", title: "مدل‌های اعتمادسنجی شبکه‌های اجتماعی سازمانی", field: "امنیت", stage: "در حال اجرا", applicants: 5, deadline: "۱۴۰۵/۰۴/۲۵" },
+];
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+export const reportByDepartment = [
+  { label: "فناوری اطلاعات", value: 38 },
+  { label: "سرمایه‌گذاری", value: 22 },
+  { label: "پژوهش", value: 18 },
+  { label: "حقوقی", value: 12 },
+  { label: "منابع انسانی", value: 10 },
+];
+
+export const reportByStatus = [
+  { label: "در حال انجام", value: 45, tone: "brand" as const },
+  { label: "انجام‌شده", value: 30, tone: "success" as const },
+  { label: "تأخیر دارد", value: 15, tone: "danger" as const },
+  { label: "برنامه‌ریزی", value: 10, tone: "neutral" as const },
+];
+
+export const monthlyActivity = [
+  { month: "فروردین", value: 40 },
+  { month: "اردیبهشت", value: 65 },
+  { month: "خرداد", value: 52 },
+  { month: "تیر", value: 78 },
+  { month: "مرداد", value: 61 },
+  { month: "شهریور", value: 84 },
+];
+
+// ---------------------------------------------------------------------------
+// Admin — modules marketplace, pages, menus, roles, file extensions
+// ---------------------------------------------------------------------------
+export type ModuleDef = {
+  id: string;
+  name: string;
+  description: string;
+  category: "اجتماعی" | "دانش و پروژه" | "امنیت" | "زیرساخت";
+  core?: boolean;
+};
+
+export const moduleCatalog: ModuleDef[] = [
+  { id: "social", name: "شبکه اجتماعی", description: "گروه، پست، انجمن، گپ، اعلان", category: "اجتماعی", core: true },
+  { id: "events", name: "رویدادها و جلسات", description: "تقویم شمسی/میلادی، دعوت‌نامه، اسناد رویداد", category: "اجتماعی" },
+  { id: "blog", name: "بلاگ", description: "انتشار یادداشت‌های کاربران با امتیازدهی", category: "اجتماعی" },
+  { id: "media", name: "تصاویر و ویدیو", description: "آلبوم، اتصال آپارات، حریم خصوصی محتوا", category: "اجتماعی" },
+  { id: "knowledge", name: "مدیریت دانش", description: "آرشیو اسناد، قراردادها، مصوبات، جستجوی پیشرفته", category: "دانش و پروژه" },
+  { id: "projects", name: "مدیریت پروژه", description: "بورد، گانت چارت، بودجه، تسک", category: "دانش و پروژه" },
+  { id: "contracts", name: "قراردادهای فناورانه", description: "مذاکره، داوری، زمان‌بندی تعهدات", category: "دانش و پروژه" },
+  { id: "funds", name: "صندوق نوآوری و شتاب‌دهی", description: "ثبت طرح، داوری، تخصیص منابع، گزارش بازگشت سرمایه", category: "دانش و پروژه" },
+  { id: "research", name: "فرصت‌های پژوهشی", description: "فراخوان، داوری، پیگیری اجرای پژوهش", category: "دانش و پروژه" },
+  { id: "reports", name: "گزارش‌گیری پیشرفته", description: "داشبورد مدیریتی و گزارش تجمیعی", category: "دانش و پروژه" },
+  { id: "sms", name: "اعلان پیامکی", description: "اتصال به درگاه‌های پیامک (کاوه‌نگار، فراپیامک و ...)", category: "زیرساخت" },
+  { id: "sso", name: "ورود سازمانی (SSO/LDAP)", description: "اتصال به Active Directory یا OIDC سازمان", category: "امنیت" },
+  { id: "waf", name: "فایروال و ضدویروس", description: "محدودسازی نرخ درخواست، اسکن ClamAV، کپچا", category: "امنیت" },
+  { id: "audit", name: "گزارش رخدادهای امنیتی (Audit Log)", description: "ثبت کامل فعالیت‌های حساس برای ارائه به افتا", category: "امنیت" },
+];
+
+export type AdminPageDef = { id: string; title: string; slug: string; visible: boolean };
+export const adminPages: AdminPageDef[] = [
+  { id: "pg1", title: "درباره ما", slug: "/about", visible: true },
+  { id: "pg2", title: "قوانین و مقررات", slug: "/terms", visible: true },
+  { id: "pg3", title: "تماس با ما", slug: "/contact", visible: true },
+  { id: "pg4", title: "سوالات متداول", slug: "/faq", visible: false },
+];
+
+export type AdminMenuDef = { id: string; title: string; order: number; visible: boolean };
+export const adminMenus: AdminMenuDef[] = [
+  { id: "mn1", title: "داشبورد", order: 1, visible: true },
+  { id: "mn2", title: "گروه‌ها", order: 2, visible: true },
+  { id: "mn3", title: "مدیریت دانش", order: 3, visible: true },
+  { id: "mn4", title: "مدیریت پروژه", order: 4, visible: true },
+  { id: "mn5", title: "صندوق نوآوری", order: 5, visible: false },
+];
+
+export type RoleDef = { id: string; title: string; scope: "پلتفرم" | "سازمان" | "گروه"; members: number; description: string };
+export const roles: RoleDef[] = [
+  { id: "r1", title: "راهبر پلتفرم", scope: "پلتفرم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌های مشتری و تنظیمات billing" },
+  { id: "r2", title: "مدیر سازمان", scope: "سازمان", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی" },
+  { id: "r3", title: "ناظم گروه", scope: "گروه", members: 18, description: "مدیریت محتوا و اعضای یک گروه مشخص" },
+  { id: "r4", title: "عضو عادی", scope: "گروه", members: 1280, description: "دسترسی استاندارد به محتوای عمومی و گروه‌های عضو" },
+];
+
+export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];
+
+// ---------------------------------------------------------------------------
+// Global search demo results
+// ---------------------------------------------------------------------------
+export type SearchResult = { id: string; type: "پست" | "گروه" | "سند" | "پروژه" | "کاربر"; title: string; snippet: string };
+export const searchResults: SearchResult[] = [
+  { id: "sr1", type: "سند", title: "قرارداد استقرار و توسعه شبکه اجتماعی دانشمند", snippet: "آرشیو قراردادها · بروزرسانی ۱۴۰۵/۰۲/۰۱" },
+  { id: "sr2", type: "پروژه", title: "استقرار و شخصی‌سازی نسخه پایه موتوشاب", snippet: "کارفرما: هلدینگ دانشمند · پیشرفت ۷۰٪" },
+  { id: "sr3", type: "گروه", title: "توسعه موتوشاب", snippet: "۱۸ عضو · خصوصی" },
+  { id: "sr4", type: "پست", title: "API گیت‌وی بین هسته PHP و سرویس‌های Node.js راه‌اندازی شد", snippet: "۱۲ پسندیدن · ۳ نظر" },
+  { id: "sr5", type: "کاربر", title: "یاسر علی‌مردانی", snippet: "توسعه‌دهنده بک‌اند · شرکت دانش‌افراز فاخر ایرانیان" },
 ];

@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { Lock, Globe2, Flag, UserPlus, FileText, MessagesSquare } from "lucide-react";
 import { groups, posts, users } from "../data/mock";
 import PostCard from "../components/PostCard";
-import Badge from "../components/Badge";
+import Badge from "../components/ui/Badge";
 import Avatar from "../components/Avatar";
+import Tabs from "../components/ui/Tabs";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
 
-const tabs = ["پست‌ها", "انجمن گروه", "اعضا", "اسناد"] as const;
+type TabId = "posts" | "forum" | "members" | "docs";
 
 export default function GroupDetail() {
   const { id } = useParams();
   const group = groups.find((g) => g.id === id);
-  const [tab, setTab] = useState<typeof tabs[number]>("پست‌ها");
+  const [tab, setTab] = useState<TabId>("posts");
 
   if (!group) return <p>گروه پیدا نشد.</p>;
 
@@ -19,67 +23,74 @@ export default function GroupDetail() {
 
   return (
     <div>
-      <div
-        className="rounded-2xl p-6 text-white mb-5 flex items-center justify-between"
-        style={{ background: `linear-gradient(135deg, ${group.color}, #2a1d6b)` }}
-      >
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold">{group.name}</h1>
-            <Badge tone={group.privacy === "خصوصی" ? "yellow" : "green"}>{group.privacy}</Badge>
+      <div className="rounded-lg border border-ink-200 bg-navy-900 p-6 mb-5 flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <span className="w-14 h-14 rounded-lg flex items-center justify-center text-white font-bold text-xl shrink-0" style={{ backgroundColor: group.color }}>
+            {group.name.slice(0, 1)}
+          </span>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-lg font-bold text-white">{group.name}</h1>
+              <Badge tone={group.privacy === "خصوصی" ? "warning" : "success"} icon={group.privacy === "خصوصی" ? <Lock size={11} /> : <Globe2 size={11} />}>
+                {group.privacy}
+              </Badge>
+            </div>
+            <p className="text-sm text-navy-200">{group.description}</p>
+            <p className="text-xs text-navy-300 mt-2">{group.members.toLocaleString("fa-IR")} عضو · دسته‌بندی: {group.category}</p>
           </div>
-          <p className="text-sm text-white/80">{group.description}</p>
-          <p className="text-xs text-white/60 mt-2">{group.members.toLocaleString("fa-IR")} عضو · دسته‌بندی: {group.category}</p>
         </div>
-        <button className="bg-white/15 hover:bg-white/25 text-white text-sm font-medium px-4 py-2 rounded-xl backdrop-blur">
-          عضو شده‌اید ✓
-        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" icon={<Flag size={13} />}>
+            گزارش تخلف
+          </Button>
+          <Button variant="primary" size="sm" icon={<UserPlus size={13} />}>
+            عضو شده‌اید
+          </Button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-1 border-b border-ink-100 mb-5">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${
-              tab === t ? "border-brand-600 text-brand-700" : "border-transparent text-ink-400 hover:text-ink-700"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <Tabs<TabId>
+        tabs={[
+          { id: "posts", label: "پست‌ها", count: groupPosts.length },
+          { id: "forum", label: "انجمن گروه" },
+          { id: "members", label: "اعضا و ناظمان", count: group.members },
+          { id: "docs", label: "اسناد گروه" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-      {tab === "پست‌ها" && (
+      {tab === "posts" && (
         <div className="space-y-4">
           {groupPosts.length === 0 ? (
-            <div className="card p-8 text-center text-sm text-ink-400">هنوز پستی در این گروه ثبت نشده.</div>
+            <EmptyState title="هنوز پستی در این گروه ثبت نشده" />
           ) : (
             groupPosts.map((p) => <PostCard key={p.id} post={p} />)
           )}
         </div>
       )}
 
-      {tab === "انجمن گروه" && (
-        <div className="card p-8 text-center text-sm text-ink-400">تالار گفتگوی این گروه — به‌زودی متصل به ماژول انجمن.</div>
+      {tab === "forum" && (
+        <EmptyState icon={<MessagesSquare size={20} />} title="تالار گفتگوی این گروه" description="موضوعات این گروه از ماژول انجمن سراسری فیلتر و این‌جا نمایش داده می‌شود." />
       )}
 
-      {tab === "اعضا" && (
+      {tab === "members" && (
         <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {members.map((m) => (
+          {members.map((m, i) => (
             <div key={m.id} className="flex items-center gap-3 p-2">
               <Avatar name={m.name} color={m.avatarColor} online={m.online} />
-              <div>
-                <p className="text-sm font-medium">{m.name}</p>
-                <p className="text-xs text-ink-400">{m.role}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{m.name}</p>
+                <p className="text-xs text-ink-400 truncate">{m.role}</p>
               </div>
+              {i === 0 && <Badge tone="navy">ناظم گروه</Badge>}
             </div>
           ))}
         </div>
       )}
 
-      {tab === "اسناد" && (
-        <div className="card p-8 text-center text-sm text-ink-400">اسناد گروه — متصل به ماژول مدیریت دانش.</div>
+      {tab === "docs" && (
+        <EmptyState icon={<FileText size={20} />} title="اسناد گروه" description="اسناد بارگذاری‌شده در این گروه، از ماژول مدیریت دانش با دسته‌بندی این گروه نمایش داده می‌شود." />
       )}
     </div>
   );
