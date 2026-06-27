@@ -6,11 +6,13 @@
 
 ## دسترسی آنلاین
 
-بعد از فعال‌سازی GitHub Pages روی این مخزن (شاخه `main`، اکشن خودکار `deploy.yml`)، آدرس زیر در دسترس خواهد بود:
+این پروژه روی دامنه‌ی اختصاصی زیر منتشر می‌شود (نه روی `mohmmadweb.github.io`، تا با رزومه‌ی شخصی قاطی نشود):
 
 ```
-https://mohmmadweb.github.io/Motoshub/
+https://motoshub.cheedafar.ir/
 ```
+
+برای فعال‌شدن این دامنه، یک رکورد DNS در Cloudflare و تنظیم Custom domain در GitHub Pages لازم است — جزئیات در پاسخ نهایی گفتگو آمده.
 
 ## اجرای محلی
 
