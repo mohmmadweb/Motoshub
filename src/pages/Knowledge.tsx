@@ -1,13 +1,12 @@
-import { useState } from "react";
-import { BookOpen, FileText, Upload, Clock, User, History } from "lucide-react";
-import { knowledgeDocs, type KnowledgeDoc } from "../data/mock";
+import { useRef, useState } from "react";
+import { BookOpen, FileText, Upload, Clock, User, History, Download } from "lucide-react";
+import { knowledgeDocs as initialDocs, currentUser, type KnowledgeDoc } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import Drawer from "../components/ui/Drawer";
-
-const categories = ["همه", ...Array.from(new Set(knowledgeDocs.map((d) => d.category)))];
+import { useToast } from "../components/ui/ToastProvider";
 
 const typeTone: Record<string, BadgeTone> = {
   قرارداد: "warning",
@@ -16,10 +15,46 @@ const typeTone: Record<string, BadgeTone> = {
   گزارش: "brand",
 };
 
+const jalaliToday = "۱۴۰۵/۰۴/۰۷";
+
 export default function Knowledge() {
+  const [docs, setDocs] = useState<KnowledgeDoc[]>(initialDocs);
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
-  const docs = active === "همه" ? knowledgeDocs : knowledgeDocs.filter((d) => d.category === active);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { notify } = useToast();
+
+  const categories = ["همه", ...Array.from(new Set(initialDocs.map((d) => d.category)))];
+  const filtered = active === "همه" ? docs : docs.filter((d) => d.category === active);
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const newDoc: KnowledgeDoc = {
+      id: `kd-${Date.now()}`,
+      title: file.name,
+      category: active === "همه" ? "صورت‌جلسه" : active,
+      type: "گزارش",
+      owner: currentUser.name,
+      updatedAt: jalaliToday,
+      size: `${(file.size / 1024).toFixed(0)} کیلوبایت`,
+    };
+    setDocs((prev) => [newDoc, ...prev]);
+    notify(`سند «${file.name}» با موفقیت در بانک دانش بارگذاری شد.`);
+    e.target.value = "";
+  };
+
+  const handleDownload = (doc: KnowledgeDoc) => {
+    const content = `${doc.title}\nدسته‌بندی: ${doc.category}\nمالک: ${doc.owner}\nآخرین بروزرسانی: ${doc.updatedAt}\n\n(این یک خروجی نمایشی از پروتوتایپ موتوشاب است و جای‌گزین فایل اصلی نیست.)`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${doc.title}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify(`دانلود سند «${doc.title}» آغاز شد.`, "info");
+  };
 
   const columns: Column<KnowledgeDoc>[] = [
     {
@@ -45,9 +80,12 @@ export default function Knowledge() {
         description="بانک اسناد سازمانی، آرشیو قراردادها و مستندات آموزشی با جستجوی پیشرفته"
         icon={<BookOpen size={18} />}
         actions={
-          <Button variant="primary" icon={<Upload size={15} />}>
-            بارگذاری سند
-          </Button>
+          <>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
+            <Button variant="primary" icon={<Upload size={15} />} onClick={() => fileInputRef.current?.click()}>
+              بارگذاری سند
+            </Button>
+          </>
         }
       />
 
@@ -65,7 +103,7 @@ export default function Knowledge() {
         ))}
       </div>
 
-      <DataTable columns={columns} rows={docs} searchKeys={["title", "owner"]} searchPlaceholder="جستجو در عنوان یا مالک سند…" onRowClick={setSelected} />
+      <DataTable columns={columns} rows={filtered} searchKeys={["title", "owner"]} searchPlaceholder="جستجو در عنوان یا مالک سند…" onRowClick={setSelected} />
 
       <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.title ?? ""}>
         {selected && (
@@ -95,7 +133,9 @@ export default function Knowledge() {
                 <li>نسخه ۱ — ایجاد سند</li>
               </ul>
             </div>
-            <Button variant="primary" className="w-full justify-center">دانلود سند</Button>
+            <Button variant="primary" className="w-full justify-center" icon={<Download size={14} />} onClick={() => handleDownload(selected)}>
+              دانلود سند
+            </Button>
           </div>
         )}
       </Drawer>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Settings,
   Building2,
@@ -25,12 +25,30 @@ import {
   FileWarning,
   Tag,
 } from "lucide-react";
-import { tenants, moduleCatalog, adminPages, adminMenus, roles, allowedFileExtensions, integrations, guestAccounts, type ModuleDef } from "../data/mock";
+import {
+  tenants as initialTenants,
+  moduleCatalog,
+  adminPages as initialPages,
+  adminMenus,
+  roles as initialRoles,
+  allowedFileExtensions as initialExtensions,
+  integrations as initialIntegrations,
+  guestAccounts as initialGuests,
+  currentUser,
+  type ModuleDef,
+  type Tenant,
+  type RoleDef,
+  type AdminPageDef,
+  type Integration,
+  type GuestAccount,
+} from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Toggle from "../components/ui/Toggle";
 import StatCard from "../components/ui/StatCard";
+import Modal from "../components/ui/Modal";
+import { useToast } from "../components/ui/ToastProvider";
 
 type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network";
 
@@ -46,15 +64,29 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "network", label: "تعامل بین‌سازمانی", icon: Network },
 ];
 
+const tenantPalette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
+
 export default function Admin() {
   const [section, setSection] = useState<SectionId>("tenants");
-  const [activeTenant, setActiveTenant] = useState(tenants[0].id);
-  const tenant = tenants.find((t) => t.id === activeTenant)!;
+  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
+  const [activeTenant, setActiveTenant] = useState(initialTenants[0].id);
+  const tenant = tenants.find((t) => t.id === activeTenant) ?? tenants[0];
   const [enabledModules, setEnabledModules] = useState<string[]>(["social", "knowledge", "projects", "reports"]);
   const [crossTenant, setCrossTenant] = useState(false);
+  const [roles, setRoles] = useState<RoleDef[]>(initialRoles);
+  const [pages, setPages] = useState<AdminPageDef[]>(initialPages);
+  const [extensions, setExtensions] = useState<string[]>(initialExtensions);
+  const [integrations, setIntegrations] = useState<Integration[]>(initialIntegrations);
+  const [guestAccounts, setGuestAccounts] = useState<GuestAccount[]>(initialGuests);
+  const { notify } = useToast();
 
   const toggleModule = (id: string) => {
     setEnabledModules((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const addTenant = (t: Tenant) => {
+    setTenants((prev) => [...prev, t]);
+    setActiveTenant(t.id);
   };
 
   return (
@@ -83,24 +115,24 @@ export default function Admin() {
 
         <div className="space-y-5">
           {section === "tenants" && (
-            <TenantsSection tenants={tenants} activeTenant={activeTenant} setActiveTenant={setActiveTenant} />
+            <TenantsSection tenants={tenants} activeTenant={activeTenant} setActiveTenant={setActiveTenant} onAdd={addTenant} notify={notify} />
           )}
 
           {section === "modules" && (
             <ModulesSection enabledModules={enabledModules} toggleModule={toggleModule} />
           )}
 
-          {section === "branding" && <BrandingSection tenant={tenant} />}
+          {section === "branding" && <BrandingSection tenant={tenant} notify={notify} />}
 
-          {section === "roles" && <RolesSection />}
+          {section === "roles" && <RolesSection roles={roles} setRoles={setRoles} notify={notify} />}
 
-          {section === "pages" && <PagesSection />}
+          {section === "pages" && <PagesSection pages={pages} setPages={setPages} extensions={extensions} setExtensions={setExtensions} notify={notify} />}
 
-          {section === "users" && <UsersSection tenant={tenant} />}
+          {section === "users" && <UsersSection tenant={tenant} notify={notify} />}
 
-          {section === "integrations" && <IntegrationsSection />}
+          {section === "integrations" && <IntegrationsSection integrations={integrations} setIntegrations={setIntegrations} notify={notify} />}
 
-          {section === "security" && <SecuritySection />}
+          {section === "security" && <SecuritySection guestAccounts={guestAccounts} setGuestAccounts={setGuestAccounts} notify={notify} />}
 
           {section === "network" && (
             <NetworkSection crossTenant={crossTenant} setCrossTenant={setCrossTenant} />
@@ -111,21 +143,54 @@ export default function Admin() {
   );
 }
 
+type Notify = (message: string, tone?: "success" | "info" | "warning") => void;
+
 function TenantsSection({
   tenants,
   activeTenant,
   setActiveTenant,
+  onAdd,
+  notify,
 }: {
-  tenants: typeof import("../data/mock").tenants;
+  tenants: Tenant[];
   activeTenant: string;
   setActiveTenant: (id: string) => void;
+  onAdd: (t: Tenant) => void;
+  notify: Notify;
 }) {
   const planTone = { پایه: "neutral", "حرفه‌ای": "warning", سازمانی: "brand" } as const;
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [domain, setDomain] = useState("");
+  const [plan, setPlan] = useState<Tenant["plan"]>("پایه");
+
+  const submit = () => {
+    if (!name.trim() || !domain.trim()) {
+      notify("نام سازمان و دامنه الزامی است.", "warning");
+      return;
+    }
+    const newTenant: Tenant = {
+      id: `tn-${Date.now()}`,
+      name: name.trim(),
+      domain: domain.trim(),
+      plan,
+      users: 1,
+      logoColor: tenantPalette[tenants.length % tenantPalette.length],
+      modules: ["شبکه اجتماعی"],
+    };
+    onAdd(newTenant);
+    notify(`سازمان «${newTenant.name}» با موفقیت روی پلتفرم موتوشاب ایجاد شد.`);
+    setOpen(false);
+    setName("");
+    setDomain("");
+    setPlan("پایه");
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-ink-900">سازمان‌های مستقل روی این پلتفرم</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />}>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
           افزودن سازمان جدید
         </Button>
       </div>
@@ -150,6 +215,31 @@ function TenantsSection({
           </button>
         ))}
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="افزودن سازمان مشتری جدید" description="هر سازمان جدید، نمونه‌ی کاملاً مستقلی از موتوشاب با اعضا و دامنه‌ی اختصاصی خودش دریافت می‌کند.">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: گروه صنعتی ایران‌خودرو" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اختصاصی</label>
+            <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="motoshub.irankhodro.com" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">طرح اشتراک</label>
+            <select value={plan} onChange={(e) => setPlan(e.target.value as Tenant["plan"])} className="input-field">
+              <option value="پایه">پایه</option>
+              <option value="حرفه‌ای">حرفه‌ای</option>
+              <option value="سازمانی">سازمانی</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد سازمان</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -194,9 +284,23 @@ function ModulesSection({ enabledModules, toggleModule }: { enabledModules: stri
   );
 }
 
-function BrandingSection({ tenant }: { tenant: (typeof import("../data/mock").tenants)[number] }) {
+function BrandingSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
   const [color, setColor] = useState(tenant.logoColor);
+  const [domain, setDomain] = useState(tenant.domain);
+  const [displayName, setDisplayName] = useState("موتوشاب");
+  const [logoName, setLogoName] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const colorOptions = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
+
+  const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoName(file.name);
+    notify(`لوگوی «${file.name}» بارگذاری شد. پس از ذخیره در سراسر سازمان «${tenant.name}» اعمال می‌شود.`, "info");
+    e.target.value = "";
+  };
+
+  const save = () => notify(`تغییرات برندسازی سازمان «${tenant.name}» ذخیره شد.`);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
@@ -216,19 +320,20 @@ function BrandingSection({ tenant }: { tenant: (typeof import("../data/mock").te
         </div>
         <div>
           <label className="text-xs font-medium text-ink-600 block mb-2">لوگوی سازمان</label>
-          <button className="flex items-center gap-2 border border-dashed border-ink-300 rounded-lg px-4 py-3 text-xs text-ink-500 hover:border-brand-400">
-            <Upload size={14} /> بارگذاری فایل PNG/SVG
+          <input ref={logoInputRef} type="file" accept="image/png,image/svg+xml" className="hidden" onChange={handleLogo} />
+          <button onClick={() => logoInputRef.current?.click()} className="flex items-center gap-2 border border-dashed border-ink-300 rounded-lg px-4 py-3 text-xs text-ink-500 hover:border-brand-400">
+            <Upload size={14} /> {logoName ?? "بارگذاری فایل PNG/SVG"}
           </button>
         </div>
         <div>
           <label className="text-xs font-medium text-ink-600 block mb-2">دامنه‌ی اختصاصی</label>
-          <input defaultValue={tenant.domain} className="input-field" />
+          <input value={domain} onChange={(e) => setDomain(e.target.value)} className="input-field" />
         </div>
         <div>
           <label className="text-xs font-medium text-ink-600 block mb-2">نام نمایشی پلتفرم برای این سازمان</label>
-          <input defaultValue="موتوشاب" className="input-field" />
+          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input-field" />
         </div>
-        <Button variant="primary">ذخیره‌ی برندسازی</Button>
+        <Button variant="primary" onClick={save}>ذخیره‌ی برندسازی</Button>
       </div>
 
       <div className="card p-0 overflow-hidden h-fit">
@@ -237,7 +342,7 @@ function BrandingSection({ tenant }: { tenant: (typeof import("../data/mock").te
           <div className="rounded-lg overflow-hidden border border-ink-200">
             <div className="h-9 flex items-center gap-2 px-3" style={{ backgroundColor: color }}>
               <span className="w-4 h-4 rounded bg-white/30" />
-              <span className="text-white text-[11px] font-medium">{tenant.name}</span>
+              <span className="text-white text-[11px] font-medium">{displayName}</span>
             </div>
             <div className="p-3 bg-ink-50 space-y-2">
               <div className="h-2 w-3/4 rounded bg-ink-200" />
@@ -247,18 +352,38 @@ function BrandingSection({ tenant }: { tenant: (typeof import("../data/mock").te
               </button>
             </div>
           </div>
+          <p className="text-[11px] text-ink-400 mt-2 truncate">دامنه: {domain}</p>
         </div>
       </div>
     </div>
   );
 }
 
-function RolesSection() {
+function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles: (fn: (prev: RoleDef[]) => RoleDef[]) => void; notify: Notify }) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [scope, setScope] = useState<RoleDef["scope"]>("سازمان");
+  const [description, setDescription] = useState("");
+
+  const submit = () => {
+    if (!title.trim()) {
+      notify("عنوان نقش الزامی است.", "warning");
+      return;
+    }
+    const newRole: RoleDef = { id: `role-${Date.now()}`, title: title.trim(), scope, description: description.trim() || "بدون توضیحات", members: 0 };
+    setRoles((prev) => [...prev, newRole]);
+    notify(`نقش «${newRole.title}» ایجاد شد. اکنون می‌توانید آن را به کاربران تخصیص دهید.`);
+    setOpen(false);
+    setTitle("");
+    setDescription("");
+    setScope("سازمان");
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-ink-900">نقش‌ها و سطوح دسترسی</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />}>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
           نقش جدید
         </Button>
       </div>
@@ -275,27 +400,96 @@ function RolesSection() {
           </div>
         ))}
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="ایجاد نقش دسترسی جدید">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان نقش</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: ناظر مالی پروژه" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اعمال</label>
+            <select value={scope} onChange={(e) => setScope(e.target.value as RoleDef["scope"])} className="input-field">
+              <option value="پلتفرم">پلتفرم</option>
+              <option value="سازمان">سازمان</option>
+              <option value="گروه">گروه</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-16" />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد نقش</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function PagesSection() {
+function PagesSection({
+  pages,
+  setPages,
+  extensions,
+  setExtensions,
+  notify,
+}: {
+  pages: AdminPageDef[];
+  setPages: (fn: (prev: AdminPageDef[]) => AdminPageDef[]) => void;
+  extensions: string[];
+  setExtensions: (fn: (prev: string[]) => string[]) => void;
+  notify: Notify;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [extInput, setExtInput] = useState("");
+
+  const submitPage = () => {
+    if (!title.trim() || !slug.trim()) {
+      notify("عنوان و آدرس صفحه الزامی است.", "warning");
+      return;
+    }
+    setPages((prev) => [...prev, { id: `page-${Date.now()}`, title: title.trim(), slug: slug.trim(), visible: true }]);
+    notify(`صفحه‌ی سفارشی «${title.trim()}» ایجاد شد.`);
+    setOpen(false);
+    setTitle("");
+    setSlug("");
+  };
+
+  const togglePageVisibility = (id: string) =>
+    setPages((prev) => prev.map((p) => (p.id === id ? { ...p, visible: !p.visible } : p)));
+
+  const addExtension = () => {
+    const clean = extInput.trim().replace(/^\./, "").toLowerCase();
+    if (!clean) return;
+    if (extensions.includes(clean)) {
+      notify("این پسوند از قبل در فهرست مجاز است.", "warning");
+      return;
+    }
+    setExtensions((prev) => [...prev, clean]);
+    notify(`پسوند «.${clean}» به فهرست فایل‌های مجاز افزوده شد.`);
+    setExtInput("");
+  };
+
   return (
     <div className="space-y-5">
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-bold text-ink-900">صفحات سفارشی</h3>
-          <Button variant="secondary" size="sm" icon={<Plus size={13} />}>صفحه جدید</Button>
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setOpen(true)}>صفحه جدید</Button>
         </div>
         <div className="card divide-y divide-ink-100">
-          {adminPages.map((p) => (
-            <div key={p.id} className="p-3 flex items-center justify-between">
+          {pages.map((p) => (
+            <button key={p.id} onClick={() => togglePageVisibility(p.id)} className="w-full p-3 flex items-center justify-between text-right hover:bg-ink-50">
               <div>
                 <p className="text-sm font-medium text-ink-900">{p.title}</p>
                 <p className="text-xs text-ink-400">{p.slug}</p>
               </div>
               {p.visible ? <Eye size={15} className="text-emerald-600" /> : <EyeOff size={15} className="text-ink-300" />}
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -315,17 +509,63 @@ function PagesSection() {
       <div>
         <h3 className="text-sm font-bold text-ink-900 mb-2">پسوندهای مجاز فایل</h3>
         <div className="card p-3 flex items-center gap-2 flex-wrap">
-          {allowedFileExtensions.map((ext) => (
+          {extensions.map((ext) => (
             <Badge key={ext} tone="neutral">.{ext}</Badge>
           ))}
-          <button className="text-xs text-brand-600 font-medium px-2">+ افزودن پسوند</button>
+          <input
+            value={extInput}
+            onChange={(e) => setExtInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addExtension()}
+            placeholder="docx"
+            className="w-20 text-xs border border-ink-200 rounded-md px-2 py-1 outline-none focus:border-brand-400"
+          />
+          <button onClick={addExtension} className="text-xs text-brand-600 font-medium px-2">+ افزودن پسوند</button>
         </div>
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="ایجاد صفحه‌ی سفارشی جدید">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان صفحه</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: درباره‌ی ما" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">آدرس صفحه (slug)</label>
+            <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="/about" className="input-field" />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submitPage}>ایجاد صفحه</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function UsersSection({ tenant }: { tenant: (typeof import("../data/mock").tenants)[number] }) {
+function UsersSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const estimatedRows = Math.max(3, Math.round(file.size / 80));
+    notify(`فایل «${file.name}» پردازش شد — ${estimatedRows.toLocaleString("fa-IR")} کاربر برای سازمان «${tenant.name}» وارد شدند.`);
+    e.target.value = "";
+  };
+
+  const downloadSample = () => {
+    const csv = "نام و نام خانوادگی,شماره موبایل,سمت سازمانی\nرضا سمیع‌زاده,09121234567,توسعه‌دهنده بک‌اند\nمریم کاظمی‌نیا,09351234567,کارشناس منابع انسانی\n";
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "نمونه-واردسازی-کاربران.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    notify("فایل نمونه دانلود شد.", "info");
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -338,16 +578,44 @@ function UsersSection({ tenant }: { tenant: (typeof import("../data/mock").tenan
         <h3 className="text-sm font-bold text-ink-900 mb-1">واردسازی دسته‌ای کاربران</h3>
         <p className="text-xs text-ink-400 mb-3">فایل اکسل حاوی نام، شماره موبایل و سمت سازمانی کاربران را بارگذاری کنید.</p>
         <div className="flex items-center gap-2">
-          <Button variant="primary" icon={<Upload size={14} />}>بارگذاری فایل اکسل</Button>
-          <Button variant="secondary" icon={<Download size={14} />}>دانلود نمونه فایل</Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
+          <Button variant="primary" icon={<Upload size={14} />} onClick={() => fileInputRef.current?.click()}>بارگذاری فایل اکسل</Button>
+          <Button variant="secondary" icon={<Download size={14} />} onClick={downloadSample}>دانلود نمونه فایل</Button>
         </div>
       </div>
     </div>
   );
 }
 
-function IntegrationsSection() {
+function IntegrationsSection({
+  integrations,
+  setIntegrations,
+  notify,
+}: {
+  integrations: Integration[];
+  setIntegrations: (fn: (prev: Integration[]) => Integration[]) => void;
+  notify: Notify;
+}) {
   const typeIcon = { "وب‌هوک ورودی": Webhook, "وب‌هوک خروجی": Webhook, بات: Bot, "دستور اسلش": Slash } as const;
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [type, setType] = useState<Integration["type"]>("وب‌هوک ورودی");
+  const [channel, setChannel] = useState("");
+
+  const submit = () => {
+    if (!name.trim() || !channel.trim()) {
+      notify("نام و کانال هدف الزامی است.", "warning");
+      return;
+    }
+    const newIntegration: Integration = { id: `ig-${Date.now()}`, name: name.trim(), type, channel: channel.trim(), status: "فعال", createdBy: currentUser.name };
+    setIntegrations((prev) => [newIntegration, ...prev]);
+    notify(`یکپارچه‌سازی «${newIntegration.name}» ایجاد شد و اکنون فعال است.`);
+    setOpen(false);
+    setName("");
+    setChannel("");
+    setType("وب‌هوک ورودی");
+  };
+
   return (
     <div className="space-y-4">
       <div className="card p-4 bg-brand-50 border-brand-200 flex items-start gap-3">
@@ -360,7 +628,7 @@ function IntegrationsSection() {
 
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-ink-900">یکپارچه‌سازی‌های فعال</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />}>افزودن یکپارچه‌سازی</Button>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>افزودن یکپارچه‌سازی</Button>
       </div>
 
       <div className="card divide-y divide-ink-100">
@@ -382,58 +650,126 @@ function IntegrationsSection() {
           );
         })}
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="افزودن یکپارچه‌سازی جدید">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام یکپارچه‌سازی</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: اعلان استقرار نسخه‌ی جدید" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نوع</label>
+            <select value={type} onChange={(e) => setType(e.target.value as Integration["type"])} className="input-field">
+              <option value="وب‌هوک ورودی">وب‌هوک ورودی</option>
+              <option value="وب‌هوک خروجی">وب‌هوک خروجی</option>
+              <option value="بات">بات</option>
+              <option value="دستور اسلش">دستور اسلش</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">کانال هدف</label>
+            <input value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="فاز-یک-فنی" className="input-field" />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function SecuritySection() {
+function SecurityToggleCard({ title, description, icon, defaultOn, notify }: { title: string; description: string; icon?: React.ReactNode; defaultOn: boolean; notify: Notify }) {
+  const [on, setOn] = useState(defaultOn);
+  return (
+    <div className="card p-4 flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">{icon}{title}</p>
+        <p className="text-xs text-ink-400 mt-0.5">{description}</p>
+      </div>
+      <Toggle
+        on={on}
+        onChange={() => {
+          setOn((v) => !v);
+          notify(`${title}: ${!on ? "فعال" : "غیرفعال"} شد.`, "info");
+        }}
+      />
+    </div>
+  );
+}
+
+function SecuritySection({
+  guestAccounts,
+  setGuestAccounts,
+  notify,
+}: {
+  guestAccounts: GuestAccount[];
+  setGuestAccounts: (fn: (prev: GuestAccount[]) => GuestAccount[]) => void;
+  notify: Notify;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [org, setOrg] = useState("");
+  const [channels, setChannels] = useState("");
+  const [expires, setExpires] = useState("");
+
+  const submit = () => {
+    if (!name.trim() || !org.trim()) {
+      notify("نام و سازمان مهمان الزامی است.", "warning");
+      return;
+    }
+    const newGuest: GuestAccount = {
+      id: `gu-${Date.now()}`,
+      name: name.trim(),
+      org: org.trim(),
+      channels: channels.split("،").map((c) => c.trim()).filter(Boolean),
+      expires: expires.trim() || "نامشخص",
+    };
+    setGuestAccounts((prev) => [...prev, newGuest]);
+    notify(`دعوت‌نامه‌ی مهمان برای «${newGuest.name}» ارسال شد.`);
+    setOpen(false);
+    setName("");
+    setOrg("");
+    setChannels("");
+    setExpires("");
+  };
+
+  const exportCompliance = () => {
+    const report = {
+      generatedAt: new Date().toISOString(),
+      tenant: "گزارش جامع انطباق و رخدادهای امنیتی",
+      events: [
+        "۳ تلاش ناموفق ورود از IP ناشناس",
+        "اسکن دوره‌ای فایل‌های میزبان با موفقیت انجام شد",
+        "درخواست خروجی استعلام‌پذیر (eDiscovery) برای واحد حقوقی ثبت شد",
+      ],
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "گزارش-انطباق.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    notify("خروجی انطباق آماده و دانلود شد.", "info");
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900">نمایش کپچا در فرم ورود</p>
-            <p className="text-xs text-ink-400 mt-0.5">جلوگیری از ورود ربات‌ها به فرم احراز هویت</p>
-          </div>
-          <Toggle on={true} />
-        </div>
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900">اسکن ضدویروس پیوست‌ها (ClamAV)</p>
-            <p className="text-xs text-ink-400 mt-0.5">عدم ذخیره‌ی فایل‌های آلوده و اطلاع‌رسانی به کاربر</p>
-          </div>
-          <Toggle on={true} />
-        </div>
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900">محدودسازی نرخ درخواست</p>
-            <p className="text-xs text-ink-400 mt-0.5">حداکثر ۶۰ درخواست در دقیقه به ازای هر کاربر</p>
-          </div>
-          <Toggle on={true} />
-        </div>
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900">ثبت کامل رخدادها (Audit Log)</p>
-            <p className="text-xs text-ink-400 mt-0.5">آماده برای ارائه به نهادهای نظارتی مانند افتا</p>
-          </div>
-          <Toggle on={true} />
-        </div>
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
-              <Tag size={13} className="text-ink-400" /> برچسب طبقه‌بندی پیام (Classification Banner)
-            </p>
-            <p className="text-xs text-ink-400 mt-0.5">نمایش نوار «محرمانه / عمومی / ویژه» بالای کانال‌های حساس</p>
-          </div>
-          <Toggle on={false} />
-        </div>
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-ink-900">پیام خودسوز (Burn-on-Read)</p>
-            <p className="text-xs text-ink-400 mt-0.5">حذف خودکار پیام‌های بسیار حساس پس از مشاهده</p>
-          </div>
-          <Toggle on={false} />
-        </div>
+        <SecurityToggleCard title="نمایش کپچا در فرم ورود" description="جلوگیری از ورود ربات‌ها به فرم احراز هویت" defaultOn notify={notify} />
+        <SecurityToggleCard title="اسکن ضدویروس پیوست‌ها (ClamAV)" description="عدم ذخیره‌ی فایل‌های آلوده و اطلاع‌رسانی به کاربر" defaultOn notify={notify} />
+        <SecurityToggleCard title="محدودسازی نرخ درخواست" description="حداکثر ۶۰ درخواست در دقیقه به ازای هر کاربر" defaultOn notify={notify} />
+        <SecurityToggleCard title="ثبت کامل رخدادها (Audit Log)" description="آماده برای ارائه به نهادهای نظارتی مانند افتا" defaultOn notify={notify} />
+        <SecurityToggleCard
+          title="برچسب طبقه‌بندی پیام (Classification Banner)"
+          description="نمایش نوار «محرمانه / عمومی / ویژه» بالای کانال‌های حساس"
+          icon={<Tag size={13} className="text-ink-400" />}
+          defaultOn={false}
+          notify={notify}
+        />
+        <SecurityToggleCard title="پیام خودسوز (Burn-on-Read)" description="حذف خودکار پیام‌های بسیار حساس پس از مشاهده" defaultOn={false} notify={notify} />
       </div>
 
       <div className="card p-4">
@@ -441,7 +777,7 @@ function SecuritySection() {
           <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
             <UserCog size={15} className="text-ink-500" /> حساب‌های مهمان (Guest Accounts)
           </h3>
-          <Button variant="secondary" size="sm" icon={<Plus size={13} />}>دعوت مهمان</Button>
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setOpen(true)}>دعوت مهمان</Button>
         </div>
         <p className="text-xs text-ink-400 mb-3">دسترسی محدود برای افراد خارج از سازمان (مثل ناظر یا مشاور) فقط به کانال‌های مشخص.</p>
         {guestAccounts.length === 0 ? (
@@ -452,7 +788,7 @@ function SecuritySection() {
               <div key={g.id} className="flex items-center justify-between text-xs border border-ink-100 rounded-lg p-2.5">
                 <div>
                   <p className="font-medium text-ink-800">{g.name}</p>
-                  <p className="text-ink-400 mt-0.5">{g.org} · دسترسی: {g.channels.join("، ")}</p>
+                  <p className="text-ink-400 mt-0.5">{g.org} · دسترسی: {g.channels.join("، ") || "—"}</p>
                 </div>
                 <span className="text-ink-400">انقضا {g.expires}</span>
               </div>
@@ -471,7 +807,7 @@ function SecuritySection() {
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-ink-900">آخرین رخدادهای امنیتی</h3>
-          <Button variant="secondary" size="sm" icon={<Download size={13} />}>خروجی انطباق (Compliance Export)</Button>
+          <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={exportCompliance}>خروجی انطباق (Compliance Export)</Button>
         </div>
         <ul className="space-y-2 text-xs text-ink-500">
           <li className="flex items-center gap-2"><AlertTriangle size={13} className="text-amber-500" /> ۳ تلاش ناموفق ورود از IP ناشناس — ۲ ساعت پیش</li>
@@ -479,6 +815,31 @@ function SecuritySection() {
           <li className="flex items-center gap-2"><FileWarning size={13} className="text-ink-400" /> درخواست خروجی استعلام‌پذیر (eDiscovery) برای واحد حقوقی ثبت شد — دیروز</li>
         </ul>
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="دعوت حساب مهمان جدید" description="حساب مهمان فقط به کانال‌های مشخص‌شده دسترسی دارد و به سایر اطلاعات سازمان دسترسی ندارد.">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام و نام خانوادگی</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: مهندس ناظر طرح" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">سازمان مهمان</label>
+            <input value={org} onChange={(e) => setOrg(e.target.value)} placeholder="مثلاً: شرکت مشاور فنی" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">کانال‌های قابل دسترس (با «،» جدا کنید)</label>
+            <input value={channels} onChange={(e) => setChannels(e.target.value)} placeholder="فاز-یک-فنی" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ انقضا</label>
+            <input value={expires} onChange={(e) => setExpires(e.target.value)} placeholder="۱۴۰۵/۰۶/۰۱" className="input-field" />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ارسال دعوت‌نامه</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

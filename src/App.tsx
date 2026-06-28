@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ToastProvider } from "./components/ui/ToastProvider";
 import AppLayout from "./layouts/AppLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -27,6 +28,7 @@ import Help from "./pages/Help";
 
 export default function App() {
   return (
+    <ToastProvider>
     <HashRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -61,5 +63,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
+    </ToastProvider>
   );
 }

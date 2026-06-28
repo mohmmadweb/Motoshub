@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { PiggyBank, Plus, TrendingUp } from "lucide-react";
-import { funds, type FundRecord } from "../data/mock";
+import { funds as initialFunds, type FundRecord } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import StatCard from "../components/ui/StatCard";
 import DataTable, { type Column } from "../components/ui/DataTable";
+import Modal from "../components/ui/Modal";
+import { useToast } from "../components/ui/ToastProvider";
 
 const stageTone: Record<FundRecord["stage"], BadgeTone> = {
   "ثبت‌شده": "neutral",
@@ -15,6 +18,34 @@ const stageTone: Record<FundRecord["stage"], BadgeTone> = {
 };
 
 export default function Funds() {
+  const [funds, setFunds] = useState<FundRecord[]>(initialFunds);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [applicant, setApplicant] = useState("");
+  const [amount, setAmount] = useState("");
+  const { notify } = useToast();
+
+  const submit = () => {
+    if (!title.trim() || !applicant.trim()) {
+      notify("عنوان طرح و نام متقاضی الزامی است.", "warning");
+      return;
+    }
+    const newItem: FundRecord = {
+      id: `fd-${Date.now()}`,
+      title: title.trim(),
+      applicant: applicant.trim(),
+      stage: "ثبت‌شده",
+      amount: amount.trim() || "در انتظار ارزیابی",
+      roi: "—",
+    };
+    setFunds((prev) => [newItem, ...prev]);
+    notify(`طرح «${newItem.title}» ثبت شد و برای انتخاب اولیه به کارگروه ارجاع داده شد.`);
+    setOpen(false);
+    setTitle("");
+    setApplicant("");
+    setAmount("");
+  };
+
   const columns: Column<FundRecord>[] = [
     { key: "title", label: "عنوان طرح", render: (f) => <span className="font-medium text-ink-900">{f.title}</span> },
     { key: "applicant", label: "متقاضی" },
@@ -30,7 +61,7 @@ export default function Funds() {
         description="ثبت طرح سرمایه‌گذاری، انتخاب اولیه، داوری، تخصیص منابع و گزارش بازگشت سرمایه"
         icon={<PiggyBank size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
             ثبت طرح جدید
           </Button>
         }
@@ -43,6 +74,27 @@ export default function Funds() {
       </div>
 
       <DataTable columns={columns} rows={funds} searchKeys={["title", "applicant"]} searchPlaceholder="جستجو در عنوان طرح یا متقاضی…" />
+
+      <Modal open={open} onClose={() => setOpen(false)} title="ثبت طرح سرمایه‌گذاری جدید" description="طرح ثبت‌شده ابتدا وارد فاز «انتخاب اولیه» می‌شود.">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: سکوی اجاره‌ی کوتاه‌مدت موتورسیکلت برقی" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام متقاضی / تیم</label>
+            <input value={applicant} onChange={(e) => setApplicant(e.target.value)} placeholder="مثلاً: استارتاپ راهکارهای حمل‌ونقل پاک" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">میزان درخواستی (تومان)</label>
+            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="۲۵۰٬۰۰۰٬۰۰۰" className="input-field" />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت طرح</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

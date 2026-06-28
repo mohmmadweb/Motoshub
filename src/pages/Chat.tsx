@@ -30,12 +30,14 @@ import {
 import {
   channels,
   channelMessages as initialChannelMessages,
-  chatThreads,
+  chatThreads as initialChatThreads,
   users,
+  currentUser,
   userPresence,
   integrations,
   type Channel,
   type ChannelMessage,
+  type ChatThread,
   type ReactionIcon,
 } from "../data/mock";
 import Avatar from "../components/Avatar";
@@ -50,13 +52,14 @@ type Selection = { kind: "channel" | "dm"; id: string };
 export default function Chat() {
   const [selection, setSelection] = useState<Selection>({ kind: "channel", id: channels[0].id });
   const [messages, setMessages] = useState<ChannelMessage[]>(initialChannelMessages);
+  const [dmThreads, setDmThreads] = useState<ChatThread[]>(initialChatThreads);
   const [draft, setDraft] = useState("");
   const [threadFor, setThreadFor] = useState<ChannelMessage | null>(null);
   const [panel, setPanel] = useState<"none" | "pinned" | "saved" | "members">("none");
   const [favorites, setFavorites] = useState<string[]>(["ch1"]);
 
   const activeChannel = selection.kind === "channel" ? channels.find((c) => c.id === selection.id) : undefined;
-  const activeDm = selection.kind === "dm" ? chatThreads.find((c) => c.id === selection.id) : undefined;
+  const activeDm = selection.kind === "dm" ? dmThreads.find((c) => c.id === selection.id) : undefined;
 
   const channelMsgs = useMemo(() => messages.filter((m) => m.channelId === selection.id), [messages, selection]);
 
@@ -79,6 +82,20 @@ export default function Chat() {
 
   const togglePin = (msgId: string) => setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, pinned: !m.pinned } : m)));
   const toggleSave = (msgId: string) => setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, saved: !m.saved } : m)));
+
+  const sendMessage = () => {
+    const text = draft.trim();
+    if (!text) return;
+    if (selection.kind === "channel") {
+      const newMsg: ChannelMessage = { id: `cm-${Date.now()}`, channelId: selection.id, authorId: currentUser.id, text, time: "اکنون" };
+      setMessages((prev) => [...prev, newMsg]);
+    } else {
+      setDmThreads((prev) =>
+        prev.map((t) => (t.id === selection.id ? { ...t, lastMessage: text, time: "اکنون", messages: [...t.messages, { from: "me", text, time: "اکنون", read: false }] } : t))
+      );
+    }
+    setDraft("");
+  };
 
   const pinnedMsgs = messages.filter((m) => m.channelId === selection.id && m.pinned);
   const savedMsgs = messages.filter((m) => m.saved);
@@ -115,7 +132,7 @@ export default function Chat() {
           </SidebarSection>
 
           <SidebarSection title="پیام‌های مستقیم">
-            {chatThreads.map((c) => (
+            {dmThreads.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setSelection({ kind: "dm", id: c.id })}
@@ -291,10 +308,17 @@ export default function Chat() {
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") sendMessage();
+                }}
                 placeholder={activeChannel ? `پیامی برای # ${activeChannel.name} بنویسید…` : "پیام خود را بنویسید…"}
                 className="flex-1 bg-ink-100 rounded-full px-4 py-2.5 text-sm outline-none"
               />
-              <button className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center shrink-0 hover:bg-brand-700">
+              <button
+                onClick={sendMessage}
+                disabled={!draft.trim()}
+                className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center shrink-0 hover:bg-brand-700 disabled:opacity-40"
+              >
                 <Send size={15} />
               </button>
             </div>
