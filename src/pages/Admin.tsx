@@ -18,15 +18,21 @@ import {
   AlertTriangle,
   CheckCircle2,
   Ban,
+  Webhook,
+  Bot,
+  Slash,
+  UserCog,
+  FileWarning,
+  Tag,
 } from "lucide-react";
-import { tenants, moduleCatalog, adminPages, adminMenus, roles, allowedFileExtensions, type ModuleDef } from "../data/mock";
+import { tenants, moduleCatalog, adminPages, adminMenus, roles, allowedFileExtensions, integrations, guestAccounts, type ModuleDef } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Toggle from "../components/ui/Toggle";
 import StatCard from "../components/ui/StatCard";
 
-type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "security" | "network";
+type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
@@ -35,6 +41,7 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "roles", label: "نقش‌ها و دسترسی", icon: KeyRound },
   { id: "pages", label: "صفحات و منوها", icon: LayoutTemplate },
   { id: "users", label: "کاربران و واردسازی", icon: Users },
+  { id: "integrations", label: "یکپارچه‌سازی و اتوماسیون", icon: Webhook },
   { id: "security", label: "امنیت و انطباق", icon: ShieldCheck },
   { id: "network", label: "تعامل بین‌سازمانی", icon: Network },
 ];
@@ -90,6 +97,8 @@ export default function Admin() {
           {section === "pages" && <PagesSection />}
 
           {section === "users" && <UsersSection tenant={tenant} />}
+
+          {section === "integrations" && <IntegrationsSection />}
 
           {section === "security" && <SecuritySection />}
 
@@ -337,6 +346,46 @@ function UsersSection({ tenant }: { tenant: (typeof import("../data/mock").tenan
   );
 }
 
+function IntegrationsSection() {
+  const typeIcon = { "وب‌هوک ورودی": Webhook, "وب‌هوک خروجی": Webhook, بات: Bot, "دستور اسلش": Slash } as const;
+  return (
+    <div className="space-y-4">
+      <div className="card p-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Webhook size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          وب‌هوک‌های ورودی/خروجی، بات‌ها و دستورهای اسلش به کانال‌های ارتباطی متصل می‌شوند تا ابزارهای دیگر سازمان
+          (CI/CD، فرم‌ساز، تیکتینگ و...) بتوانند به‌صورت خودکار در گفتگوها پیام بدهند یا از آن‌ها داده بگیرند.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-ink-900">یکپارچه‌سازی‌های فعال</h3>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />}>افزودن یکپارچه‌سازی</Button>
+      </div>
+
+      <div className="card divide-y divide-ink-100">
+        {integrations.map((i) => {
+          const Icon = typeIcon[i.type];
+          return (
+            <div key={i.id} className="p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">
+                  <Icon size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-ink-900 truncate">{i.name}</p>
+                  <p className="text-xs text-ink-400">{i.type} · کانال: {i.channel} · سازنده: {i.createdBy}</p>
+                </div>
+              </div>
+              <Badge tone={i.status === "فعال" ? "success" : "neutral"}>{i.status}</Badge>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SecuritySection() {
   return (
     <div className="space-y-4">
@@ -369,6 +418,47 @@ function SecuritySection() {
           </div>
           <Toggle on={true} />
         </div>
+        <div className="card p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
+              <Tag size={13} className="text-ink-400" /> برچسب طبقه‌بندی پیام (Classification Banner)
+            </p>
+            <p className="text-xs text-ink-400 mt-0.5">نمایش نوار «محرمانه / عمومی / ویژه» بالای کانال‌های حساس</p>
+          </div>
+          <Toggle on={false} />
+        </div>
+        <div className="card p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-ink-900">پیام خودسوز (Burn-on-Read)</p>
+            <p className="text-xs text-ink-400 mt-0.5">حذف خودکار پیام‌های بسیار حساس پس از مشاهده</p>
+          </div>
+          <Toggle on={false} />
+        </div>
+      </div>
+
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <UserCog size={15} className="text-ink-500" /> حساب‌های مهمان (Guest Accounts)
+          </h3>
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />}>دعوت مهمان</Button>
+        </div>
+        <p className="text-xs text-ink-400 mb-3">دسترسی محدود برای افراد خارج از سازمان (مثل ناظر یا مشاور) فقط به کانال‌های مشخص.</p>
+        {guestAccounts.length === 0 ? (
+          <p className="text-xs text-ink-400">حساب مهمانی ثبت نشده.</p>
+        ) : (
+          <div className="space-y-2">
+            {guestAccounts.map((g) => (
+              <div key={g.id} className="flex items-center justify-between text-xs border border-ink-100 rounded-lg p-2.5">
+                <div>
+                  <p className="font-medium text-ink-800">{g.name}</p>
+                  <p className="text-ink-400 mt-0.5">{g.org} · دسترسی: {g.channels.join("، ")}</p>
+                </div>
+                <span className="text-ink-400">انقضا {g.expires}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card p-4">
@@ -379,10 +469,14 @@ function SecuritySection() {
       </div>
 
       <div className="card p-4">
-        <h3 className="text-sm font-bold text-ink-900 mb-3">آخرین رخدادهای امنیتی</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-ink-900">آخرین رخدادهای امنیتی</h3>
+          <Button variant="secondary" size="sm" icon={<Download size={13} />}>خروجی انطباق (Compliance Export)</Button>
+        </div>
         <ul className="space-y-2 text-xs text-ink-500">
           <li className="flex items-center gap-2"><AlertTriangle size={13} className="text-amber-500" /> ۳ تلاش ناموفق ورود از IP ناشناس — ۲ ساعت پیش</li>
           <li className="flex items-center gap-2"><CheckCircle2 size={13} className="text-emerald-500" /> اسکن دوره‌ای فایل‌های میزبان با موفقیت انجام شد — امروز ۰۳:۰۰</li>
+          <li className="flex items-center gap-2"><FileWarning size={13} className="text-ink-400" /> درخواست خروجی استعلام‌پذیر (eDiscovery) برای واحد حقوقی ثبت شد — دیروز</li>
         </ul>
       </div>
     </div>

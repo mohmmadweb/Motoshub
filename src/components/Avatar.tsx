@@ -1,12 +1,24 @@
+import type { PresenceStatus } from "../data/mock";
+
 type Props = {
   name: string;
   color?: string;
   size?: number;
   online?: boolean;
+  status?: PresenceStatus;
 };
 
-export default function Avatar({ name, color = "#6c5ce7", size = 40, online }: Props) {
+const statusColor: Record<PresenceStatus, string> = {
+  online: "bg-emerald-500",
+  away: "bg-amber-500",
+  dnd: "bg-rose-500",
+  offline: "bg-ink-300",
+};
+
+export default function Avatar({ name, color = "#6c5ce7", size = 40, online, status }: Props) {
   const initials = name.trim().slice(0, 1);
+  const dotClass = status ? statusColor[status] : online ? "bg-emerald-500" : "bg-ink-300";
+
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       <span
@@ -15,12 +27,8 @@ export default function Avatar({ name, color = "#6c5ce7", size = 40, online }: P
       >
         {initials}
       </span>
-      {online !== undefined && (
-        <span
-          className={`absolute bottom-0 left-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
-            online ? "bg-emerald-500" : "bg-ink-300"
-          }`}
-        />
+      {(online !== undefined || status) && (
+        <span className={`absolute bottom-0 left-0 w-2.5 h-2.5 rounded-full border-2 border-white ${dotClass}`} />
       )}
     </span>
   );

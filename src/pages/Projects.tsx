@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { KanbanSquare, Plus, Wallet, ListChecks } from "lucide-react";
-import { projects } from "../data/mock";
+import { KanbanSquare, Plus, Wallet, ListChecks, ClipboardList, PlayCircle } from "lucide-react";
+import { projects, playbookTemplates } from "../data/mock";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -25,7 +25,7 @@ export default function Projects() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {projects.map((p) => (
           <Link key={p.id} to={`/app/projects/${p.id}`} className="card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -54,6 +54,28 @@ export default function Projects() {
               </span>
             </div>
           </Link>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <ClipboardList size={15} className="text-brand-600" /> قالب‌های فرآیند عملیاتی (Playbooks)
+          </h2>
+          <p className="text-xs text-ink-400 mt-0.5">رویه‌های تکرارشونده (مثل تحویل پروژه یا واکنش به حادثه) را به یک گردش‌کار چک‌لیستی تبدیل کنید.</p>
+        </div>
+        <Button variant="secondary" size="sm" icon={<Plus size={13} />}>قالب جدید</Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {playbookTemplates.map((pb) => (
+          <div key={pb.id} className="card p-4">
+            <p className="text-sm font-semibold text-ink-900">{pb.name}</p>
+            <p className="text-xs text-ink-400 mt-1">{pb.category} · {pb.steps} مرحله</p>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
+              <span className="text-[11px] text-ink-400">{pb.usedCount} بار اجراشده</span>
+              <Button variant="ghost" size="sm" icon={<PlayCircle size={13} />}>اجرا</Button>
+            </div>
+          </div>
         ))}
       </div>
     </div>

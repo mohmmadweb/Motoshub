@@ -747,3 +747,93 @@ export const searchResults: SearchResult[] = [
   { id: "sr4", type: "پست", title: "API گیت‌وی بین هسته PHP و سرویس‌های Node.js راه‌اندازی شد", snippet: "۱۲ پسندیدن · ۳ نظر" },
   { id: "sr5", type: "کاربر", title: "یاسر علی‌مردانی", snippet: "توسعه‌دهنده بک‌اند · شرکت دانش‌افراز فاخر ایرانیان" },
 ];
+
+// ---------------------------------------------------------------------------
+// Internal communication workspace (Mattermost-inspired) — channels, presence,
+// threads, reactions, pinned/saved messages. Distinct from "Groups": Groups
+// are community/social (public browsing, posts, likes, forum-per-group);
+// Channels are the internal team-communication workspace (sidebar categories,
+// threaded replies, slash commands, integrations).
+// ---------------------------------------------------------------------------
+export type PresenceStatus = "online" | "away" | "dnd" | "offline";
+
+export const userPresence: Record<string, PresenceStatus> = {
+  u1: "online",
+  u2: "dnd",
+  u3: "offline",
+  u4: "away",
+  u5: "online",
+};
+
+export type Channel = {
+  id: string;
+  name: string;
+  topic: string;
+  type: "public" | "private";
+  category: "علاقه‌مندی‌ها" | "کانال‌ها" | "بایگانی‌شده";
+  unread: number;
+  mentions: number;
+  members: number;
+  pinnedCount: number;
+};
+
+export const channels: Channel[] = [
+  { id: "ch1", name: "همگانی", topic: "اطلاعیه‌های عمومی و هماهنگی کلی تیم", type: "public", category: "علاقه‌مندی‌ها", unread: 3, mentions: 1, members: 42, pinnedCount: 2 },
+  { id: "ch2", name: "فاز-یک-فنی", topic: "هماهنگی فنی فاز اول پروژه موتوشاب", type: "private", category: "کانال‌ها", unread: 12, mentions: 2, members: 9, pinnedCount: 4 },
+  { id: "ch3", name: "طراحی-محصول", topic: "بحث و بررسی طراحی UI/UX", type: "public", category: "کانال‌ها", unread: 0, mentions: 0, members: 6, pinnedCount: 1 },
+  { id: "ch4", name: "حوادث-و-پشتیبانی", topic: "گزارش و پیگیری حوادث عملیاتی (Playbooks)", type: "private", category: "کانال‌ها", unread: 1, mentions: 0, members: 5, pinnedCount: 0 },
+  { id: "ch5", name: "بایگانی-فاز-صفر", topic: "آرشیو مذاکرات اولیه قرارداد", type: "private", category: "بایگانی‌شده", unread: 0, mentions: 0, members: 4, pinnedCount: 0 },
+];
+
+export type ReactionIcon = "ThumbsUp" | "Heart" | "Smile" | "CheckCircle2";
+export type Reaction = { icon: ReactionIcon; count: number; reactedByMe?: boolean };
+
+export type ChannelMessage = {
+  id: string;
+  channelId: string;
+  authorId: string;
+  text: string;
+  time: string;
+  pinned?: boolean;
+  saved?: boolean;
+  reactions?: Reaction[];
+  threadReplies?: number;
+};
+
+export const channelMessages: ChannelMessage[] = [
+  { id: "cm1", channelId: "ch1", authorId: "u2", text: "صبح بخیر همگی، امروز ساعت ۱۰ جلسه‌ی بازبینی فاز اول داریم.", time: "۰۸:۴۰", pinned: true, reactions: [{ icon: "ThumbsUp", count: 6, reactedByMe: true }] },
+  { id: "cm2", channelId: "ch1", authorId: "u4", text: "ممنون از اطلاع‌رسانی، حتماً حضور دارم.", time: "۰۸:۴۲" },
+  { id: "cm3", channelId: "ch2", authorId: "u1", text: "API گیت‌وی نسخه‌ی دوم رو merge کردم. کانفیگ jwt secret رو در .env تنظیم کنید.", time: "۰۹:۱۵", reactions: [{ icon: "CheckCircle2", count: 3 }], threadReplies: 4 },
+  { id: "cm4", channelId: "ch2", authorId: "u5", text: "وصل‌کردن ماژول پیامک به Gateway جدید تموم شد، تست شد و کار می‌کنه.", time: "۰۹:۴۰", saved: true, reactions: [{ icon: "Heart", count: 2 }] },
+  { id: "cm5", channelId: "ch3", authorId: "u2", text: "نسخه‌ی جدید پالت رنگی رو در فیگما گذاشتم، نظرتون رو می‌خوام.", time: "دیروز", threadReplies: 7 },
+  { id: "cm6", channelId: "ch4", authorId: "u5", text: "اجرای Playbook «واکنش به افزایش غیرعادی ترافیک» شروع شد — مرحله ۱ از ۵.", time: "۱۱:۰۲" },
+];
+
+export type Integration = {
+  id: string;
+  name: string;
+  type: "وب‌هوک ورودی" | "وب‌هوک خروجی" | "بات" | "دستور اسلش";
+  channel: string;
+  status: "فعال" | "غیرفعال";
+  createdBy: string;
+};
+
+export const integrations: Integration[] = [
+  { id: "ig1", name: "اعلان دیپلوی CI/CD", type: "وب‌هوک ورودی", channel: "فاز-یک-فنی", status: "فعال", createdBy: "رضا سمیع‌زاده" },
+  { id: "ig2", name: "ارسال گزارش روزانه به مدیر پروژه", type: "وب‌هوک خروجی", channel: "همگانی", status: "فعال", createdBy: "یاسر علی‌مردانی" },
+  { id: "ig3", name: "ربات یادآور وظایف", type: "بات", channel: "فاز-یک-فنی", status: "فعال", createdBy: "رضا سمیع‌زاده" },
+  { id: "ig4", name: "/task — ایجاد سریع تسک از چت", type: "دستور اسلش", channel: "همه‌ی کانال‌ها", status: "فعال", createdBy: "تیم محصول" },
+  { id: "ig5", name: "/poll — نظرسنجی سریع", type: "دستور اسلش", channel: "همه‌ی کانال‌ها", status: "غیرفعال", createdBy: "تیم محصول" },
+];
+
+export type GuestAccount = { id: string; name: string; org: string; channels: string[]; expires: string };
+export const guestAccounts: GuestAccount[] = [
+  { id: "gu1", name: "مهندس ناظر بیمه تامین اجتماعی", org: "خارج از سازمان", channels: ["فاز-یک-فنی"], expires: "۱۴۰۵/۰۴/۳۰" },
+];
+
+export type PlaybookTemplate = { id: string; name: string; category: string; steps: number; usedCount: number };
+export const playbookTemplates: PlaybookTemplate[] = [
+  { id: "pb1", name: "واکنش به افزایش غیرعادی ترافیک", category: "عملیات/امنیت", steps: 5, usedCount: 3 },
+  { id: "pb2", name: "فرآیند تحویل موقت پروژه", category: "مدیریت پروژه", steps: 6, usedCount: 1 },
+  { id: "pb3", name: "آماده‌سازی کارگاه آموزشی کاربران", category: "آموزش", steps: 4, usedCount: 2 },
+];
