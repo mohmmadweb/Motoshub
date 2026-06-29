@@ -1,16 +1,6 @@
 import { Link } from "react-router-dom";
-import {
-  Building2,
-  Users,
-  BookOpen,
-  KanbanSquare,
-  ShieldCheck,
-  Layers,
-  ArrowLeft,
-  CheckCircle2,
-  Globe2,
-} from "lucide-react";
-import { usePublicFeed } from "../context/ContentContext";
+import { Building2, Users, BookOpen, KanbanSquare, ShieldCheck, Layers, ArrowLeft, CheckCircle2 } from "lucide-react";
+import SiteHeader from "../components/SiteHeader";
 
 const modules = [
   { icon: Users, title: "شبکه اجتماعی سازمانی", desc: "گروه، انجمن، رویداد، گپ، اعلان و اخبار داخلی — هسته‌ی برگرفته از Motoshub" },
@@ -26,30 +16,11 @@ const stats = [
 ];
 
 export default function Landing() {
-  const publicFeed = usePublicFeed();
-
   return (
     <div dir="rtl" className="min-h-screen bg-white">
-      <header className="flex items-center justify-between px-6 lg:px-16 h-16 border-b border-ink-200">
-        <div className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-lg bg-navy-900 flex items-center justify-center text-white">
-            <Building2 size={18} />
-          </span>
-          <span className="font-bold text-ink-900">موتوشاب</span>
-        </div>
-        <nav className="flex items-center gap-5">
-          <Link to="/public" className="flex items-center gap-1.5 text-[13px] font-medium text-ink-600 hover:text-brand-700">
-            <Globe2 size={14} />
-            محتوای عمومی
-            {publicFeed.length > 0 && <span className="text-[10px] bg-ink-100 text-ink-500 rounded-full px-1.5">{publicFeed.length}</span>}
-          </Link>
-          <Link to="/login" className="btn bg-navy-900 text-white hover:bg-navy-800 text-[13px] px-4 py-2">
-            ورود به پلتفرم
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader />
 
-      <section className="px-6 lg:px-16 pt-16 pb-12 max-w-5xl mx-auto text-center">
+      <section id="top" className="px-6 lg:px-16 pt-16 pb-12 max-w-5xl mx-auto text-center">
         <span className="tag-pill bg-brand-50 text-brand-700 border border-brand-200 mx-auto inline-flex">
           پلتفرم شبکه اجتماعی و فضای کاری سازمانی
         </span>
@@ -81,7 +52,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="px-6 lg:px-16 pb-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
+      <section id="modules" className="px-6 lg:px-16 pb-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
         {modules.map((m) => (
           <div key={m.title} className="card p-5">
             <span className="w-10 h-10 rounded-lg bg-navy-900 text-white flex items-center justify-center mb-3">
@@ -93,7 +64,7 @@ export default function Landing() {
         ))}
       </section>
 
-      <section className="bg-navy-900 px-6 lg:px-16 py-12">
+      <section id="security" className="bg-navy-900 px-6 lg:px-16 py-12">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h2 className="text-white font-bold text-lg mb-3">طراحی‌شده برای راهبری چندسازمانی</h2>

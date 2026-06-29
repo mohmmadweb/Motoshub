@@ -1,24 +1,15 @@
 import { Link } from "react-router-dom";
-import { Building2, Globe2, LogIn } from "lucide-react";
+import { Globe2, LogIn, Layers } from "lucide-react";
 import { usePublicFeed } from "../context/ContentContext";
 import PublicFeedList from "../components/PublicFeedList";
+import SiteHeader from "../components/SiteHeader";
 
 export default function PublicShowcase() {
   const publicFeed = usePublicFeed();
 
   return (
-    <div dir="rtl" className="min-h-screen bg-white">
-      <header className="flex items-center justify-between px-6 lg:px-16 h-16 border-b border-ink-200">
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-lg bg-navy-900 flex items-center justify-center text-white">
-            <Building2 size={18} />
-          </span>
-          <span className="font-bold text-ink-900">موتوشاب</span>
-        </Link>
-        <Link to="/login" className="btn bg-navy-900 text-white hover:bg-navy-800 text-[13px] px-4 py-2">
-          ورود به پلتفرم
-        </Link>
-      </header>
+    <div dir="rtl" className="min-h-screen bg-white flex flex-col">
+      <SiteHeader />
 
       <section className="px-6 lg:px-16 pt-12 pb-6 max-w-3xl mx-auto text-center">
         <span className="tag-pill bg-emerald-50 text-emerald-700 border border-emerald-200 mx-auto inline-flex">
@@ -33,7 +24,7 @@ export default function PublicShowcase() {
         </p>
       </section>
 
-      <section className="px-6 lg:px-16 pb-16 max-w-3xl mx-auto">
+      <section className="px-6 lg:px-16 pb-16 max-w-3xl mx-auto flex-1 w-full">
         <PublicFeedList items={publicFeed} resolveLink={() => "/login"} />
         <div className="card p-4 mt-6 flex items-center justify-between gap-3 bg-ink-50 border-ink-100">
           <p className="text-xs text-ink-500">برای مشاهده‌ی کامل، تعامل و عضویت در فضای کاری این سازمان وارد شوید.</p>
@@ -42,6 +33,10 @@ export default function PublicShowcase() {
           </Link>
         </div>
       </section>
+
+      <footer className="px-6 lg:px-16 py-6 text-center text-xs text-ink-400 border-t border-ink-100 flex items-center justify-center gap-2">
+        <Layers size={14} /> پروتوتایپ داخلی — داده‌های این نسخه نمایشی است.
+      </footer>
     </div>
   );
 }
