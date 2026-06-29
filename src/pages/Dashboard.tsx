@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import { groups, users, currentUser, type Post } from "../data/mock";
 import { usePublicFeed, useContent } from "../context/ContentContext";
 import PostCard from "../components/PostCard";
-import PublicFeedList from "../components/PublicFeedList";
+import PublicContentTabs from "../components/PublicContentTabs";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
@@ -122,11 +122,11 @@ export default function Dashboard() {
           <div className="card p-3 mb-4 bg-emerald-50 border-emerald-200 flex items-start gap-2.5">
             <Globe2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
             <p className="text-xs text-emerald-800 leading-6">
-              این تب فقط محتوایی را نشان می‌دهد که هنگام ایجاد یا از داخل لیست خودش، روی «عمومی» تنظیم شده — یعنی هر عضو عادی سازمان آن را می‌بیند.
-              همین فهرست، با حذف اسناد دانش، در صفحه‌ی عمومی <Link to="/public" className="underline font-medium">/public</Link> هم برای بازدیدکنندگان بدون ورود نمایش داده می‌شود.
+              هر تب زیر، محتوایی را نشان می‌دهد که هنگام ایجاد یا از داخل لیست خودش، روی «عمومی» تنظیم شده — یعنی هر عضو عادی سازمان آن را می‌بیند.
+              همین محتوا در صفحه‌ی عمومی <Link to="/public" className="underline font-medium">/public</Link> هم برای بازدیدکنندگان بدون ورود نمایش داده می‌شود.
             </p>
           </div>
-          <PublicFeedList items={publicFeed} />
+          <PublicContentTabs linkMode="app" />
         </div>
       )}
     </div>
