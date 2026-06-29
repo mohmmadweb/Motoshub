@@ -1,44 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ImagePlus,
-  BarChart3,
-  Paperclip,
-  Hash,
-  CalendarDays,
-  MapPin,
-  MessagesSquare,
-  NotebookPen,
-  Image,
-  BookOpen,
-  Globe2,
-} from "lucide-react";
+import { ImagePlus, BarChart3, Paperclip, Hash, CalendarDays, MapPin, Globe2 } from "lucide-react";
 import { api } from "../lib/api";
 import { groups, users, currentUser, type Post } from "../data/mock";
-import { useContent } from "../context/ContentContext";
+import { usePublicFeed, useContent } from "../context/ContentContext";
 import PostCard from "../components/PostCard";
+import PublicFeedList from "../components/PublicFeedList";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Tabs from "../components/ui/Tabs";
-import EmptyState from "../components/ui/EmptyState";
 
 type DashboardTab = "feed" | "public";
-
-type PublicFeedItem = {
-  id: string;
-  module: "انجمن" | "بلاگ" | "رویداد" | "رسانه" | "دانش";
-  icon: typeof MessagesSquare;
-  title: string;
-  meta: string;
-  to: string;
-};
 
 export default function Dashboard() {
   const [tab, setTab] = useState<DashboardTab>("feed");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs } = useContent();
+  const publicFeed = usePublicFeed();
+  const { events } = useContent();
+  const nextEvent = events[0];
 
   useEffect(() => {
     api.feed.list().then((data) => {
@@ -46,36 +27,6 @@ export default function Dashboard() {
       setLoading(false);
     });
   }, []);
-
-  const nextEvent = events[0];
-
-  const publicFeed: PublicFeedItem[] = useMemo(() => {
-    const items: PublicFeedItem[] = [];
-    forumTopics
-      .filter((t) => t.visibility === "عمومی")
-      .forEach((t) => items.push({ id: `forum-${t.id}`, module: "انجمن", icon: MessagesSquare, title: t.title, meta: `توسط ${t.author} · دسته: ${t.category}`, to: `/app/forum/${t.id}` }));
-    blogPosts
-      .filter((b) => b.visibility === "عمومی")
-      .forEach((b) => items.push({ id: `blog-${b.id}`, module: "بلاگ", icon: NotebookPen, title: b.title, meta: `${b.author} · ${b.date}`, to: "/app/blog" }));
-    events
-      .filter((e) => e.visibility === "عمومی")
-      .forEach((e) => items.push({ id: `event-${e.id}`, module: "رویداد", icon: CalendarDays, title: e.title, meta: `${e.jalaliDate} · ${e.location}`, to: "/app/events" }));
-    mediaItems
-      .filter((m) => m.visibility === "عمومی")
-      .forEach((m) => items.push({ id: `media-${m.id}`, module: "رسانه", icon: Image, title: m.title, meta: `${m.album} · ${m.uploadedBy}`, to: "/app/media" }));
-    knowledgeDocs
-      .filter((d) => d.visibility === "عمومی")
-      .forEach((d) => items.push({ id: `doc-${d.id}`, module: "دانش", icon: BookOpen, title: d.title, meta: `${d.owner} · ${d.updatedAt}`, to: "/app/knowledge" }));
-    return items;
-  }, [forumTopics, blogPosts, events, mediaItems, knowledgeDocs]);
-
-  const moduleTone: Record<PublicFeedItem["module"], "brand" | "success" | "warning" | "navy" | "neutral"> = {
-    انجمن: "brand",
-    بلاگ: "success",
-    رویداد: "warning",
-    رسانه: "navy",
-    دانش: "neutral",
-  };
 
   return (
     <div>
@@ -172,28 +123,10 @@ export default function Dashboard() {
             <Globe2 size={16} className="text-emerald-700 shrink-0 mt-0.5" />
             <p className="text-xs text-emerald-800 leading-6">
               این تب فقط محتوایی را نشان می‌دهد که هنگام ایجاد یا از داخل لیست خودش، روی «عمومی» تنظیم شده — یعنی هر عضو عادی سازمان آن را می‌بیند.
-              هر آیتم محتوایی که «خصوصی» باشد در این‌جا نشان داده نمی‌شود.
+              همین فهرست، با حذف اسناد دانش، در صفحه‌ی عمومی <Link to="/public" className="underline font-medium">/public</Link> هم برای بازدیدکنندگان بدون ورود نمایش داده می‌شود.
             </p>
           </div>
-
-          {publicFeed.length === 0 ? (
-            <EmptyState icon={<Globe2 size={18} />} title="هنوز محتوای عمومی‌ای ثبت نشده" />
-          ) : (
-            <div className="card divide-y divide-ink-100">
-              {publicFeed.map((item) => (
-                <Link key={item.id} to={item.to} className="p-4 flex items-center gap-3 hover:bg-ink-50/60">
-                  <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">
-                    <item.icon size={15} />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink-900 truncate">{item.title}</p>
-                    <p className="text-xs text-ink-400 mt-0.5">{item.meta}</p>
-                  </div>
-                  <Badge tone={moduleTone[item.module]}>{item.module}</Badge>
-                </Link>
-              ))}
-            </div>
-          )}
+          <PublicFeedList items={publicFeed} />
         </div>
       )}
     </div>

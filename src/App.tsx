@@ -3,6 +3,7 @@ import { ToastProvider } from "./components/ui/ToastProvider";
 import { ContentProvider } from "./context/ContentContext";
 import AppLayout from "./layouts/AppLayout";
 import Landing from "./pages/Landing";
+import PublicShowcase from "./pages/PublicShowcase";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import News from "./pages/News";
@@ -34,6 +35,7 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/public" element={<PublicShowcase />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/app" element={<AppLayout />}>
