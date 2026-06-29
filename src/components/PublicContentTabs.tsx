@@ -36,10 +36,12 @@ export default function PublicContentTabs({
   linkMode = "app",
   activeTab,
   onTabChange,
+  showTabs = true,
 }: {
   linkMode?: "app" | "login";
   activeTab?: ModuleTab;
   onTabChange?: (tab: ModuleTab) => void;
+  showTabs?: boolean;
 }) {
   const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs } = useContent();
   const [internalTab, setInternalTab] = useState<ModuleTab>("forum");
@@ -56,17 +58,19 @@ export default function PublicContentTabs({
 
   return (
     <div>
-      <Tabs
-        tabs={[
-          { id: "forum", label: "انجمن", count: publicForum.length },
-          { id: "blog", label: "بلاگ", count: publicBlog.length },
-          { id: "events", label: "رویدادها", count: publicEvents.length },
-          { id: "media", label: "تصاویر و ویدیو", count: publicMedia.length },
-          { id: "knowledge", label: "مدیریت دانش", count: publicKnowledge.length },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
+      {showTabs && (
+        <Tabs
+          tabs={[
+            { id: "forum", label: "انجمن", count: publicForum.length },
+            { id: "blog", label: "بلاگ", count: publicBlog.length },
+            { id: "events", label: "رویدادها", count: publicEvents.length },
+            { id: "media", label: "تصاویر و ویدیو", count: publicMedia.length },
+            { id: "knowledge", label: "مدیریت دانش", count: publicKnowledge.length },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+      )}
 
       {tab === "forum" && <ForumTab items={publicForum} link={link} />}
       {tab === "blog" && <BlogTab items={publicBlog} link={link} />}

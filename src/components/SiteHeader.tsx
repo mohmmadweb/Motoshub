@@ -66,19 +66,24 @@ export default function SiteHeader() {
 
           <span className="w-px h-4 bg-ink-200" />
 
-          {moduleLinks.map((m) => (
-            <Link
-              key={m.section}
-              to={`/public/${m.section}`}
-              className="flex items-center gap-1.5 text-[13px] font-medium text-ink-600 hover:text-brand-700 whitespace-nowrap"
-            >
-              <m.icon size={13} />
-              {m.label}
-              {publicCounts[m.section] > 0 && (
-                <span className="text-[10px] bg-ink-100 text-ink-500 rounded-full px-1.5">{publicCounts[m.section]}</span>
-              )}
-            </Link>
-          ))}
+          {moduleLinks.map((m) => {
+            const active = location.pathname === `/public/${m.section}`;
+            return (
+              <Link
+                key={m.section}
+                to={`/public/${m.section}`}
+                className={`flex items-center gap-1.5 text-[13px] font-medium whitespace-nowrap ${active ? "text-brand-700" : "text-ink-600 hover:text-brand-700"}`}
+              >
+                <m.icon size={13} />
+                {m.label}
+                {publicCounts[m.section] > 0 && (
+                  <span className={`text-[10px] rounded-full px-1.5 ${active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
+                    {publicCounts[m.section]}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
 
           <span className="w-px h-4 bg-ink-200" />
 
