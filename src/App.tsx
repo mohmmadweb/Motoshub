@@ -36,6 +36,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicShowcase />} />
+        <Route path="/public/:section" element={<PublicShowcase />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/app" element={<AppLayout />}>

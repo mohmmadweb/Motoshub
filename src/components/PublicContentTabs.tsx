@@ -23,7 +23,7 @@ import Tabs from "./ui/Tabs";
 import Badge, { type BadgeTone } from "./ui/Badge";
 import EmptyState from "./ui/EmptyState";
 
-type ModuleTab = "forum" | "blog" | "events" | "media" | "knowledge";
+export type ModuleTab = "forum" | "blog" | "events" | "media" | "knowledge";
 
 const typeTone: Record<string, BadgeTone> = {
   قرارداد: "warning",
@@ -32,9 +32,19 @@ const typeTone: Record<string, BadgeTone> = {
   گزارش: "brand",
 };
 
-export default function PublicContentTabs({ linkMode = "app" }: { linkMode?: "app" | "login" }) {
+export default function PublicContentTabs({
+  linkMode = "app",
+  activeTab,
+  onTabChange,
+}: {
+  linkMode?: "app" | "login";
+  activeTab?: ModuleTab;
+  onTabChange?: (tab: ModuleTab) => void;
+}) {
   const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs } = useContent();
-  const [tab, setTab] = useState<ModuleTab>("forum");
+  const [internalTab, setInternalTab] = useState<ModuleTab>("forum");
+  const tab = activeTab ?? internalTab;
+  const setTab = onTabChange ?? setInternalTab;
 
   const publicForum = forumTopics.filter((t) => t.visibility === "عمومی");
   const publicBlog = blogPosts.filter((b) => b.visibility === "عمومی");

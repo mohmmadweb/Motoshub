@@ -1,9 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Globe2, LogIn, Layers } from "lucide-react";
-import PublicContentTabs from "../components/PublicContentTabs";
+import PublicContentTabs, { type ModuleTab } from "../components/PublicContentTabs";
 import SiteHeader from "../components/SiteHeader";
 
+const validSections: ModuleTab[] = ["forum", "blog", "events", "media", "knowledge"];
+
 export default function PublicShowcase() {
+  const { section } = useParams();
+  const navigate = useNavigate();
+  const activeTab: ModuleTab = validSections.includes(section as ModuleTab) ? (section as ModuleTab) : "forum";
+
   return (
     <div dir="rtl" className="min-h-screen bg-white flex flex-col">
       <SiteHeader />
@@ -17,12 +23,12 @@ export default function PublicShowcase() {
         </h1>
         <p className="text-ink-500 mt-4 text-sm leading-7 max-w-xl mx-auto">
           هر سازمان روی موتوشاب می‌تواند مشخص کند کدام موضوع انجمن، یادداشت بلاگ، رویداد، رسانه یا سند دانش به‌صورت
-          عمومی منتشر شود. هر بخش، تب جداگانه‌ی خودش را دارد — بدون نیاز به ورود.
+          عمومی منتشر شود. هر بخش، صفحه و تب جداگانه‌ی خودش را دارد — بدون نیاز به ورود.
         </p>
       </section>
 
       <section className="px-6 lg:px-16 pb-16 max-w-5xl mx-auto flex-1 w-full">
-        <PublicContentTabs linkMode="login" />
+        <PublicContentTabs linkMode="login" activeTab={activeTab} onTabChange={(t) => navigate(`/public/${t}`)} />
         <div className="card p-4 mt-6 flex items-center justify-between gap-3 bg-ink-50 border-ink-100">
           <p className="text-xs text-ink-500">برای مشاهده‌ی کامل، تعامل و عضویت در فضای کاری این سازمان وارد شوید.</p>
           <Link to="/login" className="btn bg-navy-900 text-white hover:bg-navy-800 text-xs px-3.5 py-2 shrink-0">
