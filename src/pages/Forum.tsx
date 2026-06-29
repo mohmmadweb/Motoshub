@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { Plus, MessagesSquare, CheckCircle2, Eye, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { forumTopics as initialTopics, currentUser, type ForumTopic } from "../data/mock";
+import { currentUser, type ForumTopic, type Visibility } from "../data/mock";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useContent } from "../context/ContentContext";
 
 export default function Forum() {
-  const [topics, setTopics] = useState<ForumTopic[]>(initialTopics);
+  const { forumTopics: topics, setForumTopics: setTopics } = useContent();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("عمومی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -28,13 +31,18 @@ export default function Forum() {
       views: 1,
       lastActivity: "اکنون",
       category: category.trim() || "عمومی",
+      visibility,
     };
     setTopics((prev) => [newTopic, ...prev]);
-    notify(`موضوع «${newTopic.title}» در انجمن منتشر شد.`);
+    notify(`موضوع «${newTopic.title}» در انجمن منتشر شد (${visibility}).`);
     setOpen(false);
     setTitle("");
     setCategory("");
+    setVisibility("عمومی");
   };
+
+  const toggleVisibility = (id: string) =>
+    setTopics((prev) => prev.map((t) => (t.id === id ? { ...t, visibility: t.visibility === "عمومی" ? "خصوصی" : "عمومی" } : t)));
 
   return (
     <div>
@@ -65,13 +73,14 @@ export default function Forum() {
                 توسط {t.author} · دسته: {t.category} · آخرین فعالیت {t.lastActivity}
               </p>
             </div>
-            <div className="flex items-center gap-4 text-xs text-ink-500 shrink-0">
+            <div className="flex items-center gap-3 text-xs text-ink-500 shrink-0">
               <span className="flex items-center gap-1">
                 <MessageCircle size={13} /> {t.replies}
               </span>
               <span className="flex items-center gap-1">
                 <Eye size={13} /> {t.views}
               </span>
+              <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
             </div>
           </Link>
         ))}
@@ -87,6 +96,7 @@ export default function Forum() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دسته‌بندی</label>
             <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: امنیت" className="input-field" />
           </div>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار موضوع</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

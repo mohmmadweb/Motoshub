@@ -1,13 +1,57 @@
 import { useState } from "react";
 import { Image, Video, Star, Upload, PlayCircle } from "lucide-react";
-import { mediaItems } from "../data/mock";
+import { currentUser, type MediaItem, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
+import Modal from "../components/ui/Modal";
+import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
+import { useToast } from "../components/ui/ToastProvider";
+import { useContent } from "../context/ContentContext";
+
+const jalaliToday = "۱۴۰۵/۰۴/۰۷";
+const palette = ["#82aee6", "#93a2b8", "#1f4f99", "#5e7191", "#0d9488"];
 
 export default function Media() {
+  const { mediaItems: items, setMediaItems: setItems } = useContent();
   const [kind, setKind] = useState<"all" | "photo" | "video">("all");
-  const filtered = kind === "all" ? mediaItems : mediaItems.filter((m) => m.kind === kind);
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [album, setAlbum] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("عمومی");
+  const { notify } = useToast();
+
+  const filtered = kind === "all" ? items : items.filter((m) => m.kind === kind);
+
+  const submit = () => {
+    if (!file || !title.trim()) {
+      notify("انتخاب فایل و عنوان الزامی است.", "warning");
+      return;
+    }
+    const newItem: MediaItem = {
+      id: `m-${Date.now()}`,
+      kind: file.type.startsWith("video") ? "video" : "photo",
+      title: title.trim(),
+      album: album.trim() || "بدون آلبوم",
+      uploadedBy: currentUser.name,
+      date: jalaliToday,
+      rating: 0,
+      tags: [],
+      color: palette[items.length % palette.length],
+      visibility,
+    };
+    setItems((prev) => [newItem, ...prev]);
+    notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
+    setOpen(false);
+    setFile(null);
+    setTitle("");
+    setAlbum("");
+    setVisibility("عمومی");
+  };
+
+  const toggleVisibility = (id: string) =>
+    setItems((prev) => prev.map((m) => (m.id === id ? { ...m, visibility: m.visibility === "عمومی" ? "خصوصی" : "عمومی" } : m)));
 
   return (
     <div>
@@ -16,7 +60,7 @@ export default function Media() {
         description="مدیریت آلبوم‌های کاربری، حریم خصوصی محتوا و اتصال به شبکه‌ی آپارات"
         icon={<Image size={18} />}
         actions={
-          <Button variant="primary" icon={<Upload size={15} />}>
+          <Button variant="primary" icon={<Upload size={15} />} onClick={() => setOpen(true)}>
             بارگذاری محتوا
           </Button>
         }
@@ -48,6 +92,9 @@ export default function Media() {
                   {m.kind === "video" ? "ویدیو" : "تصویر"}
                 </Badge>
               </span>
+              <span className="absolute top-2 left-2">
+                <VisibilityToggle visibility={m.visibility} onChange={() => toggleVisibility(m.id)} size="xs" />
+              </span>
             </div>
             <div className="p-3">
               <p className="text-xs font-semibold text-ink-900 truncate">{m.title}</p>
@@ -62,6 +109,28 @@ export default function Media() {
           </div>
         ))}
       </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="بارگذاری محتوای جدید">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">فایل تصویر/ویدیو</label>
+            <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: بازدید هیات مدیره از واحد فنی" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">آلبوم</label>
+            <input value={album} onChange={(e) => setAlbum(e.target.value)} placeholder="رویدادهای رسمی" className="input-field" />
+          </div>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>بارگذاری</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

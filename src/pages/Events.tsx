@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { CalendarDays, MapPin, Users, Hash, Plus, Calendar, Send } from "lucide-react";
-import { events as initialEvents, type EventItem } from "../data/mock";
+import { type EventItem, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useContent } from "../context/ContentContext";
 
 export default function Events() {
-  const [events, setEvents] = useState<EventItem[]>(initialEvents);
+  const { events, setEvents } = useContent();
   const [calendar, setCalendar] = useState<"jalali" | "gregorian">("jalali");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -16,6 +18,7 @@ export default function Events() {
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("عمومی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -33,18 +36,23 @@ export default function Events() {
       attendees: 0,
       hashtags: [],
       description: description.trim() || "بدون توضیحات",
+      visibility,
     };
     setEvents((prev) => [newEvent, ...prev]);
-    notify(`رویداد «${newEvent.title}» منتشر شد و در تقویم سازمان قابل مشاهده است.`);
+    notify(`رویداد «${newEvent.title}» منتشر شد و در تقویم سازمان قابل مشاهده است (${visibility}).`);
     setOpen(false);
     setTitle("");
     setJalaliDate("");
     setTime("");
     setLocation("");
     setDescription("");
+    setVisibility("عمومی");
   };
 
   const sendInvite = (e: EventItem) => notify(`دعوت‌نامه‌ی رویداد «${e.title}» برای اعضای واجد شرایط ارسال شد.`, "info");
+
+  const toggleVisibility = (id: string) =>
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, visibility: e.visibility === "عمومی" ? "خصوصی" : "عمومی" } : e)));
 
   return (
     <div>
@@ -104,9 +112,12 @@ export default function Events() {
                 ))}
               </div>
             </div>
-            <Button variant="secondary" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
-              دعوت‌نامه
-            </Button>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" />
+              <Button variant="secondary" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
+                دعوت‌نامه
+              </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -135,6 +146,7 @@ export default function Events() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-20" />
           </div>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار رویداد</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

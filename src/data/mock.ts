@@ -225,6 +225,8 @@ export const posts: Post[] = [
   },
 ];
 
+export type Visibility = "عمومی" | "خصوصی";
+
 export type ForumTopic = {
   id: string;
   title: string;
@@ -234,6 +236,7 @@ export type ForumTopic = {
   lastActivity: string;
   category: string;
   solved?: boolean;
+  visibility: Visibility;
 };
 
 export const forumTopics: ForumTopic[] = [
@@ -246,6 +249,7 @@ export const forumTopics: ForumTopic[] = [
     lastActivity: "۱ ساعت پیش",
     category: "معماری",
     solved: true,
+    visibility: "عمومی",
   },
   {
     id: "f2",
@@ -255,6 +259,7 @@ export const forumTopics: ForumTopic[] = [
     views: 134,
     lastActivity: "۳ ساعت پیش",
     category: "بک‌اند",
+    visibility: "عمومی",
   },
   {
     id: "f3",
@@ -264,6 +269,7 @@ export const forumTopics: ForumTopic[] = [
     views: 98,
     lastActivity: "دیروز",
     category: "فرانت‌اند",
+    visibility: "خصوصی",
   },
 ];
 
@@ -275,6 +281,7 @@ export type KnowledgeDoc = {
   updatedAt: string;
   owner: string;
   size: string;
+  visibility: Visibility;
 };
 
 export const knowledgeDocs: KnowledgeDoc[] = [
@@ -286,6 +293,7 @@ export const knowledgeDocs: KnowledgeDoc[] = [
     updatedAt: "۱۴۰۵/۰۲/۰۱",
     owner: "واحد حقوقی",
     size: "۱.۲ مگابایت",
+    visibility: "خصوصی",
   },
   {
     id: "d2",
@@ -295,6 +303,7 @@ export const knowledgeDocs: KnowledgeDoc[] = [
     updatedAt: "۱۴۰۵/۰۱/۲۰",
     owner: "تیم محصول",
     size: "۸۴۰ کیلوبایت",
+    visibility: "عمومی",
   },
   {
     id: "d3",
@@ -304,6 +313,7 @@ export const knowledgeDocs: KnowledgeDoc[] = [
     updatedAt: "۱۴۰۵/۰۱/۱۵",
     owner: "دبیرخانه",
     size: "۳۱۰ کیلوبایت",
+    visibility: "خصوصی",
   },
   {
     id: "d4",
@@ -313,6 +323,7 @@ export const knowledgeDocs: KnowledgeDoc[] = [
     updatedAt: "۱۴۰۵/۰۲/۱۰",
     owner: "مدیر پروژه",
     size: "۲.۴ مگابایت",
+    visibility: "عمومی",
   },
 ];
 
@@ -462,6 +473,7 @@ export type EventItem = {
   attendees: number;
   hashtags: string[];
   description: string;
+  visibility: Visibility;
 };
 
 export const events: EventItem[] = [
@@ -475,6 +487,7 @@ export const events: EventItem[] = [
     attendees: 12,
     hashtags: ["فاز-اول", "ناظر"],
     description: "ارائه گزارش پیشرفت کار به ناظر کارفرما و تصمیم‌گیری درباره تحویل موقت.",
+    visibility: "عمومی",
   },
   {
     id: "e2",
@@ -486,6 +499,7 @@ export const events: EventItem[] = [
     attendees: 48,
     hashtags: ["آموزش"],
     description: "آموزش ۲۴ نفر-ساعت طبق ماده ۵ قرارداد برای راهبران و کاربران شبکه.",
+    visibility: "عمومی",
   },
   {
     id: "e3",
@@ -497,6 +511,7 @@ export const events: EventItem[] = [
     attendees: 7,
     hashtags: ["صندوق-نوآوری", "داوری"],
     description: "بررسی و امتیازدهی طرح‌های ثبت‌شده در فراخوان دوم شتاب‌دهی.",
+    visibility: "خصوصی",
   },
 ];
 
@@ -511,6 +526,7 @@ export type BlogPost = {
   date: string;
   rating: number;
   tags: string[];
+  visibility: Visibility;
 };
 
 export const blogPosts: BlogPost[] = [
@@ -522,6 +538,7 @@ export const blogPosts: BlogPost[] = [
     date: "۱۴۰۵/۰۲/۱۸",
     rating: 4.6,
     tags: ["معماری", "SaaS"],
+    visibility: "عمومی",
   },
   {
     id: "b2",
@@ -531,6 +548,7 @@ export const blogPosts: BlogPost[] = [
     date: "۱۴۰۵/۰۲/۰۵",
     rating: 4.2,
     tags: ["امنیت"],
+    visibility: "عمومی",
   },
 ];
 
@@ -547,13 +565,14 @@ export type MediaItem = {
   rating: number;
   tags: string[];
   color: string;
+  visibility: Visibility;
 };
 
 export const mediaItems: MediaItem[] = [
-  { id: "m1", kind: "photo", title: "افتتاحیه‌ی فاز اول پروژه", album: "رویدادهای رسمی", uploadedBy: "فرشاد حاج‌محمدی", date: "۱۴۰۵/۰۲/۰۱", rating: 4.8, tags: ["افتتاحیه"], color: "#82aee6" },
-  { id: "m2", kind: "photo", title: "کارگاه آموزشی تیم فنی", album: "آموزش", uploadedBy: "رضا سمیع‌زاده", date: "۱۴۰۵/۰۲/۱۰", rating: 4.5, tags: ["آموزش"], color: "#93a2b8" },
-  { id: "m3", kind: "video", title: "معرفی نسخه‌ی جدید موتوشاب", album: "معرفی محصول", uploadedBy: "تیم محصول", date: "۱۴۰۵/۰۲/۲۰", rating: 4.9, tags: ["محصول", "آپارات"], color: "#1f4f99" },
-  { id: "m4", kind: "video", title: "ضبط جلسه‌ی داوری صندوق نوآوری", album: "صندوق نوآوری", uploadedBy: "جعفر حبیبی", date: "۱۴۰۵/۰۳/۰۱", rating: 4.1, tags: ["صندوق"], color: "#5e7191" },
+  { id: "m1", kind: "photo", title: "افتتاحیه‌ی فاز اول پروژه", album: "رویدادهای رسمی", uploadedBy: "فرشاد حاج‌محمدی", date: "۱۴۰۵/۰۲/۰۱", rating: 4.8, tags: ["افتتاحیه"], color: "#82aee6", visibility: "عمومی" },
+  { id: "m2", kind: "photo", title: "کارگاه آموزشی تیم فنی", album: "آموزش", uploadedBy: "رضا سمیع‌زاده", date: "۱۴۰۵/۰۲/۱۰", rating: 4.5, tags: ["آموزش"], color: "#93a2b8", visibility: "عمومی" },
+  { id: "m3", kind: "video", title: "معرفی نسخه‌ی جدید موتوشاب", album: "معرفی محصول", uploadedBy: "تیم محصول", date: "۱۴۰۵/۰۲/۲۰", rating: 4.9, tags: ["محصول", "آپارات"], color: "#1f4f99", visibility: "عمومی" },
+  { id: "m4", kind: "video", title: "ضبط جلسه‌ی داوری صندوق نوآوری", album: "صندوق نوآوری", uploadedBy: "جعفر حبیبی", date: "۱۴۰۵/۰۳/۰۱", rating: 4.1, tags: ["صندوق"], color: "#5e7191", visibility: "خصوصی" },
 ];
 
 // ---------------------------------------------------------------------------

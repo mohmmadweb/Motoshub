@@ -1,12 +1,15 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { BookOpen, FileText, Upload, Clock, User, History, Download } from "lucide-react";
-import { knowledgeDocs as initialDocs, currentUser, type KnowledgeDoc } from "../data/mock";
+import { knowledgeDocs as allDocsForCategories, currentUser, type KnowledgeDoc, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import Drawer from "../components/ui/Drawer";
+import Modal from "../components/ui/Modal";
+import { VisibilityToggle, VisibilityBadge, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useContent } from "../context/ContentContext";
 
 const typeTone: Record<string, BadgeTone> = {
   قرارداد: "warning",
@@ -18,30 +21,37 @@ const typeTone: Record<string, BadgeTone> = {
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function Knowledge() {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>(initialDocs);
+  const { knowledgeDocs: docs, setKnowledgeDocs: setDocs } = useContent();
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadVisibility, setUploadVisibility] = useState<Visibility>("عمومی");
   const { notify } = useToast();
 
-  const categories = ["همه", ...Array.from(new Set(initialDocs.map((d) => d.category)))];
+  const categories = ["همه", ...Array.from(new Set(allDocsForCategories.map((d) => d.category)))];
   const filtered = active === "همه" ? docs : docs.filter((d) => d.category === active);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const confirmUpload = () => {
+    if (!pendingFile) {
+      notify("لطفاً ابتدا یک فایل انتخاب کنید.", "warning");
+      return;
+    }
     const newDoc: KnowledgeDoc = {
       id: `kd-${Date.now()}`,
-      title: file.name,
+      title: pendingFile.name,
       category: active === "همه" ? "صورت‌جلسه" : active,
       type: "گزارش",
       owner: currentUser.name,
       updatedAt: jalaliToday,
-      size: `${(file.size / 1024).toFixed(0)} کیلوبایت`,
+      size: `${(pendingFile.size / 1024).toFixed(0)} کیلوبایت`,
+      visibility: uploadVisibility,
     };
     setDocs((prev) => [newDoc, ...prev]);
-    notify(`سند «${file.name}» با موفقیت در بانک دانش بارگذاری شد.`);
-    e.target.value = "";
+    notify(`سند «${pendingFile.name}» با موفقیت در بانک دانش بارگذاری شد (${uploadVisibility}).`);
+    setUploadOpen(false);
+    setPendingFile(null);
+    setUploadVisibility("عمومی");
   };
 
   const handleDownload = (doc: KnowledgeDoc) => {
@@ -54,6 +64,11 @@ export default function Knowledge() {
     a.click();
     URL.revokeObjectURL(url);
     notify(`دانلود سند «${doc.title}» آغاز شد.`, "info");
+  };
+
+  const toggleVisibility = (id: string) => {
+    setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, visibility: d.visibility === "عمومی" ? "خصوصی" : "عمومی" } : d)));
+    setSelected((prev) => (prev && prev.id === id ? { ...prev, visibility: prev.visibility === "عمومی" ? "خصوصی" : "عمومی" } : prev));
   };
 
   const columns: Column<KnowledgeDoc>[] = [
@@ -71,6 +86,7 @@ export default function Knowledge() {
     { key: "owner", label: "مالک" },
     { key: "updatedAt", label: "بروزرسانی" },
     { key: "size", label: "حجم" },
+    { key: "visibility", label: "دسترسی", render: (d) => <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> },
   ];
 
   return (
@@ -80,12 +96,9 @@ export default function Knowledge() {
         description="بانک اسناد سازمانی، آرشیو قراردادها و مستندات آموزشی با جستجوی پیشرفته"
         icon={<BookOpen size={18} />}
         actions={
-          <>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
-            <Button variant="primary" icon={<Upload size={15} />} onClick={() => fileInputRef.current?.click()}>
-              بارگذاری سند
-            </Button>
-          </>
+          <Button variant="primary" icon={<Upload size={15} />} onClick={() => setUploadOpen(true)}>
+            بارگذاری سند
+          </Button>
         }
       />
 
@@ -111,6 +124,7 @@ export default function Knowledge() {
             <div className="flex items-center gap-2">
               <Badge tone={typeTone[selected.type]}>{selected.type}</Badge>
               <Badge tone="neutral">{selected.category}</Badge>
+              <VisibilityBadge visibility={selected.visibility} />
             </div>
             <dl className="space-y-2.5 text-xs">
               <div className="flex items-center gap-2 text-ink-500">
@@ -133,12 +147,30 @@ export default function Knowledge() {
                 <li>نسخه ۱ — ایجاد سند</li>
               </ul>
             </div>
+            <div className="border-t border-ink-100 pt-3">
+              <p className="text-xs font-semibold text-ink-600 mb-2">سطح دسترسی</p>
+              <VisibilityToggle visibility={selected.visibility} onChange={() => toggleVisibility(selected.id)} />
+            </div>
             <Button variant="primary" className="w-full justify-center" icon={<Download size={14} />} onClick={() => handleDownload(selected)}>
               دانلود سند
             </Button>
           </div>
         )}
       </Drawer>
+
+      <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="بارگذاری سند جدید">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">فایل سند</label>
+            <input type="file" onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)} className="input-field" />
+          </div>
+          <VisibilityPicker value={uploadVisibility} onChange={setUploadVisibility} />
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={confirmUpload}>بارگذاری</Button>
+            <Button variant="secondary" onClick={() => setUploadOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
