@@ -1,9 +1,9 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Globe2, LogIn, Layers, MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen } from "lucide-react";
+import { Globe2, LogIn, Layers, MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper } from "lucide-react";
 import PublicContentTabs, { type ModuleTab } from "../components/PublicContentTabs";
 import SiteHeader from "../components/SiteHeader";
 
-const validSections: ModuleTab[] = ["forum", "blog", "events", "media", "knowledge"];
+const validSections: ModuleTab[] = ["forum", "blog", "events", "media", "knowledge", "news"];
 
 const sectionInfo: Record<ModuleTab, { icon: typeof MessagesSquare; tag: string; title: string; description: string }> = {
   forum: {
@@ -35,6 +35,12 @@ const sectionInfo: Record<ModuleTab, { icon: typeof MessagesSquare; tag: string;
     tag: "دانش عمومی",
     title: "اسناد عمومی بانک دانش",
     description: "مستندات آموزشی و گزارش‌هایی که سازمان‌ها برای استفاده‌ی عمومی در بانک دانش منتشر کرده‌اند.",
+  },
+  news: {
+    icon: Newspaper,
+    tag: "اخبار عمومی",
+    title: "اخبار و اطلاعیه‌های عمومی",
+    description: "اطلاعیه‌های رسمی، اخبار سازمان و به‌روزرسانی‌های عمومی که سازمان‌های فعال روی موتوشاب منتشر کرده‌اند.",
   },
 };
 

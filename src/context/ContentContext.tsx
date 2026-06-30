@@ -1,21 +1,23 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { MessagesSquare, NotebookPen, CalendarDays, Image, BookOpen } from "lucide-react";
+import { MessagesSquare, NotebookPen, CalendarDays, Image, BookOpen, Newspaper } from "lucide-react";
 import {
   forumTopics as initialForumTopics,
   blogPosts as initialBlogPosts,
   events as initialEvents,
   mediaItems as initialMediaItems,
   knowledgeDocs as initialKnowledgeDocs,
+  newsItems as initialNewsItems,
   type ForumTopic,
   type BlogPost,
   type EventItem,
   type MediaItem,
   type KnowledgeDoc,
+  type NewsItem,
 } from "../data/mock";
 
 export type PublicFeedItem = {
   id: string;
-  module: "انجمن" | "بلاگ" | "رویداد" | "رسانه" | "دانش";
+  module: "انجمن" | "بلاگ" | "رویداد" | "رسانه" | "دانش" | "اخبار";
   icon: typeof MessagesSquare;
   title: string;
   meta: string;
@@ -35,6 +37,8 @@ type ContentValue = {
   setMediaItems: SetFn<MediaItem>;
   knowledgeDocs: KnowledgeDoc[];
   setKnowledgeDocs: SetFn<KnowledgeDoc>;
+  newsItems: NewsItem[];
+  setNewsItems: SetFn<NewsItem>;
 };
 
 const ContentContext = createContext<ContentValue | null>(null);
@@ -45,6 +49,7 @@ export function ContentProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>(initialMediaItems);
   const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(initialKnowledgeDocs);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>(initialNewsItems);
 
   return (
     <ContentContext.Provider
@@ -59,6 +64,8 @@ export function ContentProvider({ children }: { children: ReactNode }) {
         setMediaItems,
         knowledgeDocs,
         setKnowledgeDocs,
+        newsItems,
+        setNewsItems,
       }}
     >
       {children}
@@ -73,7 +80,7 @@ export function useContent() {
 }
 
 export function usePublicFeed(): PublicFeedItem[] {
-  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs } = useContent();
+  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems } = useContent();
 
   return useMemo(() => {
     const items: PublicFeedItem[] = [];
@@ -92,6 +99,9 @@ export function usePublicFeed(): PublicFeedItem[] {
     knowledgeDocs
       .filter((d) => d.visibility === "عمومی")
       .forEach((d) => items.push({ id: `doc-${d.id}`, module: "دانش", icon: BookOpen, title: d.title, meta: `${d.owner} · ${d.updatedAt}`, to: "/app/knowledge" }));
+    newsItems
+      .filter((n) => n.visibility === "عمومی")
+      .forEach((n) => items.push({ id: `news-${n.id}`, module: "اخبار", icon: Newspaper, title: n.title, meta: n.date, to: "/app/news" }));
     return items;
-  }, [forumTopics, blogPosts, events, mediaItems, knowledgeDocs]);
+  }, [forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems]);
 }

@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { Newspaper, Pin, MessageCircle, Plus } from "lucide-react";
-import { newsItems as initialNews, type NewsItem } from "../data/mock";
+import { type NewsItem, type Visibility } from "../data/mock";
+import { useContent } from "../context/ContentContext";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
+import { VisibilityBadge, VisibilityPicker, VisibilityToggle } from "../components/ui/VisibilityControl";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function News() {
-  const [news, setNews] = useState<NewsItem[]>(initialNews);
+  const { newsItems, setNewsItems } = useContent();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -29,13 +32,22 @@ export default function News() {
       date: jalaliToday,
       comments: 0,
       pinned,
+      visibility,
     };
-    setNews((prev) => [newItem, ...prev]);
-    notify(`اطلاعیه «${newItem.title}» برای همه‌ی اعضای سازمان منتشر شد.`);
+    setNewsItems((prev) => [newItem, ...prev]);
+    const label = visibility === "عمومی" ? "برای همه‌ی اعضا" : "به‌صورت خصوصی";
+    notify(`اطلاعیه «${newItem.title}» ${label} منتشر شد.`);
     setOpen(false);
     setTitle("");
     setSummary("");
     setPinned(false);
+    setVisibility("خصوصی");
+  };
+
+  const toggleVisibility = (id: string) => {
+    setNewsItems((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, visibility: n.visibility === "عمومی" ? "خصوصی" : "عمومی" } : n))
+    );
   };
 
   return (
@@ -52,22 +64,30 @@ export default function News() {
       />
 
       <div className="space-y-3">
-        {news.map((n) => (
+        {newsItems.map((n) => (
           <article key={n.id} className="card p-5">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-bold text-sm text-ink-900">{n.title}</h3>
+              <h3 className="font-bold text-sm text-ink-900 flex-1">{n.title}</h3>
               {n.pinned && (
                 <Badge tone="brand" icon={<Pin size={11} />}>
                   مهم
                 </Badge>
               )}
+              <VisibilityBadge visibility={n.visibility} />
             </div>
             <p className="text-sm text-ink-600 leading-7">{n.summary}</p>
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-xs text-ink-400">
               <span>{n.date}</span>
-              <span className="flex items-center gap-1">
-                <MessageCircle size={13} /> {n.comments} نظر
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <MessageCircle size={13} /> {n.comments} نظر
+                </span>
+                <VisibilityToggle
+                  visibility={n.visibility}
+                  onChange={() => toggleVisibility(n.id)}
+                  size="xs"
+                />
+              </div>
             </div>
           </article>
         ))}
@@ -87,6 +107,7 @@ export default function News() {
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} className="accent-brand-600" />
             سنجاق‌کردن به‌عنوان خبر مهم
           </label>
+          <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

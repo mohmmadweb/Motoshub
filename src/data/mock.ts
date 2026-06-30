@@ -585,6 +585,7 @@ export type NewsItem = {
   date: string;
   comments: number;
   pinned?: boolean;
+  visibility: Visibility;
 };
 
 export const newsItems: NewsItem[] = [
@@ -595,6 +596,7 @@ export const newsItems: NewsItem[] = [
     date: "۱۴۰۵/۰۳/۰۵",
     comments: 14,
     pinned: true,
+    visibility: "عمومی",
   },
   {
     id: "nw2",
@@ -602,6 +604,15 @@ export const newsItems: NewsItem[] = [
     summary: "زمان دقیق و سرفصل‌های کارگاه در بخش رویدادها منتشر شد.",
     date: "۱۴۰۵/۰۳/۰۲",
     comments: 6,
+    visibility: "عمومی",
+  },
+  {
+    id: "nw3",
+    title: "به‌روزرسانی سیاست‌های دسترسی و نقش‌های سازمانی",
+    summary: "از این پس مدیران گروه می‌توانند نقش‌های سفارشی ایجاد کنند. مستندات جدید در بانک دانش منتشر شد.",
+    date: "۱۴۰۵/۰۲/۲۸",
+    comments: 3,
+    visibility: "خصوصی",
   },
 ];
 

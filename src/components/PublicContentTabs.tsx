@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Image as ImageIcon,
   BookOpen,
+  Newspaper,
   Eye,
   MessageCircle,
   CheckCircle2,
@@ -16,14 +17,15 @@ import {
   Video,
   PlayCircle,
   FileText,
+  Pin,
 } from "lucide-react";
 import { useContent } from "../context/ContentContext";
-import type { ForumTopic, BlogPost, EventItem, MediaItem, KnowledgeDoc } from "../data/mock";
+import type { ForumTopic, BlogPost, EventItem, MediaItem, KnowledgeDoc, NewsItem } from "../data/mock";
 import Tabs from "./ui/Tabs";
 import Badge, { type BadgeTone } from "./ui/Badge";
 import EmptyState from "./ui/EmptyState";
 
-export type ModuleTab = "forum" | "blog" | "events" | "media" | "knowledge";
+export type ModuleTab = "forum" | "blog" | "events" | "media" | "knowledge" | "news";
 
 const typeTone: Record<string, BadgeTone> = {
   قرارداد: "warning",
@@ -43,7 +45,7 @@ export default function PublicContentTabs({
   onTabChange?: (tab: ModuleTab) => void;
   showTabs?: boolean;
 }) {
-  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs } = useContent();
+  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems } = useContent();
   const [internalTab, setInternalTab] = useState<ModuleTab>("forum");
   const tab = activeTab ?? internalTab;
   const setTab = onTabChange ?? setInternalTab;
@@ -53,6 +55,7 @@ export default function PublicContentTabs({
   const publicEvents = events.filter((e) => e.visibility === "عمومی");
   const publicMedia = mediaItems.filter((m) => m.visibility === "عمومی");
   const publicKnowledge = knowledgeDocs.filter((d) => d.visibility === "عمومی");
+  const publicNews = newsItems.filter((n) => n.visibility === "عمومی");
 
   const link = (appPath: string) => (linkMode === "app" ? appPath : "/login");
 
@@ -66,6 +69,7 @@ export default function PublicContentTabs({
             { id: "events", label: "رویدادها", count: publicEvents.length },
             { id: "media", label: "تصاویر و ویدیو", count: publicMedia.length },
             { id: "knowledge", label: "مدیریت دانش", count: publicKnowledge.length },
+            { id: "news", label: "اخبار", count: publicNews.length },
           ]}
           active={tab}
           onChange={setTab}
@@ -77,6 +81,7 @@ export default function PublicContentTabs({
       {tab === "events" && <EventsTab items={publicEvents} link={link} />}
       {tab === "media" && <MediaTab items={publicMedia} link={link} />}
       {tab === "knowledge" && <KnowledgeTab items={publicKnowledge} link={link} />}
+      {tab === "news" && <NewsTab items={publicNews} link={link} />}
     </div>
   );
 }
@@ -227,6 +232,33 @@ function KnowledgeTab({ items, link }: { items: KnowledgeDoc[]; link: (p: string
             </div>
           </div>
           <Badge tone={typeTone[d.type]}>{d.type}</Badge>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function NewsTab({ items, link }: { items: NewsItem[]; link: (p: string) => string }) {
+  if (items.length === 0) return <EmptyState icon={<Newspaper size={18} />} title="هنوز خبر عمومی‌ای منتشر نشده" />;
+  return (
+    <div className="space-y-3">
+      {items.map((n) => (
+        <Link key={n.id} to={link("/app/news")} className="card p-5 block hover:border-brand-300 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-bold text-sm text-ink-900 flex-1">{n.title}</h3>
+            {n.pinned && (
+              <Badge tone="brand" icon={<Pin size={11} />}>
+                مهم
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-ink-500 leading-6">{n.summary}</p>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-xs text-ink-400">
+            <span>{n.date}</span>
+            <span className="flex items-center gap-1">
+              <MessageCircle size={13} /> {n.comments} نظر
+            </span>
+          </div>
         </Link>
       ))}
     </div>
