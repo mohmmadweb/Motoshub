@@ -21,7 +21,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 lg:px-6 h-16 bg-white border-b border-ink-200">
       <div className="flex-1 max-w-md flex items-center gap-2">
         <button
-          onClick={() => navigate("/app/search")}
+          onClick={() => navigate("/dashboard/search")}
           className="flex-1 flex items-center gap-2 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-[13px] text-ink-400 hover:border-ink-300"
         >
           <Search size={15} />
@@ -39,7 +39,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
 
       <div className="flex items-center gap-2">
         <Link
-          to="/app/notifications"
+          to="/dashboard/notifications"
           className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600"
         >
           <Bell size={18} />
@@ -78,13 +78,13 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                   ))}
                 </div>
                 <div className="h-px bg-ink-100 my-1" />
-                <Link to={`/app/profile/${currentUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                <Link to={`/dashboard/profile/${currentUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <UserCircle size={15} className="text-ink-400" /> پروفایل من
                 </Link>
-                <Link to="/app/profile/u1?tab=security" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                <Link to="/dashboard/profile/u1?tab=security" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <ShieldCheck size={15} className="text-ink-400" /> امنیت و نشست‌ها
                 </Link>
-                <Link to="/app/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                <Link to="/dashboard/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <Settings size={15} className="text-ink-400" /> پنل راهبری
                 </Link>
                 <div className="h-px bg-ink-100 my-1" />

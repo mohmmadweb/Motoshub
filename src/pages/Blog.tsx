@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NotebookPen, Star, Plus, Hash } from "lucide-react";
+import { Link } from "react-router-dom";
 import { currentUser, type BlogPost, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -17,7 +18,7 @@ export default function Blog() {
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [tags, setTags] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("عمومی");
+  const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -38,14 +39,16 @@ export default function Blog() {
     setPosts((prev) => [newPost, ...prev]);
     notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
     setOpen(false);
-    setTitle("");
-    setExcerpt("");
-    setTags("");
-    setVisibility("عمومی");
+    setTitle(""); setExcerpt(""); setTags(""); setVisibility("عمومی");
   };
 
-  const toggleVisibility = (id: string) =>
-    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, visibility: p.visibility === "عمومی" ? "خصوصی" : "عمومی" } : p)));
+  const toggleVisibility = (id: string) => {
+    const post = posts.find((p) => p.id === id);
+    if (!post) return;
+    const next = post.visibility === "عمومی" ? "خصوصی" : "عمومی";
+    setPosts((prev) => prev.map((p) => p.id === id ? { ...p, visibility: next } : p));
+    notify(`«${post.title}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
+  };
 
   return (
     <div>
@@ -60,31 +63,55 @@ export default function Blog() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="card divide-y divide-ink-100">
+        {/* header */}
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
+          <span>عنوان یادداشت</span>
+          <span className="text-center">برچسب‌ها</span>
+          <span className="text-center">نویسنده</span>
+          <span className="text-center">امتیاز</span>
+          <span className="text-center">دسترسی</span>
+        </div>
+
         {posts.map((b) => (
-          <article key={b.id} className="card p-5">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold text-sm text-ink-900">{b.title}</h3>
-              <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" />
+          <div
+            key={b.id}
+            className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
+          >
+            {/* Title + excerpt */}
+            <div className="min-w-0">
+              <Link
+                to={`/dashboard/blog/${b.id}`}
+                className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors truncate block"
+              >
+                {b.title}
+              </Link>
+              <p className="text-xs text-ink-400 mt-0.5 line-clamp-1">{b.excerpt}</p>
             </div>
-            <p className="text-xs text-ink-500 mt-2 leading-6">{b.excerpt}</p>
-            <div className="flex items-center gap-1.5 mt-3">
-              {b.tags.map((t) => (
-                <Badge key={t} tone="neutral" icon={<Hash size={10} />}>
-                  {t}
-                </Badge>
+            {/* Tags */}
+            <div className="flex items-center gap-1 flex-wrap justify-end">
+              {b.tags.slice(0, 2).map((t) => (
+                <Badge key={t} tone="neutral" icon={<Hash size={9} />}>{t}</Badge>
               ))}
             </div>
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-ink-100 text-xs text-ink-400">
-              <span>
-                {b.author} · {b.date}
-              </span>
-              <span className="flex items-center gap-1 text-amber-600 font-medium">
-                <Star size={13} className="fill-amber-500 text-amber-500" /> {b.rating}
-              </span>
-            </div>
-          </article>
+            {/* Author + date */}
+            <span className="text-xs text-ink-400 whitespace-nowrap">{b.author}</span>
+            {/* Rating */}
+            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium whitespace-nowrap">
+              <Star size={12} className="fill-amber-500 text-amber-500" /> {b.rating}
+            </span>
+            {/* Visibility toggle */}
+            <VisibilityToggle
+              visibility={b.visibility}
+              onChange={() => toggleVisibility(b.id)}
+              size="xs"
+            />
+          </div>
         ))}
+
+        {posts.length === 0 && (
+          <div className="p-8 text-center text-sm text-ink-400">هنوز یادداشتی ثبت نشده</div>
+        )}
       </div>
 
       <Modal open={open} onClose={() => setOpen(false)} title="انتشار یادداشت جدید در بلاگ">

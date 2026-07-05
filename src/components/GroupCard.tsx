@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { Users, Lock, Globe2 } from "lucide-react";
 import Badge from "./ui/Badge";
+import { VisibilityToggle } from "./ui/VisibilityControl";
 import type { Group } from "../data/mock";
 
-export default function GroupCard({ group }: { group: Group }) {
+export default function GroupCard({ group, onTogglePrivacy }: { group: Group; onTogglePrivacy?: () => void }) {
   return (
-    <Link to={`/app/groups/${group.id}`} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
+    <Link to={`/dashboard/groups/${group.id}`} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
       <div className="flex items-center justify-between">
         <span
           className="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold text-base"
@@ -23,9 +24,17 @@ export default function GroupCard({ group }: { group: Group }) {
         <span className="flex items-center gap-1">
           <Users size={13} /> {group.members.toLocaleString("fa-IR")} عضو
         </span>
-        <Badge tone={group.privacy === "خصوصی" ? "warning" : "success"} icon={group.privacy === "خصوصی" ? <Lock size={11} /> : <Globe2 size={11} />}>
-          {group.privacy}
-        </Badge>
+        {onTogglePrivacy ? (
+          <VisibilityToggle
+            visibility={group.privacy}
+            onChange={onTogglePrivacy}
+            size="xs"
+          />
+        ) : (
+          <Badge tone={group.privacy === "خصوصی" ? "warning" : "success"} icon={group.privacy === "خصوصی" ? <Lock size={11} /> : <Globe2 size={11} />}>
+            {group.privacy}
+          </Badge>
+        )}
       </div>
     </Link>
   );

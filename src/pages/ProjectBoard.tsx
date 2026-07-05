@@ -30,7 +30,7 @@ export default function ProjectBoard() {
         title={project.name}
         description={`کارفرما: ${project.client} · مهلت: ${project.deadline}`}
         icon={<GanttChartSquare size={18} />}
-        breadcrumb={[{ label: "مدیریت پروژه", to: "/app/projects" }, { label: project.name }]}
+        breadcrumb={[{ label: "مدیریت پروژه", to: "/dashboard/projects" }, { label: project.name }]}
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">

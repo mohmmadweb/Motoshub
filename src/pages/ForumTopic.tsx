@@ -1,14 +1,19 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, Bell, BellOff, Send } from "lucide-react";
-import { forumTopics, users } from "../data/mock";
+import { users } from "../data/mock";
+import { useContent } from "../context/ContentContext";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
+import { VisibilityBadge, VisibilityToggle } from "../components/ui/VisibilityControl";
+import { useToast } from "../components/ui/ToastProvider";
 
 export default function ForumTopic() {
   const { id } = useParams();
+  const { forumTopics, setForumTopics } = useContent();
+  const { notify } = useToast();
   const topic = forumTopics.find((t) => t.id === id);
   const [following, setFollowing] = useState(false);
 
@@ -16,15 +21,24 @@ export default function ForumTopic() {
 
   const author = users.find((u) => u.name === topic.author) ?? users[0];
 
+  const toggleVisibility = () => {
+    const next = topic.visibility === "عمومی" ? "خصوصی" : "عمومی";
+    setForumTopics((prev) => prev.map((t) => (t.id === topic.id ? { ...t, visibility: next } : t)));
+    notify(`موضوع «${topic.title}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
+  };
+
   return (
     <div>
       <PageHeader
         title={topic.title}
-        breadcrumb={[{ label: "انجمن", to: "/app/forum" }, { label: topic.category }]}
+        breadcrumb={[{ label: "انجمن", to: "/dashboard/forum" }, { label: topic.category }]}
         actions={
-          <Button variant={following ? "primary" : "secondary"} size="sm" icon={following ? <Bell size={13} /> : <BellOff size={13} />} onClick={() => setFollowing((v) => !v)}>
-            {following ? "دنبال‌می‌کنید" : "دنبال کردن موضوع"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <VisibilityToggle visibility={topic.visibility} onChange={toggleVisibility} size="sm" />
+            <Button variant={following ? "primary" : "secondary"} size="sm" icon={following ? <Bell size={13} /> : <BellOff size={13} />} onClick={() => setFollowing((v) => !v)}>
+              {following ? "دنبال‌می‌کنید" : "دنبال کردن موضوع"}
+            </Button>
+          </div>
         }
       />
 
@@ -40,6 +54,7 @@ export default function ForumTopic() {
               حل‌شده
             </Badge>
           )}
+          <VisibilityBadge visibility={topic.visibility} />
         </div>
         <p className="text-sm leading-7 text-ink-800">
           متن کامل سوال/موضوع در این بخش نمایش داده می‌شود. این یک نمونه‌ی نمایشی برای ساختار صفحه‌ی موضوع انجمن است؛

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Image, Video, Star, Upload, PlayCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { currentUser, type MediaItem, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -19,7 +20,7 @@ export default function Media() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [album, setAlbum] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("عمومی");
+  const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
   const filtered = kind === "all" ? items : items.filter((m) => m.kind === kind);
@@ -44,14 +45,16 @@ export default function Media() {
     setItems((prev) => [newItem, ...prev]);
     notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
     setOpen(false);
-    setFile(null);
-    setTitle("");
-    setAlbum("");
-    setVisibility("عمومی");
+    setFile(null); setTitle(""); setAlbum(""); setVisibility("عمومی");
   };
 
-  const toggleVisibility = (id: string) =>
-    setItems((prev) => prev.map((m) => (m.id === id ? { ...m, visibility: m.visibility === "عمومی" ? "خصوصی" : "عمومی" } : m)));
+  const toggleVisibility = (id: string) => {
+    const item = items.find((m) => m.id === id);
+    if (!item) return;
+    const next = item.visibility === "عمومی" ? "خصوصی" : "عمومی";
+    setItems((prev) => prev.map((m) => m.id === id ? { ...m, visibility: next } : m));
+    notify(`«${item.title}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
+  };
 
   return (
     <div>
@@ -84,26 +87,39 @@ export default function Media() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filtered.map((m) => (
-          <div key={m.id} className="card overflow-hidden">
-            <div className="h-28 flex items-center justify-center relative shrink-0" style={{ backgroundColor: m.color }}>
-              {m.kind === "video" ? <PlayCircle size={28} className="text-white" /> : <Image size={28} className="text-white" />}
-              <span className="absolute top-2 right-2">
-                <Badge tone="navy" icon={m.kind === "video" ? <Video size={10} /> : <Image size={10} />}>
-                  {m.kind === "video" ? "ویدیو" : "تصویر"}
-                </Badge>
-              </span>
-              <span className="absolute top-2 left-2">
-                <VisibilityToggle visibility={m.visibility} onChange={() => toggleVisibility(m.id)} size="xs" />
-              </span>
-            </div>
+          <div key={m.id} className="card overflow-hidden group">
+            <Link to={`/dashboard/media/${m.id}`} className="block">
+              <div className="h-32 flex items-center justify-center relative shrink-0" style={{ backgroundColor: m.color }}>
+                {m.kind === "video"
+                  ? <PlayCircle size={32} className="text-white/80 group-hover:text-white transition-colors" />
+                  : <Image size={32} className="text-white/80 group-hover:text-white transition-colors" />}
+                <span className="absolute top-2 right-2">
+                  <Badge tone="navy" icon={m.kind === "video" ? <Video size={10} /> : <Image size={10} />}>
+                    {m.kind === "video" ? "ویدیو" : "تصویر"}
+                  </Badge>
+                </span>
+              </div>
+            </Link>
             <div className="p-3">
-              <p className="text-xs font-semibold text-ink-900 truncate">{m.title}</p>
-              <p className="text-[11px] text-ink-400 mt-1">{m.album} · {m.uploadedBy}</p>
+              <Link
+                to={`/dashboard/media/${m.id}`}
+                className="text-xs font-semibold text-ink-900 hover:text-brand-700 transition-colors truncate block"
+              >
+                {m.title}
+              </Link>
+              <p className="text-[11px] text-ink-400 mt-1 truncate">{m.album} · {m.uploadedBy}</p>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[11px] text-ink-400">{m.date}</span>
-                <span className="flex items-center gap-1 text-amber-600 text-[11px] font-medium">
-                  <Star size={11} className="fill-amber-500 text-amber-500" /> {m.rating}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-amber-600 text-[11px] font-medium">
+                    <Star size={11} className="fill-amber-500 text-amber-500" /> {m.rating}
+                  </span>
+                  <VisibilityToggle
+                    visibility={m.visibility}
+                    onChange={() => toggleVisibility(m.id)}
+                    size="xs"
+                  />
+                </div>
               </div>
             </div>
           </div>

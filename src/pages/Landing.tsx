@@ -37,7 +37,7 @@ export default function Landing() {
           <Link to="/login" className="btn bg-navy-900 text-white hover:bg-navy-800 px-5 py-2.5">
             مشاهده‌ی فضای کاری نمونه <ArrowLeft size={15} />
           </Link>
-          <Link to="/app/admin" className="btn bg-white border border-ink-200 hover:bg-ink-50 px-5 py-2.5">
+          <Link to="/dashboard/admin" className="btn bg-white border border-ink-200 hover:bg-ink-50 px-5 py-2.5">
             پنل راهبری چندسازمانی
           </Link>
         </div>

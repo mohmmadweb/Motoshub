@@ -1,26 +1,42 @@
 import { useState } from "react";
 import { Plus, Users } from "lucide-react";
-import { groups as initialGroups, type Group } from "../data/mock";
+import { type Group } from "../data/mock";
+import { useContent } from "../context/ContentContext";
 import GroupCard from "../components/GroupCard";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import { VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 
 const palette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309"];
 
 export default function Groups() {
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
+  const { groups, setGroups } = useContent();
   const [active, setActive] = useState("همه");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [privacy, setPrivacy] = useState<Group["privacy"]>("عمومی");
+  const [privacy, setPrivacy] = useState<Group["privacy"]>("خصوصی");
   const { notify } = useToast();
 
-  const categories = ["همه", ...Array.from(new Set(initialGroups.map((g) => g.category)))];
+  const allCategories = Array.from(new Set(groups.map((g) => g.category)));
+  const categories = ["همه", ...allCategories];
   const filtered = active === "همه" ? groups : groups.filter((g) => g.category === active);
+
+  const togglePrivacy = (id: string) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === id ? { ...g, privacy: g.privacy === "عمومی" ? "خصوصی" : "عمومی" } : g
+      )
+    );
+    const group = groups.find((g) => g.id === id);
+    if (group) {
+      const next = group.privacy === "عمومی" ? "خصوصی" : "عمومی";
+      notify(`گروه «${group.name}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
+    }
+  };
 
   const submit = () => {
     if (!name.trim() || !category.trim()) {
@@ -43,7 +59,7 @@ export default function Groups() {
     setName("");
     setDescription("");
     setCategory("");
-    setPrivacy("عمومی");
+    setPrivacy("خصوصی");
   };
 
   return (
@@ -75,7 +91,7 @@ export default function Groups() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((g) => (
-          <GroupCard key={g.id} group={g} />
+          <GroupCard key={g.id} group={g} onTogglePrivacy={() => togglePrivacy(g.id)} />
         ))}
       </div>
 
@@ -89,19 +105,11 @@ export default function Groups() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="هدف و موضوع فعالیت گروه را بنویسید…" className="input-field min-h-20" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">دسته‌بندی</label>
-              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: فنی" className="input-field" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">سطح دسترسی</label>
-              <select value={privacy} onChange={(e) => setPrivacy(e.target.value as Group["privacy"])} className="input-field">
-                <option value="عمومی">عمومی</option>
-                <option value="خصوصی">خصوصی</option>
-              </select>
-            </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">دسته‌بندی</label>
+            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: فنی" className="input-field" />
           </div>
+          <VisibilityPicker value={privacy} onChange={setPrivacy} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد گروه</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

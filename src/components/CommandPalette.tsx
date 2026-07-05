@@ -6,14 +6,14 @@ import { channels, users } from "../data/mock";
 type Item = { id: string; label: string; hint: string; icon: typeof Hash; to: string };
 
 const pages: Item[] = [
-  { id: "dashboard", label: "داشبورد فعالیت‌ها", hint: "صفحه", icon: Compass, to: "/app/dashboard" },
-  { id: "groups", label: "گروه‌های تعاملی", hint: "صفحه", icon: Compass, to: "/app/groups" },
-  { id: "knowledge", label: "مدیریت دانش", hint: "صفحه", icon: Compass, to: "/app/knowledge" },
-  { id: "projects", label: "مدیریت پروژه", hint: "صفحه", icon: Compass, to: "/app/projects" },
-  { id: "contracts", label: "قراردادهای فناورانه", hint: "صفحه", icon: Compass, to: "/app/contracts" },
-  { id: "funds", label: "صندوق نوآوری و شتاب‌دهی", hint: "صفحه", icon: Compass, to: "/app/funds" },
-  { id: "reports", label: "گزارش‌گیری پیشرفته", hint: "صفحه", icon: Compass, to: "/app/reports" },
-  { id: "admin", label: "پنل راهبری", hint: "صفحه", icon: Compass, to: "/app/admin" },
+  { id: "dashboard", label: "داشبورد فعالیت‌ها", hint: "صفحه", icon: Compass, to: "/dashboard" },
+  { id: "groups", label: "گروه‌های تعاملی", hint: "صفحه", icon: Compass, to: "/dashboard/groups" },
+  { id: "knowledge", label: "مدیریت دانش", hint: "صفحه", icon: Compass, to: "/dashboard/knowledge" },
+  { id: "projects", label: "مدیریت پروژه", hint: "صفحه", icon: Compass, to: "/dashboard/projects" },
+  { id: "contracts", label: "قراردادهای فناورانه", hint: "صفحه", icon: Compass, to: "/dashboard/contracts" },
+  { id: "funds", label: "صندوق نوآوری و شتاب‌دهی", hint: "صفحه", icon: Compass, to: "/dashboard/funds" },
+  { id: "reports", label: "گزارش‌گیری پیشرفته", hint: "صفحه", icon: Compass, to: "/dashboard/reports" },
+  { id: "admin", label: "پنل راهبری", hint: "صفحه", icon: Compass, to: "/dashboard/admin" },
 ];
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -25,8 +25,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   }, [open]);
 
   const items: Item[] = useMemo(() => {
-    const channelItems: Item[] = channels.map((c) => ({ id: c.id, label: `${c.name}`, hint: "کانال", icon: Hash, to: "/app/chat" }));
-    const userItems: Item[] = users.map((u) => ({ id: u.id, label: u.name, hint: "کاربر", icon: User, to: `/app/profile/${u.id}` }));
+    const channelItems: Item[] = channels.map((c) => ({ id: c.id, label: `${c.name}`, hint: "کانال", icon: Hash, to: "/dashboard/chat" }));
+    const userItems: Item[] = users.map((u) => ({ id: u.id, label: u.name, hint: "کاربر", icon: User, to: `/dashboard/profile/${u.id}` }));
     const all = [...pages, ...channelItems, ...userItems];
     if (!q) return all.slice(0, 8);
     return all.filter((i) => i.label.toLowerCase().includes(q.toLowerCase())).slice(0, 8);

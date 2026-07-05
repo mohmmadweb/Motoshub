@@ -90,7 +90,7 @@ export default function Projects() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {projects.map((p) => (
-          <Link key={p.id} to={`/app/projects/${p.id}`} className="card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3">
+          <Link key={p.id} to={`/dashboard/projects/${p.id}`} className="card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <Badge tone={healthTone[p.health]}>وضعیت: {p.health}</Badge>
               <span className="text-xs text-ink-400">مهلت {p.deadline}</span>

@@ -27,6 +27,11 @@ import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Admin from "./pages/Admin";
 import Help from "./pages/Help";
+import PublicItemDetail from "./pages/PublicItemDetail";
+import NewsItemDetail from "./pages/NewsItemDetail";
+import BlogPostDetail from "./pages/BlogPostDetail";
+import EventItemDetail from "./pages/EventItemDetail";
+import MediaItemDetail from "./pages/MediaItemDetail";
 
 export default function App() {
   return (
@@ -37,19 +42,24 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicShowcase />} />
         <Route path="/public/:section" element={<PublicShowcase />} />
+        <Route path="/public/:section/:id" element={<PublicItemDetail />} />
         <Route path="/login" element={<Login />} />
 
-        <Route path="/app" element={<AppLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="news" element={<News />} />
+          <Route path="news/:id" element={<NewsItemDetail />} />
           <Route path="groups" element={<Groups />} />
           <Route path="groups/:id" element={<GroupDetail />} />
           <Route path="forum" element={<Forum />} />
           <Route path="forum/:id" element={<ForumTopic />} />
           <Route path="events" element={<Events />} />
+          <Route path="events/:id" element={<EventItemDetail />} />
           <Route path="blog" element={<Blog />} />
+          <Route path="blog/:id" element={<BlogPostDetail />} />
           <Route path="media" element={<Media />} />
+          <Route path="media/:id" element={<MediaItemDetail />} />
           <Route path="chat" element={<Chat />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="profile/:id" element={<Profile />} />

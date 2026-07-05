@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, MapPin, Users, Hash, Plus, Calendar, Send } from "lucide-react";
+import { Link } from "react-router-dom";
 import { type EventItem, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -18,7 +19,7 @@ export default function Events() {
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("عمومی");
+  const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -39,20 +40,21 @@ export default function Events() {
       visibility,
     };
     setEvents((prev) => [newEvent, ...prev]);
-    notify(`رویداد «${newEvent.title}» منتشر شد و در تقویم سازمان قابل مشاهده است (${visibility}).`);
+    notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
     setOpen(false);
-    setTitle("");
-    setJalaliDate("");
-    setTime("");
-    setLocation("");
-    setDescription("");
-    setVisibility("عمومی");
+    setTitle(""); setJalaliDate(""); setTime(""); setLocation(""); setDescription(""); setVisibility("عمومی");
   };
 
-  const sendInvite = (e: EventItem) => notify(`دعوت‌نامه‌ی رویداد «${e.title}» برای اعضای واجد شرایط ارسال شد.`, "info");
+  const sendInvite = (e: EventItem) =>
+    notify(`دعوت‌نامه‌ی رویداد «${e.title}» برای اعضای واجد شرایط ارسال شد.`, "info");
 
-  const toggleVisibility = (id: string) =>
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, visibility: e.visibility === "عمومی" ? "خصوصی" : "عمومی" } : e)));
+  const toggleVisibility = (id: string) => {
+    const ev = events.find((e) => e.id === id);
+    if (!ev) return;
+    const next = ev.visibility === "عمومی" ? "خصوصی" : "عمومی";
+    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, visibility: next } : e));
+    notify(`«${ev.title}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
+  };
 
   return (
     <div>
@@ -83,43 +85,74 @@ export default function Events() {
         }
       />
 
-      <div className="space-y-3">
-        {events.map((e) => (
-          <div key={e.id} className="card p-4 flex items-start gap-4">
-            <div className="w-14 h-14 rounded-lg bg-navy-900 text-white flex flex-col items-center justify-center shrink-0">
-              <span className="text-[10px] text-navy-300">{(calendar === "jalali" ? e.jalaliDate : e.date).split("/")[1] ?? "—"}</span>
-              <span className="text-base font-bold leading-tight">{(calendar === "jalali" ? e.jalaliDate : e.date).split("/")[2] ?? "—"}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-ink-900">{e.title}</h3>
-              <p className="text-xs text-ink-500 mt-1 leading-6">{e.description}</p>
-              <div className="flex items-center gap-4 mt-2.5 text-[11px] text-ink-400 flex-wrap">
-                <span className="flex items-center gap-1">
-                  <CalendarDays size={12} /> {calendar === "jalali" ? e.jalaliDate : e.date} · {e.time}
-                </span>
-                <span className="flex items-center gap-1">
-                  <MapPin size={12} /> {e.location}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Users size={12} /> {e.attendees} شرکت‌کننده
-                </span>
+      <div className="card divide-y divide-ink-100">
+        {/* header */}
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide items-center">
+          <span>تاریخ</span>
+          <span>رویداد</span>
+          <span className="text-center">مکان</span>
+          <span className="text-center">شرکت‌کنندگان</span>
+          <span className="text-center">دسترسی</span>
+          <span />
+        </div>
+
+        {events.map((e) => {
+          const dateStr = calendar === "jalali" ? e.jalaliDate : e.date;
+          return (
+            <div
+              key={e.id}
+              className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
+            >
+              {/* Date block */}
+              <div className="w-12 h-12 rounded-lg bg-navy-900 text-white flex flex-col items-center justify-center shrink-0">
+                <span className="text-[9px] text-navy-400">{dateStr.split("/")[1] ?? "—"}</span>
+                <span className="text-sm font-bold leading-tight">{dateStr.split("/")[2] ?? "—"}</span>
               </div>
-              <div className="flex items-center gap-1.5 mt-2.5">
-                {e.hashtags.map((h) => (
-                  <Badge key={h} tone="neutral" icon={<Hash size={10} />}>
-                    {h}
-                  </Badge>
-                ))}
+
+              {/* Title + meta */}
+              <div className="min-w-0">
+                <Link
+                  to={`/dashboard/events/${e.id}`}
+                  className="font-semibold text-sm text-ink-900 hover:text-brand-700 transition-colors truncate block"
+                >
+                  {e.title}
+                </Link>
+                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-ink-400 flex-wrap">
+                  <span>{dateStr} · {e.time}</span>
+                  {e.hashtags.slice(0, 2).map((h) => (
+                    <Badge key={h} tone="neutral" icon={<Hash size={9} />}>{h}</Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" />
-              <Button variant="secondary" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
-                دعوت‌نامه
+
+              {/* Location */}
+              <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap max-w-[140px] truncate">
+                <MapPin size={12} className="shrink-0" /> {e.location}
+              </span>
+
+              {/* Attendees */}
+              <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap">
+                <Users size={12} /> {e.attendees}
+              </span>
+
+              {/* Visibility */}
+              <VisibilityToggle
+                visibility={e.visibility}
+                onChange={() => toggleVisibility(e.id)}
+                size="xs"
+              />
+
+              {/* Invite */}
+              <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
+                دعوت
               </Button>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
+        {events.length === 0 && (
+          <div className="p-8 text-center text-sm text-ink-400">هنوز رویدادی ثبت نشده</div>
+        )}
       </div>
 
       <Modal open={open} onClose={() => setOpen(false)} title="ایجاد رویداد جدید">

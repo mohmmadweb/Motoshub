@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Menu, X } from "lucide-react";
+import { Building2, MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Users, Menu, X } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 
 const sectionLinks = [
@@ -14,6 +14,7 @@ const moduleLinks = [
   { section: "media", label: "تصاویر و ویدیو", icon: ImageIcon },
   { section: "knowledge", label: "مدیریت دانش", icon: BookOpen },
   { section: "news", label: "اخبار", icon: Newspaper },
+  { section: "groups", label: "گروه‌ها", icon: Users },
 ] as const;
 
 const aboutLinks = [
@@ -25,7 +26,7 @@ export default function SiteHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems } = useContent();
+  const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems, groups } = useContent();
 
   const publicCounts: Record<(typeof moduleLinks)[number]["section"], number> = {
     forum: forumTopics.filter((t) => t.visibility === "عمومی").length,
@@ -34,6 +35,7 @@ export default function SiteHeader() {
     media: mediaItems.filter((m) => m.visibility === "عمومی").length,
     knowledge: knowledgeDocs.filter((d) => d.visibility === "عمومی").length,
     news: newsItems.filter((n) => n.visibility === "عمومی").length,
+    groups: groups.filter((g) => g.privacy === "عمومی").length,
   };
 
   const goToSection = (id: string) => {

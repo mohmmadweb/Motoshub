@@ -15,7 +15,7 @@ export default function Forum() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>("عمومی");
+  const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
   const submit = () => {
@@ -59,7 +59,7 @@ export default function Forum() {
 
       <div className="card divide-y divide-ink-100">
         {topics.map((t) => (
-          <Link key={t.id} to={`/app/forum/${t.id}`} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
+          <Link key={t.id} to={`/dashboard/forum/${t.id}`} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm truncate text-ink-900">{t.title}</h3>
