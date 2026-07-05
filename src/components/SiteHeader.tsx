@@ -64,39 +64,15 @@ export default function SiteHeader() {
           <span className="font-bold text-ink-900">موتوشاب</span>
         </Link>
 
-        {/* Desktop nav — visible on lg+ */}
-        <nav className="hidden lg:flex items-center gap-4 overflow-x-auto">
+        {/* Desktop utility links — visible on lg+ */}
+        <nav className="hidden lg:flex items-center gap-5">
           {sectionLinks.map((item) => (
             <button key={item.id} onClick={() => goToSection(item.id)} className="text-[13px] font-medium text-ink-600 hover:text-brand-700 whitespace-nowrap">
               {item.label}
             </button>
           ))}
-
-          <span className="w-px h-4 bg-ink-200 shrink-0" />
-
-          {moduleLinks.map((m) => {
-            const active = location.pathname === `/public/${m.section}`;
-            return (
-              <Link
-                key={m.section}
-                to={`/public/${m.section}`}
-                className={`flex items-center gap-1 text-[12px] font-medium whitespace-nowrap ${active ? "text-brand-700" : "text-ink-600 hover:text-brand-700"}`}
-              >
-                <m.icon size={12} />
-                {m.label}
-                {publicCounts[m.section] > 0 && (
-                  <span className={`text-[10px] rounded-full px-1.5 ${active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
-                    {publicCounts[m.section]}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-
-          <span className="w-px h-4 bg-ink-200 shrink-0" />
-
           {aboutLinks.map((item) => (
-            <button key={item.id} onClick={() => goToSection(item.id)} className="text-[12px] font-medium text-ink-600 hover:text-brand-700 whitespace-nowrap">
+            <button key={item.id} onClick={() => goToSection(item.id)} className="text-[13px] font-medium text-ink-600 hover:text-brand-700 whitespace-nowrap">
               {item.label}
             </button>
           ))}
@@ -116,6 +92,34 @@ export default function SiteHeader() {
           </button>
         </div>
       </div>
+
+      {/* Module nav — single source of truth for switching between public sections */}
+      <nav className="border-t border-ink-100 bg-white">
+        <div className="px-4 lg:px-16 max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto">
+          {moduleLinks.map((m) => {
+            const active = location.pathname.startsWith(`/public/${m.section}`);
+            return (
+              <Link
+                key={m.section}
+                to={`/public/${m.section}`}
+                className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  active
+                    ? "border-brand-600 text-brand-700"
+                    : "border-transparent text-ink-500 hover:text-ink-800 hover:border-ink-200"
+                }`}
+              >
+                <m.icon size={14} />
+                {m.label}
+                {publicCounts[m.section] > 0 && (
+                  <span className={`text-[10px] rounded-full px-1.5 py-0.5 ${active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
+                    {publicCounts[m.section]}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Mobile menu panel */}
       {mobileOpen && (

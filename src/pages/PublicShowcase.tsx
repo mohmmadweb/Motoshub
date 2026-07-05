@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Globe2, LogIn, Layers, MessagesSquare, NotebookPen, CalendarDays,
   Image as ImageIcon, BookOpen, Newspaper, Users, CheckCircle2,
@@ -18,20 +18,9 @@ import type {
 type Section = "forum" | "blog" | "events" | "media" | "knowledge" | "news" | "groups";
 const validSections: Section[] = ["forum", "blog", "events", "media", "knowledge", "news", "groups"];
 
-const moduleNav: { section: Section; label: string; icon: typeof MessagesSquare }[] = [
-  { section: "forum",     label: "انجمن",          icon: MessagesSquare },
-  { section: "blog",      label: "بلاگ",            icon: NotebookPen   },
-  { section: "events",    label: "رویدادها",        icon: CalendarDays  },
-  { section: "media",     label: "تصاویر و ویدیو",  icon: ImageIcon     },
-  { section: "knowledge", label: "مدیریت دانش",     icon: BookOpen      },
-  { section: "news",      label: "اخبار",           icon: Newspaper     },
-  { section: "groups",    label: "گروه‌ها",          icon: Users         },
-];
-
 // ─── Shell ────────────────────────────────────────────────────────────────────
 export default function PublicShowcase() {
   const { section } = useParams();
-  const navigate = useNavigate();
   const c = useContent();
 
   const sec: Section = validSections.includes(section as Section) ? (section as Section) : "forum";
@@ -47,29 +36,6 @@ export default function PublicShowcase() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#f6f7f8] flex flex-col">
       <SiteHeader />
-
-      {/* Tab bar */}
-      <nav className="bg-white border-b border-ink-200 sticky top-16 z-20 shadow-sm">
-        <div className="px-4 lg:px-12 max-w-7xl mx-auto flex items-center overflow-x-auto">
-          {moduleNav.map((m) => {
-            const active = sec === m.section;
-            return (
-              <button
-                key={m.section}
-                onClick={() => navigate(`/public/${m.section}`)}
-                className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
-                  active
-                    ? "border-brand-600 text-brand-700"
-                    : "border-transparent text-ink-500 hover:text-ink-800 hover:border-ink-200"
-                }`}
-              >
-                <m.icon size={14} />
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
 
       {/* Content */}
       <main className="flex-1">
