@@ -95,23 +95,23 @@ export default function SiteHeader() {
 
       {/* Module nav — single source of truth for switching between public sections */}
       <nav className="border-t border-ink-100 bg-white">
-        <div className="px-4 lg:px-16 max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto">
+        <div className="px-4 lg:px-16 max-w-7xl mx-auto flex flex-wrap items-center justify-center lg:justify-start gap-x-2 gap-y-1">
           {moduleLinks.map((m) => {
             const active = location.pathname.startsWith(`/public/${m.section}`);
             return (
               <Link
                 key={m.section}
                 to={`/public/${m.section}`}
-                className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
+                className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   active
                     ? "border-brand-600 text-brand-700"
                     : "border-transparent text-ink-500 hover:text-ink-800 hover:border-ink-200"
                 }`}
               >
-                <m.icon size={14} />
+                <m.icon size={16} />
                 {m.label}
                 {publicCounts[m.section] > 0 && (
-                  <span className={`text-[10px] rounded-full px-1.5 py-0.5 ${active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
+                  <span className={`text-[11px] rounded-full px-1.5 py-0.5 ${active ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
                     {publicCounts[m.section]}
                   </span>
                 )}
