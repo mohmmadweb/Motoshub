@@ -65,7 +65,7 @@ export default function PublicShowcase() {
       </div>
 
       <footer className="bg-navy-950 py-4 text-center text-xs text-navy-400 flex items-center justify-center gap-2">
-        <Layers size={12} /> موتوشاب — پروتوتایپ داخلی — داده‌های این نسخه نمایشی است.
+        <Layers size={12} /> بنیاد مستضعفان — پروتوتایپ داخلی — داده‌های این نسخه نمایشی است.
       </footer>
     </div>
   );
@@ -436,7 +436,7 @@ function KnowledgeSection({ items }: { items: KnowledgeDoc[] }) {
     <div className="px-4 lg:px-12 max-w-5xl mx-auto py-7 space-y-6">
       {/* Hero search */}
       <div className="bg-gradient-to-l from-navy-800 to-navy-900 rounded-2xl p-8 text-center">
-        <h1 className="text-2xl font-extrabold text-white mb-2">بانک دانش عمومی موتوشاب</h1>
+        <h1 className="text-2xl font-extrabold text-white mb-2">بانک دانش عمومی بنیاد مستضعفان</h1>
         <p className="text-navy-300 text-sm mb-6">مستندات آموزشی، گزارش‌ها و اسناد عمومی سازمان</p>
         <div className="relative max-w-lg mx-auto">
           <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400" />

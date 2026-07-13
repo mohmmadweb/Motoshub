@@ -179,7 +179,7 @@ function TenantsSection({
       modules: ["شبکه اجتماعی"],
     };
     onAdd(newTenant);
-    notify(`سازمان «${newTenant.name}» با موفقیت روی پلتفرم موتوشاب ایجاد شد.`);
+    notify(`سازمان «${newTenant.name}» با موفقیت روی پلتفرم ایجاد شد.`);
     setOpen(false);
     setName("");
     setDomain("");
@@ -216,15 +216,15 @@ function TenantsSection({
         ))}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="افزودن سازمان مشتری جدید" description="هر سازمان جدید، نمونه‌ی کاملاً مستقلی از موتوشاب با اعضا و دامنه‌ی اختصاصی خودش دریافت می‌کند.">
+      <Modal open={open} onClose={() => setOpen(false)} title="افزودن سازمان مشتری جدید" description="هر سازمان جدید، نمونه‌ی کاملاً مستقلی از سامانه با اعضا و دامنه‌ی اختصاصی خودش دریافت می‌کند.">
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: گروه صنعتی ایران‌خودرو" className="input-field" />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: بنیاد علوی" className="input-field" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اختصاصی</label>
-            <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="motoshub.irankhodro.com" className="input-field" />
+            <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="alavi.bonyad.net" className="input-field" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">طرح اشتراک</label>
@@ -252,7 +252,7 @@ function ModulesSection({ enabledModules, toggleModule }: { enabledModules: stri
         <CheckCircle2 size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
           هر ماژول کاملاً مستقل و قابل افزودن/حذف است. غیرفعال‌کردن یک ماژول، داده‌های آن را حذف نمی‌کند و روی
-          عملکرد سایر ماژول‌ها تأثیری ندارد — معماری موتوشاب برای این نوع جداسازی طراحی شده است.
+          عملکرد سایر ماژول‌ها تأثیری ندارد — معماری سامانه برای این نوع جداسازی طراحی شده است.
         </p>
       </div>
 
@@ -287,7 +287,7 @@ function ModulesSection({ enabledModules, toggleModule }: { enabledModules: stri
 function BrandingSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
   const [color, setColor] = useState(tenant.logoColor);
   const [domain, setDomain] = useState(tenant.domain);
-  const [displayName, setDisplayName] = useState("موتوشاب");
+  const [displayName, setDisplayName] = useState("بنیاد مستضعفان");
   const [logoName, setLogoName] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const colorOptions = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
@@ -555,7 +555,7 @@ function UsersSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
   };
 
   const downloadSample = () => {
-    const csv = "نام و نام خانوادگی,شماره موبایل,سمت سازمانی\nرضا سمیع‌زاده,09121234567,توسعه‌دهنده بک‌اند\nمریم کاظمی‌نیا,09351234567,کارشناس منابع انسانی\n";
+    const csv = "نام و نام خانوادگی,شماره موبایل,سمت سازمانی\nکاربر نمونه یک,09121234567,کارشناس روابط‌عمومی\nکاربر نمونه دو,09351234567,کارشناس منابع انسانی\n";
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -853,11 +853,11 @@ function NetworkSection({ crossTenant, setCrossTenant }: { crossTenant: boolean;
         </span>
         <div className="flex-1">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-ink-900">تعامل بین اعضای سازمان‌های مختلف موتوشاب</h3>
+            <h3 className="text-sm font-bold text-ink-900">تعامل بین اعضای مجموعه‌های مختلف بنیاد</h3>
             <Toggle on={crossTenant} onChange={() => setCrossTenant(!crossTenant)} />
           </div>
           <p className="text-xs text-ink-500 mt-2 leading-6">
-            با فعال‌سازی این گزینه، اعضای این سازمان می‌توانند با اعضای سایر سازمان‌هایی که از موتوشاب استفاده
+            با فعال‌سازی این گزینه، اعضای این سازمان می‌توانند با اعضای سایر مجموعه‌هایی که از این سامانه استفاده
             می‌کنند، در فضاهای مشترک (مثلاً گروه‌های بین‌سازمانی عمومی) تعامل داشته باشند — بدون اینکه به داده‌های
             داخلی و خصوصی هیچ سازمانی دسترسی پیدا کنند. این قابلیت به‌صورت پیش‌فرض غیرفعال است.
           </p>

@@ -55,7 +55,7 @@ export default function Knowledge() {
   };
 
   const handleDownload = (doc: KnowledgeDoc) => {
-    const content = `${doc.title}\nدسته‌بندی: ${doc.category}\nمالک: ${doc.owner}\nآخرین بروزرسانی: ${doc.updatedAt}\n\n(این یک خروجی نمایشی از پروتوتایپ موتوشاب است و جای‌گزین فایل اصلی نیست.)`;
+    const content = `${doc.title}\nدسته‌بندی: ${doc.category}\nمالک: ${doc.owner}\nآخرین بروزرسانی: ${doc.updatedAt}\n\n(این یک خروجی نمایشی از پروتوتایپ سامانه است و جای‌گزین فایل اصلی نیست.)`;
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

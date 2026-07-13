@@ -150,7 +150,7 @@ export default function Projects() {
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">کارفرما</label>
-            <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="مثلاً: هلدینگ دانشمند" className="input-field" />
+            <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="مثلاً: بنیاد علوی" className="input-field" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">مهلت تحویل</label>

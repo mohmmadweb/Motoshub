@@ -11,7 +11,7 @@ const guides = [
 export default function Help() {
   return (
     <div>
-      <PageHeader title="راهنما" description="راهنمای کامل کاربری و راهبری موتوشاب" icon={<HelpCircle size={18} />} />
+      <PageHeader title="راهنما" description="راهنمای کامل کاربری و راهبری سامانه" icon={<HelpCircle size={18} />} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {guides.map((g) => (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Building2, MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Users, Menu, X } from "lucide-react";
+import { MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Users, Menu, X } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 
 const sectionLinks = [
@@ -58,10 +58,8 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-ink-200">
       <div className="flex items-center justify-between gap-4 px-6 lg:px-16 h-16 max-w-7xl mx-auto">
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <span className="w-9 h-9 rounded-lg bg-navy-900 flex items-center justify-center text-white">
-            <Building2 size={18} />
-          </span>
-          <span className="font-bold text-ink-900">موتوشاب</span>
+          <img src="/bonyad-logo.png" alt="بنیاد مستضعفان انقلاب اسلامی" className="h-9 w-auto" />
+          <span className="font-bold text-ink-900 sr-only">بنیاد مستضعفان</span>
         </Link>
 
         {/* Desktop utility links — visible on lg+ */}

@@ -89,7 +89,7 @@ export default function Login() {
               <input className="input-field" placeholder="شماره موبایل (مثلاً 0912xxxxxxx)" />
             )}
             <Button type="submit" variant="primary" className="w-full justify-center">
-              ورود به موتوشاب
+              ورود به سامانه بنیاد
             </Button>
           </form>
 
@@ -99,7 +99,7 @@ export default function Login() {
         </div>
 
         <p className="text-[11px] text-navy-300 text-center mt-4">
-          هر سازمان، فضای کاری، اعضا و ورود کاملاً مستقل خودش را دارد و از سایر مشتریان موتوشاب جدا است.
+          هر سازمان، فضای کاری، اعضا و ورود کاملاً مستقل خودش را دارد و از سایر مجموعه‌های بنیاد جدا است.
         </p>
       </div>
     </div>

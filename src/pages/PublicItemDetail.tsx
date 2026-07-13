@@ -76,7 +76,7 @@ export default function PublicItemDetail() {
 
       <div className="px-6 lg:px-16 py-4 max-w-4xl mx-auto w-full">
         <nav className="flex items-center gap-1.5 text-xs text-ink-400">
-          <Link to="/" className="hover:text-brand-700">موتوشاب</Link>
+          <Link to="/" className="hover:text-brand-700">بنیاد مستضعفان</Link>
           <ArrowRight size={11} className="rotate-180" />
           <Link to={`/public/${sec}`} className="hover:text-brand-700">{sectionLabel[sec]}</Link>
           <ArrowRight size={11} className="rotate-180" />

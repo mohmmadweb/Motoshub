@@ -16,7 +16,6 @@ import {
   BarChart3,
   Settings,
   HelpCircle,
-  Building2,
 } from "lucide-react";
 import { currentTenant } from "../data/mock";
 
@@ -65,11 +64,11 @@ export default function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-l border-ink-200 bg-navy-900 h-screen sticky top-0">
       <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10">
-        <span className="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center text-white shrink-0">
-          <Building2 size={18} />
+        <span className="h-9 rounded-lg bg-white flex items-center justify-center px-1.5 shrink-0">
+          <img src="/bonyad-logo.png" alt="بنیاد مستضعفان انقلاب اسلامی" className="h-7 w-auto" />
         </span>
         <div className="min-w-0">
-          <p className="font-bold text-sm leading-4 text-white truncate">موتوشاب</p>
+          <p className="font-bold text-sm leading-4 text-white truncate">بنیاد مستضعفان</p>
           <p className="text-[11px] text-navy-300 leading-4 truncate">{currentTenant.name}</p>
         </div>
       </div>
