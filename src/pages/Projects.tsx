@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { KanbanSquare, Plus, Wallet, ListChecks, ClipboardList, PlayCircle } from "lucide-react";
+import { KanbanSquare, Plus, Wallet, ListChecks, ClipboardList, PlayCircle, AlertTriangle, Milestone, GanttChartSquare, ListFilter } from "lucide-react";
 import { projects as initialProjects, playbookTemplates as initialPlaybooks, type Project, type PlaybookTemplate } from "../data/mock";
+import { projectDetails } from "../data/mockDetails";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import StatCard from "../components/ui/StatCard";
 import { useToast } from "../components/ui/ToastProvider";
 
 const healthTone: Record<string, BadgeTone> = {
@@ -14,9 +16,12 @@ const healthTone: Record<string, BadgeTone> = {
   قرمز: "danger",
 };
 
+const healthFilters = ["همه", "سبز", "زرد", "قرمز"] as const;
+
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>(initialPlaybooks);
+  const [healthFilter, setHealthFilter] = useState<(typeof healthFilters)[number]>("همه");
   const [projectOpen, setProjectOpen] = useState(false);
   const [playbookOpen, setPlaybookOpen] = useState(false);
   const [name, setName] = useState("");
@@ -75,6 +80,16 @@ export default function Projects() {
     notify(`اجرای قالب «${pb.name}» آغاز شد — یک چک‌لیست ${pb.steps} مرحله‌ای برای تیم ایجاد شد.`, "info");
   };
 
+  const filteredProjects = useMemo(
+    () => (healthFilter === "همه" ? projects : projects.filter((p) => p.health === healthFilter)),
+    [projects, healthFilter]
+  );
+
+  const atRisk = projects.filter((p) => p.health !== "سبز").length;
+  const avgProgress = projects.length ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length) : 0;
+  const openTasks = projects.reduce((s, p) => s + p.tasks.filter((t) => t.status !== "انجام‌شده").length, 0);
+  const riskCount = projects.reduce((s, p) => s + (projectDetails[p.id]?.risks.filter((r) => r.status !== "بسته").length ?? 0), 0);
+
   return (
     <div>
       <PageHeader
@@ -88,8 +103,31 @@ export default function Projects() {
         }
       />
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatCard label="پروژه‌های فعال" value={projects.length} tone="brand" icon={<KanbanSquare size={16} />} />
+        <StatCard label="میانگین پیشرفت" value={`${avgProgress}٪`} tone="success" icon={<GanttChartSquare size={16} />} />
+        <StatCard label="تسک‌های باز" value={openTasks} icon={<ListChecks size={16} />} />
+        <StatCard label="ریسک‌ها و پروژه‌های در خطر" value={`${riskCount} ریسک · ${atRisk} پروژه`} tone={atRisk > 0 ? "danger" : "success"} icon={<AlertTriangle size={16} />} />
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <ListFilter size={14} className="text-ink-400" />
+        {healthFilters.map((f) => (
+          <button
+            key={f}
+            onClick={() => setHealthFilter(f)}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
+              healthFilter === f ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
+            }`}
+          >
+            {f === "همه" ? "همه" : `وضعیت ${f}`}
+            <span className="mr-1 opacity-60">({f === "همه" ? projects.length : projects.filter((p) => p.health === f).length})</span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {projects.map((p) => (
+        {filteredProjects.map((p) => (
           <Link key={p.id} to={`/dashboard/projects/${p.id}`} className="card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <Badge tone={healthTone[p.health]}>وضعیت: {p.health}</Badge>
@@ -116,6 +154,19 @@ export default function Projects() {
                 <ListChecks size={12} /> {p.tasks.length} تسک
               </span>
             </div>
+            {projectDetails[p.id] && (
+              <div className="text-[11px] text-ink-400 flex items-center justify-between gap-2">
+                <span className="truncate">مدیر: {projectDetails[p.id].manager}</span>
+                {(() => {
+                  const next = projectDetails[p.id].milestones.find((m) => m.status !== "انجام‌شده");
+                  return next ? (
+                    <span className="flex items-center gap-1 truncate">
+                      <Milestone size={11} className="shrink-0" /> {next.title}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            )}
           </Link>
         ))}
       </div>
