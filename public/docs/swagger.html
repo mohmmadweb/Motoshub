@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub API — Interactive Reference</title>
+<link rel="stylesheet" href="vendor/swagger-ui.css">
+<style>
+  body { margin: 0; }
+  .topbar { display: none; }
+  #back {
+    position: fixed; top: 14px; right: 18px; z-index: 10;
+    font: 700 13px "Segoe UI", sans-serif; text-decoration: none;
+    background: #1f4f99; color: #fff; border-radius: 8px; padding: 8px 16px;
+  }
+</style>
+</head>
+<body>
+<a id="back" href="index.html">← Guide</a>
+<div id="swagger-ui"></div>
+<script src="vendor/swagger-ui-bundle.js"></script>
+<script src="vendor/swagger-ui-standalone-preset.js"></script>
+<script>
+  window.onload = function () {
+    SwaggerUIBundle({
+      url: "openapi.json",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      docExpansion: "none",
+      filter: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      layout: "StandaloneLayout"
+    });
+  };
+</script>
+</body>
+</html>

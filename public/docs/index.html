@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub API Documentation</title>
+<style>
+  :root {
+    --paper:#f7f8fb; --card:#ffffff; --ink:#182234; --ink2:#46536b; --ink3:#8a94a8;
+    --line:#dde3ec; --brand:#1f4f99; --brand2:#2a66bd; --brandsoft:#e8eef8;
+    --ok:#0d9488; --oksoft:#e0f2f0; --warn:#b45309; --warnsoft:#fdf0e3; --codebg:#101827;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.75 "Segoe UI", -apple-system, Roboto, sans-serif;
+  }
+  .wrap { max-width:1020px; margin:0 auto; padding:0 24px 90px; }
+  header.hero {
+    background:linear-gradient(135deg, #16345f, #1f4f99 55%, #2a66bd);
+    color:#fff; padding:54px 24px 44px; margin-bottom:36px;
+  }
+  header.hero .wrap { padding-bottom:0; }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.18em; opacity:.85; text-transform:uppercase; }
+  h1 { font-size:34px; font-weight:800; margin:10px 0 8px; letter-spacing:-.01em; text-wrap:balance; }
+  .lede { max-width:64ch; margin:0; opacity:.92; }
+  .heroActions { margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; }
+  .btn {
+    display:inline-block; text-decoration:none; font-weight:700; font-size:13.5px;
+    border-radius:8px; padding:9px 20px;
+  }
+  .btn.solid { background:#fff; color:var(--brand); }
+  .btn.ghost { border:1.5px solid rgba(255,255,255,.65); color:#fff; }
+  .btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+
+  h2 { font-size:22px; font-weight:800; margin:52px 0 8px; padding-top:16px; border-top:1px solid var(--line); }
+  h3 { font-size:16.5px; font-weight:700; margin:30px 0 8px; }
+  h3 .count { font-size:11.5px; font-weight:700; color:var(--brand); background:var(--brandsoft); border-radius:999px; padding:2px 11px; vertical-align:2px; margin-left:8px; }
+  p { max-width:74ch; margin:8px 0; }
+  ul { max-width:74ch; }
+  li { margin:5px 0; }
+  li::marker { color:var(--brand); }
+  code {
+    font:12.5px/1.6 "Cascadia Code", Consolas, monospace;
+    background:#eef1f6; border-radius:5px; padding:1.5px 7px;
+  }
+  pre {
+    background:var(--codebg); color:#dbe4f0; border-radius:10px;
+    padding:16px 20px; overflow-x:auto;
+    font:12.5px/1.7 "Cascadia Code", Consolas, monospace;
+  }
+  pre .c { color:#7d8da3; } pre .k { color:#7cc4ff; } pre .s { color:#a5d6a7; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 22px; margin:16px 0; }
+  .callout { border-left:4px solid var(--brand); }
+  .callout.ok { border-left-color:var(--ok); background:var(--oksoft); }
+  .callout.warn { border-left-color:var(--warn); background:var(--warnsoft); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:760px){ .grid2 { grid-template-columns:1fr; } }
+
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; margin:12px 0 4px; }
+  table { border-collapse:collapse; width:100%; min-width:660px; font-size:13px; background:var(--card); }
+  th { text-align:left; background:var(--brandsoft); color:var(--brand); font-size:12px; padding:8px 14px; white-space:nowrap; }
+  td { padding:7px 14px; border-top:1px solid var(--line); vertical-align:top; }
+  td.path code { background:transparent; padding:0; }
+  .m {
+    display:inline-block; font:700 10.5px/1 "Cascadia Code", Consolas, monospace;
+    background:var(--oksoft); color:var(--ok); border-radius:5px; padding:4px 8px; letter-spacing:.05em;
+  }
+  .toc { columns:3; column-gap:32px; font-size:13.5px; }
+  @media (max-width:760px){ .toc { columns:2; } }
+  .toc a { color:var(--brand); text-decoration:none; }
+  .toc a:hover, .toc a:focus { text-decoration:underline; }
+  #filter {
+    width:100%; max-width:420px; font:14px "Segoe UI", sans-serif;
+    border:1.5px solid var(--line); border-radius:8px; padding:9px 14px; margin:6px 0 4px;
+    background:var(--card); color:var(--ink);
+  }
+  #filter:focus { outline:2px solid var(--brand2); border-color:var(--brand2); }
+  .cat.hidden, tr.hidden { display:none; }
+  footer { margin-top:70px; color:var(--ink3); font-size:12.5px; border-top:1px solid var(--line); padding-top:18px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Motoshub Platform</div>
+    <h1>Motoshub API Documentation</h1>
+    <p class="lede">The complete HTTP API of the Motoshub enterprise social network — authentication, users, feed, groups, chat, events, forum, media and more. Generated directly from the backend source annotations, organized for front-end consumption.</p>
+    <div class="heroActions">
+      <a class="btn solid" href="swagger.html">Interactive API Reference →</a>
+      <a class="btn ghost" href="openapi.json" download>Download openapi.json</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h2 id="quickstart">1 · Quick start</h2>
+<p>Every endpoint is an HTTP <strong>POST</strong> with <code>multipart/form-data</code> (or <code>application/x-www-form-urlencoded</code>) fields, served by the gateway under two route families:</p>
+<pre>
+POST /mobile/services/information/{type}   <span class="c"># read operations</span>
+POST /mobile/services/action/{type}        <span class="c"># write operations</span>
+</pre>
+<p>Log in once, keep the returned token, then send it as the <code>access_token</code> field with every authenticated call:</p>
+<pre>
+<span class="c"># 1) Log in</span>
+curl -X POST "$BASE/mobile/services/action/login" \
+  -F "username=jdoe" -F "password=secret"
+<span class="c"># → {"login": {"valid": true, "cookies": {"ow_login": "&lt;TOKEN&gt;"}, ...}}</span>
+
+<span class="c"># 2) Authenticated call — dashboard feed</span>
+curl -X POST "$BASE/mobile/services/information/get_dashboard" \
+  -F "access_token=&lt;TOKEN&gt;"
+
+<span class="c"># 3) Write call — publish a post</span>
+curl -X POST "$BASE/mobile/services/action/send_post" \
+  -F "access_token=&lt;TOKEN&gt;" -F "status=Hello Motoshub!"
+</pre>
+
+<h2 id="conventions">2 · Conventions</h2>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">Request</h3>
+    <ul>
+      <li>Always <strong>POST</strong>; the operation name lives in the URL path (<code>{type}</code>).</li>
+      <li>Parameters are plain form fields; files use the <code>file</code> field (see <code>upload_single_file</code>).</li>
+      <li>Send <code>access_token</code> for every authenticated operation. Missing/expired tokens yield <code>authorization_error</code>.</li>
+      <li>Browser clients must send the <code>X-Requested-With: XMLHttpRequest</code> header.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Response</h3>
+    <ul>
+      <li>Always JSON. The payload is keyed by the operation name: <code>{"send_post": {...}}</code>.</li>
+      <li>Write operations include <code>"valid": true|false</code> and a <code>message</code> code on failure (e.g. <code>input_error</code>, <code>authorization_error</code>).</li>
+      <li>Lists are returned in stable, ready-to-render shape (the mobile apps consume the same payloads).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card callout warn">
+  <p><strong>Roadmap note.</strong> A REST-style facade (<code>/api/v1/social/…</code>) over these same services is planned; operation names and payloads documented here will remain the source of truth, so integrating against the gateway today is forward-compatible.</p>
+</div>
+
+<h2 id="catalog">3 · Endpoint catalog</h2>
+<p>All <strong>156 documented operations</strong>, grouped by domain. Use the filter to search by path or summary; open the <a href="swagger.html">interactive reference</a> for full request/response schemas and a try-it-out console.</p>
+<input id="filter" type="search" placeholder="Filter endpoints… e.g. group, login, message" aria-label="Filter endpoints">
+<nav class="card">
+  <strong>Domains</strong>
+  <ul class="toc" id="domainToc"></ul>
+</nav>
+<section class="cat" id="cat-auth">
+<h3>Authentication & Session <span class="count">12 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/change_password</code></td><td>change password</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/check_verification_code</code></td><td>check verification code</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/forgot_password</code></td><td>forgot password</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/iishajsso_login</code></td><td>haj sso login</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/join</code></td><td>join</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/login</code></td><td>login</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/logout</code></td><td>logout</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/send_verification_code_to_mobile</code></td><td>send verification code to mobile</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/terminate_all_session</code></td><td>terminate All Sessions</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/terminate_session</code></td><td>terminate Session</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/verify_reset_password_code</code></td><td>verify reset password code</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/check_login</code></td><td>check login</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-user">
+<h3>Users & Account <span class="count">12 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/approve_user</code></td><td>approve user</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/block_user</code></td><td>block User</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/fill_account_type</code></td><td>fill account type</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/invite_user</code></td><td>invite user</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/logEndUserCrash</code></td><td>log end user crash</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/fetch_users_by_mobile</code></td><td>fetch Users By Mobile</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/group_invite_searchable_questions</code></td><td>group invite searchable questions</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/group_invite_searchable_users</code></td><td>group invite searchable users</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/groups_and_channels_and_chats</code></td><td>Groups and Channels and Chats</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/groups_and_chats</code></td><td>groups and chats</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/newsfeed_forward_searchable_questions</code></td><td>newsfeed forward searchable questions</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/newsfeed_forward_searchable_users</code></td><td>newsfeed forward searchable users</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-user-profile">
+<h3>User Profile <span class="count">19 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_profile_dir</code></td><td>add Profile Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_profile_file</code></td><td>add Profile File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/change_avatar</code></td><td>change Avatar</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/change_user_coverphoto</code></td><td>change Cover Photo</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_profile_dir</code></td><td>delete Profile Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_profile_file</code></td><td>delete Profile File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_profile</code></td><td>edit profile</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_profile_dir</code></td><td>edit Profile Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_profile_file</code></td><td>edit Profile File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/fill_profile</code></td><td>fill profile</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/follow_user</code></td><td>follow User</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_avatar</code></td><td>remove Avatar</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/save_file_to_profile</code></td><td>save file to profile</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unfollow_user</code></td><td>unfollow User</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/edit_profile_fields</code></td><td>get Edit Profile Fields</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/friend_suggestion</code></td><td>friend suggestion</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/requests</code></td><td>invitation requests</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/search_friends</code></td><td>search friends</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/user_profile</code></td><td>user Profile</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-question">
+<h3>Profile Questions <span class="count">5 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_question_option</code></td><td>add Question Option</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/answer_option</code></td><td>add Answer</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/change_question_config</code></td><td>change Question Config</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_question_option</code></td><td>remove Question Option</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/subscribe_question</code></td><td>subscribe</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-privacy">
+<h3>Privacy <span class="count">2 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/save_user_privacy</code></td><td>save Privacy</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/user_privacy</code></td><td>user Privacy</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-friend">
+<h3>Friends & Social Graph <span class="count">4 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/accept_friend</code></td><td>accept friend</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/cancel_request</code></td><td>friend Request</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/friend_request</code></td><td>friend Request</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_friend</code></td><td>remove friend</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-newsfeed">
+<h3>News Feed <span class="count">9 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/change_privacy</code></td><td>change Privacy</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_post</code></td><td>edit Post</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/forward</code></td><td>forward Action</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/like</code></td><td>like</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_feed</code></td><td>remove Action</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_like</code></td><td>remove Like</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/send_post</code></td><td>send Post</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_dashboard</code></td><td>get Dashboard</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_post</code></td><td>get Post</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-comment">
+<h3>Comments <span class="count">5 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_comment</code></td><td>add comment</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/like_comment</code></td><td>like comment</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_comment</code></td><td>remove comment</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unlike_comment</code></td><td>unlike comment</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/comments</code></td><td>get comments</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-group">
+<h3>Groups & Group Files <span class="count">26 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/activate_group</code></td><td>activate group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_group_dir</code></td><td>add Group Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_group_file</code></td><td>add Group File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_group_manager</code></td><td>add group manager</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/create_group</code></td><td>create Group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/create_invitation_link</code></td><td>create invitation link</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/deactivate_invitation_link</code></td><td>deactive invitation link</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_group</code></td><td>delete group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_group_dir</code></td><td>delete Group Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_group_file</code></td><td>delete Group File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_group_dir</code></td><td>edit Group Dir</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_group_file</code></td><td>edit Group File</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/follow_group</code></td><td>follow group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/groups_accept_invite</code></td><td>groups accept invite</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/groups_cancel_invite</code></td><td>groups cancel invite</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/groups_invite_user</code></td><td>groups invite user</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/join_group</code></td><td>change Group Cover Photo</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/leave_group</code></td><td>leave group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/mute_group</code></td><td>mute Group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_group_manager</code></td><td>remove Group Manager</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_group_user</code></td><td>remove user from group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unfollow_group</code></td><td>unfollow group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unmute_group</code></td><td>unmute Group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_group</code></td><td>get Group</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/group_invite_list</code></td><td>group invite list</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/groups</code></td><td>get Groups</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-message">
+<h3>Chat / Messaging <span class="count">12 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/clear_messages</code></td><td>clear Messages</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/forward_message</code></td><td>forward Message</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/get_forward_list</code></td><td>get Forward List</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/mark_user_message</code></td><td>mark User Message</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/mute_chat</code></td><td>mute Chat</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_message</code></td><td>remove Message</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/send_message</code></td><td>send Message</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unmute_chat</code></td><td>unmute Chat</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_chat_media</code></td><td>get Chat Media</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_messages</code></td><td>get Messages</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_user_message</code></td><td>get user message</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/search_chat_messages</code></td><td>search Chat Messages</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-notification">
+<h3>Notifications <span class="count">6 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/hide_notification</code></td><td>hide Notification</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/save_notifications_setting</code></td><td>save Notifications Setting</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/seen_notification</code></td><td>seen Notification</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/new_notifications</code></td><td>get New Notifications</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/notifications</code></td><td>get Notifications</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/notifications_setting</code></td><td>get Notifications Setting</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-event">
+<h3>Events <span class="count">8 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_event_file</code></td><td>add event file</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_event_file</code></td><td>delete event file</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/event_accept_invite</code></td><td>accpet event</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/event_cancel_invite</code></td><td>cancel event</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/event_invite_user</code></td><td>invit event</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/join_event</code></td><td>join Event</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/leave_event</code></td><td>leave event</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/event_invite_list</code></td><td>get Invitable Users</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-forum">
+<h3>Forum <span class="count">10 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/conclude_topic</code></td><td>conclude topic</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/delete_post_forum</code></td><td>delete Post Forum</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_topic</code></td><td>edit topic</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_topic_post</code></td><td>edit topic post</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/lock_topic</code></td><td>lock topic</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/post_forum</code></td><td>add post forum</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/topic_forum</code></td><td>add topic</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/unlock_topic</code></td><td>unlock topic</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/forums</code></td><td>get Forums</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/topic</code></td><td>getTopic</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-blog">
+<h3>Blogs <span class="count">6 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_blog</code></td><td>add blog</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_blog</code></td><td>edit blog</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_blog</code></td><td>remove blog</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/blog</code></td><td>blog</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/latest_blogs</code></td><td>latest blogs</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/user_blogs</code></td><td>user blogs</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-news">
+<h3>News <span class="count">5 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/add_news</code></td><td>add News</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/edit_news</code></td><td>edit News</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_news</code></td><td>remove News</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/getNews</code></td><td>get News</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/news_item</code></td><td>get News Item</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-photo">
+<h3>Photos & Albums <span class="count">7 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/create_album</code></td><td>create Album</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/create_photo</code></td><td>create Photo</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_album</code></td><td>remove Album</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_photo</code></td><td>remove Photo</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_album_photos</code></td><td>get Album Photos</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_photo</code></td><td>get Photo</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_user_albums</code></td><td>get User Albums</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-video">
+<h3>Video <span class="count">4 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/create_video</code></td><td>create Video</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/remove_video</code></td><td>remove Video</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_user_videos</code></td><td>get User Videos</td></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/get_video</code></td><td>get Video</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-search">
+<h3>Search <span class="count">1 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/search</code></td><td>search</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-mention">
+<h3>Mentions <span class="count">1 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/information/mention_suggestion</code></td><td>mention suggestion</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-flag">
+<h3>Flag / Report <span class="count">1 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/flagItem</code></td><td>flag Item</td></tr>
+</table></div>
+</section>
+<section class="cat" id="cat-contact-us">
+<h3>Contact Us <span class="count">1 endpoints</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Method</th><th>Path</th><th>Summary</th></tr>
+<tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/contact_us</code></td><td>contact us</td></tr>
+</table></div>
+</section>
+<h2 id="beyond">4 · Beyond the spec — additional gateway operations</h2>
+<p>The gateway dispatches more operation types than are currently annotated in the OpenAPI spec. They follow the exact same calling convention and will be added to the spec incrementally. Notable groups:</p>
+<div class="card">
+<ul>
+  <li><strong>Group &amp; profile file manager</strong> — <code>add_group_file</code>, <code>add_group_dir</code>, <code>edit_group_file</code>, <code>delete_group_file</code>, <code>add_profile_file</code>, <code>save_file_to_profile</code> …</li>
+  <li><strong>Quiz / assessment platform (pors)</strong> — 60+ operations under <code>iispors_*</code> (quizzes, questions, participants, judgements, rankings, statistics).</li>
+  <li><strong>Landing-page builder</strong> — <code>iislanding_get_landing_pages</code>, <code>iislanding_create_section</code>, <code>iislanding_update_landing_page</code> …</li>
+  <li><strong>SSO</strong> — <code>iishajsso_auth</code>, <code>iishajsso_login</code> (OpenID Connect flow).</li>
+  <li><strong>Misc</strong> — <code>valid_extensions</code>, <code>files_info</code>, <code>config</code>, <code>send_contact_us</code>, session management (<code>terminate_session</code>, <code>terminate_all_session</code>).</li>
+</ul>
+</div>
+
+<footer>
+  Motoshub API Documentation · generated from backend source annotations (<code>zircote/swagger-php</code>) · served for the front-end team.
+</footer>
+</div>
+
+<script>
+  (function () {
+    var toc = document.getElementById('domainToc');
+    document.querySelectorAll('section.cat').forEach(function (sec) {
+      var h = sec.querySelector('h3');
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + sec.id;
+      a.textContent = h.childNodes[0].textContent.trim();
+      li.appendChild(a);
+      toc.appendChild(li);
+    });
+
+    var input = document.getElementById('filter');
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      document.querySelectorAll('section.cat').forEach(function (sec) {
+        var any = false;
+        sec.querySelectorAll('tbody tr, table tr').forEach(function (tr) {
+          if (!tr.querySelector('td')) return;
+          var hit = !q || tr.textContent.toLowerCase().indexOf(q) !== -1;
+          tr.classList.toggle('hidden', !hit);
+          if (hit) any = true;
+        });
+        sec.classList.toggle('hidden', !any);
+      });
+    });
+  })();
+</script>
+</body>
+</html>
