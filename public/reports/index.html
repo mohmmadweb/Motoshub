@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — اسناد فنی</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --line:#d9dee4; --ink:#1b2431; --muted:#5c6675;
+    --accent:#2f7d78; --accent2:#b45e28;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;
+      --accent:#4bb3ac;--accent2:#d98a4f;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.7;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+  .wrap{max-width:720px;width:100%}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px}
+  h1{font-size:clamp(26px,5vw,38px);margin:0 0 10px;font-weight:800;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:17px;margin:0 0 34px;max-width:56ch}
+  .cards{display:grid;gap:16px}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--surface);
+    border:1px solid var(--line);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow);
+    transition:transform .15s ease,border-color .15s ease}
+  a.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+  a.card .em{font-size:26px}
+  a.card h2{margin:10px 0 6px;font-size:20px;font-weight:750}
+  a.card p{margin:0;color:var(--muted);font-size:14.5px}
+  a.card .go{margin-top:14px;font-family:var(--mono);font-size:13px;color:var(--accent)}
+  a.card.two:hover{border-color:var(--accent2)} a.card.two .go{color:var(--accent2)}
+  footer{margin-top:34px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Motoshub · Technical Documentation</p>
+  <h1>اسناد فنی موتوشاب</h1>
+  <p class="lede">گزارش‌های معماری و مهاجرت محصول — تهیه‌شده پس از مطالعه‌ی کامل سورس گیت‌وی PHP/Oxwall و پروتوتایپ.</p>
+  <div class="cards">
+    <a class="card" href="architecture.html">
+      <div class="em">⚙️</div>
+      <h2>وضعیت، معماری هدف و نقشه‌راه محصول</h2>
+      <p>تصویر بزرگ: وضعیت فعلی، معماری چندمشتری، دیاگرام‌های سیستم و SSO، تنظیمات/Storage، نقشه‌راه ۵ فازی، نسخه‌گذاری و بکاپ.</p>
+      <div class="go">مشاهده‌ی سند ←</div>
+    </a>
+    <a class="card two" href="api-v1.html">
+      <div class="em">🔌</div>
+      <h2>API نسل جدید (v1) — وضعیت و نقشه‌ی مهاجرت</h2>
+      <p>چه API داریم/نداریم، تمپلیت Bridge (Controller+Request+Resource+Service+Policy)، و نقشه‌ی مهاجرت کامل امکانات به API.</p>
+      <div class="go">مشاهده‌ی سند ←</div>
+    </a>
+  </div>
+  <footer>cheedafar.ir/reports · نسخه‌ی زنده و قابل‌به‌روزرسانی</footer>
+</div>
+</body>
+</html>

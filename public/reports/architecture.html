@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — وضعیت، معماری و نقشه‌راه</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4; --line:#d9dee4;
+    --ink:#1b2431; --muted:#5c6675; --faint:#8a95a3;
+    --accent:#b45e28; --accent-soft:#f3e3d6;
+    --ok:#2e9e6b; --ok-bg:#e3f3ec;
+    --warn:#b8860f; --warn-bg:#f6eecf;
+    --bad:#c6473c; --bad-bg:#f7e1de;
+    --code-bg:#eef1f4;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 3px 10px rgba(20,30,45,.05);
+    --radius:10px;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn","IRANSans",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1319; --surface:#161d26; --surface-2:#1c2530; --line:#2a3542;
+      --ink:#e7edf4; --muted:#9aa6b4; --faint:#6b7684;
+      --accent:#d98a4f; --accent-soft:#33241a;
+      --ok:#43b981; --ok-bg:#12271e; --warn:#d9a92e; --warn-bg:#2a2410;
+      --bad:#e0635a; --bad-bg:#2b1614; --code-bg:#1c2530;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1319; --surface:#161d26; --surface-2:#1c2530; --line:#2a3542;
+    --ink:#e7edf4; --muted:#9aa6b4; --faint:#6b7684;
+    --accent:#d98a4f; --accent-soft:#33241a;
+    --ok:#43b981; --ok-bg:#12271e; --warn:#d9a92e; --warn-bg:#2a2410;
+    --bad:#e0635a; --bad-bg:#2b1614; --code-bg:#1c2530;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4; --line:#d9dee4;
+    --ink:#1b2431; --muted:#5c6675; --faint:#8a95a3;
+    --accent:#b45e28; --accent-soft:#f3e3d6;
+    --ok:#2e9e6b; --ok-bg:#e3f3ec; --warn:#b8860f; --warn-bg:#f6eecf;
+    --bad:#c6473c; --bad-bg:#f7e1de; --code-bg:#eef1f4;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 3px 10px rgba(20,30,45,.05);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.7;font-size:16px;direction:rtl}
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px 100px}
+
+  /* header */
+  header.masthead{padding:52px 0 30px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px}
+  h1{font-size:clamp(30px,5vw,46px);line-height:1.12;margin:0 0 14px;font-weight:800;
+    letter-spacing:-.01em;text-wrap:balance}
+  .lede{font-size:18px;color:var(--muted);max-width:62ch;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:22px;font-family:var(--mono);
+    font-size:12.5px;color:var(--faint)}
+  .meta b{color:var(--ink);font-weight:600}
+
+  /* nav */
+  nav.toc{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin:0 -22px 34px;
+    padding:11px 22px;display:flex;gap:6px;flex-wrap:wrap}
+  nav.toc a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:4px 10px;
+    border-radius:20px;border:1px solid transparent;white-space:nowrap}
+  nav.toc a:hover{color:var(--accent);border-color:var(--line);background:var(--surface)}
+
+  section{margin:0 0 46px;scroll-margin-top:64px}
+  h2{font-size:25px;margin:0 0 6px;font-weight:750;letter-spacing:-.01em;
+    display:flex;align-items:baseline;gap:12px}
+  h2 .n{font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:600}
+  h2 + .sub{color:var(--muted);margin:0 0 20px;font-size:15px}
+  h3{font-size:18px;margin:26px 0 8px;font-weight:700}
+  p{margin:0 0 14px}
+  a{color:var(--accent)}
+  ul,ol{margin:0 0 14px;padding-inline-start:22px}
+  li{margin:5px 0}
+  strong{font-weight:700}
+  code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);
+    padding:1px 6px;border-radius:5px;direction:ltr;display:inline-block}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 22px;box-shadow:var(--shadow);margin:0 0 16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+
+  .callout{border-inline-start:3px solid var(--accent);background:var(--accent-soft);
+    padding:14px 18px;border-radius:8px;margin:0 0 16px;font-size:15px}
+  .callout.warn{border-color:var(--warn);background:var(--warn-bg)}
+
+  /* status chips */
+  .chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;
+    font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap;direction:rtl}
+  .chip::before{content:"";width:7px;height:7px;border-radius:50%}
+  .chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.ok::before{background:var(--ok)}
+  .chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.warn::before{background:var(--warn)}
+  .chip.bad{background:var(--bad-bg);color:var(--bad)} .chip.bad::before{background:var(--bad)}
+
+  /* tables */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin:0 0 16px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  th,td{text-align:right;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--surface-2);font-weight:650;font-size:12.5px;color:var(--muted);
+    letter-spacing:.02em;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--mono);text-align:center;font-variant-numeric:tabular-nums;color:var(--ink)}
+  td.mono{font-family:var(--mono);font-size:12.5px;direction:ltr;text-align:left}
+
+  /* mermaid */
+  .diagram{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin:0 0 10px;overflow-x:auto;box-shadow:var(--shadow)}
+  .diagram pre.mermaid{direction:ltr;text-align:center;margin:0;min-width:520px}
+  .figcap{font-size:13px;color:var(--faint);text-align:center;margin:0 0 24px;font-family:var(--mono)}
+
+  .phase{display:flex;gap:14px;margin:0 0 14px}
+  .phase .tag{flex:0 0 auto;font-family:var(--mono);font-size:12px;font-weight:700;color:#fff;
+    background:var(--accent);border-radius:7px;padding:5px 10px;height:fit-content;min-width:74px;text-align:center}
+  .phase .body{flex:1}
+  .phase .body h4{margin:2px 0 4px;font-size:16px}
+  .phase .body p{margin:0 0 6px;font-size:14.5px;color:var(--muted)}
+
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .foot{color:var(--faint);font-size:13px;text-align:center;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="masthead">
+  <p class="kicker">Motoshub · Technical Assessment &amp; Product Blueprint</p>
+  <h1>موتوشاب: وضعیت فعلی، معماری هدف و نقشه‌راه محصول</h1>
+  <p class="lede">گزارشی که بعد از خواندن کامل سورس هر دو مخزن (پلتفرم PHP/Oxwall و پروتوتایپ React) نوشته شده —
+    از «چه چیزی امروز آماده است» تا «چطور این را به یک موتور SaaS چندمشتری تبدیل کنیم».</p>
+  <div class="meta">
+    <span><b>پلتفرم:</b> Oxwall fork · v2.0.0 · build 11233</span>
+    <span><b>Runtime:</b> PHP 7.4 · MariaDB 10.5</span>
+    <span><b>Gateway:</b> iismobilesupport (~168 API مستند)</span>
+    <span><b>Frontend:</b> React 19 · Vite 8 (mock)</span>
+    <span><b>تاریخ:</b> ۱۴۰۵/۰۴/۲۶ — 2026-07-17</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#state">۱ · وضعیت فعلی</a>
+  <a href="#ready">۲ · چه API آماده است</a>
+  <a href="#arch-now">۳ · معماری فعلی</a>
+  <a href="#arch-target">۴ · معماری هدف</a>
+  <a href="#bridge">۵ · Front↔Gateway↔Back</a>
+  <a href="#sso">۶ · SSO و لاگین</a>
+  <a href="#tenant">۷ · چندمشتری و لایسنس</a>
+  <a href="#settings">۸ · تنظیمات و Storage</a>
+  <a href="#roadmap">۹ · نقشه‌راه</a>
+  <a href="#apis">۱۰ · API برای فرانت</a>
+  <a href="#tasks">۱۱ · تسک‌های بک‌اند</a>
+  <a href="#ops">۱۲ · نسخه‌گذاری و بکاپ</a>
+</nav>
+
+<!-- ============ 1 ============ -->
+<section id="state">
+  <h2><span class="n">01</span> وضعیت فعلی در یک نگاه</h2>
+  <p class="sub">دو مخزن مستقل، دو دنیای جدا که هنوز به هم وصل نشده‌اند.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">🗄️ motoshub-web — محصول واقعی</h3>
+      <p style="font-size:14.5px">یک فورک Oxwall با <strong>~۱۴۱ پلاگین</strong> (اکثراً سفارشیِ <code>iis*</code>). کل سطح API در
+      یک پلاگین به‌نام <code>iismobilesupport</code> جمع شده که همان «Gateway» است.
+      روی گیت‌لب داخلی، جریان MR-محور با ~۲۵۰ برنچ.</p>
+      <p style="font-size:14.5px;margin:0"><span class="chip ok">API اجتماعی آماده</span>
+        <span class="chip bad">بدون tenant/license</span></p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🎨 motoshub-prototype — نمای محصول</h3>
+      <p style="font-size:14.5px">React 19 + Vite 8، روی <code>cheedafar.ir</code> دیپلوی می‌شود.
+      همه‌ی داده‌ها <strong>mock</strong> است؛ تنها نقطه‌ی اتصال واقعی، فایل
+      <code>src/lib/api.ts</code> است که هنوز پیاده نشده. ماژول‌های سازمانی
+      (پروژه/قرارداد/صندوق) فقط اینجا وجود دارند.</p>
+      <p style="font-size:14.5px;margin:0"><span class="chip warn">داکس /docs آماده</span>
+        <span class="chip bad">به API واقعی وصل نیست</span></p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>گزاره‌ی مرکزی:</strong> بک‌اندِ «شبکه‌ی اجتماعی» (کاربر، گروه، فید، چت، رسانه…) کامل و به‌صورت API آماده است.
+    اما ماژول‌های سازمانی‌ای که پروتوتایپ نشان می‌دهد — <strong>پروژه، قرارداد، صندوق، فرصت پژوهشی، گزارش‌ساز</strong> —
+    هیچ API بک‌اندی ندارند و باید از صفر (روی Django) ساخته شوند. شکاف اصلی محصول دقیقاً همین‌جاست.
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="ready">
+  <h2><span class="n">02</span> چه چیزی از موتوشاب فعلی API دارد؟</h2>
+  <p class="sub">استخراج‌شده از dispatcher واقعی (<code>web_service_general.php</code>) و انوتیشن‌های <code>@OA</code>.</p>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>دامنه</th><th>وضعیت</th><th style="text-align:center">تعداد op</th><th>توضیح</th></tr></thead>
+      <tbody>
+        <tr><td>Auth / Session</td><td><span class="chip ok">آماده</span></td><td class="num">~12</td><td>login/logout/join، فراموشی رمز، کد تأیید، CAPTCHA، کد ملی</td></tr>
+        <tr><td>Users / Profile</td><td><span class="chip ok">آماده</span></td><td class="num">42</td><td>پروفایل، ویرایش، آواتار/کاور، follow/block، sessionها</td></tr>
+        <tr><td>Groups (+files)</td><td><span class="chip ok">آماده</span></td><td class="num">28</td><td>CRUD گروه، عضویت، دعوت، مدیران، فایل/پوشه‌ی گروه</td></tr>
+        <tr><td>Messaging / Chat</td><td><span class="chip ok">آماده</span></td><td class="num">13</td><td>پیام، فوروارد، mute، رسانه‌ی چت، جستجو</td></tr>
+        <tr><td>Newsfeed</td><td><span class="chip ok">آماده</span></td><td class="num">9</td><td>داشبورد، پست، لایک، فوروارد، privacy</td></tr>
+        <tr><td>Events / Forum / Blogs / News</td><td><span class="chip ok">آماده</span></td><td class="num">35</td><td>CRUD کامل هر چهار دامنه</td></tr>
+        <tr><td>Media (photo/video)</td><td><span class="chip ok">آماده</span></td><td class="num">11</td><td>آلبوم، عکس، ویدیو</td></tr>
+        <tr><td>Comments / Friends / Notifications / Privacy / Search</td><td><span class="chip ok">آماده</span></td><td class="num">~18</td><td>سطح پایه‌ی اجتماعی</td></tr>
+        <tr><td>آپلود فایل (<code>upload_single_file</code>)</td><td><span class="chip ok">آماده</span></td><td class="num">1</td><td>چندنوعی، با اسکن آنتی‌ویروس ClamAV</td></tr>
+        <tr><td>iispors (پرسمان‌ساز/کوییز)</td><td><span class="chip warn">فعال، بدون داکس</span></td><td class="num">~82</td><td>در dispatcher هست ولی صفر انوتیشن @OA</td></tr>
+        <tr><td>iispors_judgement (داوری)</td><td><span class="chip warn">فعال، بدون داکس</span></td><td class="num">~0 doc</td><td>CRUD داوری، معیار، امتیازدهی</td></tr>
+        <tr><td>iislandingcreator (لندینگ)</td><td><span class="chip warn">فعال، بدون داکس</span></td><td class="num">~10</td><td>ساخت صفحه/سکشن</td></tr>
+        <tr><td>پروژه / قرارداد / صندوق / پژوهش / گزارش</td><td><span class="chip bad">API ندارد</span></td><td class="num">0</td><td>ماژول‌های سازمانی — فقط در پروتوتایپ mock هستند</td></tr>
+        <tr><td>iisgrant، iiscfp، iiscompetition، iisticketing…</td><td><span class="chip bad">بیرون از Gateway</span></td><td class="num">0</td><td>پلاگین‌های دامنه‌ای که به لایه‌ی API وصل نشده‌اند</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>سه عدد که باید یکی شوند:</strong> کد واقعی <strong>۱۶۸</strong> عملیاتِ انوتیشن‌دار دارد؛ فایل
+    <code>openapi.json</code> در پروتوتایپ <strong>۱۵۶</strong> عملیات دارد (کمی قدیمی)؛ و رجیستری دستی مدعی
+    <strong>۲۷۱</strong> عملیاتِ «قابل‌فراخوانی» است (شامل iispors/لندینگ بدون schema). قدم اول داکس: بازتولید
+    <code>openapi.json</code> از سورس فعلی تا این اعداد هم‌تراز شوند و tagها اضافه شوند (الان خالی‌اند و Swagger UI دسته‌بندی ندارد).
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="arch-now">
+  <h2><span class="n">03</span> معماری فعلی</h2>
+  <p class="sub">یک مونولیت Oxwall به‌ازای هر مشتری؛ همه‌چیز روی یک دیسک، یک دیتابیس.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  M["Mobile apps<br/>iOS / Android (FCM)"]:::client
+  W["Web browsers"]:::client
+  M --> IMS
+  W --> IMS
+  subgraph OX["Oxwall PHP 7.4 monolith — ONE per customer"]
+    IMS["iismobilesupport<br/>= API gateway<br/>mobile/services/{information,action}/:type"]:::acc
+    PL["~141 iis* plugins<br/>(social + domain + SMS + SSO)"]
+    CORE["Oxwall core<br/>ow_base_config (settings)"]
+    IMS --> PL --> CORE
+  end
+  CORE --> DB[("MariaDB 10.5<br/>ow_* tables")]:::store
+  CORE --> FS[("ow_userfiles/<br/>local disk, per-plugin")]:::store
+  classDef client fill:#eef1f4,stroke:#9aa6b4,color:#1b2431;
+  classDef acc fill:#b45e28,stroke:#8a4620,color:#fff;
+  classDef store fill:#e3f3ec,stroke:#2e9e6b,color:#14432f;
+  </pre></div>
+  <p class="figcap">Fig 1 — امروز: هر مشتری = یک کپی کامل از کد + یک دیتابیس + یک پوشه‌ی فایل، به‌صورت دستی نصب می‌شود.</p>
+  <ul>
+    <li><strong>هیچ لایه‌ی جداکننده‌ای بین کلاینت و مونولیت نیست</strong> — اپ مستقیم با پلاگین حرف می‌زند.</li>
+    <li><strong>Auth:</strong> <code>access_token</code> در واقع همان کوکی <code>ow_login</code> اکسوال است؛ هر ریکوئست دوباره لاگین می‌شود.</li>
+    <li><strong>تنظیمات:</strong> سه لایه — <code>config.php</code> (per-instance، pepper هاردکد)، جدول <code>ow_base_config</code> (قابل‌ویرایش از ادمین)، و <code>.env</code> (فقط نصب/داکر).</li>
+    <li><strong>لیمیت آپلود ۲۰M</strong> در سطح php-fpm/nginx هاردکد است — از داشبورد قابل‌تغییر نیست.</li>
+  </ul>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="arch-target">
+  <h2><span class="n">04</span> معماری هدف — «موتور» چندمشتری</h2>
+  <p class="sub">یک frontend، یک Gateway، و دو بک‌اند (قدیمی PHP + جدید Django) پشت یک هویت واحد.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  FE["New React frontend<br/>(from prototype)"]:::acc
+  FE --> GW["API Gateway / BFF<br/>یک host، JWT auth واحد"]:::acc
+  IDP["Identity Provider<br/>Keycloak / OIDC"]:::idp
+  IDP -. validate JWT .- GW
+  GW --> BR{"Router / Bridge"}
+  BR -->|"social: users, groups,<br/>feed, chat, media, forum"| LEG["Legacy Oxwall API<br/>iismobilesupport"]
+  BR -->|"projects, contracts, funds,<br/>research, reports,<br/>settings, storage"| DJ["Django + DRF<br/>services (new)"]:::new
+  LEG --> LDB[("tenant MariaDB")]:::store
+  DJ --> PGDB[("tenant PostgreSQL")]:::store
+  DJ --> OBJ[("Object storage<br/>MinIO / S3")]:::store
+  classDef acc fill:#b45e28,stroke:#8a4620,color:#fff;
+  classDef new fill:#2e9e6b,stroke:#1f6f4b,color:#fff;
+  classDef idp fill:#3e6cb0,stroke:#2c4d80,color:#fff;
+  classDef store fill:#e3f3ec,stroke:#2e9e6b,color:#14432f;
+  </pre></div>
+  <p class="figcap">Fig 2 — هدف: Gateway تصمیم می‌گیرد هر درخواست به دنیای قدیمی برود یا جدید؛ فرانت فقط یک API می‌بیند.</p>
+
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">چرا Gateway/BFF؟</h3>
+      <p style="font-size:14.5px;margin:0">تا فرانت هیچ‌وقت نفهمد کدام قابلیت از PHP می‌آید و کدام از Django.
+      این یعنی می‌توانی فیچرها را تک‌به‌تک از PHP به Django مهاجرت دهی <strong>بدون اینکه فرانت عوض شود</strong> —
+      دقیقاً همان استراتژی «Strangler Fig».</p></div>
+    <div class="card"><h3 style="margin-top:0">چرا Django برای موارد جدید؟</h3>
+      <p style="font-size:14.5px;margin:0">دامنه‌های سازمانی (قرارداد، صندوق…) state-machine و approval-flow سنگین دارند.
+      Django/DRF + مدل چندمشتری، RBAC و Celery برای این‌ها بسیار مناسب‌تر از افزودن پلاگین به Oxwall PHP 7.4 است.</p></div>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="bridge">
+  <h2><span class="n">05</span> اتصال Front ↔ Gateway ↔ Back و جایگاه Git</h2>
+  <p class="sub">پاسخ مستقیم به سؤالت: فرانت چطور به بک وصل می‌شود، bridge چیست، git کجاست.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph SRC["Source control"]
+    GH["GitHub<br/>frontend + docs<br/>→ cheedafar.ir"]:::git
+    GL["GitLab (internal)<br/>motoshub-web<br/>+ Django (new repo)"]:::git
+  end
+  GH -->|"GitHub Actions"| FEBUILD["Frontend build<br/>(static SPA)"]
+  GL -->|"GitLab CI"| IMG["Versioned images<br/>+ registry"]
+  FEBUILD --> RUNFE["Frontend (served)"]
+  RUNFE -->|"HTTPS /api/*"| GW["API Gateway"]
+  GW -->|"REST"| DJ["Django services"]
+  GW -->|"HTTP form-POST<br/>access_token bridge"| LEG["Oxwall iismobilesupport"]
+  IMG --> DJ
+  IMG --> LEG
+  classDef git fill:#3e6cb0,stroke:#2c4d80,color:#fff;
+  </pre></div>
+  <p class="figcap">Fig 3 — Git دو جا زندگی می‌کند: فرانت روی GitHub، بک‌اندها روی GitLab. CI هر کدام artifact نسخه‌دار می‌سازد.</p>
+  <h3>Bridge دقیقاً چیست؟</h3>
+  <p>یک آداپتور کوچک داخل Gateway که درخواست REST مدرن فرانت را به قرارداد قدیمی Oxwall ترجمه می‌کند:
+  فرانت <code>GET /api/social/feed</code> می‌فرستد؛ bridge آن را به
+  <code>POST mobile/services/information/get_dashboard</code> با فیلد <code>access_token</code> تبدیل می‌کند،
+  JWT کاربر را به session/کوکی اکسوال map می‌کند، و جواب JSON را نرمال برمی‌گرداند. فرانت از وجود این ترجمه بی‌خبر است.</p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="sso">
+  <h2><span class="n">06</span> SSO و لاگین — پیشنهاد</h2>
+  <p class="sub">همین حالا سه SSO در کد هست؛ باید یکی‌شان را «منبع حقیقت هویت» کنیم.</p>
+  <p>در سورس این‌ها را داری: <code>iishajsso</code> (OpenID Connect کامل، با کلاینت Jumbojett)، <code>iissso</code> (تیکتی/CAS با single-logout)، و <code>iisgmailconnect</code> (OAuth گوگل). یعنی زیرساخت OIDC از قبل وجود دارد.</p>
+  <div class="callout">
+    <strong>پیشنهاد:</strong> یک <strong>Identity Provider مرکزی (Keycloak)</strong> بگذار که همه‌ی محصول (فرانت، Gateway، Django، و حتی Oxwall) توکن JWT را از آن بگیرند و اعتبارسنجی کنند. <code>iishajsso</code> که الان OIDC است، به‌عنوان یک realm/federation به Keycloak وصل می‌شود. این هم SSO واقعی بین دنیای قدیم و جدید می‌دهد، هم برای مدل چندمشتری (هر tenant یک realm) تمیز است.
+  </div>
+  <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant FE as Frontend
+  participant GW as Gateway
+  participant IDP as Keycloak (OIDC)
+  participant OX as Oxwall API
+  U->>FE: open app
+  FE->>IDP: OIDC login
+  IDP-->>FE: id_token + access (JWT)
+  FE->>GW: request + Bearer JWT
+  GW->>GW: validate JWT (per-tenant realm)
+  GW->>OX: bridge → map to ow_login session
+  OX-->>GW: data
+  GW-->>FE: normalized JSON
+  </pre></div>
+  <p class="figcap">Fig 4 — لاگین یک‌بار در Keycloak؛ همان توکن هم برای Django و هم (از طریق bridge) برای Oxwall کار می‌کند.</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="tenant">
+  <h2><span class="n">07</span> چندمشتری بودن و فروش فیچر</h2>
+  <p class="sub">قلب مدل کسب‌وکار تو: یک تیم maintain، N مشتری، فروش فیچر به همه.</p>
+  <p>واقعیت سخت از سورس: <strong>هیچ مفهوم tenant/license/feature-flag در کد نیست</strong>. اکسوال ذاتاً single-tenant است (یک DB، یک <code>config.php</code>، یک پوشه‌ی فایل به‌ازای هر نصب). پس دو مسیر داری:</p>
+
+  <div class="tblwrap"><table>
+    <thead><tr><th>مدل</th><th>ایزولاسیون</th><th>مزیت</th><th>هزینه</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Instance-per-tenant</strong> (پیشنهادی)</td><td>کانتینر + DB مجزا برای هر مشتری</td><td>ایزولاسیون کامل، بکاپ/بیلینگ ساده، منطبق با واقعیت اکسوال، ریسک پایین</td><td>اورکستریشن و منابع بیشتر</td></tr>
+      <tr><td>Shared-app + tenant column</td><td>یک اپ، ستون tenant در DB</td><td>مصرف منابع کمتر</td><td>نیازمند بازنویسی عمیق اکسوال — <span class="chip bad">ریسک بالا</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>توصیه:</strong> مدل Instance-per-tenant با یک <strong>Control Plane مرکزی</strong>. اکسوال را دست‌نخورده نگه می‌داری و multi-tenancy را در لایه‌ی اورکستریشن حل می‌کنی، نه داخل کد قدیمی.</p>
+
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  GL["GitLab: یک codebase<br/>یک تیم maintenance"]:::git --> REG["Image registry<br/>نسخه‌های immutable (semver)"]
+  CP["Control Plane<br/>tenants · licenses · enabled features"]:::acc
+  REG --> PROV["Provisioner<br/>(scripted / IaC)"]
+  CP --> PROV
+  PROV --> T1["Tenant A<br/>app + db + files + settings"]:::t
+  PROV --> T2["Tenant B<br/>features: {social, projects}"]:::t
+  PROV --> T3["Tenant C<br/>features: {social, funds, SSO}"]:::t
+  classDef acc fill:#b45e28,stroke:#8a4620,color:#fff;
+  classDef git fill:#3e6cb0,stroke:#2c4d80,color:#fff;
+  classDef t fill:#e3f3ec,stroke:#2e9e6b,color:#14432f;
+  </pre></div>
+  <p class="figcap">Fig 5 — فیچر جدید یک‌بار روی GitLab merge می‌شود → یک image نسخه‌دار → Control Plane تعیین می‌کند کدام مشتری کدام فیچر را (طبق لایسنسی که خریده) روشن دارد.</p>
+  <p>«فروش فیچر به مشتری دیگر» یعنی صرفاً یک <strong>feature-flag/entitlement</strong> در Control Plane روشن شود — نه یک دیپلوی جدید. برای این کار باید یک لایه‌ی سبک <code>tenant + license + entitlement</code> ساخته شود (در Django، به‌عنوان بخشی از فاز ۳).</p>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="settings">
+  <h2><span class="n">08</span> تنظیمات پویا و مدیریت دیسک از داشبورد</h2>
+  <p class="sub">دو خواسته‌ی مشخص تو — و اینکه در سورس کجا قلاب می‌شوند.</p>
+
+  <h3>الف) متغیرهای سیستمی قابل‌مدیریت (upload size و…)</h3>
+  <p>مشکل فعلی: سقف واقعی آپلود در <code>php-fpm.conf</code>/<code>www.conf</code>/<code>nginx</code> روی <strong>۲۰M</strong> هاردکد است. راه‌حل حرفه‌ای:</p>
+  <ol>
+    <li>در سطح image، لیمیت php/nginx را <strong>سخاوتمندانه بالا</strong> بگذار (مثلاً 512M) تا سقف سخت نباشد.</li>
+    <li>لیمیت مؤثر را به جدول <code>ow_base_config</code> (که از قبل زیرساخت admin-editable دارد) منتقل کن و در کد آپلود، به‌جای <code>ini_get()</code> این مقدار DB را بخوان.</li>
+    <li>در پروتوتایپ، بخش <code>SystemSection</code> (که الان mock است) را به این API واقعی وصل کن: <code>GET/PUT /api/core/settings</code>. متغیرهایی که خودت طراحی کرده‌ای (<code>upload_max_mb</code>, <code>chunk_size_mb</code>, <code>user_quota_gb</code>, <code>session_hours</code>…) دقیقاً همین‌ها هستند.</li>
+  </ol>
+
+  <h3>ب) مدیریت مرتب فایل‌ها روی دیسک + داشبورد حجم</h3>
+  <p>الان فایل‌ها زیر <code>ow_userfiles/&lt;plugin&gt;/…</code> ذخیره می‌شوند (لوکال، cloudfiles خاموش)، ولی <strong>هیچ quota/آمار/پاکسازی مرکزی نیست</strong>. برای داشبوردی که در پروتوتایپ (<code>StorageSection</code>) طراحی کرده‌ای:</p>
+  <ul>
+    <li>یک <strong>collector زمان‌بندی‌شده</strong> (cron/Celery) که مصرف هر دسته (پیوست/عکس/ویدیو/temp/بکاپ) و «مصرف‌کننده‌های برتر» را در DB می‌نویسد.</li>
+    <li>API: <code>GET /api/storage/stats</code> و <code>POST /api/storage/cleanup</code> (retention). پلاگین <code>iisdatabackup</code> نقطه‌ی شروع خوبی برای بخش بکاپ است.</li>
+    <li>برای مقیاس، مسیر مهاجرت به <strong>Object Storage (MinIO/S3)</strong> را باز بگذار — اکسوال از قبل کلید <code>OW_USE_CLOUDFILES</code> دارد.</li>
+  </ul>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="roadmap">
+  <h2><span class="n">09</span> نقشه‌راه قدم‌به‌قدم</h2>
+  <p class="sub">پنج فاز؛ هر فاز یک خروجی قابل‌عرضه دارد. تخمین برای یک تیم کوچک بک‌اند.</p>
+
+  <div class="phase"><span class="tag">فاز ۰<br/>۲–۳ هفته</span><div class="body">
+    <h4>پایه و شفافیت</h4>
+    <p>بازتولید <code>openapi.json</code> از سورس فعلی (۱۶۸ op + tagها) و کامل‌کردن داکس برای تیم فرانت. افزودن Sentry برای دیدن خطاهای ساکت (مثل باگ فایل‌منیجر). راه‌اندازی registry ایمیج + تگ semver در CI. دیسیپلین dev/staging/prod.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز ۱<br/>۳–۵ هفته</span><div class="body">
+    <h4>Gateway + هویت واحد + اتصال فرانت به API اجتماعی</h4>
+    <p>بالا آوردن API Gateway/BFF و Keycloak. پیاده‌سازی bridge به Oxwall. جایگزینی <code>src/lib/api.ts</code> پروتوتایپ با fetch واقعی. خروجی: فرانت واقعی روی داده‌ی زنده‌ی اجتماعی.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز ۲<br/>۶–۱۰ هفته</span><div class="body">
+    <h4>سرویس Django برای دامنه‌های جدید</h4>
+    <p>ساخت پروژه Django/DRF: هسته + Auth (JWT/Keycloak)، تنظیمات سیستم، سرویس فایل/دیسک، سپس ماژول‌های سازمانی به‌ترتیب: پروژه → قرارداد → صندوق → پژوهش → گزارش‌ساز. این‌ها همان‌هایی‌اند که هیچ API ندارند.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز ۳<br/>۴–۶ هفته</span><div class="body">
+    <h4>Control Plane چندمشتری</h4>
+    <p>مدل Tenant/License/Entitlement، اتوماسیون provisioning، داشبورد per-tenant تنظیمات و storage، و مکانیزم «فروش فیچر = روشن‌کردن flag».</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز ۴<br/>مستمر</span><div class="body">
+    <h4>Bridge اعلان‌ها + مهاجرت تدریجی</h4>
+    <p>رویدادهای Django (تسک اساین شد، قسط سررسید شد) → فید/اعلان اکسوال. سپس مهاجرت آرام باقی فیچرها از PHP به Django با الگوی Strangler، بدون تغییر فرانت.</p>
+  </div></div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="apis">
+  <h2><span class="n">10</span> لیست API برای تحویل به فرانت</h2>
+  <p class="sub">دو گروه: آماده‌ها (مستندسازی/اتصال) و ساختنی‌ها (Django جدید).</p>
+
+  <h3>گروه A — از قبل روی Gateway هست (فقط داکس + اتصال)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>حوزه</th><th>مسیر نمونه (قرارداد فعلی)</th><th>اقدام</th></tr></thead>
+    <tbody>
+      <tr><td>Auth/Users/Groups/Feed/Chat/Media/Forum/Blog/News/Events</td><td class="mono">POST mobile/services/{information,action}/:type</td><td>مستندسازی کامل + wrapper REST در Gateway</td></tr>
+      <tr><td>iispors / iispors_judgement / landing</td><td class="mono">(بدون @OA)</td><td>افزودن انوتیشن + داکس</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>گروه B — باید ساخته شوند (Django، REST)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>ماژول</th><th>Endpointهای کلیدی</th><th>اولویت</th></tr></thead>
+    <tbody>
+      <tr><td>Core / Settings</td><td class="mono">GET/PUT /core/settings · /core/me</td><td><span class="chip ok">۱</span></td></tr>
+      <tr><td>Files / Storage</td><td class="mono">POST /files (chunked) · GET /storage/stats · POST /storage/cleanup</td><td><span class="chip ok">۲</span></td></tr>
+      <tr><td>Projects</td><td class="mono">/projects · /projects/:id/tasks · /milestones · /board</td><td><span class="chip warn">۳</span></td></tr>
+      <tr><td>Contracts</td><td class="mono">/contracts · /:id/stages · /payments · /approvals</td><td><span class="chip warn">۴</span></td></tr>
+      <tr><td>Funds</td><td class="mono">/funds · /:id/reviews · /installments · /kpi</td><td><span class="chip warn">۵</span></td></tr>
+      <tr><td>Research</td><td class="mono">/research · /:id/applicants · /outputs</td><td><span class="chip warn">۶</span></td></tr>
+      <tr><td>Reports</td><td class="mono">POST /reports/aggregate · /reports/saved</td><td><span class="chip warn">۷</span></td></tr>
+      <tr><td>Tenant / License</td><td class="mono">/tenants · /licenses · /entitlements</td><td><span class="chip bad">۸</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="tasks">
+  <h2><span class="n">11</span> تسک‌های بک‌اند به‌ترتیب + زمان پیشنهادی</h2>
+  <p class="sub">تخمین «مهندسی خالص» برای یک بک‌اند سینیور؛ تست/ریویو جداست.</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th style="text-align:center">#</th><th>تسک</th><th>فاز</th><th style="text-align:center">تخمین</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>بازتولید openapi.json (۱۶۸ op) + tag + انتشار داکس</td><td>۰</td><td class="num">۲–۳ روز</td></tr>
+      <tr><td class="num">2</td><td>Sentry + registry ایمیج + تگ semver در CI</td><td>۰</td><td class="num">۳–۴ روز</td></tr>
+      <tr><td class="num">3</td><td>راه‌اندازی Gateway/BFF (اسکلت + routing)</td><td>۱</td><td class="num">۴–۵ روز</td></tr>
+      <tr><td class="num">4</td><td>Keycloak + اعتبارسنجی JWT در Gateway</td><td>۱</td><td class="num">۴–۶ روز</td></tr>
+      <tr><td class="num">5</td><td>Bridge اکسوال (map JWT→ow_login، نرمال‌سازی JSON)</td><td>۱</td><td class="num">۵–۸ روز</td></tr>
+      <tr><td class="num">6</td><td>اتصال پروتوتایپ به API واقعی (جایگزینی api.ts)</td><td>۱</td><td class="num">۵–۷ روز</td></tr>
+      <tr><td class="num">7</td><td>اسکلت Django/DRF + Auth + Tenant model پایه</td><td>۲</td><td class="num">۵–۷ روز</td></tr>
+      <tr><td class="num">8</td><td>سرویس Settings (DB-backed) + وصل به SystemSection</td><td>۲</td><td class="num">۳–۴ روز</td></tr>
+      <tr><td class="num">9</td><td>سرویس File/Storage + داشبورد حجم (StorageSection)</td><td>۲</td><td class="num">۶–۹ روز</td></tr>
+      <tr><td class="num">10</td><td>ماژول Projects (board/task/milestone)</td><td>۲</td><td class="num">۸–۱۲ روز</td></tr>
+      <tr><td class="num">11</td><td>ماژول Contracts (state-machine + approval)</td><td>۲</td><td class="num">۱۰–۱۴ روز</td></tr>
+      <tr><td class="num">12</td><td>ماژول Funds + Research (روی الگوی قرارداد)</td><td>۲</td><td class="num">۱۰–۱۴ روز</td></tr>
+      <tr><td class="num">13</td><td>گزارش‌ساز (aggregate + saved + خروجی)</td><td>۲</td><td class="num">۶–۹ روز</td></tr>
+      <tr><td class="num">14</td><td>Control Plane: License/Entitlement + provisioning</td><td>۳</td><td class="num">۱۰–۱۵ روز</td></tr>
+      <tr><td class="num">15</td><td>Notification bridge (Django events → فید اکسوال)</td><td>۴</td><td class="num">۵–۷ روز</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13.5px;color:var(--faint)">جمع تقریبی تا پایان فاز ۳: ~۴ تا ۵ ماه کار مهندسی خالص برای یک نفر؛ با تیم دو-سه‌نفره و موازی‌سازی کمتر.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="ops">
+  <h2><span class="n">12</span> نسخه‌گذاری، بکاپ و مدیریت منابع</h2>
+  <p class="sub">آنچه امروز شکسته است و فرایند حرفه‌ای پیشنهادی.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">🏷️ نسخه‌گذاری</h3>
+      <p style="font-size:14px"><strong>الان:</strong> نسخه در <code>ow_version.xml</code> (2.0.0/build 11233) + تگ‌های گیت متروکه (۲۰۲۰) + CI بدون تگ. پراکنده و غیرقابل‌اتکا.</p>
+      <p style="font-size:14px;margin:0"><strong>پیشنهاد:</strong> <code>semver</code> واقعی روی هر release، ایمیج immutable در registry به‌ازای هر نسخه، جریان <code>staging → prod</code> با promotion، changelog خودکار. هر مشتری نسخه‌ی پین‌شده دارد؛ آپدیت = rollout کنترل‌شده‌ی همان image.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">💾 بکاپ</h3>
+      <p style="font-size:14px"><strong>الان:</strong> فقط پلاگین <code>iisdatabackup</code>، بدون سیاست منظم.</p>
+      <p style="font-size:14px;margin:0"><strong>پیشنهاد:</strong> به‌ازای هر tenant: dump زمان‌بندی‌شده‌ی DB + snapshot از <code>ow_userfiles</code>، ذخیره‌ی offsite (S3)، retention مشخص (مثلاً روزانه×۷ + هفتگی×۴)، و تست بازیابی دوره‌ای. با مهاجرت به object storage، فایل‌ها ذاتاً نسخه‌دار/replicated می‌شوند.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">📊 مدیریت منابع</h3>
+    <p style="font-size:14px;margin:0">در مدل instance-per-tenant، هر کانتینر <code>limit</code> CPU/RAM دارد (staging الان 1cpu/1G).
+    یک لایه‌ی مانیتورینگ (Prometheus/Grafana) مصرف هر tenant را می‌بیند؛ همین داده مبنای <strong>بیلینگ maintenance</strong> و ظرفیت‌سنجی می‌شود.
+    quota فایل هر مشتری از همان سرویس Storage اعمال می‌شود.</p>
+  </div>
+
+  <div class="callout warn">
+    <strong>ریسک‌های فوری که در سورس دیدم و باید زود رفع شوند:</strong> pepper مشترک هاردکد
+    (<code>motoshub_salt_SK750</code>) بین همه‌ی نصب‌ها؛ اجرای کانتینر staging با کاربر <code>root</code>؛
+    پیش‌فرض دیتای MySQL روی <code>/tmp</code>؛ و دو استک داکر واگرا (<code>docker/Dockerfile</code> در برابر <code>docker/php/Dockerfile</code>).
+  </div>
+</section>
+
+<hr>
+<p class="foot">Motoshub Technical Blueprint · تهیه‌شده پس از مطالعه‌ی کامل سورس motoshub-web و motoshub-prototype · نسخه‌ی زنده و قابل‌ویرایش</p>
+</div>
+
+<script src="vendor/mermaid.min.js"></script>
+<script>
+  (function(){
+    if(!window.mermaid){return;}
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    try{
+      mermaid.initialize({startOnLoad:true, securityLevel:'loose',
+        theme: dark ? 'dark' : 'neutral',
+        flowchart:{htmlLabels:true, curve:'basis'}});
+    }catch(e){}
+  })();
+</script>
+
+</body>
+</html>

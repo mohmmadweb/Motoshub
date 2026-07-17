@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub API v1 — وضعیت و نقشه‌ی مهاجرت</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4; --line:#d9dee4;
+    --ink:#1b2431; --muted:#5c6675; --faint:#8a95a3;
+    --accent:#2f7d78; --accent-soft:#dcefed;
+    --ok:#2e9e6b; --ok-bg:#e3f3ec; --warn:#b8860f; --warn-bg:#f6eecf;
+    --bad:#c6473c; --bad-bg:#f7e1de; --new:#3e6cb0; --new-bg:#e2ebf6;
+    --code-bg:#0f1620; --code-ink:#d7e2ee;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 3px 10px rgba(20,30,45,.05);
+    --radius:10px;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn","IRANSans",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1319; --surface:#161d26; --surface-2:#1c2530; --line:#2a3542;
+      --ink:#e7edf4; --muted:#9aa6b4; --faint:#6b7684;
+      --accent:#4bb3ac; --accent-soft:#122b29;
+      --ok:#43b981; --ok-bg:#12271e; --warn:#d9a92e; --warn-bg:#2a2410;
+      --bad:#e0635a; --bad-bg:#2b1614; --new:#6b9bd6; --new-bg:#152232;
+      --code-bg:#0a0f16; --code-ink:#cdd8e6;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1319; --surface:#161d26; --surface-2:#1c2530; --line:#2a3542;
+    --ink:#e7edf4; --muted:#9aa6b4; --faint:#6b7684;
+    --accent:#4bb3ac; --accent-soft:#122b29;
+    --ok:#43b981; --ok-bg:#12271e; --warn:#d9a92e; --warn-bg:#2a2410;
+    --bad:#e0635a; --bad-bg:#2b1614; --new:#6b9bd6; --new-bg:#152232;
+    --code-bg:#0a0f16; --code-ink:#cdd8e6;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eef1f4; --line:#d9dee4;
+    --ink:#1b2431; --muted:#5c6675; --faint:#8a95a3;
+    --accent:#2f7d78; --accent-soft:#dcefed;
+    --ok:#2e9e6b; --ok-bg:#e3f3ec; --warn:#b8860f; --warn-bg:#f6eecf;
+    --bad:#c6473c; --bad-bg:#f7e1de; --new:#3e6cb0; --new-bg:#e2ebf6;
+    --code-bg:#0f1620; --code-ink:#d7e2ee;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 3px 10px rgba(20,30,45,.05);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.7;font-size:16px;direction:rtl}
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px 100px}
+
+  header.masthead{padding:52px 0 28px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 12px}
+  h1{font-size:clamp(28px,5vw,44px);line-height:1.14;margin:0 0 14px;font-weight:800;
+    letter-spacing:-.01em;text-wrap:balance}
+  .lede{font-size:18px;color:var(--muted);max-width:64ch;margin:0}
+  .statline{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:12px 18px;box-shadow:var(--shadow);flex:1;min-width:135px}
+  .stat .big{font-size:28px;font-weight:800;font-family:var(--mono);line-height:1;
+    font-variant-numeric:tabular-nums}
+  .stat .lbl{font-size:12.5px;color:var(--muted);margin-top:6px}
+  .stat.ok .big{color:var(--ok)} .stat.bad .big{color:var(--bad)} .stat.new .big{color:var(--new)}
+
+  nav.toc{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin:22px -22px 34px;
+    padding:11px 22px;display:flex;gap:6px;flex-wrap:wrap}
+  nav.toc a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:4px 10px;
+    border-radius:20px;border:1px solid transparent;white-space:nowrap}
+  nav.toc a:hover{color:var(--accent);border-color:var(--line);background:var(--surface)}
+
+  section{margin:0 0 46px;scroll-margin-top:64px}
+  h2{font-size:24px;margin:0 0 6px;font-weight:750;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px}
+  h2 .n{font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:600}
+  h2 + .sub{color:var(--muted);margin:0 0 20px;font-size:15px}
+  h3{font-size:18px;margin:24px 0 8px;font-weight:700}
+  p{margin:0 0 14px} a{color:var(--accent)}
+  ul,ol{margin:0 0 14px;padding-inline-start:22px} li{margin:5px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);
+    padding:1px 6px;border-radius:5px;direction:ltr;display:inline-block}
+
+  .callout{border-inline-start:3px solid var(--accent);background:var(--accent-soft);
+    padding:14px 18px;border-radius:8px;margin:0 0 16px;font-size:15px}
+  .callout.warn{border-color:var(--warn);background:var(--warn-bg)}
+  .callout.new{border-color:var(--new);background:var(--new-bg)}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;
+    font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .chip::before{content:"";width:7px;height:7px;border-radius:50%}
+  .chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.ok::before{background:var(--ok)}
+  .chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.warn::before{background:var(--warn)}
+  .chip.bad{background:var(--bad-bg);color:var(--bad)} .chip.bad::before{background:var(--bad)}
+  .chip.new{background:var(--new-bg);color:var(--new)} .chip.new::before{background:var(--new)}
+
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin:0 0 16px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+  th,td{text-align:right;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--surface-2);font-weight:650;font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+  tbody tr:last-child td{border-bottom:none}
+  td.num,th.num{font-family:var(--mono);text-align:center;font-variant-numeric:tabular-nums}
+  td.mono{font-family:var(--mono);font-size:12px;direction:ltr;text-align:left}
+
+  pre.code{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);
+    padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65;
+    direction:ltr;text-align:left;box-shadow:var(--shadow);margin:0 0 8px;border:1px solid var(--line)}
+  pre.code .c{color:#7d8ba0} pre.code .k{color:#e0a35a} pre.code .s{color:#7fb98a}
+  .codecap{font-size:13px;color:var(--faint);font-family:var(--mono);margin:0 0 22px}
+
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px;font-family:var(--mono);font-size:13px}
+  .flow .node{background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:7px 12px;box-shadow:var(--shadow)}
+  .flow .node.acc{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .flow .arrow{color:var(--faint)}
+
+  .phase{display:flex;gap:14px;margin:0 0 14px}
+  .phase .tag{flex:0 0 auto;font-family:var(--mono);font-size:12px;font-weight:700;color:#fff;
+    background:var(--accent);border-radius:7px;padding:5px 10px;height:fit-content;min-width:88px;text-align:center}
+  .phase .body h4{margin:2px 0 4px;font-size:16px}
+  .phase .body p{margin:0 0 6px;font-size:14.5px;color:var(--muted)}
+
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  .foot{color:var(--faint);font-size:13px;text-align:center;font-family:var(--mono)}
+  .xref{font-size:14px;background:var(--surface-2);border-radius:8px;padding:10px 16px;margin:0 0 22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="masthead">
+  <p class="kicker">Motoshub · REST API v1 · Bridge Framework · branch: moto-next</p>
+  <h1>API نسل جدید موتوشاب: چه داریم، چه نداریم، و نقشه‌ی مهاجرت</h1>
+  <p class="lede">پلاگین <code>ow_plugins/api</code> یک لایه‌ی REST تمیز (سبک Laravel روی فریم‌ورک Bridge) با JWT و RBAC
+    و Swagger زنده است — اما تا امروز فقط ۵ دامنه به آن منتقل شده. این سند دقیقاً می‌گوید چه چیزی هست، چه چیزی
+    باید ساخته شود، و با چه تمپلیتی.</p>
+  <div class="statline">
+    <div class="stat ok"><div class="big">24</div><div class="lbl">عملیات زنده روی v1</div></div>
+    <div class="stat ok"><div class="big">5</div><div class="lbl">دامنه‌ی منتقل‌شده</div></div>
+    <div class="stat bad"><div class="big">~20+</div><div class="lbl">دامنه‌ی باقی‌مانده</div></div>
+    <div class="stat new"><div class="big">168</div><div class="lbl">op منطق آماده در گیت‌وی قدیمی</div></div>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#have">۱ · چه داریم</a>
+  <a href="#tmpl">۲ · تمپلیت Bridge</a>
+  <a href="#missing">۳ · چه نداریم</a>
+  <a href="#howto">۴ · ساخت یک API جدید</a>
+  <a href="#plan">۵ · نقشه‌ی مهاجرت</a>
+  <a href="#decision">۶ · تصمیم معلق</a>
+</nav>
+
+<div class="xref">📐 این سند مکملِ <a href="architecture.html">سند معماری و نقشه‌راه کلی محصول</a> است — آن‌جا تصویر بزرگ (multi-tenant، Django، SSO)، این‌جا تمرکز روی مهاجرت API.</div>
+
+<!-- 1 -->
+<section id="have">
+  <h2><span class="n">01</span> چه API‌هایی الان روی v1 داریم؟</h2>
+  <p class="sub">استخراج مستقیم از spec زنده‌ی <code>motonext.shub.ir/api/v1/docs/json</code> — ۲۴ عملیات، ۵ دامنه.</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>دامنه</th><th class="num">عملیات</th><th>Endpointها</th><th>وضعیت</th></tr></thead>
+    <tbody>
+      <tr><td>Auth</td><td class="num">3</td><td class="mono">POST /v1/auth/login · GET /v1/auth/me · GET /v1/auth/permissions</td><td><span class="chip ok">کامل</span></td></tr>
+      <tr><td>Blogs</td><td class="num">5</td><td class="mono">GET · POST · GET/{id} · PATCH/{id} · DELETE/{id}</td><td><span class="chip ok">CRUD</span></td></tr>
+      <tr><td>News</td><td class="num">5</td><td class="mono">GET · POST · GET/{id} · PATCH/{id} · DELETE/{id}</td><td><span class="chip ok">CRUD</span></td></tr>
+      <tr><td>Photos</td><td class="num">5</td><td class="mono">GET · POST · GET/{id} · PATCH/{id} · DELETE/{id}</td><td><span class="chip ok">CRUD</span></td></tr>
+      <tr><td>Albums</td><td class="num">6</td><td class="mono">CRUD + GET /v1/albums/{id}/photos</td><td><span class="chip ok">CRUD+</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <strong>نکته‌ی کلیدی:</strong> این v1 با گیت‌وی قدیمی <code>iismobilesupport</code> (همان ۱۶۸ عملیاتِ
+    <code>mobile/services/…</code>) فرق دارد. آن‌جا <strong>منطق کسب‌وکار همه‌ی فیچرهای اجتماعی از قبل نوشته شده</strong>
+    (در سرویس‌های BOL اکسوال). پس مهاجرت یعنی «بسته‌بندی همان منطق موجود در تمپلیت تمیز v1» — نه نوشتن از صفر.
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="tmpl">
+  <h2><span class="n">02</span> تمپلیت «Bridge» — الگویی که باید تکرار شود</h2>
+  <p class="sub">هر فیچر دقیقاً از این پنج قطعه ساخته می‌شود (نمونه: Blog).</p>
+  <div class="flow">
+    <span class="node">Request<br/><small>اعتبارسنجی+sanitize</small></span><span class="arrow">←</span>
+    <span class="node acc">Controller<br/><small>API/V1 + OA + Route</small></span><span class="arrow">←→</span>
+    <span class="node">Service<br/><small>(interface)</small></span><span class="arrow">→</span>
+    <span class="node">Oxwall BOL<br/><small>منطق موجود</small></span>
+  </div>
+  <p style="font-size:14px;color:var(--muted)">و خروجی از <strong>Resource</strong> عبور می‌کند؛ دسترسی با <strong>Policy</strong> کنترل می‌شود.</p>
+
+  <pre class="code"><span class="c">// ow_plugins/blogs/src/Http/Controllers/API/V1/BlogController.php</span>
+<span class="k">#[Policy(BlogPolicy::class)]</span>
+class BlogController extends ApiController {
+  public function __construct(private BlogServiceInterface $blogService){ parent::__construct(); }
+
+  <span class="k">#[OA\Get(path:'/v1/blogs', tags:["Blogs"], ...)]</span>  <span class="c">// ← داکس Swagger زنده</span>
+  <span class="k">#[RouteGet('api/v1/blogs', middleware:['auth.jwt'])]</span> <span class="c">// ← روت + JWT</span>
+  <span class="k">#[RoutePermissions(['blogs.view','blogs.list'])]</span>    <span class="c">// ← RBAC</span>
+  public function index(BlogListRequest $request){
+    $blogs = $this->blogService->fetchBlogs(true, $request-&gt;validated());
+    return Response::json(BlogResource::collection($blogs));
+  }
+  <span class="c">// show() / store() / update() / destroy() به همین شکل …</span>
+}</pre>
+  <p class="codecap">Controller نازک است: فقط orchestration. کارِ واقعی در Service، اعتبارسنجی در Request، شکل خروجی در Resource.</p>
+
+  <div class="tblwrap"><table>
+    <thead><tr><th>قطعه</th><th>مسیر</th><th>مسئولیت</th></tr></thead>
+    <tbody>
+      <tr><td>Controller</td><td class="mono">src/Http/Controllers/API/V1/</td><td>روت‌ها (attribute)، داکس OA، فراخوانی سرویس</td></tr>
+      <tr><td>Requests (List/Store/Update)</td><td class="mono">src/Http/Requests/</td><td>پراپرتی تایپ‌دار + <code>#[Required]</code>/<code>#[Sanitize]</code>/<code>#[StripTags]</code> + schema</td></tr>
+      <tr><td>Resource</td><td class="mono">src/Http/Resources/</td><td>تبدیل خروجی به JSON یکدست + <code>respondCreated/Updated/Deleted</code></td></tr>
+      <tr><td>Service (+Interface)</td><td class="mono">src/Services/ + Contracts/Services/</td><td>منطق؛ به BOL اکسوال وصل می‌شود</td></tr>
+      <tr><td>Policy</td><td class="mono">src/Policies/</td><td>مجوز دسترسی به عملیات</td></tr>
+      <tr><td>ثبت</td><td class="mono">SwaggerController scanDirs + auto-route</td><td>افزودن پوشه‌ی پلاگین به اسکنر داکس</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><strong>نکته‌ی محیط:</strong> این لایه از Attributeهای PHP 8 و سینتکس مدرن استفاده می‌کند
+    (مثل <code>new Generator()->generate()</code>) — یعنی نیازمند <strong>PHP 8+</strong> است، برخلاف هسته‌ی اکسوال که روی PHP 7.4 است.
+    این واگرایی نسخه را باید در استقرار مدیریت کرد.</div>
+</section>
+
+<!-- 3 -->
+<section id="missing">
+  <h2><span class="n">03</span> چه چیزی نداریم و باید بسازیم؟</h2>
+  <p class="sub">سه سطل: منتقل‌شده ✅ ، منطق آماده برای بسته‌بندی 🔨 ، و نبودِ کامل بک‌اند 🆕.</p>
+
+  <h3>🔨 سطل اصلی — منطق در گیت‌وی قدیمی هست، فقط باید در تمپلیت v1 بسته‌بندی شود</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>دامنه</th><th class="num">op قدیمی</th><th>منبع منطق</th><th class="num">تخمین</th></tr></thead>
+    <tbody>
+      <tr><td>Users / Profile</td><td class="num">42</td><td>iismobilesupport + BOL_UserService</td><td class="num">۵–۸ روز</td></tr>
+      <tr><td>Groups (+ فایل/پوشه)</td><td class="num">28</td><td>groups + iisgroupsplus</td><td class="num">۴–۶ روز</td></tr>
+      <tr><td>Messaging / Chat</td><td class="num">13</td><td>mailbox</td><td class="num">۴–۵ روز</td></tr>
+      <tr><td>Events</td><td class="num">12</td><td>event + iiseventplus</td><td class="num">۳–۴ روز</td></tr>
+      <tr><td>Forum</td><td class="num">12</td><td>forum + iisforumplus</td><td class="num">۳–۴ روز</td></tr>
+      <tr><td>Newsfeed</td><td class="num">9</td><td>newsfeed + iisnewsfeedplus</td><td class="num">۳–۴ روز</td></tr>
+      <tr><td>Notifications</td><td class="num">6</td><td>notifications</td><td class="num">۲ روز</td></tr>
+      <tr><td>Comments</td><td class="num">5</td><td>BOL_CommentService</td><td class="num">۲ روز</td></tr>
+      <tr><td>Questions / Polls</td><td class="num">5</td><td>iisquestions</td><td class="num">۲ روز</td></tr>
+      <tr><td>Video</td><td class="num">4</td><td>video (الگوی photo آماده)</td><td class="num">۱–۲ روز</td></tr>
+      <tr><td>Friends</td><td class="num">4</td><td>friends</td><td class="num">۲ روز</td></tr>
+      <tr><td>Search / Mention / Privacy / Flag / Contact</td><td class="num">~6</td><td>پلاگین‌های مربوطه</td><td class="num">۲–۳ روز</td></tr>
+      <tr><td>iispors (پرسمان‌ساز/کوییز)</td><td class="num">~82</td><td>iispors + iispors_judgement</td><td class="num">۱۰–۱۵ روز</td></tr>
+      <tr><td>Landing builder</td><td class="num">~10</td><td>iislandingcreator</td><td class="num">۳ روز</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>🆕 سطل دوم — بک‌اند اصلاً وجود ندارد (فقط در پروتوتایپ mock است)</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>ماژول سازمانی</th><th>وضعیت</th><th>مسیر پیشنهادی</th></tr></thead>
+    <tbody>
+      <tr><td>Projects / Contracts / Funds / Research / Reports</td><td><span class="chip bad">نه بک‌اند، نه API</span></td><td>ساخت جدید — ترجیحاً روی Django (به سند معماری کلی)، یا پلاگین جدید اکسوال با همین تمپلیت</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">
+    این‌ها «امکانات فعلی موتوشاب» نیستند — در بک‌اند PHP هیچ اثری ندارند. پس در «مهاجرت API» نمی‌گنجند؛ یک
+    <strong>خط کاری جداگانه‌ی «ساخت از صفر»</strong> هستند. اگر هدف کوتاه‌مدت است، می‌شود موقتاً به‌عنوان پلاگین اکسوال با
+    همین تمپلیت ساختشان؛ اگر بلندمدت و مقیاس‌پذیر، روی Django.
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="howto">
+  <h2><span class="n">04</span> فرایند ساخت یک API جدید (قدم‌به‌قدم)</h2>
+  <p class="sub">برای هر دامنه‌ی 🔨، این چرخه تکرار می‌شود. مثال: افزودن <code>Video</code>.</p>
+  <ol>
+    <li>در پلاگین مقصد (مثلاً <code>ow_plugins/video</code>) پوشه‌های <code>src/Http/Controllers/API/V1</code>، <code>Requests</code>، <code>Resources</code>، <code>Services</code>، <code>Contracts/Services</code>، <code>Policies</code> را بساز.</li>
+    <li><strong>Service:</strong> یک <code>VideoServiceInterface</code> + <code>VideoService</code> که داخلش همان متدهای منطقیِ موجود در <code>web_service_video.php</code> / BOL را صدا می‌زند (منطق را کپی نکن، فراخوانی کن).</li>
+    <li><strong>Requests:</strong> <code>VideoListRequest</code>/<code>StoreRequest</code>/<code>UpdateRequest</code> با پراپرتی‌های تایپ‌دار و اعتبارسنجی.</li>
+    <li><strong>Resource:</strong> <code>VideoResource</code> برای شکل خروجی یکدست.</li>
+    <li><strong>Controller:</strong> متدهای <code>index/show/store/update/destroy</code> با attributeهای <code>#[OA\...]</code>، <code>#[Route...('api/v1/videos', middleware:['auth.jwt'])]</code> و <code>#[RoutePermissions(...)]</code>.</li>
+    <li><strong>Policy</strong> برای مجوزها؛ ثبت permissionها.</li>
+    <li>پوشه‌ی پلاگین را به <code>scanDirs</code> در <code>SwaggerController</code> اضافه کن تا در داکس زنده ظاهر شود.</li>
+    <li>تست: در Swagger UI (<code>/api/v1/docs/index</code>) عملیات جدید را try-it-out کن.</li>
+  </ol>
+  <div class="callout">
+    <strong>چرا سریع است:</strong> چون منطق در BOL موجود است و تمپلیت تثبیت‌شده، بعد از دو-سه دامنه‌ی اول، هر CRUD ساده
+    عملاً «کپی و تطبیق» می‌شود. بخش زمان‌بر، دامنه‌های بزرگ (Users، Groups، iispors) است که سطح عملیات بالایی دارند.
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="plan">
+  <h2><span class="n">05</span> نقشه‌ی مهاجرت فازبندی‌شده</h2>
+  <p class="sub">به‌ترتیب ارزش برای فرانت و وابستگی‌ها. تخمین برای یک بک‌اند سینیور.</p>
+
+  <div class="phase"><span class="tag">فاز A<br/>هسته</span><div class="body">
+    <h4>کاربر، دوستان، اعلان‌ها</h4>
+    <p>Users/Profile (۴۲ op)، Friends، Notifications. بدون این‌ها هیچ صفحه‌ی واقعی‌ای در فرانت زنده نمی‌شود. ~۹–۱۲ روز.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز B<br/>اجتماعی</span><div class="body">
+    <h4>گروه، فید، کامنت، چت</h4>
+    <p>Groups (+files)، Newsfeed، Comments، Messaging. قلب تعامل اجتماعی. ~۱۳–۱۷ روز.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز C<br/>محتوا</span><div class="body">
+    <h4>رویداد، فروم، ویدیو، نظرسنجی، جستجو</h4>
+    <p>Events، Forum، Video، Questions، Search/Privacy/Flag. ~۱۱–۱۵ روز. (Blog/News/Photo از قبل ✅)</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز D<br/>تخصصی</span><div class="body">
+    <h4>پرسمان‌ساز و لندینگ</h4>
+    <p>iispors + judgement (بزرگ، ~۸۲ op) و Landing builder. ~۱۳–۱۸ روز.</p>
+  </div></div>
+  <div class="phase"><span class="tag">فاز E<br/>جدید</span><div class="body">
+    <h4>ماژول‌های سازمانی (خط کاری موازی)</h4>
+    <p>Projects/Contracts/Funds/Research/Reports — ساخت از صفر (Django یا پلاگین جدید). مستقل از A–D پیش می‌رود.</p>
+  </div></div>
+
+  <div class="callout">
+    <strong>جمع تقریبی فازهای A تا D (بسته‌بندی امکانات موجود):</strong> حدود <strong>۴۶ تا ۶۲ روزِ کاری مهندسی خالص</strong>
+    برای یک نفر (~۲.۵ تا ۳ ماه). با تیم دو نفره و موازی‌سازی دامنه‌ها، عملاً کمتر. فاز E جداگانه و بزرگ‌تر است.
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="decision">
+  <h2><span class="n">06</span> یک تصمیم که با تو است</h2>
+  <p class="sub">درباره‌ی داکسِ فرانت که در جلسه‌ی قبل شروع شده بود.</p>
+  <p>قبل از این‌که بفهمیم <code>api/v1</code> منبع اصلی است، قرار بود <code>openapi.json</code> گیت‌وی موبایل (۱۶۸ op) را بازتولید و
+  روی گیت‌هاب پروتوتایپ (<code>cheedafar.ir/docs</code>) پوش کنم. حالا دو منبع داکس داریم:</p>
+  <ul>
+    <li><strong>گیت‌وی موبایل</strong> (<code>iismobilesupport</code>, ۱۶۸ op) — کامل و کارآمد، ولی سبک قدیمی <code>mobile/services/:type</code>.</li>
+    <li><strong>API v1</strong> (<code>ow_plugins/api</code>, ۲۴ op) — تمیز و RESTful و آینده‌ی محصول، ولی هنوز کوچک.</li>
+  </ul>
+  <p><strong>پیشنهاد من:</strong> فرانت را روی <code>api/v1</code> هدف‌گذاری کن (چون آینده همین است) و مهاجرت را طبق فازهای بالا جلو ببریم؛
+  تا وقتی یک دامنه هنوز روی v1 نیامده، فرانت موقتاً از گیت‌وی موبایل همان دامنه استفاده کند. به‌همین‌دلیل داکسِ گیت‌وی موبایل را
+  <strong>پوش نکردم</strong> و منتظر تصمیم تو ماندم. اگر بخواهی، همان را هم به‌عنوان «مرجع موقت» منتشر می‌کنم.</p>
+</section>
+
+<hr>
+<p class="foot">Motoshub API v1 · تهیه‌شده پس از خواندن پلاگین api و اسپک زنده‌ی motonext.shub.ir · branch moto-next</p>
+</div>
+
+</body>
+</html>
