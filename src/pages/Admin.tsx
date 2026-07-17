@@ -24,7 +24,10 @@ import {
   UserCog,
   FileWarning,
   Tag,
+  SlidersHorizontal,
+  HardDrive,
 } from "lucide-react";
+import { SystemSection, StorageSection } from "./AdminSections";
 import {
   tenants as initialTenants,
   moduleCatalog,
@@ -50,7 +53,7 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network";
+type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
@@ -62,6 +65,8 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "integrations", label: "یکپارچه‌سازی و اتوماسیون", icon: Webhook },
   { id: "security", label: "امنیت و انطباق", icon: ShieldCheck },
   { id: "network", label: "تعامل بین‌سازمانی", icon: Network },
+  { id: "system", label: "تنظیمات سیستم", icon: SlidersHorizontal },
+  { id: "storage", label: "فضای ذخیره‌سازی", icon: HardDrive },
 ];
 
 const tenantPalette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
@@ -137,6 +142,10 @@ export default function Admin() {
           {section === "network" && (
             <NetworkSection crossTenant={crossTenant} setCrossTenant={setCrossTenant} />
           )}
+
+          {section === "system" && <SystemSection notify={notify} />}
+
+          {section === "storage" && <StorageSection notify={notify} />}
         </div>
       </div>
     </div>
