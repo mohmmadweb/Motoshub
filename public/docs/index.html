@@ -66,6 +66,10 @@
     display:inline-block; font:700 10.5px/1 "Cascadia Code", Consolas, monospace;
     background:var(--oksoft); color:var(--ok); border-radius:5px; padding:4px 8px; letter-spacing:.05em;
   }
+  .m.act { background:var(--warnsoft); color:var(--warn); }
+  .chip { display:inline-block; font-size:11px; font-weight:700; border-radius:999px; padding:2px 10px; white-space:nowrap; }
+  .chip.yes { background:var(--oksoft); color:var(--ok); }
+  .chip.no { background:#eef1f6; color:var(--ink3); }
   .toc { columns:3; column-gap:32px; font-size:13.5px; }
   @media (max-width:760px){ .toc { columns:2; } }
   .toc a { color:var(--brand); text-decoration:none; }
@@ -432,17 +436,386 @@ curl -X POST "$BASE/mobile/services/action/send_post" \
 <tr><td><span class="m">POST</span></td><td class="path"><code>/mobile/services/action/contact_us</code></td><td>contact us</td></tr>
 </table></div>
 </section>
-<h2 id="beyond">4 · Beyond the spec — additional gateway operations</h2>
-<p>The gateway dispatches more operation types than are currently annotated in the OpenAPI spec. They follow the exact same calling convention and will be added to the spec incrementally. Notable groups:</p>
-<div class="card">
+<h2 id="beyond">4 · Complete operation registry — what is actually callable today</h2>
+<p>This is the <strong>authoritative list of all 271 operations</strong> the gateway dispatcher accepts, extracted directly from the backend source (<code>web_service_general.php</code>) and cross-referenced with the OpenAPI spec:</p>
 <ul>
-  <li><strong>Group &amp; profile file manager</strong> — <code>add_group_file</code>, <code>add_group_dir</code>, <code>edit_group_file</code>, <code>delete_group_file</code>, <code>add_profile_file</code>, <code>save_file_to_profile</code> …</li>
-  <li><strong>Quiz / assessment platform (pors)</strong> — 60+ operations under <code>iispors_*</code> (quizzes, questions, participants, judgements, rankings, statistics).</li>
-  <li><strong>Landing-page builder</strong> — <code>iislanding_get_landing_pages</code>, <code>iislanding_create_section</code>, <code>iislanding_update_landing_page</code> …</li>
-  <li><strong>SSO</strong> — <code>iishajsso_auth</code>, <code>iishajsso_login</code> (OpenID Connect flow).</li>
-  <li><strong>Misc</strong> — <code>valid_extensions</code>, <code>files_info</code>, <code>config</code>, <code>send_contact_us</code>, session management (<code>terminate_session</code>, <code>terminate_all_session</code>).</li>
+  <li><span class="chip yes">✓ in spec</span> — 150 operations with full request/response schemas; explore them in the <a href="swagger.html">interactive reference</a>.</li>
+  <li><span class="chip no">registry only</span> — 121 operations that are <em>live and callable</em> with the same conventions (section 2), but whose formal schema is not yet annotated. Field names follow the web client's form posts; schemas will be added incrementally.</li>
 </ul>
-</div>
+<p>The endpoint filter at the top of section 3 works on these tables too.</p>
+<section class="cat" id="reg-quiz-platform-pors-">
+<h3>Quiz platform (pors) <span class="count">82 ops · 0 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_check_verification_code</code></td><td class="path"><code>POST /mobile/services/action/iispors_check_verification_code</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_question</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz_judgement</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz_judgement_criteria</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz_judgement_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz_judgement_detail</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz_judgement_detail</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_create_quiz_judgement_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_create_quiz_judgement_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_daily_finished_participants_stats</code></td><td class="path"><code>POST /mobile/services/information/iispors_daily_finished_participants_stats</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_daily_province_wise_finished_participants_stats</code></td><td class="path"><code>POST /mobile/services/information/iispors_daily_province_wise_finished_participants_stats</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_participant</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_participant</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_question</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz_judgement</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz_judgement_criteria</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz_judgement_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz_judgement_detail</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz_judgement_detail</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_delete_quiz_judgement_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_delete_quiz_judgement_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_duplicate_question</code></td><td class="path"><code>POST /mobile/services/action/iispors_duplicate_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_duplicate_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_duplicate_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_duplicate_quiz_criteria</code></td><td class="path"><code>POST /mobile/services/action/iispors_duplicate_quiz_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_end_judgement</code></td><td class="path"><code>POST /mobile/services/action/iispors_end_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_end_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_end_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_forget_password_change</code></td><td class="path"><code>POST /mobile/services/action/iispors_forget_password_change</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_forget_password_request</code></td><td class="path"><code>POST /mobile/services/action/iispors_forget_password_request</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_judges</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_judges</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_neighbor_quiz_judgement_criteria</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_neighbor_quiz_judgement_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_neighbor_quiz_questions</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_neighbor_quiz_questions</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_participant</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_participant</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_question</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_quiz_participant_rankings</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_quiz_participant_rankings</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_quiz_participants</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_quiz_participants</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_get_quiz_questions</code></td><td class="path"><code>POST /mobile/services/information/iispors_get_quiz_questions</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_login</code></td><td class="path"><code>POST /mobile/services/action/iispors_login</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_move_question</code></td><td class="path"><code>POST /mobile/services/action/iispors_move_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_move_quiz_criteria</code></td><td class="path"><code>POST /mobile/services/action/iispors_move_quiz_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_participant_answers</code></td><td class="path"><code>POST /mobile/services/information/iispors_participant_answers</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_province_wise_finished_participants_stats</code></td><td class="path"><code>POST /mobile/services/information/iispors_province_wise_finished_participants_stats</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_provinces</code></td><td class="path"><code>POST /mobile/services/information/iispors_provinces</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_answers_summary</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_answers_summary</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_device_statistics</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_device_statistics</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_ending_page</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_ending_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_intro_page</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_intro_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judge</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement_criteria</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement_detail</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement_detail</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement_details</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement_details</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement_judge</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgement_judges</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgement_judges</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgements</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgements</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judgements_criteria</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judgements_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_judges</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_judges</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quiz_participants_answers</code></td><td class="path"><code>POST /mobile/services/information/iispors_quiz_participants_answers</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_quiz_update_ending_page</code></td><td class="path"><code>POST /mobile/services/action/iispors_quiz_update_ending_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_quiz_update_intro_page</code></td><td class="path"><code>POST /mobile/services/action/iispors_quiz_update_intro_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_quizzes</code></td><td class="path"><code>POST /mobile/services/information/iispors_quizzes</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_recalculate_points_for_participant</code></td><td class="path"><code>POST /mobile/services/action/iispors_recalculate_points_for_participant</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_recalculate_points_for_single_judgement_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_recalculate_points_for_single_judgement_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_recalculate_quiz_judgement_judge_points</code></td><td class="path"><code>POST /mobile/services/action/iispors_recalculate_quiz_judgement_judge_points</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_recalculate_quiz_participant_points</code></td><td class="path"><code>POST /mobile/services/action/iispors_recalculate_quiz_participant_points</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_register</code></td><td class="path"><code>POST /mobile/services/action/iispors_register</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_reopen_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_reopen_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_start_judgement</code></td><td class="path"><code>POST /mobile/services/action/iispors_start_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_start_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_start_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_submit_answer</code></td><td class="path"><code>POST /mobile/services/action/iispors_submit_answer</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_submit_judgement_answer</code></td><td class="path"><code>POST /mobile/services/action/iispors_submit_judgement_answer</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_swap_questions</code></td><td class="path"><code>POST /mobile/services/action/iispors_swap_questions</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_judgement_statistics</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_judgement_statistics</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_question</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz_judgement</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz_judgement</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz_judgement_criteria</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz_judgement_criteria</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz_judgement_detail</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz_judgement_detail</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iispors_update_quiz_judgement_judge</code></td><td class="path"><code>POST /mobile/services/action/iispors_update_quiz_judgement_judge</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_user_quiz_detail</code></td><td class="path"><code>POST /mobile/services/information/iispors_user_quiz_detail</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_user_quiz_ending_page</code></td><td class="path"><code>POST /mobile/services/information/iispors_user_quiz_ending_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_user_quiz_intro_page</code></td><td class="path"><code>POST /mobile/services/information/iispors_user_quiz_intro_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_vote_count_by_question</code></td><td class="path"><code>POST /mobile/services/information/iispors_vote_count_by_question</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iispors_vote_count_by_quiz</code></td><td class="path"><code>POST /mobile/services/information/iispors_vote_count_by_quiz</code></td><td><span class="chip no">registry only</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-groups-group-files">
+<h3>Groups & group files <span class="count">30 ops · 28 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>activate_group</code></td><td class="path"><code>POST /mobile/services/action/activate_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_group_dir</code></td><td class="path"><code>POST /mobile/services/action/add_group_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_group_file</code></td><td class="path"><code>POST /mobile/services/action/add_group_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_group_manager</code></td><td class="path"><code>POST /mobile/services/action/add_group_manager</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_group_coverphoto</code></td><td class="path"><code>POST /mobile/services/action/change_group_coverphoto</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_group</code></td><td class="path"><code>POST /mobile/services/action/create_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_group</code></td><td class="path"><code>POST /mobile/services/action/delete_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_group_dir</code></td><td class="path"><code>POST /mobile/services/action/delete_group_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_group_file</code></td><td class="path"><code>POST /mobile/services/action/delete_group_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_group</code></td><td class="path"><code>POST /mobile/services/action/edit_group</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_group_dir</code></td><td class="path"><code>POST /mobile/services/action/edit_group_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_group_file</code></td><td class="path"><code>POST /mobile/services/action/edit_group_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>follow_group</code></td><td class="path"><code>POST /mobile/services/action/follow_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_group</code></td><td class="path"><code>POST /mobile/services/information/get_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>group_invite_list</code></td><td class="path"><code>POST /mobile/services/information/group_invite_list</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>group_invite_searchable_questions</code></td><td class="path"><code>POST /mobile/services/information/group_invite_searchable_questions</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>group_invite_searchable_users</code></td><td class="path"><code>POST /mobile/services/information/group_invite_searchable_users</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>groups</code></td><td class="path"><code>POST /mobile/services/information/groups</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>groups_accept_invite</code></td><td class="path"><code>POST /mobile/services/action/groups_accept_invite</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>groups_and_channels_and_chats</code></td><td class="path"><code>POST /mobile/services/information/groups_and_channels_and_chats</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>groups_and_chats</code></td><td class="path"><code>POST /mobile/services/information/groups_and_chats</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>groups_cancel_invite</code></td><td class="path"><code>POST /mobile/services/action/groups_cancel_invite</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>groups_invite_user</code></td><td class="path"><code>POST /mobile/services/action/groups_invite_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>join_group</code></td><td class="path"><code>POST /mobile/services/action/join_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>leave_group</code></td><td class="path"><code>POST /mobile/services/action/leave_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>mute_group</code></td><td class="path"><code>POST /mobile/services/action/mute_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_group_manager</code></td><td class="path"><code>POST /mobile/services/action/remove_group_manager</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_group_user</code></td><td class="path"><code>POST /mobile/services/action/remove_group_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unfollow_group</code></td><td class="path"><code>POST /mobile/services/action/unfollow_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unmute_group</code></td><td class="path"><code>POST /mobile/services/action/unmute_group</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-users-profile">
+<h3>Users & profile <span class="count">28 ops · 25 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_profile_dir</code></td><td class="path"><code>POST /mobile/services/action/add_profile_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_profile_file</code></td><td class="path"><code>POST /mobile/services/action/add_profile_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_question_option</code></td><td class="path"><code>POST /mobile/services/action/add_question_option</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>approve_user</code></td><td class="path"><code>POST /mobile/services/action/approve_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>block_user</code></td><td class="path"><code>POST /mobile/services/action/block_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>blocked_users</code></td><td class="path"><code>POST /mobile/services/information/blocked_users</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_avatar</code></td><td class="path"><code>POST /mobile/services/action/change_avatar</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_privacy</code></td><td class="path"><code>POST /mobile/services/action/change_privacy</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_question_config</code></td><td class="path"><code>POST /mobile/services/action/change_question_config</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_profile_dir</code></td><td class="path"><code>POST /mobile/services/action/delete_profile_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_profile_file</code></td><td class="path"><code>POST /mobile/services/action/delete_profile_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_profile</code></td><td class="path"><code>POST /mobile/services/action/edit_profile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_profile_dir</code></td><td class="path"><code>POST /mobile/services/action/edit_profile_dir</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>edit_profile_fields</code></td><td class="path"><code>POST /mobile/services/information/edit_profile_fields</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_profile_file</code></td><td class="path"><code>POST /mobile/services/action/edit_profile_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>fetch_users_by_mobile</code></td><td class="path"><code>POST /mobile/services/information/fetch_users_by_mobile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>fill_account_type</code></td><td class="path"><code>POST /mobile/services/action/fill_account_type</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>fill_profile</code></td><td class="path"><code>POST /mobile/services/action/fill_profile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>invite_user</code></td><td class="path"><code>POST /mobile/services/action/invite_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_avatar</code></td><td class="path"><code>POST /mobile/services/action/remove_avatar</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_question_option</code></td><td class="path"><code>POST /mobile/services/action/remove_question_option</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>request_change_from_user</code></td><td class="path"><code>POST /mobile/services/action/request_change_from_user</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>save_file_to_profile</code></td><td class="path"><code>POST /mobile/services/action/save_file_to_profile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>save_user_privacy</code></td><td class="path"><code>POST /mobile/services/action/save_user_privacy</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>subscribe_question</code></td><td class="path"><code>POST /mobile/services/action/subscribe_question</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>user_block_exceed</code></td><td class="path"><code>POST /mobile/services/information/user_block_exceed</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>user_privacy</code></td><td class="path"><code>POST /mobile/services/information/user_privacy</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>user_profile</code></td><td class="path"><code>POST /mobile/services/information/user_profile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-feed-comments">
+<h3>Feed & comments <span class="count">22 ops · 19 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_comment</code></td><td class="path"><code>POST /mobile/services/action/add_comment</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_news</code></td><td class="path"><code>POST /mobile/services/action/add_news</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>comments</code></td><td class="path"><code>POST /mobile/services/information/comments</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_news</code></td><td class="path"><code>POST /mobile/services/action/edit_news</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_post</code></td><td class="path"><code>POST /mobile/services/action/edit_post</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>forward</code></td><td class="path"><code>POST /mobile/services/action/forward</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>forward_message</code></td><td class="path"><code>POST /mobile/services/action/forward_message</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>get_forward_list</code></td><td class="path"><code>POST /mobile/services/action/get_forward_list</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_news_item</code></td><td class="path"><code>POST /mobile/services/information/get_news_item</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_post</code></td><td class="path"><code>POST /mobile/services/information/get_post</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>like</code></td><td class="path"><code>POST /mobile/services/action/like</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>like_comment</code></td><td class="path"><code>POST /mobile/services/action/like_comment</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>newsfeed_forward_searchable_questions</code></td><td class="path"><code>POST /mobile/services/information/newsfeed_forward_searchable_questions</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>newsfeed_forward_searchable_users</code></td><td class="path"><code>POST /mobile/services/information/newsfeed_forward_searchable_users</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>posted_data</code></td><td class="path"><code>POST /mobile/services/information/posted_data</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>posted_data</code></td><td class="path"><code>POST /mobile/services/action/posted_data</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_comment</code></td><td class="path"><code>POST /mobile/services/action/remove_comment</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_feed</code></td><td class="path"><code>POST /mobile/services/action/remove_feed</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_like</code></td><td class="path"><code>POST /mobile/services/action/remove_like</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_news</code></td><td class="path"><code>POST /mobile/services/action/remove_news</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>send_post</code></td><td class="path"><code>POST /mobile/services/action/send_post</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unlike_comment</code></td><td class="path"><code>POST /mobile/services/action/unlike_comment</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-events">
+<h3>Events <span class="count">13 ops · 8 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_event_file</code></td><td class="path"><code>POST /mobile/services/action/add_event_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_event</code></td><td class="path"><code>POST /mobile/services/action/create_event</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_event_file</code></td><td class="path"><code>POST /mobile/services/action/delete_event_file</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_event</code></td><td class="path"><code>POST /mobile/services/action/edit_event</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>event_accept_invite</code></td><td class="path"><code>POST /mobile/services/action/event_accept_invite</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>event_cancel_invite</code></td><td class="path"><code>POST /mobile/services/action/event_cancel_invite</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>event_change_status</code></td><td class="path"><code>POST /mobile/services/action/event_change_status</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>event_invite_list</code></td><td class="path"><code>POST /mobile/services/information/event_invite_list</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>event_invite_user</code></td><td class="path"><code>POST /mobile/services/action/event_invite_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>events</code></td><td class="path"><code>POST /mobile/services/information/events</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_event</code></td><td class="path"><code>POST /mobile/services/information/get_event</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>join_event</code></td><td class="path"><code>POST /mobile/services/action/join_event</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>leave_event</code></td><td class="path"><code>POST /mobile/services/action/leave_event</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-general">
+<h3>General <span class="count">12 ops · 7 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>answer_option</code></td><td class="path"><code>POST /mobile/services/action/answer_option</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>cancel_request</code></td><td class="path"><code>POST /mobile/services/action/cancel_request</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>config</code></td><td class="path"><code>POST /mobile/services/information/config</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_invitation_link</code></td><td class="path"><code>POST /mobile/services/action/create_invitation_link</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>deactivate_invitation_link</code></td><td class="path"><code>POST /mobile/services/action/deactivate_invitation_link</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>generated_email_pattern</code></td><td class="path"><code>POST /mobile/services/information/generated_email_pattern</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>generated_email_pattern</code></td><td class="path"><code>POST /mobile/services/action/generated_email_pattern</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_dashboard</code></td><td class="path"><code>POST /mobile/services/information/get_dashboard</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>join</code></td><td class="path"><code>POST /mobile/services/action/join</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>requests</code></td><td class="path"><code>POST /mobile/services/information/requests</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>send_contact_us</code></td><td class="path"><code>POST /mobile/services/action/send_contact_us</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>update_rate_item</code></td><td class="path"><code>POST /mobile/services/action/update_rate_item</code></td><td><span class="chip no">registry only</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-forum">
+<h3>Forum <span class="count">12 ops · 8 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_post_forum</code></td><td class="path"><code>POST /mobile/services/action/add_post_forum</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_topic_forum</code></td><td class="path"><code>POST /mobile/services/action/add_topic_forum</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>conclude_topic</code></td><td class="path"><code>POST /mobile/services/action/conclude_topic</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_post_forum</code></td><td class="path"><code>POST /mobile/services/action/delete_post_forum</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>delete_topic</code></td><td class="path"><code>POST /mobile/services/action/delete_topic</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_topic</code></td><td class="path"><code>POST /mobile/services/action/edit_topic</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_topic_post</code></td><td class="path"><code>POST /mobile/services/action/edit_topic_post</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>forums</code></td><td class="path"><code>POST /mobile/services/information/forums</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>lock_topic</code></td><td class="path"><code>POST /mobile/services/action/lock_topic</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>topic</code></td><td class="path"><code>POST /mobile/services/information/topic</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>topics</code></td><td class="path"><code>POST /mobile/services/information/topics</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unlock_topic</code></td><td class="path"><code>POST /mobile/services/action/unlock_topic</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-media-photo-video-">
+<h3>Media (photo & video) <span class="count">12 ops · 12 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_user_coverphoto</code></td><td class="path"><code>POST /mobile/services/action/change_user_coverphoto</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_album</code></td><td class="path"><code>POST /mobile/services/action/create_album</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_photo</code></td><td class="path"><code>POST /mobile/services/action/create_photo</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>create_video</code></td><td class="path"><code>POST /mobile/services/action/create_video</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_album_photos</code></td><td class="path"><code>POST /mobile/services/information/get_album_photos</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_photo</code></td><td class="path"><code>POST /mobile/services/information/get_photo</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_user_albums</code></td><td class="path"><code>POST /mobile/services/information/get_user_albums</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_user_videos</code></td><td class="path"><code>POST /mobile/services/information/get_user_videos</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_video</code></td><td class="path"><code>POST /mobile/services/information/get_video</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_album</code></td><td class="path"><code>POST /mobile/services/action/remove_album</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_photo</code></td><td class="path"><code>POST /mobile/services/action/remove_photo</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_video</code></td><td class="path"><code>POST /mobile/services/action/remove_video</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-auth-session">
+<h3>Auth & session <span class="count">11 ops · 11 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>change_password</code></td><td class="path"><code>POST /mobile/services/action/change_password</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>check_login</code></td><td class="path"><code>POST /mobile/services/information/check_login</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>check_login</code></td><td class="path"><code>POST /mobile/services/action/check_login</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>check_verification_code</code></td><td class="path"><code>POST /mobile/services/action/check_verification_code</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>forgot_password</code></td><td class="path"><code>POST /mobile/services/action/forgot_password</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>login</code></td><td class="path"><code>POST /mobile/services/action/login</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>logout</code></td><td class="path"><code>POST /mobile/services/action/logout</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>send_verification_code_to_mobile</code></td><td class="path"><code>POST /mobile/services/action/send_verification_code_to_mobile</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>terminate_all_session</code></td><td class="path"><code>POST /mobile/services/action/terminate_all_session</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>terminate_session</code></td><td class="path"><code>POST /mobile/services/action/terminate_session</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>verify_reset_password_code</code></td><td class="path"><code>POST /mobile/services/action/verify_reset_password_code</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-chat-messaging">
+<h3>Chat / messaging <span class="count">11 ops · 10 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>clear_messages</code></td><td class="path"><code>POST /mobile/services/action/clear_messages</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_message</code></td><td class="path"><code>POST /mobile/services/action/edit_message</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_chat_media</code></td><td class="path"><code>POST /mobile/services/information/get_chat_media</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_messages</code></td><td class="path"><code>POST /mobile/services/information/get_messages</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>get_user_message</code></td><td class="path"><code>POST /mobile/services/information/get_user_message</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>mark_user_message</code></td><td class="path"><code>POST /mobile/services/action/mark_user_message</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>mute_chat</code></td><td class="path"><code>POST /mobile/services/action/mute_chat</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_message</code></td><td class="path"><code>POST /mobile/services/action/remove_message</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>search_chat_messages</code></td><td class="path"><code>POST /mobile/services/information/search_chat_messages</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>send_message</code></td><td class="path"><code>POST /mobile/services/action/send_message</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unmute_chat</code></td><td class="path"><code>POST /mobile/services/action/unmute_chat</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-landing-builder">
+<h3>Landing builder <span class="count">10 ops · 0 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_create_landing_page</code></td><td class="path"><code>POST /mobile/services/action/iislanding_create_landing_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_create_section</code></td><td class="path"><code>POST /mobile/services/action/iislanding_create_section</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_delete_landing_page</code></td><td class="path"><code>POST /mobile/services/action/iislanding_delete_landing_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_delete_section</code></td><td class="path"><code>POST /mobile/services/action/iislanding_delete_section</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iislanding_get_landing_page</code></td><td class="path"><code>POST /mobile/services/information/iislanding_get_landing_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iislanding_get_landing_pages</code></td><td class="path"><code>POST /mobile/services/information/iislanding_get_landing_pages</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iislanding_get_section</code></td><td class="path"><code>POST /mobile/services/information/iislanding_get_section</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>iislanding_get_sections_by_landing_page</code></td><td class="path"><code>POST /mobile/services/information/iislanding_get_sections_by_landing_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_update_landing_page</code></td><td class="path"><code>POST /mobile/services/action/iislanding_update_landing_page</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iislanding_update_section</code></td><td class="path"><code>POST /mobile/services/action/iislanding_update_section</code></td><td><span class="chip no">registry only</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-social-graph">
+<h3>Social graph <span class="count">8 ops · 8 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>accept_friend</code></td><td class="path"><code>POST /mobile/services/action/accept_friend</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>follow_user</code></td><td class="path"><code>POST /mobile/services/action/follow_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>friend_request</code></td><td class="path"><code>POST /mobile/services/action/friend_request</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>friend_suggestion</code></td><td class="path"><code>POST /mobile/services/information/friend_suggestion</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>mention_suggestion</code></td><td class="path"><code>POST /mobile/services/information/mention_suggestion</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_friend</code></td><td class="path"><code>POST /mobile/services/action/remove_friend</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>search_friends</code></td><td class="path"><code>POST /mobile/services/information/search_friends</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>unfollow_user</code></td><td class="path"><code>POST /mobile/services/action/unfollow_user</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-blogs">
+<h3>Blogs <span class="count">6 ops · 6 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>add_blog</code></td><td class="path"><code>POST /mobile/services/action/add_blog</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>blog</code></td><td class="path"><code>POST /mobile/services/information/blog</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>edit_blog</code></td><td class="path"><code>POST /mobile/services/action/edit_blog</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>latest_blogs</code></td><td class="path"><code>POST /mobile/services/information/latest_blogs</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>remove_blog</code></td><td class="path"><code>POST /mobile/services/action/remove_blog</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>user_blogs</code></td><td class="path"><code>POST /mobile/services/information/user_blogs</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-notifications">
+<h3>Notifications <span class="count">6 ops · 6 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>hide_notification</code></td><td class="path"><code>POST /mobile/services/action/hide_notification</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>new_notifications</code></td><td class="path"><code>POST /mobile/services/information/new_notifications</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>notifications</code></td><td class="path"><code>POST /mobile/services/information/notifications</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>notifications_setting</code></td><td class="path"><code>POST /mobile/services/information/notifications_setting</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>save_notifications_setting</code></td><td class="path"><code>POST /mobile/services/action/save_notifications_setting</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>seen_notification</code></td><td class="path"><code>POST /mobile/services/action/seen_notification</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-files">
+<h3>Files <span class="count">5 ops · 0 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>files_info</code></td><td class="path"><code>POST /mobile/services/information/files_info</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>files_info</code></td><td class="path"><code>POST /mobile/services/action/files_info</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>upload_single_file</code></td><td class="path"><code>POST /mobile/services/action/upload_single_file</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>valid_extensions</code></td><td class="path"><code>POST /mobile/services/information/valid_extensions</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>valid_extensions</code></td><td class="path"><code>POST /mobile/services/action/valid_extensions</code></td><td><span class="chip no">registry only</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-sso-openid-connect-">
+<h3>SSO (OpenID Connect) <span class="count">2 ops · 1 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iishajsso_auth</code></td><td class="path"><code>POST /mobile/services/action/iishajsso_auth</code></td><td><span class="chip no">registry only</span></td></tr>
+<tr><td><span class="m act">ACTION</span></td><td class="path"><code>iishajsso_login</code></td><td class="path"><code>POST /mobile/services/action/iishajsso_login</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
+<section class="cat" id="reg-search">
+<h3>Search <span class="count">1 ops · 1 with schema</span></h3>
+<div class="tablewrap"><table>
+<tr><th>Kind</th><th>Operation</th><th>Endpoint</th><th>Schema</th></tr>
+<tr><td><span class="m">INFO</span></td><td class="path"><code>search</code></td><td class="path"><code>POST /mobile/services/information/search</code></td><td><span class="chip yes">✓ in spec</span></td></tr>
+</table></div>
+</section>
 
 <footer>
   Motoshub API Documentation · generated from backend source annotations (<code>zircote/swagger-php</code>) · served for the front-end team.
