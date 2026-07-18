@@ -1,0 +1,6296 @@
+{
+ "info": {
+  "name": "Motoshub API v1 (161 endpoints)",
+  "description": "REST API v1 — generated from source (branch feat/api-all-features). Login via POST /v1/auth/login, put the returned token in {{token}}.",
+  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+ },
+ "variable": [
+  {
+   "key": "base_url",
+   "value": "https://motonext.shub.ir/api"
+  },
+  {
+   "key": "token",
+   "value": ""
+  }
+ ],
+ "item": [
+  {
+   "name": "Auth · Users · Files",
+   "description": "احراز هویت، کاربران/پروفایل، بلاک/فالو، آواتار، نشست‌ها، آپلود فایل، گزارش تخلف، تماس",
+   "item": [
+    {
+     "name": "POST /auth/login — ورود کاربر به سیستم",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/auth/login",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "description": "ورود کاربر به سیستم",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"username\": \"نمونه\",\n  \"password\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /auth/me — دریافت اطلاعات کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/auth/me",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "auth",
+        "me"
+       ]
+      },
+      "description": "دریافت اطلاعات کاربر جاری"
+     }
+    },
+    {
+     "name": "GET /auth/permissions — دریافت دسترسی های کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/auth/permissions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "auth",
+        "permissions"
+       ]
+      },
+      "description": "دریافت دسترسی های کاربر جاری"
+     }
+    },
+    {
+     "name": "POST /contact — ارسال پیام تماس با ما از طرف کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/contact",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "contact"
+       ]
+      },
+      "description": "ارسال پیام تماس با ما از طرف کاربر جاری",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"subject\": \"نمونه\",\n  \"message\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /files — بارگذاری یک فایل به صورت پیوست (multipart)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/files",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "files"
+       ]
+      },
+      "description": "بارگذاری یک فایل به صورت پیوست (multipart)",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "value": ""
+        },
+        {
+         "key": "type",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "bundle_id",
+         "type": "text",
+         "value": "نمونه"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "GET /files/config — دریافت پسوندهای مجاز و حداکثر حجم فایل برای اعتبارسنجی سمت کلاینت",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/files/config",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "files",
+        "config"
+       ]
+      },
+      "description": "دریافت پسوندهای مجاز و حداکثر حجم فایل برای اعتبارسنجی سمت کلاینت"
+     }
+    },
+    {
+     "name": "GET /files/{uid} — دریافت اطلاعات یک پیوست بر اساس شناسه بسته (bundle)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/files/{uid}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "files",
+        "{uid}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک پیوست بر اساس شناسه بسته (bundle)"
+     }
+    },
+    {
+     "name": "POST /flags — گزارش (فلگ) یک محتوا توسط کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/flags",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "flags"
+       ]
+      },
+      "description": "گزارش (فلگ) یک محتوا توسط کاربر جاری",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"entity_type\": \"نمونه\",\n  \"entity_id\": 1,\n  \"reason\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /users — دریافت لیست کاربران (به همراه صفحه‌بندی و جستجو)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users"
+       ]
+      },
+      "description": "دریافت لیست کاربران (به همراه صفحه‌بندی و جستجو)"
+     }
+    },
+    {
+     "name": "GET /users/blocked — دریافت لیست کاربران بلاک‌شده توسط کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/blocked",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "blocked"
+       ]
+      },
+      "description": "دریافت لیست کاربران بلاک‌شده توسط کاربر جاری"
+     }
+    },
+    {
+     "name": "PATCH /users/me — ویرایش فیلدهای پروفایل کاربر جاری",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me"
+       ]
+      },
+      "description": "ویرایش فیلدهای پروفایل کاربر جاری",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"fields\": [],\n  \"user_status\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /users/me/avatar — حذف آواتار کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me/avatar",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me",
+        "avatar"
+       ]
+      },
+      "description": "حذف آواتار کاربر جاری"
+     }
+    },
+    {
+     "name": "POST /users/me/avatar — تغییر آواتار کاربر جاری (آپلود multipart)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me/avatar",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me",
+        "avatar"
+       ]
+      },
+      "description": "تغییر آواتار کاربر جاری (آپلود multipart)",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "value": ""
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "DELETE /users/me/sessions — خاتمه دادن به تمام سشن‌های دیگر کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me/sessions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me",
+        "sessions"
+       ]
+      },
+      "description": "خاتمه دادن به تمام سشن‌های دیگر کاربر جاری"
+     }
+    },
+    {
+     "name": "GET /users/me/sessions — دریافت تاریخچه ورود و سشن‌های فعال کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me/sessions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me",
+        "sessions"
+       ]
+      },
+      "description": "دریافت تاریخچه ورود و سشن‌های فعال کاربر جاری"
+     }
+    },
+    {
+     "name": "DELETE /users/me/sessions/{id} — خاتمه دادن به یک سشن کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/me/sessions/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "me",
+        "sessions",
+        "{id}"
+       ]
+      },
+      "description": "خاتمه دادن به یک سشن کاربر جاری"
+     }
+    },
+    {
+     "name": "GET /users/{id} — دریافت پروفایل کامل یک کاربر (به همراه سوالات پروفایل)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "{id}"
+       ]
+      },
+      "description": "دریافت پروفایل کامل یک کاربر (به همراه سوالات پروفایل)"
+     }
+    },
+    {
+     "name": "DELETE /users/{id}/block — آنبلاک کردن یک کاربر توسط کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/{id}/block",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "{id}",
+        "block"
+       ]
+      },
+      "description": "آنبلاک کردن یک کاربر توسط کاربر جاری"
+     }
+    },
+    {
+     "name": "POST /users/{id}/block — بلاک کردن یک کاربر توسط کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/{id}/block",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "{id}",
+        "block"
+       ]
+      },
+      "description": "بلاک کردن یک کاربر توسط کاربر جاری"
+     }
+    },
+    {
+     "name": "DELETE /users/{id}/follow — لغو دنبال کردن یک کاربر توسط کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/{id}/follow",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "{id}",
+        "follow"
+       ]
+      },
+      "description": "لغو دنبال کردن یک کاربر توسط کاربر جاری"
+     }
+    },
+    {
+     "name": "POST /users/{id}/follow — دنبال کردن یک کاربر توسط کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/users/{id}/follow",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "users",
+        "{id}",
+        "follow"
+       ]
+      },
+      "description": "دنبال کردن یک کاربر توسط کاربر جاری"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Blogs",
+   "description": "وبلاگ‌ها",
+   "item": [
+    {
+     "name": "GET /blogs — دریافت لیست وبلاگ‌ها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/blogs",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "blogs"
+       ]
+      },
+      "description": "دریافت لیست وبلاگ‌ها (به همراه صفحه‌بندی)\n\nPermissions: blogs.view, blogs.list"
+     }
+    },
+    {
+     "name": "POST /blogs — ایجاد وبلاگ جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/blogs",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "blogs"
+       ]
+      },
+      "description": "ایجاد وبلاگ جدید\n\nPermissions: blogs.add, blogs.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"post_content\": \"نمونه\",\n  \"attachment_uid\": \"نمونه\",\n  \"send_publish_notification\": false,\n  \"tags\": [],\n  \"is_draft\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /blogs/{id} — حذف کامل وبلاگ",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/blogs/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "blogs",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل وبلاگ\n\nPermissions: blogs.add, blogs.delete"
+     }
+    },
+    {
+     "name": "GET /blogs/{id} — دریافت اطلاعات یک وبلاگ خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/blogs/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "blogs",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک وبلاگ خاص\n\nPermissions: blogs.view, blogs.show"
+     }
+    },
+    {
+     "name": "PATCH /blogs/{id} — ویرایش اطلاعات وبلاگ",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/blogs/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "blogs",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات وبلاگ\n\nPermissions: blogs.add, blogs.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"post_content\": \"نمونه\",\n  \"attachment_uid\": \"نمونه\",\n  \"send_publish_notification\": false,\n  \"tags\": [],\n  \"is_draft\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "News",
+   "description": "اخبار",
+   "item": [
+    {
+     "name": "GET /news — دریافت لیست اخبار",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/news",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "news"
+       ]
+      },
+      "description": "دریافت لیست اخبار\n\nPermissions: iisnews.view, iisnews.list"
+     }
+    },
+    {
+     "name": "POST /news — ایجاد خبر جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/news",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "news"
+       ]
+      },
+      "description": "ایجاد خبر جدید\n\nPermissions: iisnews.add, iisnews.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"post_content\": \"نمونه\",\n  \"attachment_uid\": \"نمونه\",\n  \"send_publish_notification\": false,\n  \"tags\": [],\n  \"is_draft\": false,\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /news/{id} — حذف کامل خبر",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/news/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "news",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل خبر\n\nPermissions: iisnews.add, iisnews.delete"
+     }
+    },
+    {
+     "name": "GET /news/{id} — دریافت اطلاعات یک خبر خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/news/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "news",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک خبر خاص\n\nPermissions: iisnews.view, iisnews.show"
+     }
+    },
+    {
+     "name": "PATCH /news/{id} — ویرایش اطلاعات خبر",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/news/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "news",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات خبر\n\nPermissions: iisnews.add, iisnews.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"post_content\": \"نمونه\",\n  \"attachment_uid\": \"نمونه\",\n  \"send_publish_notification\": false,\n  \"tags\": [],\n  \"is_draft\": false,\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Photos & Albums",
+   "description": "عکس و آلبوم",
+   "item": [
+    {
+     "name": "GET /albums — دریافت لیست آلبوم‌ها",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums"
+       ]
+      },
+      "description": "دریافت لیست آلبوم‌ها\n\nPermissions: photo.view, photo.list"
+     }
+    },
+    {
+     "name": "POST /albums — ایجاد آلبوم جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums"
+       ]
+      },
+      "description": "ایجاد آلبوم جدید\n\nPermissions: photo.upload, photo.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"نمونه\",\n  \"description\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /albums/{id} — حذف کامل آلبوم",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل آلبوم\n\nPermissions: photo.upload, photo.delete"
+     }
+    },
+    {
+     "name": "GET /albums/{id} — دریافت اطلاعات یک آلبوم خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک آلبوم خاص\n\nPermissions: photo.view, photo.show"
+     }
+    },
+    {
+     "name": "PATCH /albums/{id} — ویرایش اطلاعات آلبوم",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات آلبوم\n\nPermissions: photo.upload, photo.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"نمونه\",\n  \"description\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /albums/{id}/photos — دریافت عکس‌های یک آلبوم",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/albums/{id}/photos",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "albums",
+        "{id}",
+        "photos"
+       ]
+      },
+      "description": "دریافت عکس‌های یک آلبوم\n\nPermissions: photo.view, photo.list"
+     }
+    },
+    {
+     "name": "GET /photos — دریافت لیست عکس‌ها",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/photos",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "photos"
+       ]
+      },
+      "description": "دریافت لیست عکس‌ها\n\nPermissions: photo.view, photo.list"
+     }
+    },
+    {
+     "name": "POST /photos — آپلود عکس جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/photos",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "photos"
+       ]
+      },
+      "description": "آپلود عکس جدید\n\nPermissions: photo.upload, photo.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"photo\": \"نمونه\",\n  \"album_id\": 1,\n  \"description\": \"نمونه\",\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /photos/{id} — حذف کامل عکس",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/photos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "photos",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل عکس\n\nPermissions: photo.upload, photo.delete"
+     }
+    },
+    {
+     "name": "GET /photos/{id} — دریافت اطلاعات یک عکس خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/photos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "photos",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک عکس خاص\n\nPermissions: photo.view, photo.show"
+     }
+    },
+    {
+     "name": "PATCH /photos/{id} — ویرایش اطلاعات عکس",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/photos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "photos",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات عکس\n\nPermissions: photo.upload, photo.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"description\": \"نمونه\",\n  \"album_id\": 1,\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Video",
+   "description": "ویدیو",
+   "item": [
+    {
+     "name": "GET /videos — دریافت لیست ویدیوها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/videos",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "videos"
+       ]
+      },
+      "description": "دریافت لیست ویدیوها (به همراه صفحه‌بندی)\n\nPermissions: video.view, video.list"
+     }
+    },
+    {
+     "name": "POST /videos — افزودن ویدیو جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/videos",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "videos"
+       ]
+      },
+      "description": "افزودن ویدیو جدید\n\nPermissions: video.add, video.add",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "title",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "description",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "code",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "file",
+         "type": "file",
+         "value": ""
+        },
+        {
+         "key": "privacy",
+         "type": "text",
+         "value": "نمونه"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "DELETE /videos/{id} — حذف کامل ویدیو",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/videos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "videos",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل ویدیو\n\nPermissions: video.add, video.delete"
+     }
+    },
+    {
+     "name": "GET /videos/{id} — دریافت اطلاعات یک ویدیو خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/videos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "videos",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک ویدیو خاص\n\nPermissions: video.view, video.show"
+     }
+    },
+    {
+     "name": "PATCH /videos/{id} — ویرایش اطلاعات ویدیو",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/videos/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "videos",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات ویدیو\n\nPermissions: video.add, video.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"description\": \"نمونه\",\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Events",
+   "description": "رویدادها + عضویت/دعوت/فایل",
+   "item": [
+    {
+     "name": "GET /events — دریافت لیست رویدادها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events"
+       ]
+      },
+      "description": "دریافت لیست رویدادها (به همراه صفحه‌بندی)\n\nPermissions: event.view, event.list"
+     }
+    },
+    {
+     "name": "POST /events — ایجاد رویداد جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events"
+       ]
+      },
+      "description": "ایجاد رویداد جدید\n\nPermissions: event.add, event.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"description\": \"نمونه\",\n  \"location\": \"نمونه\",\n  \"start_at\": \"نمونه\",\n  \"end_at\": \"نمونه\",\n  \"who_can_view\": 1,\n  \"who_can_invite\": 1,\n  \"all_day\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /events/{id} — حذف کامل رویداد",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل رویداد\n\nPermissions: event.add, event.delete"
+     }
+    },
+    {
+     "name": "GET /events/{id} — دریافت اطلاعات یک رویداد خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک رویداد خاص\n\nPermissions: event.view, event.show"
+     }
+    },
+    {
+     "name": "PATCH /events/{id} — ویرایش اطلاعات رویداد",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات رویداد\n\nPermissions: event.add, event.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"description\": \"نمونه\",\n  \"location\": \"نمونه\",\n  \"start_at\": \"نمونه\",\n  \"end_at\": \"نمونه\",\n  \"who_can_view\": 1,\n  \"who_can_invite\": 1,\n  \"all_day\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "PATCH /events/{id}/attendance — تغییر وضعیت حضور در رویداد",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/attendance",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "attendance"
+       ]
+      },
+      "description": "تغییر وضعیت حضور در رویداد\n\nPermissions: event.view, event.change_attendance",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /events/{id}/files — افزودن فایل به رویداد (multipart)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/files",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "files"
+       ]
+      },
+      "description": "افزودن فایل به رویداد (multipart)\n\nPermissions: event.view, event.upload_file",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "file",
+         "type": "file",
+         "value": ""
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "DELETE /events/{id}/files/{fileId} — حذف فایل رویداد",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/files/{fileId}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "files",
+        "{fileId}"
+       ]
+      },
+      "description": "حذف فایل رویداد\n\nPermissions: event.view, event.delete_file"
+     }
+    },
+    {
+     "name": "GET /events/{id}/invitable-users — لیست کاربران قابل‌دعوت به رویداد",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/invitable-users",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "invitable-users"
+       ]
+      },
+      "description": "لیست کاربران قابل‌دعوت به رویداد\n\nPermissions: event.view, event.invite"
+     }
+    },
+    {
+     "name": "DELETE /events/{id}/invites — رد/لغو دعوت رویداد برای کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/invites",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "invites"
+       ]
+      },
+      "description": "رد/لغو دعوت رویداد برای کاربر جاری\n\nPermissions: event.view, event.cancel_invite"
+     }
+    },
+    {
+     "name": "POST /events/{id}/invites — دعوت کاربر به رویداد",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/invites",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "invites"
+       ]
+      },
+      "description": "دعوت کاربر به رویداد\n\nPermissions: event.view, event.invite",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"user_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /events/{id}/invites/accept — پذیرش دعوت رویداد",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/invites/accept",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "invites",
+        "accept"
+       ]
+      },
+      "description": "پذیرش دعوت رویداد\n\nPermissions: event.view, event.accept_invite"
+     }
+    },
+    {
+     "name": "DELETE /events/{id}/join — خروج از رویداد (مالک = حذف کل رویداد)",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/join",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "join"
+       ]
+      },
+      "description": "خروج از رویداد (مالک = حذف کل رویداد)\n\nPermissions: event.view, event.leave"
+     }
+    },
+    {
+     "name": "POST /events/{id}/join — عضویت در رویداد",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/events/{id}/join",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "events",
+        "{id}",
+        "join"
+       ]
+      },
+      "description": "عضویت در رویداد\n\nPermissions: event.view, event.join"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Friends",
+   "description": "دوستی‌ها",
+   "item": [
+    {
+     "name": "GET /friends — دریافت لیست دوستان کاربر جاری (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/friends",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "friends"
+       ]
+      },
+      "description": "دریافت لیست دوستان کاربر جاری (به همراه صفحه‌بندی)\n\nPermissions: friends.view, friends.list"
+     }
+    },
+    {
+     "name": "POST /friends — ارسال درخواست دوستی",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/friends",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "friends"
+       ]
+      },
+      "description": "ارسال درخواست دوستی\n\nPermissions: friends.add_friend, friends.add_friend",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"user_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /friends/requests — دریافت لیست درخواست‌های دوستی دریافتی کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/friends/requests",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "friends",
+        "requests"
+       ]
+      },
+      "description": "دریافت لیست درخواست‌های دوستی دریافتی کاربر جاری\n\nPermissions: friends.view, friends.list"
+     }
+    },
+    {
+     "name": "DELETE /friends/{id} — حذف دوست یا لغو/رد درخواست دوستی",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/friends/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "friends",
+        "{id}"
+       ]
+      },
+      "description": "حذف دوست یا لغو/رد درخواست دوستی\n\nPermissions: friends.add_friend, friends.add_friend"
+     }
+    },
+    {
+     "name": "POST /friends/{id}/accept — تایید درخواست دوستی دریافتی",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/friends/{id}/accept",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "friends",
+        "{id}",
+        "accept"
+       ]
+      },
+      "description": "تایید درخواست دوستی دریافتی\n\nPermissions: friends.add_friend, friends.add_friend"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Notifications",
+   "description": "اعلان‌ها و تنظیمات اعلان",
+   "item": [
+    {
+     "name": "GET /notifications — دریافت لیست اعلان‌های کاربر جاری (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/notifications",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "notifications"
+       ]
+      },
+      "description": "دریافت لیست اعلان‌های کاربر جاری (به همراه صفحه‌بندی)\n\nPermissions: notifications.view, notifications.list"
+     }
+    },
+    {
+     "name": "POST /notifications/seen — علامت‌گذاری همه اعلان‌های کاربر جاری به عنوان دیده‌شده",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/notifications/seen",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "notifications",
+        "seen"
+       ]
+      },
+      "description": "علامت‌گذاری همه اعلان‌های کاربر جاری به عنوان دیده‌شده\n\nPermissions: notifications.view, notifications.seen"
+     }
+    },
+    {
+     "name": "GET /notifications/settings — دریافت تنظیمات اعلان‌های کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/notifications/settings",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "notifications",
+        "settings"
+       ]
+      },
+      "description": "دریافت تنظیمات اعلان‌های کاربر جاری\n\nPermissions: notifications.view, notifications.settings"
+     }
+    },
+    {
+     "name": "PATCH /notifications/settings — بروزرسانی تنظیمات اعلان‌های کاربر جاری",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/notifications/settings",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "notifications",
+        "settings"
+       ]
+      },
+      "description": "بروزرسانی تنظیمات اعلان‌های کاربر جاری\n\nPermissions: notifications.view, notifications.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"schedule\": \"نمونه\",\n  \"actions\": []\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /notifications/{id}/read — علامت‌گذاری یک اعلان مشخص به عنوان خوانده‌شده",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/notifications/{id}/read",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "notifications",
+        "{id}",
+        "read"
+       ]
+      },
+      "description": "علامت‌گذاری یک اعلان مشخص به عنوان خوانده‌شده\n\nPermissions: notifications.view, notifications.read"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Forum",
+   "description": "انجمن: تاپیک و پست",
+   "item": [
+    {
+     "name": "DELETE /forum/posts/{id} — حذف یک پاسخ",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/posts/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "posts",
+        "{id}"
+       ]
+      },
+      "description": "حذف یک پاسخ\n\nPermissions: forum.delete, forum.delete"
+     }
+    },
+    {
+     "name": "PATCH /forum/posts/{id} — ویرایش یک پاسخ",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/posts/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "posts",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش یک پاسخ\n\nPermissions: forum.edit, forum.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"text\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /forum/topics — دریافت لیست موضوعات انجمن (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics"
+       ]
+      },
+      "description": "دریافت لیست موضوعات انجمن (به همراه صفحه‌بندی)\n\nPermissions: forum.view, forum.list"
+     }
+    },
+    {
+     "name": "POST /forum/topics — ایجاد موضوع جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics"
+       ]
+      },
+      "description": "ایجاد موضوع جدید\n\nPermissions: forum.add, forum.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"group_id\": 1,\n  \"title\": \"نمونه\",\n  \"text\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /forum/topics/{id} — حذف کامل موضوع",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل موضوع\n\nPermissions: forum.delete, forum.delete"
+     }
+    },
+    {
+     "name": "GET /forum/topics/{id} — دریافت اطلاعات یک موضوع خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک موضوع خاص\n\nPermissions: forum.view, forum.show"
+     }
+    },
+    {
+     "name": "PATCH /forum/topics/{id} — ویرایش اطلاعات موضوع",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات موضوع\n\nPermissions: forum.edit, forum.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"text\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /forum/topics/{id}/lock — قفل کردن موضوع",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{id}/lock",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{id}",
+        "lock"
+       ]
+      },
+      "description": "قفل کردن موضوع\n\nPermissions: forum.edit, forum.edit"
+     }
+    },
+    {
+     "name": "POST /forum/topics/{id}/unlock — باز کردن قفل موضوع",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{id}/unlock",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{id}",
+        "unlock"
+       ]
+      },
+      "description": "باز کردن قفل موضوع\n\nPermissions: forum.edit, forum.edit"
+     }
+    },
+    {
+     "name": "GET /forum/topics/{topicId}/posts — دریافت لیست پاسخ‌های یک موضوع (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{topicId}/posts",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{topicId}",
+        "posts"
+       ]
+      },
+      "description": "دریافت لیست پاسخ‌های یک موضوع (به همراه صفحه‌بندی)\n\nPermissions: forum.view, forum.list"
+     }
+    },
+    {
+     "name": "POST /forum/topics/{topicId}/posts — ارسال پاسخ جدید در یک موضوع",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/forum/topics/{topicId}/posts",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "forum",
+        "topics",
+        "{topicId}",
+        "posts"
+       ]
+      },
+      "description": "ارسال پاسخ جدید در یک موضوع\n\nPermissions: forum.add, forum.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"text\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Polls",
+   "description": "نظرسنجی",
+   "item": [
+    {
+     "name": "GET /polls — دریافت لیست نظرسنجی‌ها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls"
+       ]
+      },
+      "description": "دریافت لیست نظرسنجی‌ها (به همراه صفحه‌بندی)\n\nPermissions: iisquestions.view, iisquestions.list"
+     }
+    },
+    {
+     "name": "POST /polls — ایجاد نظرسنجی جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls"
+       ]
+      },
+      "description": "ایجاد نظرسنجی جدید\n\nPermissions: iisquestions.add, iisquestions.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"add_option\": \"نمونه\",\n  \"is_multiple\": false,\n  \"options\": [],\n  \"context\": \"نمونه\",\n  \"context_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /polls/{id} — حذف کامل نظرسنجی",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل نظرسنجی\n\nPermissions: iisquestions.add, iisquestions.delete"
+     }
+    },
+    {
+     "name": "GET /polls/{id} — دریافت اطلاعات یک نظرسنجی خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک نظرسنجی خاص\n\nPermissions: iisquestions.view, iisquestions.show"
+     }
+    },
+    {
+     "name": "PATCH /polls/{id} — ویرایش تنظیمات نظرسنجی",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش تنظیمات نظرسنجی\n\nPermissions: iisquestions.add, iisquestions.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"add_option\": \"نمونه\",\n  \"is_multiple\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /polls/{id}/vote — ثبت یا حذف رأی برای یک گزینه نظرسنجی",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/polls/{id}/vote",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "polls",
+        "{id}",
+        "vote"
+       ]
+      },
+      "description": "ثبت یا حذف رأی برای یک گزینه نظرسنجی\n\nPermissions: iisquestions.answer, iisquestions.add_answer",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"option_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Comments",
+   "description": "کامنت بین‌ماژولی + لایک",
+   "item": [
+    {
+     "name": "GET /comments — دریافت لیست نظرات یک محتوا (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/comments",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "comments"
+       ]
+      },
+      "description": "دریافت لیست نظرات یک محتوا (به همراه صفحه‌بندی)\n\nPermissions: iiscommentplus.view, iiscommentplus.list"
+     }
+    },
+    {
+     "name": "POST /comments — ثبت نظر جدید روی یک محتوا",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/comments",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "comments"
+       ]
+      },
+      "description": "ثبت نظر جدید روی یک محتوا\n\nPermissions: iiscommentplus.view, iiscommentplus.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"entity_type\": \"نمونه\",\n  \"entity_id\": 1,\n  \"text\": \"نمونه\",\n  \"attachment\": \"نمونه\",\n  \"reply_id\": 1,\n  \"reply_user_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /comments/{id} — حذف یک نظر",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/comments/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "comments",
+        "{id}"
+       ]
+      },
+      "description": "حذف یک نظر\n\nPermissions: iiscommentplus.view, iiscommentplus.delete"
+     }
+    },
+    {
+     "name": "DELETE /comments/{id}/like — حذف پسند از یک نظر",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/comments/{id}/like",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "comments",
+        "{id}",
+        "like"
+       ]
+      },
+      "description": "حذف پسند از یک نظر\n\nPermissions: iiscommentplus.view, iiscommentplus.unlike"
+     }
+    },
+    {
+     "name": "POST /comments/{id}/like — ثبت پسند برای یک نظر",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/comments/{id}/like",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "comments",
+        "{id}",
+        "like"
+       ]
+      },
+      "description": "ثبت پسند برای یک نظر\n\nPermissions: iiscommentplus.view, iiscommentplus.like"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Newsfeed",
+   "description": "فید، پست، لایک، فوروارد",
+   "item": [
+    {
+     "name": "GET /feed — دریافت فید خبری (داشبورد، پروفایل کاربر، گروه یا کل سایت — به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed"
+       ]
+      },
+      "description": "دریافت فید خبری (داشبورد، پروفایل کاربر، گروه یا کل سایت — به همراه صفحه‌بندی)\n\nPermissions: newsfeed.view, newsfeed.list"
+     }
+    },
+    {
+     "name": "POST /feed — ارسال پست جدید روی فید (دیوار خود، دیوار کاربر دیگر یا گروه)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed"
+       ]
+      },
+      "description": "ارسال پست جدید روی فید (دیوار خود، دیوار کاربر دیگر یا گروه)\n\nPermissions: newsfeed.add, newsfeed.allow_status_update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"نمونه\",\n  \"feed_type\": \"نمونه\",\n  \"feed_id\": 1,\n  \"privacy\": \"نمونه\",\n  \"attachment_uid\": \"نمونه\",\n  \"reply_to\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /feed/{id} — حذف کامل یک پست از فید",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل یک پست از فید\n\nPermissions: newsfeed.add, newsfeed.delete"
+     }
+    },
+    {
+     "name": "GET /feed/{id} — دریافت اطلاعات یک پست خاص از فید خبری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک پست خاص از فید خبری\n\nPermissions: newsfeed.view, newsfeed.show"
+     }
+    },
+    {
+     "name": "PATCH /feed/{id} — ویرایش متن یک پست فید",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش متن یک پست فید\n\nPermissions: newsfeed.add, newsfeed.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"status\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /feed/{id}/forward — بازنشر (فوروارد) یک پست فید روی دیوار کاربر(ان) یا گروه(ها)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}/forward",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}",
+        "forward"
+       ]
+      },
+      "description": "بازنشر (فوروارد) یک پست فید روی دیوار کاربر(ان) یا گروه(ها)\n\nPermissions: newsfeed.view, newsfeed.forward",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"target_type\": \"نمونه\",\n  \"target_id\": 1,\n  \"target_ids\": []\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /feed/{id}/like — حذف لایک/دیس‌لایک کاربر جاری از یک پست فید",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}/like",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}",
+        "like"
+       ]
+      },
+      "description": "حذف لایک/دیس‌لایک کاربر جاری از یک پست فید\n\nPermissions: newsfeed.view, newsfeed.like"
+     }
+    },
+    {
+     "name": "POST /feed/{id}/like — لایک (vote=1) یا دیس‌لایک (vote=-1) یک پست فید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}/like",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}",
+        "like"
+       ]
+      },
+      "description": "لایک (vote=1) یا دیس‌لایک (vote=-1) یک پست فید\n\nPermissions: newsfeed.view, newsfeed.like",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"vote\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "PATCH /feed/{id}/privacy — تغییر سطح حریم خصوصی یک پست فید",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/feed/{id}/privacy",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "feed",
+        "{id}",
+        "privacy"
+       ]
+      },
+      "description": "تغییر سطح حریم خصوصی یک پست فید\n\nPermissions: newsfeed.view, newsfeed.change_privacy",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"privacy\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Groups",
+   "description": "گروه‌ها: عضویت، دعوت، مدیران، فایل",
+   "item": [
+    {
+     "name": "GET /groups — دریافت لیست گروه‌ها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups"
+       ]
+      },
+      "description": "دریافت لیست گروه‌ها (به همراه صفحه‌بندی)\n\nPermissions: groups.view, groups.list"
+     }
+    },
+    {
+     "name": "POST /groups — ایجاد گروه جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups"
+       ]
+      },
+      "description": "ایجاد گروه جدید\n\nPermissions: groups.create, groups.add",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "title",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "description",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_view",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_invite",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_create_content",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_upload_file",
+         "type": "file",
+         "value": ""
+        },
+        {
+         "key": "who_can_create_topic",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "category_id",
+         "type": "text",
+         "value": "1"
+        },
+        {
+         "key": "need_approve",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message_admin_only",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message_period",
+         "type": "text",
+         "value": "1"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "DELETE /groups/files/{fileId} — حذف فایل گروه",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/files/{fileId}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "files",
+        "{fileId}"
+       ]
+      },
+      "description": "حذف فایل گروه\n\nPermissions: groups.view, groups.delete_file"
+     }
+    },
+    {
+     "name": "POST /groups/invites/accept — پذیرش دعوت‌نامه گروه",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/invites/accept",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "invites",
+        "accept"
+       ]
+      },
+      "description": "پذیرش دعوت‌نامه گروه\n\nPermissions: groups.view, groups.accept_invite",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"invite_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /groups/{id} — حذف کامل گروه",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل گروه\n\nPermissions: groups.view, groups.delete"
+     }
+    },
+    {
+     "name": "GET /groups/{id} — دریافت اطلاعات یک گروه خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک گروه خاص\n\nPermissions: groups.view, groups.show"
+     }
+    },
+    {
+     "name": "PATCH /groups/{id} — ویرایش اطلاعات گروه",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات گروه\n\nPermissions: groups.create, groups.update",
+      "body": {
+       "mode": "formdata",
+       "formdata": [
+        {
+         "key": "title",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "description",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_view",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_invite",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_create_content",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "who_can_upload_file",
+         "type": "file",
+         "value": ""
+        },
+        {
+         "key": "who_can_create_topic",
+         "type": "text",
+         "value": "نمونه"
+        },
+        {
+         "key": "category_id",
+         "type": "text",
+         "value": "1"
+        },
+        {
+         "key": "need_approve",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "delete_group_image",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message_admin_only",
+         "type": "text",
+         "value": "false"
+        },
+        {
+         "key": "send_sms_on_new_message_period",
+         "type": "text",
+         "value": "1"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "GET /groups/{id}/files — دریافت لیست فایل‌های یک گروه (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/files",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "files"
+       ]
+      },
+      "description": "دریافت لیست فایل‌های یک گروه (به همراه صفحه‌بندی)\n\nPermissions: groups.view, groups.list"
+     }
+    },
+    {
+     "name": "POST /groups/{id}/files — بارگذاری فایل جدید در گروه",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/files",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "files"
+       ]
+      },
+      "description": "بارگذاری فایل جدید در گروه\n\nPermissions: groups.view, groups.upload_file",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /groups/{id}/invites — دعوت کاربر به گروه",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/invites",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "invites"
+       ]
+      },
+      "description": "دعوت کاربر به گروه\n\nPermissions: groups.view, groups.invite",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"user_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /groups/{id}/join — خروج از گروه",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/join",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "join"
+       ]
+      },
+      "description": "خروج از گروه\n\nPermissions: groups.view, groups.leave"
+     }
+    },
+    {
+     "name": "POST /groups/{id}/join — عضویت در گروه",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/join",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "join"
+       ]
+      },
+      "description": "عضویت در گروه\n\nPermissions: groups.view, groups.join"
+     }
+    },
+    {
+     "name": "POST /groups/{id}/managers — افزودن مدیر به گروه",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/managers",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "managers"
+       ]
+      },
+      "description": "افزودن مدیر به گروه\n\nPermissions: groups.view, groups.manage_managers",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"user_id\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /groups/{id}/managers/{userId} — حذف مدیر گروه",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/managers/{userId}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "managers",
+        "{userId}"
+       ]
+      },
+      "description": "حذف مدیر گروه\n\nPermissions: groups.view, groups.manage_managers"
+     }
+    },
+    {
+     "name": "GET /groups/{id}/members — دریافت لیست اعضای یک گروه (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/groups/{id}/members",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "groups",
+        "{id}",
+        "members"
+       ]
+      },
+      "description": "دریافت لیست اعضای یک گروه (به همراه صفحه‌بندی)\n\nPermissions: groups.view, groups.list"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Messaging",
+   "description": "چت: گفتگو و پیام",
+   "item": [
+    {
+     "name": "GET /conversations — دریافت لیست گفتگوهای کاربر جاری (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations"
+       ]
+      },
+      "description": "دریافت لیست گفتگوهای کاربر جاری (به همراه صفحه‌بندی)\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "GET /conversations/forward-targets — دریافت لیست کاربران قابل انتخاب برای هدایت پیام (طرف‌های گفتگو + دوستان)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/forward-targets",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "forward-targets"
+       ]
+      },
+      "description": "دریافت لیست کاربران قابل انتخاب برای هدایت پیام (طرف‌های گفتگو + دوستان)\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "GET /conversations/search — جستجو در پیام‌های گفتگوها (کل گفتگوها یا محدود به یک گفتگو)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/search",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "search"
+       ]
+      },
+      "description": "جستجو در پیام‌های گفتگوها (کل گفتگوها یا محدود به یک گفتگو)\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "DELETE /conversations/{id} — پاک کردن گفتگو برای کاربر جاری (تاریخچه سمت مقابل حفظ می‌شود)",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}"
+       ]
+      },
+      "description": "پاک کردن گفتگو برای کاربر جاری (تاریخچه سمت مقابل حفظ می‌شود)\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "GET /conversations/{id} — دریافت یک گفتگو به همراه پیام‌های آن (خواندن گفتگو پیام‌های خوانده‌نشده را خوانده‌شده می‌کند)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}"
+       ]
+      },
+      "description": "دریافت یک گفتگو به همراه پیام‌های آن (خواندن گفتگو پیام‌های خوانده‌نشده را خوانده‌شده می‌کند)\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "GET /conversations/{id}/media — دریافت رسانه‌های (پیوست‌های) یک گفتگو با فیلتر اختیاری photo | video",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}/media",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}",
+        "media"
+       ]
+      },
+      "description": "دریافت رسانه‌های (پیوست‌های) یک گفتگو با فیلتر اختیاری photo | video\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "POST /conversations/{id}/mute — بی‌صدا کردن گفتگو برای کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}/mute",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}",
+        "mute"
+       ]
+      },
+      "description": "بی‌صدا کردن گفتگو برای کاربر جاری\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "POST /conversations/{id}/read — علامت‌گذاری همه پیام‌های خوانده‌نشده گفتگو به عنوان خوانده‌شده",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}/read",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}",
+        "read"
+       ]
+      },
+      "description": "علامت‌گذاری همه پیام‌های خوانده‌نشده گفتگو به عنوان خوانده‌شده\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "POST /conversations/{id}/unmute — باصدا کردن (خروج از حالت بی‌صدا) گفتگو برای کاربر جاری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/conversations/{id}/unmute",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "conversations",
+        "{id}",
+        "unmute"
+       ]
+      },
+      "description": "باصدا کردن (خروج از حالت بی‌صدا) گفتگو برای کاربر جاری\n\nPermissions: mailbox.read_chat_message"
+     }
+    },
+    {
+     "name": "POST /messages — ارسال پیام جدید به یک کاربر (opponent_id) یا گفتگوی موجود (conversation_id)",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/messages",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "messages"
+       ]
+      },
+      "description": "ارسال پیام جدید به یک کاربر (opponent_id) یا گفتگوی موجود (conversation_id)\n\nPermissions: mailbox.send_chat_message",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"opponent_id\": 1,\n  \"conversation_id\": 1,\n  \"text\": \"نمونه\",\n  \"reply_id\": 1,\n  \"attachment_uid\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /messages/{id} — حذف یکی از پیام‌های کاربر جاری",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/messages/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "messages",
+        "{id}"
+       ]
+      },
+      "description": "حذف یکی از پیام‌های کاربر جاری\n\nPermissions: mailbox.send_chat_message"
+     }
+    },
+    {
+     "name": "PATCH /messages/{id} — ویرایش متن یکی از پیام‌های کاربر جاری",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/messages/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "messages",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش متن یکی از پیام‌های کاربر جاری\n\nPermissions: mailbox.send_chat_message",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"text\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "POST /messages/{id}/forward — هدایت (forward) یک پیام به یک یا چند کاربر دیگر",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/messages/{id}/forward",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "messages",
+        "{id}",
+        "forward"
+       ]
+      },
+      "description": "هدایت (forward) یک پیام به یک یا چند کاربر دیگر\n\nPermissions: mailbox.send_chat_message",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"target_ids\": []\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Search",
+   "description": "جستجوی سراسری",
+   "item": [
+    {
+     "name": "GET /search — جستجوی سراسری (کاربران و پست‌های خوراک) به همراه صفحه‌بندی",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/search",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "search"
+       ]
+      },
+      "description": "جستجوی سراسری (کاربران و پست‌های خوراک) به همراه صفحه‌بندی\n\nPermissions: iisadvancesearch.view, iisadvancesearch.search"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Mentions",
+   "description": "پیشنهاد منشن",
+   "item": [
+    {
+     "name": "GET /mentions/suggestions — پیشنهاد کاربران قابل منشن برای کاربر جاری (دوستان و اعضای گروه)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/mentions/suggestions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "mentions",
+        "suggestions"
+       ]
+      },
+      "description": "پیشنهاد کاربران قابل منشن برای کاربر جاری (دوستان و اعضای گروه)\n\nPermissions: iismention.view, iismention.suggestions"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Privacy",
+   "description": "تنظیمات حریم خصوصی",
+   "item": [
+    {
+     "name": "GET /privacy/settings — دریافت تنظیمات حریم خصوصی کاربر جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/privacy/settings",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "privacy",
+        "settings"
+       ]
+      },
+      "description": "دریافت تنظیمات حریم خصوصی کاربر جاری\n\nPermissions: privacy.settings"
+     }
+    },
+    {
+     "name": "PATCH /privacy/settings — بروزرسانی تنظیمات حریم خصوصی کاربر جاری",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/privacy/settings",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "privacy",
+        "settings"
+       ]
+      },
+      "description": "بروزرسانی تنظیمات حریم خصوصی کاربر جاری\n\nPermissions: privacy.settings, privacy.update",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"settings\": []\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Landing Builder",
+   "description": "صفحه‌ساز لندینگ",
+   "item": [
+    {
+     "name": "GET /landing-pages — دریافت لیست صفحات فرود (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages"
+       ]
+      },
+      "description": "دریافت لیست صفحات فرود (به همراه صفحه‌بندی)\n\nPermissions: iislandingcreator.list"
+     }
+    },
+    {
+     "name": "POST /landing-pages — ایجاد صفحه فرود جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages"
+       ]
+      },
+      "description": "ایجاد صفحه فرود جدید\n\nPermissions: iislandingcreator.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"slug\": \"نمونه\",\n  \"is_active\": false,\n  \"header_style\": \"نمونه\",\n  \"header_script\": \"نمونه\",\n  \"footer_script\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /landing-pages/{id} — حذف کامل صفحه فرود",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل صفحه فرود\n\nPermissions: iislandingcreator.delete"
+     }
+    },
+    {
+     "name": "GET /landing-pages/{id} — دریافت اطلاعات یک صفحه فرود خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک صفحه فرود خاص\n\nPermissions: iislandingcreator.show"
+     }
+    },
+    {
+     "name": "PATCH /landing-pages/{id} — ویرایش اطلاعات صفحه فرود",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات صفحه فرود\n\nPermissions: iislandingcreator.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"slug\": \"نمونه\",\n  \"is_active\": false,\n  \"header_style\": \"نمونه\",\n  \"header_script\": \"نمونه\",\n  \"footer_script\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /landing-pages/{id}/sections — دریافت لیست بخش‌های یک صفحه فرود",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages/{id}/sections",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages",
+        "{id}",
+        "sections"
+       ]
+      },
+      "description": "دریافت لیست بخش‌های یک صفحه فرود\n\nPermissions: iislandingcreator.list"
+     }
+    },
+    {
+     "name": "POST /landing-pages/{id}/sections — ایجاد بخش جدید برای صفحه فرود",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-pages/{id}/sections",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-pages",
+        "{id}",
+        "sections"
+       ]
+      },
+      "description": "ایجاد بخش جدید برای صفحه فرود\n\nPermissions: iislandingcreator.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"type\": \"نمونه\",\n  \"is_active\": false,\n  \"prior_section_id\": 1,\n  \"payload\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /landing-sections/{id} — حذف کامل بخش صفحه فرود",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-sections/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-sections",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل بخش صفحه فرود\n\nPermissions: iislandingcreator.delete"
+     }
+    },
+    {
+     "name": "GET /landing-sections/{id} — دریافت اطلاعات یک بخش صفحه فرود خاص",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-sections/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-sections",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک بخش صفحه فرود خاص\n\nPermissions: iislandingcreator.show"
+     }
+    },
+    {
+     "name": "PATCH /landing-sections/{id} — ویرایش اطلاعات بخش صفحه فرود",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/landing-sections/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "landing-sections",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات بخش صفحه فرود\n\nPermissions: iislandingcreator.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"is_active\": false,\n  \"prior_section_id\": 1,\n  \"payload\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Quiz Platform",
+   "description": "پرسمان‌ساز: آزمون، سؤال، شرکت، داوری",
+   "item": [
+    {
+     "name": "GET /judgements — دریافت لیست داوری‌ها (به همراه صفحه‌بندی و انتساب داور جاری)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/judgements",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "judgements"
+       ]
+      },
+      "description": "دریافت لیست داوری‌ها (به همراه صفحه‌بندی و انتساب داور جاری)\n\nPermissions: iispors.view, iispors.judge"
+     }
+    },
+    {
+     "name": "GET /judgements/{id} — دریافت اطلاعات یک داوری به همراه معیارهای مرتب آن و پاسخ‌های داور جاری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/judgements/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "judgements",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک داوری به همراه معیارهای مرتب آن و پاسخ‌های داور جاری\n\nPermissions: iispors.view, iispors.judge"
+     }
+    },
+    {
+     "name": "GET /judgements/{id}/scores — دریافت لیست امتیازهای ثبت‌شده داور جاری برای انتساب خود در یک داوری",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/judgements/{id}/scores",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "judgements",
+        "{id}",
+        "scores"
+       ]
+      },
+      "description": "دریافت لیست امتیازهای ثبت‌شده داور جاری برای انتساب خود در یک داوری\n\nPermissions: iispors.judge"
+     }
+    },
+    {
+     "name": "POST /judgements/{id}/scores — ثبت (یا بروزرسانی) امتیاز داور جاری برای یک معیار داوری",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/judgements/{id}/scores",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "judgements",
+        "{id}",
+        "scores"
+       ]
+      },
+      "description": "ثبت (یا بروزرسانی) امتیاز داور جاری برای یک معیار داوری\n\nPermissions: iispors.judge",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"criteria_id\": 1,\n  \"answer\": \"نمونه\"\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /quiz-questions/{id} — حذف یک پرسش آزمون (به همراه اصلاح زنجیره ترتیب پرسش‌ها)",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quiz-questions/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quiz-questions",
+        "{id}"
+       ]
+      },
+      "description": "حذف یک پرسش آزمون (به همراه اصلاح زنجیره ترتیب پرسش‌ها)\n\nPermissions: iispors.delete"
+     }
+    },
+    {
+     "name": "PATCH /quiz-questions/{id} — ویرایش یک پرسش آزمون",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quiz-questions/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quiz-questions",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش یک پرسش آزمون\n\nPermissions: iispors.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"description\": \"نمونه\",\n  \"payload\": [],\n  \"media\": [],\n  \"required\": false,\n  \"show_question_number\": false,\n  \"update_prior\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /quizzes — دریافت لیست آزمون‌ها / نظرسنجی‌ها (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes"
+       ]
+      },
+      "description": "دریافت لیست آزمون‌ها / نظرسنجی‌ها (به همراه صفحه‌بندی)\n\nPermissions: iispors.view, iispors.list"
+     }
+    },
+    {
+     "name": "POST /quizzes — ایجاد آزمون / نظرسنجی جدید",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes"
+       ]
+      },
+      "description": "ایجاد آزمون / نظرسنجی جدید\n\nPermissions: iispors.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"نمونه\",\n  \"type\": \"نمونه\",\n  \"intro_page\": [],\n  \"ending_page\": [],\n  \"is_active\": false,\n  \"is_visible\": false,\n  \"is_evaluable\": false,\n  \"is_scoreable\": false,\n  \"is_membership_required\": false,\n  \"is_sms_verification_needed\": false,\n  \"start_at\": 1,\n  \"end_at\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "DELETE /quizzes/{id} — حذف کامل آزمون به همراه پرسش‌ها، شرکت‌کنندگان و داوری‌های آن",
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}"
+       ]
+      },
+      "description": "حذف کامل آزمون به همراه پرسش‌ها، شرکت‌کنندگان و داوری‌های آن\n\nPermissions: iispors.delete"
+     }
+    },
+    {
+     "name": "GET /quizzes/{id} — دریافت اطلاعات یک آزمون خاص به همراه پرسش‌های آن",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک آزمون خاص به همراه پرسش‌های آن\n\nPermissions: iispors.view, iispors.show"
+     }
+    },
+    {
+     "name": "PATCH /quizzes/{id} — ویرایش اطلاعات آزمون",
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}"
+       ]
+      },
+      "description": "ویرایش اطلاعات آزمون\n\nPermissions: iispors.edit",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"نمونه\",\n  \"intro_page\": [],\n  \"ending_page\": [],\n  \"is_active\": false,\n  \"is_visible\": false,\n  \"is_evaluable\": false,\n  \"is_scoreable\": false,\n  \"is_membership_required\": false,\n  \"is_sms_verification_needed\": false,\n  \"start_at\": 1,\n  \"end_at\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /quizzes/{id}/questions — دریافت لیست مرتب پرسش‌های یک آزمون",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}/questions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}",
+        "questions"
+       ]
+      },
+      "description": "دریافت لیست مرتب پرسش‌های یک آزمون\n\nPermissions: iispors.view, iispors.list"
+     }
+    },
+    {
+     "name": "POST /quizzes/{id}/questions — افزودن پرسش جدید به یک آزمون",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}/questions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}",
+        "questions"
+       ]
+      },
+      "description": "افزودن پرسش جدید به یک آزمون\n\nPermissions: iispors.add",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"نمونه\",\n  \"question_type\": \"نمونه\",\n  \"description\": \"نمونه\",\n  \"payload\": [],\n  \"media\": [],\n  \"prior_question\": 1,\n  \"group\": 1,\n  \"required\": false,\n  \"show_question_number\": false,\n  \"update_prior\": 1\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /quizzes/{id}/statistics — دریافت آمار تجمیعی یک آزمون (تعداد شرکت‌کنندگان، میانگین زمان پاسخ و شمارش آرا)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}/statistics",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}",
+        "statistics"
+       ]
+      },
+      "description": "دریافت آمار تجمیعی یک آزمون (تعداد شرکت‌کنندگان، میانگین زمان پاسخ و شمارش آرا)\n\nPermissions: iispors.view"
+     }
+    },
+    {
+     "name": "GET /quizzes/{id}/submissions — دریافت لیست شرکت‌های کاربر جاری در یک آزمون (به همراه صفحه‌بندی)",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}/submissions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}",
+        "submissions"
+       ]
+      },
+      "description": "دریافت لیست شرکت‌های کاربر جاری در یک آزمون (به همراه صفحه‌بندی)\n\nPermissions: iispors.view, iispors.list"
+     }
+    },
+    {
+     "name": "POST /quizzes/{id}/submissions — شرکت در آزمون: شروع (یا ادامه) شرکت، ثبت پاسخ‌های ارسالی و در صورت درخواست اتمام آزمون",
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/quizzes/{id}/submissions",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "quizzes",
+        "{id}",
+        "submissions"
+       ]
+      },
+      "description": "شرکت در آزمون: شروع (یا ادامه) شرکت، ثبت پاسخ‌های ارسالی و در صورت درخواست اتمام آزمون\n\nPermissions: iispors.participate",
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"answers\": [],\n  \"finish\": false\n}",
+       "options": {
+        "raw": {
+         "language": "json"
+        }
+       }
+      }
+     }
+    },
+    {
+     "name": "GET /submissions/{id} — دریافت اطلاعات یک شرکت در آزمون به همراه پاسخ‌های ثبت‌شده",
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json"
+       }
+      ],
+      "auth": {
+       "type": "bearer",
+       "bearer": [
+        {
+         "key": "token",
+         "value": "{{token}}",
+         "type": "string"
+        }
+       ]
+      },
+      "url": {
+       "raw": "{{base_url}}/v1/submissions/{id}",
+       "host": [
+        "{{base_url}}"
+       ],
+       "path": [
+        "v1",
+        "submissions",
+        "{id}"
+       ]
+      },
+      "description": "دریافت اطلاعات یک شرکت در آزمون به همراه پاسخ‌های ثبت‌شده\n\nPermissions: iispors.view, iispors.show"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -67,10 +67,14 @@
   <p class="lede">مهاجرت امکانات موتوشاب به تمپلیت REST v1 (فریم‌ورک Bridge). این صفحه کدِ تولیدشده را برای مرور نشان می‌دهد —
     همه‌چیز در یک برنچ ایزوله ساخته شده و <strong>هنوز روی گیت‌لب پوش نشده</strong>.</p>
   <div class="statline">
-    <div class="stat ok"><div class="big">7</div><div class="lbl">فیچر ساخته‌شده (موج ۱ و ۲)</div></div>
-    <div class="stat ok"><div class="big">133</div><div class="lbl">فایل PHP (src)</div></div>
+    <div class="stat ok"><div class="big">20</div><div class="lbl">فیچر — همه‌ی موج‌ها کامل</div></div>
+    <div class="stat ok"><div class="big">161</div><div class="lbl">endpoint REST</div></div>
+    <div class="stat ok"><div class="big">510</div><div class="lbl">فایل بررسی‌شده</div></div>
     <div class="stat ok"><div class="big">0</div><div class="lbl">خطای lint (PHP 8.4)</div></div>
-    <div class="stat"><div class="big">۸</div><div class="lbl">ریسورس REST</div></div>
+  </div>
+  <div class="callout" style="margin-top:16px">
+    ✅ <strong>ساخت کامل شد.</strong> هر ۶ موج تمام: ۱۶۱ endpoint در ۱۹ ماژول، ۱۳۷ اکشن با Policy کامل، صفر تداخل روت، صفر خطای syntax.
+    فهرست کامل در <a href="api-reference.html">مرجع API v1</a> + فایل Postman آماده‌ی دانلود. در انتظار تأیید مالک برای push به گیت‌لب.
   </div>
 </header>
 
@@ -198,17 +202,13 @@
 <h2><span class="n">04</span> ادامه‌ی کار</h2>
 <p class="sub">این صفحه با تکمیل هر موج به‌روز می‌شود.</p>
 <ul>
-  <li><span class="chip ok">موج ۱ ✓</span> Video · Events · Friends · Notifications</li>
-  <li><span class="chip ok">موج ۲ ✓</span> Forum · Questions/Polls · Comments</li>
-  <li>موج ۳: Search · Mention · Privacy · Flag · Contact</li>
-  <li>موج ۴: Newsfeed · Groups · Messaging</li>
-  <li>موج ۵: Users/Profile (۴۲ op) · Files/File-manager</li>
-  <li>موج ۶: iispors (۸۲ op) · iispors judgement · Landing</li>
+  <li><span class="chip ok">موج ۱ ✓</span> Video · Events (۱۴ اکشن، پوشش کامل legacy) · Friends · Notifications</li>
+  <li><span class="chip ok">موج ۲ ✓</span> Forum (Topic+Post) · Questions/Polls · Comments</li>
+  <li><span class="chip ok">موج ۳ ✓</span> Search · Mention · Privacy · Flag · Contact</li>
+  <li><span class="chip ok">موج ۴ ✓</span> Newsfeed (۹ اکشن) · Groups (۳ کنترلر، ۱۵ روت) · Messaging (۱۳ روت)</li>
+  <li><span class="chip ok">موج ۵ ✓</span> Users/Profile (۵ کنترلر، ۱۳ روت) · Files/Upload (ClamAV + config)</li>
+  <li><span class="chip ok">موج ۶ ✓</span> iispors: آزمون/سؤال/شرکت/آمار/داوری (۱۷ روت) · Landing Builder (۱۰ روت)</li>
 </ul>
-<div class="callout warn" style="margin-top:12px">
-  <strong>وقفه‌ی موقت:</strong> ساخت موج‌های بعدی به‌خاطر محدودیت مصرف session متوقف شده و پس از ریست ادامه می‌یابد.
-  کدِ موج‌های ۱ و ۲ کامل، ثبت‌شده و lint-clean است.
-</div>
 <div class="callout">
   <strong>وضعیت پوش:</strong> هیچ‌چیز روی گیت‌لب <code>moto-next</code> پوش نشده. کل کد در برنچ ایزوله‌ی <code>feat/api-all-features</code> است.
   پس از تأیید نهایی تو، پوش می‌شود.

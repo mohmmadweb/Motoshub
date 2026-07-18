@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub API v1 — مرجع کامل (161 endpoint)</title>
+<style>
+  :root{
+    --bg:#f4f6f8;--surface:#fff;--surface-2:#eef1f4;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;--faint:#8a95a3;
+    --accent:#2f7d78;--accent-soft:#dcefed;
+    --get:#2e7d4f;--get-bg:#e3f3ec;--post:#a06008;--post-bg:#f6eecf;--patch:#3e6cb0;--patch-bg:#e2ebf6;--del:#c6473c;--del-bg:#f7e1de;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 3px 10px rgba(20,30,45,.05);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0e1319;--surface:#161d26;--surface-2:#1c2530;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;--faint:#6b7684;
+    --accent:#4bb3ac;--accent-soft:#122b29;
+    --get:#43b981;--get-bg:#12271e;--post:#d9a92e;--post-bg:#2a2410;--patch:#6b9bd6;--patch-bg:#152232;--del:#e0635a;--del-bg:#2b1614;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:15.5px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 90px}
+  header.mast{padding:44px 0 24px;border-bottom:2px solid var(--ink);margin-bottom:18px}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:clamp(24px,4vw,36px);margin:0 0 10px;font-weight:800;line-height:1.2}
+  .lede{color:var(--muted);max-width:70ch;margin:0 0 16px}
+  .dl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .dl a{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;
+    padding:9px 16px;border-radius:9px;font-size:14px;font-weight:600}
+  .dl a.sec{background:var(--surface);color:var(--accent);border:1px solid var(--accent)}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 16px;box-shadow:var(--shadow);
+    font-family:var(--mono);font-size:13px}
+  .stat b{font-size:19px}
+  nav.toc{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);margin:0 -20px 26px;padding:10px 20px;display:flex;gap:6px;flex-wrap:wrap}
+  nav.toc a{font-size:12px;color:var(--muted);text-decoration:none;padding:3px 9px;border-radius:16px;border:1px solid transparent;white-space:nowrap}
+  nav.toc a b{color:var(--accent)}
+  nav.toc a:hover{border-color:var(--line);background:var(--surface)}
+  section{margin:0 0 34px;scroll-margin-top:60px}
+  h2{font-size:21px;margin:0 0 2px;font-weight:750}
+  h2 .cnt{font-family:var(--mono);font-size:12px;color:var(--faint);font-weight:400}
+  .desc{color:var(--muted);font-size:13.5px;margin:0 0 12px}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:680px}
+  th,td{text-align:right;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--surface-2);font-weight:650;font-size:11.5px;color:var(--muted)}
+  tbody tr:last-child td{border-bottom:none}
+  td.verb{width:64px}
+  .m{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-block;direction:ltr}
+  .m.get{color:var(--get);background:var(--get-bg)} .m.post{color:var(--post);background:var(--post-bg)}
+  .m.patch{color:var(--patch);background:var(--patch-bg)} .m.del{color:var(--del);background:var(--del-bg)}
+  td.uri{font-family:var(--mono);font-size:12.5px;text-align:left;white-space:nowrap}
+  td.sum{min-width:200px}
+  td.perms{font-size:11px}
+  .perm{font-family:var(--mono);background:var(--surface-2);border-radius:10px;padding:1px 7px;margin:1px;display:inline-block;direction:ltr;color:var(--muted)}
+  details{margin-top:5px} details summary{cursor:pointer;font-size:12px;color:var(--accent)}
+  details pre{background:var(--surface-2);border-radius:7px;padding:8px 12px;font-family:var(--mono);font-size:12px;
+    overflow-x:auto;text-align:left;margin:6px 0 0}
+  .note{border-inline-start:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:8px;margin:0 0 20px;font-size:14px}
+  .foot{color:var(--faint);font-size:12.5px;text-align:center;font-family:var(--mono);margin-top:36px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="mast">
+  <p class="kicker">Motoshub · REST API v1 Reference · branch feat/api-all-features</p>
+  <h1>مرجع کامل API v1 موتوشاب</h1>
+  <p class="lede">تمام امکانات موتوشاب به‌صورت REST استاندارد — GET برای خواندن، POST ساختن، PATCH ویرایش، DELETE حذف.
+  جایگزین گیت‌وی قدیمی <code>/mobile/services</code> (که همه‌چیزش POST بود). احراز هویت: <b dir="ltr">POST /v1/auth/login</b> → JWT Bearer.</p>
+  <div class="dl">
+    <a href="motoshub-api-v1.postman_collection.json" download>⬇ Postman Collection</a>
+    <a class="sec" href="https://motonext.shub.ir/api/v1/docs/index" target="_blank">Swagger UI زنده ↗</a>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>161</b> endpoint</div>
+    <div class="stat"><b>19</b> ماژول</div>
+    <div class="stat">JWT Bearer auth</div>
+    <div class="stat">PHP 8.4 · Bridge</div>
+  </div>
+</header>
+
+<nav class="toc"><a href="#api">🔐 Auth · Users · Files <b>21</b></a><a href="#blogs">📝 Blogs <b>5</b></a><a href="#iisnews">📰 News <b>5</b></a><a href="#photo">🖼️ Photos &amp; Albums <b>11</b></a><a href="#video">🎬 Video <b>5</b></a><a href="#event">📅 Events <b>14</b></a><a href="#friends">🤝 Friends <b>5</b></a><a href="#notifications">🔔 Notifications <b>5</b></a><a href="#forum">💬 Forum <b>11</b></a><a href="#iisquestions">📊 Polls <b>6</b></a><a href="#iiscommentplus">💭 Comments <b>5</b></a><a href="#newsfeed">📡 Newsfeed <b>9</b></a><a href="#groups">👥 Groups <b>15</b></a><a href="#mailbox">✉️ Messaging <b>13</b></a><a href="#iisadvancesearch">🔍 Search <b>1</b></a><a href="#iismention">@ Mentions <b>1</b></a><a href="#privacy">🛡️ Privacy <b>2</b></a><a href="#iislandingcreator">🏗️ Landing Builder <b>10</b></a><a href="#iispors">🧠 Quiz Platform <b>17</b></a></nav>
+
+<div class="note">
+  <b>تست با Postman:</b> فایل Collection را import کن؛ متغیر <code dir="ltr">base_url</code> پیش‌فرض
+  <code dir="ltr">https://motonext.shub.ir/api</code> است. اول <code dir="ltr">POST /v1/auth/login</code> را بزن و توکن
+  دریافتی را در متغیر <code dir="ltr">token</code> بگذار — بقیه‌ی درخواست‌ها خودکار Bearer می‌گیرند.
+  ⚠️ endpointهای جدید بعد از دیپلوی روی سرور فعال می‌شوند؛ تا آن موقع فقط ماژول‌های Auth/Blogs/News/Photos/Albums پاسخ می‌دهند.
+</div>
+
+
+<section id="api">
+  <h2>🔐 Auth · Users · Files <span class="cnt">21 endpoint</span></h2>
+  <p class="desc">احراز هویت، کاربران/پروفایل، بلاک/فالو، آواتار، نشست‌ها، آپلود فایل، گزارش تخلف، تماس</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/auth/login</td><td class="sum">ورود کاربر به سیستم<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;username&quot;: &quot;نمونه&quot;,
+  &quot;password&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/auth/me</td><td class="sum">دریافت اطلاعات کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/auth/permissions</td><td class="sum">دریافت دسترسی های کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/contact</td><td class="sum">ارسال پیام تماس با ما از طرف کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;subject&quot;: &quot;نمونه&quot;,
+  &quot;message&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/files</td><td class="sum">بارگذاری یک فایل به صورت پیوست (multipart)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;file&quot;: &quot;&lt;FILE&gt;&quot;,
+  &quot;type&quot;: &quot;نمونه&quot;,
+  &quot;bundle_id&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/files/config</td><td class="sum">دریافت پسوندهای مجاز و حداکثر حجم فایل برای اعتبارسنجی سمت کلاینت</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/files/{uid}</td><td class="sum">دریافت اطلاعات یک پیوست بر اساس شناسه بسته (bundle)</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/flags</td><td class="sum">گزارش (فلگ) یک محتوا توسط کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;entity_type&quot;: &quot;نمونه&quot;,
+  &quot;entity_id&quot;: 1,
+  &quot;reason&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/users</td><td class="sum">دریافت لیست کاربران (به همراه صفحه‌بندی و جستجو)</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/users/blocked</td><td class="sum">دریافت لیست کاربران بلاک‌شده توسط کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/users/me</td><td class="sum">ویرایش فیلدهای پروفایل کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;fields&quot;: [],
+  &quot;user_status&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/users/me/avatar</td><td class="sum">حذف آواتار کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/users/me/avatar</td><td class="sum">تغییر آواتار کاربر جاری (آپلود multipart)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;file&quot;: &quot;&lt;FILE&gt;&quot;
+}</pre></details></td><td class="perms">—</td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/users/me/sessions</td><td class="sum">خاتمه دادن به تمام سشن‌های دیگر کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/users/me/sessions</td><td class="sum">دریافت تاریخچه ورود و سشن‌های فعال کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/users/me/sessions/{id}</td><td class="sum">خاتمه دادن به یک سشن کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/users/{id}</td><td class="sum">دریافت پروفایل کامل یک کاربر (به همراه سوالات پروفایل)</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/users/{id}/block</td><td class="sum">آنبلاک کردن یک کاربر توسط کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/users/{id}/block</td><td class="sum">بلاک کردن یک کاربر توسط کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/users/{id}/follow</td><td class="sum">لغو دنبال کردن یک کاربر توسط کاربر جاری</td><td class="perms">—</td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/users/{id}/follow</td><td class="sum">دنبال کردن یک کاربر توسط کاربر جاری</td><td class="perms">—</td></tr></tbody>
+  </table></div>
+</section>
+<section id="blogs">
+  <h2>📝 Blogs <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">وبلاگ‌ها</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/blogs</td><td class="sum">دریافت لیست وبلاگ‌ها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">blogs.view</span> <span class="perm">blogs.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/blogs</td><td class="sum">ایجاد وبلاگ جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;post_content&quot;: &quot;نمونه&quot;,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;,
+  &quot;send_publish_notification&quot;: false,
+  &quot;tags&quot;: [],
+  &quot;is_draft&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">blogs.add</span> <span class="perm">blogs.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/blogs/{id}</td><td class="sum">حذف کامل وبلاگ</td><td class="perms"><span class="perm">blogs.add</span> <span class="perm">blogs.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/blogs/{id}</td><td class="sum">دریافت اطلاعات یک وبلاگ خاص</td><td class="perms"><span class="perm">blogs.view</span> <span class="perm">blogs.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/blogs/{id}</td><td class="sum">ویرایش اطلاعات وبلاگ<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;post_content&quot;: &quot;نمونه&quot;,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;,
+  &quot;send_publish_notification&quot;: false,
+  &quot;tags&quot;: [],
+  &quot;is_draft&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">blogs.add</span> <span class="perm">blogs.edit</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iisnews">
+  <h2>📰 News <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">اخبار</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/news</td><td class="sum">دریافت لیست اخبار</td><td class="perms"><span class="perm">iisnews.view</span> <span class="perm">iisnews.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/news</td><td class="sum">ایجاد خبر جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;post_content&quot;: &quot;نمونه&quot;,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;,
+  &quot;send_publish_notification&quot;: false,
+  &quot;tags&quot;: [],
+  &quot;is_draft&quot;: false,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iisnews.add</span> <span class="perm">iisnews.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/news/{id}</td><td class="sum">حذف کامل خبر</td><td class="perms"><span class="perm">iisnews.add</span> <span class="perm">iisnews.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/news/{id}</td><td class="sum">دریافت اطلاعات یک خبر خاص</td><td class="perms"><span class="perm">iisnews.view</span> <span class="perm">iisnews.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/news/{id}</td><td class="sum">ویرایش اطلاعات خبر<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;post_content&quot;: &quot;نمونه&quot;,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;,
+  &quot;send_publish_notification&quot;: false,
+  &quot;tags&quot;: [],
+  &quot;is_draft&quot;: false,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iisnews.add</span> <span class="perm">iisnews.update</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="photo">
+  <h2>🖼️ Photos &amp; Albums <span class="cnt">11 endpoint</span></h2>
+  <p class="desc">عکس و آلبوم</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/albums</td><td class="sum">دریافت لیست آلبوم‌ها</td><td class="perms"><span class="perm">photo.view</span> <span class="perm">photo.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/albums</td><td class="sum">ایجاد آلبوم جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;name&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/albums/{id}</td><td class="sum">حذف کامل آلبوم</td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/albums/{id}</td><td class="sum">دریافت اطلاعات یک آلبوم خاص</td><td class="perms"><span class="perm">photo.view</span> <span class="perm">photo.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/albums/{id}</td><td class="sum">ویرایش اطلاعات آلبوم<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;name&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.update</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/albums/{id}/photos</td><td class="sum">دریافت عکس‌های یک آلبوم</td><td class="perms"><span class="perm">photo.view</span> <span class="perm">photo.list</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/photos</td><td class="sum">دریافت لیست عکس‌ها</td><td class="perms"><span class="perm">photo.view</span> <span class="perm">photo.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/photos</td><td class="sum">آپلود عکس جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;photo&quot;: &quot;نمونه&quot;,
+  &quot;album_id&quot;: 1,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/photos/{id}</td><td class="sum">حذف کامل عکس</td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/photos/{id}</td><td class="sum">دریافت اطلاعات یک عکس خاص</td><td class="perms"><span class="perm">photo.view</span> <span class="perm">photo.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/photos/{id}</td><td class="sum">ویرایش اطلاعات عکس<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;album_id&quot;: 1,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">photo.upload</span> <span class="perm">photo.update</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="video">
+  <h2>🎬 Video <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">ویدیو</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/videos</td><td class="sum">دریافت لیست ویدیوها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">video.view</span> <span class="perm">video.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/videos</td><td class="sum">افزودن ویدیو جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;code&quot;: &quot;نمونه&quot;,
+  &quot;file&quot;: &quot;&lt;FILE&gt;&quot;,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">video.add</span> <span class="perm">video.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/videos/{id}</td><td class="sum">حذف کامل ویدیو</td><td class="perms"><span class="perm">video.add</span> <span class="perm">video.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/videos/{id}</td><td class="sum">دریافت اطلاعات یک ویدیو خاص</td><td class="perms"><span class="perm">video.view</span> <span class="perm">video.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/videos/{id}</td><td class="sum">ویرایش اطلاعات ویدیو<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">video.add</span> <span class="perm">video.update</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="event">
+  <h2>📅 Events <span class="cnt">14 endpoint</span></h2>
+  <p class="desc">رویدادها + عضویت/دعوت/فایل</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/events</td><td class="sum">دریافت لیست رویدادها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/events</td><td class="sum">ایجاد رویداد جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;location&quot;: &quot;نمونه&quot;,
+  &quot;start_at&quot;: &quot;نمونه&quot;,
+  &quot;end_at&quot;: &quot;نمونه&quot;,
+  &quot;who_can_view&quot;: 1,
+  &quot;who_can_invite&quot;: 1,
+  &quot;all_day&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">event.add</span> <span class="perm">event.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/events/{id}</td><td class="sum">حذف کامل رویداد</td><td class="perms"><span class="perm">event.add</span> <span class="perm">event.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/events/{id}</td><td class="sum">دریافت اطلاعات یک رویداد خاص</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/events/{id}</td><td class="sum">ویرایش اطلاعات رویداد<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;location&quot;: &quot;نمونه&quot;,
+  &quot;start_at&quot;: &quot;نمونه&quot;,
+  &quot;end_at&quot;: &quot;نمونه&quot;,
+  &quot;who_can_view&quot;: 1,
+  &quot;who_can_invite&quot;: 1,
+  &quot;all_day&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">event.add</span> <span class="perm">event.update</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/attendance</td><td class="sum">تغییر وضعیت حضور در رویداد<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;status&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.change_attendance</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/files</td><td class="sum">افزودن فایل به رویداد (multipart)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;file&quot;: &quot;&lt;FILE&gt;&quot;
+}</pre></details></td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.upload_file</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/files/{fileId}</td><td class="sum">حذف فایل رویداد</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.delete_file</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/invitable-users</td><td class="sum">لیست کاربران قابل‌دعوت به رویداد</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.invite</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/invites</td><td class="sum">رد/لغو دعوت رویداد برای کاربر جاری</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.cancel_invite</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/invites</td><td class="sum">دعوت کاربر به رویداد<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;user_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.invite</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/invites/accept</td><td class="sum">پذیرش دعوت رویداد</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.accept_invite</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/join</td><td class="sum">خروج از رویداد (مالک = حذف کل رویداد)</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.leave</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/events/{id}/join</td><td class="sum">عضویت در رویداد</td><td class="perms"><span class="perm">event.view</span> <span class="perm">event.join</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="friends">
+  <h2>🤝 Friends <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">دوستی‌ها</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/friends</td><td class="sum">دریافت لیست دوستان کاربر جاری (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">friends.view</span> <span class="perm">friends.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/friends</td><td class="sum">ارسال درخواست دوستی<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;user_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">friends.add_friend</span> <span class="perm">friends.add_friend</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/friends/requests</td><td class="sum">دریافت لیست درخواست‌های دوستی دریافتی کاربر جاری</td><td class="perms"><span class="perm">friends.view</span> <span class="perm">friends.list</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/friends/{id}</td><td class="sum">حذف دوست یا لغو/رد درخواست دوستی</td><td class="perms"><span class="perm">friends.add_friend</span> <span class="perm">friends.add_friend</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/friends/{id}/accept</td><td class="sum">تایید درخواست دوستی دریافتی</td><td class="perms"><span class="perm">friends.add_friend</span> <span class="perm">friends.add_friend</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="notifications">
+  <h2>🔔 Notifications <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">اعلان‌ها و تنظیمات اعلان</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/notifications</td><td class="sum">دریافت لیست اعلان‌های کاربر جاری (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">notifications.view</span> <span class="perm">notifications.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/notifications/seen</td><td class="sum">علامت‌گذاری همه اعلان‌های کاربر جاری به عنوان دیده‌شده</td><td class="perms"><span class="perm">notifications.view</span> <span class="perm">notifications.seen</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/notifications/settings</td><td class="sum">دریافت تنظیمات اعلان‌های کاربر جاری</td><td class="perms"><span class="perm">notifications.view</span> <span class="perm">notifications.settings</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/notifications/settings</td><td class="sum">بروزرسانی تنظیمات اعلان‌های کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;schedule&quot;: &quot;نمونه&quot;,
+  &quot;actions&quot;: []
+}</pre></details></td><td class="perms"><span class="perm">notifications.view</span> <span class="perm">notifications.update</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/notifications/{id}/read</td><td class="sum">علامت‌گذاری یک اعلان مشخص به عنوان خوانده‌شده</td><td class="perms"><span class="perm">notifications.view</span> <span class="perm">notifications.read</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="forum">
+  <h2>💬 Forum <span class="cnt">11 endpoint</span></h2>
+  <p class="desc">انجمن: تاپیک و پست</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/forum/posts/{id}</td><td class="sum">حذف یک پاسخ</td><td class="perms"><span class="perm">forum.delete</span> <span class="perm">forum.delete</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/forum/posts/{id}</td><td class="sum">ویرایش یک پاسخ<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;text&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">forum.edit</span> <span class="perm">forum.update</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/forum/topics</td><td class="sum">دریافت لیست موضوعات انجمن (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">forum.view</span> <span class="perm">forum.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/forum/topics</td><td class="sum">ایجاد موضوع جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;group_id&quot;: 1,
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;text&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">forum.add</span> <span class="perm">forum.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{id}</td><td class="sum">حذف کامل موضوع</td><td class="perms"><span class="perm">forum.delete</span> <span class="perm">forum.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{id}</td><td class="sum">دریافت اطلاعات یک موضوع خاص</td><td class="perms"><span class="perm">forum.view</span> <span class="perm">forum.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{id}</td><td class="sum">ویرایش اطلاعات موضوع<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;text&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">forum.edit</span> <span class="perm">forum.update</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{id}/lock</td><td class="sum">قفل کردن موضوع</td><td class="perms"><span class="perm">forum.edit</span> <span class="perm">forum.edit</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{id}/unlock</td><td class="sum">باز کردن قفل موضوع</td><td class="perms"><span class="perm">forum.edit</span> <span class="perm">forum.edit</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{topicId}/posts</td><td class="sum">دریافت لیست پاسخ‌های یک موضوع (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">forum.view</span> <span class="perm">forum.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/forum/topics/{topicId}/posts</td><td class="sum">ارسال پاسخ جدید در یک موضوع<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;text&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">forum.add</span> <span class="perm">forum.add</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iisquestions">
+  <h2>📊 Polls <span class="cnt">6 endpoint</span></h2>
+  <p class="desc">نظرسنجی</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/polls</td><td class="sum">دریافت لیست نظرسنجی‌ها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">iisquestions.view</span> <span class="perm">iisquestions.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/polls</td><td class="sum">ایجاد نظرسنجی جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;add_option&quot;: &quot;نمونه&quot;,
+  &quot;is_multiple&quot;: false,
+  &quot;options&quot;: [],
+  &quot;context&quot;: &quot;نمونه&quot;,
+  &quot;context_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iisquestions.add</span> <span class="perm">iisquestions.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/polls/{id}</td><td class="sum">حذف کامل نظرسنجی</td><td class="perms"><span class="perm">iisquestions.add</span> <span class="perm">iisquestions.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/polls/{id}</td><td class="sum">دریافت اطلاعات یک نظرسنجی خاص</td><td class="perms"><span class="perm">iisquestions.view</span> <span class="perm">iisquestions.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/polls/{id}</td><td class="sum">ویرایش تنظیمات نظرسنجی<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;add_option&quot;: &quot;نمونه&quot;,
+  &quot;is_multiple&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">iisquestions.add</span> <span class="perm">iisquestions.update</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/polls/{id}/vote</td><td class="sum">ثبت یا حذف رأی برای یک گزینه نظرسنجی<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;option_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iisquestions.answer</span> <span class="perm">iisquestions.add_answer</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iiscommentplus">
+  <h2>💭 Comments <span class="cnt">5 endpoint</span></h2>
+  <p class="desc">کامنت بین‌ماژولی + لایک</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/comments</td><td class="sum">دریافت لیست نظرات یک محتوا (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">iiscommentplus.view</span> <span class="perm">iiscommentplus.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/comments</td><td class="sum">ثبت نظر جدید روی یک محتوا<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;entity_type&quot;: &quot;نمونه&quot;,
+  &quot;entity_id&quot;: 1,
+  &quot;text&quot;: &quot;نمونه&quot;,
+  &quot;attachment&quot;: &quot;نمونه&quot;,
+  &quot;reply_id&quot;: 1,
+  &quot;reply_user_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iiscommentplus.view</span> <span class="perm">iiscommentplus.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/comments/{id}</td><td class="sum">حذف یک نظر</td><td class="perms"><span class="perm">iiscommentplus.view</span> <span class="perm">iiscommentplus.delete</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/comments/{id}/like</td><td class="sum">حذف پسند از یک نظر</td><td class="perms"><span class="perm">iiscommentplus.view</span> <span class="perm">iiscommentplus.unlike</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/comments/{id}/like</td><td class="sum">ثبت پسند برای یک نظر</td><td class="perms"><span class="perm">iiscommentplus.view</span> <span class="perm">iiscommentplus.like</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="newsfeed">
+  <h2>📡 Newsfeed <span class="cnt">9 endpoint</span></h2>
+  <p class="desc">فید، پست، لایک، فوروارد</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/feed</td><td class="sum">دریافت فید خبری (داشبورد، پروفایل کاربر، گروه یا کل سایت — به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/feed</td><td class="sum">ارسال پست جدید روی فید (دیوار خود، دیوار کاربر دیگر یا گروه)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;status&quot;: &quot;نمونه&quot;,
+  &quot;feed_type&quot;: &quot;نمونه&quot;,
+  &quot;feed_id&quot;: 1,
+  &quot;privacy&quot;: &quot;نمونه&quot;,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;,
+  &quot;reply_to&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">newsfeed.add</span> <span class="perm">newsfeed.allow_status_update</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}</td><td class="sum">حذف کامل یک پست از فید</td><td class="perms"><span class="perm">newsfeed.add</span> <span class="perm">newsfeed.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}</td><td class="sum">دریافت اطلاعات یک پست خاص از فید خبری</td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}</td><td class="sum">ویرایش متن یک پست فید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;status&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">newsfeed.add</span> <span class="perm">newsfeed.edit</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}/forward</td><td class="sum">بازنشر (فوروارد) یک پست فید روی دیوار کاربر(ان) یا گروه(ها)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;target_type&quot;: &quot;نمونه&quot;,
+  &quot;target_id&quot;: 1,
+  &quot;target_ids&quot;: []
+}</pre></details></td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.forward</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}/like</td><td class="sum">حذف لایک/دیس‌لایک کاربر جاری از یک پست فید</td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.like</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}/like</td><td class="sum">لایک (vote=1) یا دیس‌لایک (vote=-1) یک پست فید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;vote&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.like</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/feed/{id}/privacy</td><td class="sum">تغییر سطح حریم خصوصی یک پست فید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;privacy&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">newsfeed.view</span> <span class="perm">newsfeed.change_privacy</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="groups">
+  <h2>👥 Groups <span class="cnt">15 endpoint</span></h2>
+  <p class="desc">گروه‌ها: عضویت، دعوت، مدیران، فایل</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/groups</td><td class="sum">دریافت لیست گروه‌ها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups</td><td class="sum">ایجاد گروه جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;who_can_view&quot;: &quot;نمونه&quot;,
+  &quot;who_can_invite&quot;: &quot;نمونه&quot;,
+  &quot;who_can_create_content&quot;: &quot;نمونه&quot;,
+  &quot;who_can_upload_file&quot;: &quot;&lt;FILE&gt;&quot;,
+  &quot;who_can_create_topic&quot;: &quot;نمونه&quot;,
+  &quot;category_id&quot;: 1,
+  &quot;need_approve&quot;: false,
+  &quot;send_sms_on_new_message&quot;: false,
+  &quot;send_sms_on_new_message_admin_only&quot;: false,
+  &quot;send_sms_on_new_message_period&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">groups.create</span> <span class="perm">groups.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/groups/files/{fileId}</td><td class="sum">حذف فایل گروه</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.delete_file</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups/invites/accept</td><td class="sum">پذیرش دعوت‌نامه گروه<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;invite_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.accept_invite</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}</td><td class="sum">حذف کامل گروه</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}</td><td class="sum">دریافت اطلاعات یک گروه خاص</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}</td><td class="sum">ویرایش اطلاعات گروه<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;who_can_view&quot;: &quot;نمونه&quot;,
+  &quot;who_can_invite&quot;: &quot;نمونه&quot;,
+  &quot;who_can_create_content&quot;: &quot;نمونه&quot;,
+  &quot;who_can_upload_file&quot;: &quot;&lt;FILE&gt;&quot;,
+  &quot;who_can_create_topic&quot;: &quot;نمونه&quot;,
+  &quot;category_id&quot;: 1,
+  &quot;need_approve&quot;: false,
+  &quot;delete_group_image&quot;: false,
+  &quot;send_sms_on_new_message&quot;: false,
+  &quot;send_sms_on_new_message_admin_only&quot;: false,
+  &quot;send_sms_on_new_message_period&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">groups.create</span> <span class="perm">groups.update</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/files</td><td class="sum">دریافت لیست فایل‌های یک گروه (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/files</td><td class="sum">بارگذاری فایل جدید در گروه<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;name&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.upload_file</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/invites</td><td class="sum">دعوت کاربر به گروه<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;user_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.invite</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/join</td><td class="sum">خروج از گروه</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.leave</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/join</td><td class="sum">عضویت در گروه</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.join</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/managers</td><td class="sum">افزودن مدیر به گروه<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;user_id&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.manage_managers</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/managers/{userId}</td><td class="sum">حذف مدیر گروه</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.manage_managers</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/groups/{id}/members</td><td class="sum">دریافت لیست اعضای یک گروه (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">groups.view</span> <span class="perm">groups.list</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="mailbox">
+  <h2>✉️ Messaging <span class="cnt">13 endpoint</span></h2>
+  <p class="desc">چت: گفتگو و پیام</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/conversations</td><td class="sum">دریافت لیست گفتگوهای کاربر جاری (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/conversations/forward-targets</td><td class="sum">دریافت لیست کاربران قابل انتخاب برای هدایت پیام (طرف‌های گفتگو + دوستان)</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/conversations/search</td><td class="sum">جستجو در پیام‌های گفتگوها (کل گفتگوها یا محدود به یک گفتگو)</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}</td><td class="sum">پاک کردن گفتگو برای کاربر جاری (تاریخچه سمت مقابل حفظ می‌شود)</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}</td><td class="sum">دریافت یک گفتگو به همراه پیام‌های آن (خواندن گفتگو پیام‌های خوانده‌نشده را خوانده‌شده می‌کند)</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}/media</td><td class="sum">دریافت رسانه‌های (پیوست‌های) یک گفتگو با فیلتر اختیاری photo | video</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}/mute</td><td class="sum">بی‌صدا کردن گفتگو برای کاربر جاری</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}/read</td><td class="sum">علامت‌گذاری همه پیام‌های خوانده‌نشده گفتگو به عنوان خوانده‌شده</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/conversations/{id}/unmute</td><td class="sum">باصدا کردن (خروج از حالت بی‌صدا) گفتگو برای کاربر جاری</td><td class="perms"><span class="perm">mailbox.read_chat_message</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/messages</td><td class="sum">ارسال پیام جدید به یک کاربر (opponent_id) یا گفتگوی موجود (conversation_id)<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;opponent_id&quot;: 1,
+  &quot;conversation_id&quot;: 1,
+  &quot;text&quot;: &quot;نمونه&quot;,
+  &quot;reply_id&quot;: 1,
+  &quot;attachment_uid&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">mailbox.send_chat_message</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/messages/{id}</td><td class="sum">حذف یکی از پیام‌های کاربر جاری</td><td class="perms"><span class="perm">mailbox.send_chat_message</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/messages/{id}</td><td class="sum">ویرایش متن یکی از پیام‌های کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;text&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">mailbox.send_chat_message</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/messages/{id}/forward</td><td class="sum">هدایت (forward) یک پیام به یک یا چند کاربر دیگر<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;target_ids&quot;: []
+}</pre></details></td><td class="perms"><span class="perm">mailbox.send_chat_message</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iisadvancesearch">
+  <h2>🔍 Search <span class="cnt">1 endpoint</span></h2>
+  <p class="desc">جستجوی سراسری</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/search</td><td class="sum">جستجوی سراسری (کاربران و پست‌های خوراک) به همراه صفحه‌بندی</td><td class="perms"><span class="perm">iisadvancesearch.view</span> <span class="perm">iisadvancesearch.search</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iismention">
+  <h2>@ Mentions <span class="cnt">1 endpoint</span></h2>
+  <p class="desc">پیشنهاد منشن</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/mentions/suggestions</td><td class="sum">پیشنهاد کاربران قابل منشن برای کاربر جاری (دوستان و اعضای گروه)</td><td class="perms"><span class="perm">iismention.view</span> <span class="perm">iismention.suggestions</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="privacy">
+  <h2>🛡️ Privacy <span class="cnt">2 endpoint</span></h2>
+  <p class="desc">تنظیمات حریم خصوصی</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/privacy/settings</td><td class="sum">دریافت تنظیمات حریم خصوصی کاربر جاری</td><td class="perms"><span class="perm">privacy.settings</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/privacy/settings</td><td class="sum">بروزرسانی تنظیمات حریم خصوصی کاربر جاری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;settings&quot;: []
+}</pre></details></td><td class="perms"><span class="perm">privacy.settings</span> <span class="perm">privacy.update</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iislandingcreator">
+  <h2>🏗️ Landing Builder <span class="cnt">10 endpoint</span></h2>
+  <p class="desc">صفحه‌ساز لندینگ</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/landing-pages</td><td class="sum">دریافت لیست صفحات فرود (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">iislandingcreator.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/landing-pages</td><td class="sum">ایجاد صفحه فرود جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;slug&quot;: &quot;نمونه&quot;,
+  &quot;is_active&quot;: false,
+  &quot;header_style&quot;: &quot;نمونه&quot;,
+  &quot;header_script&quot;: &quot;نمونه&quot;,
+  &quot;footer_script&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iislandingcreator.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/landing-pages/{id}</td><td class="sum">حذف کامل صفحه فرود</td><td class="perms"><span class="perm">iislandingcreator.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/landing-pages/{id}</td><td class="sum">دریافت اطلاعات یک صفحه فرود خاص</td><td class="perms"><span class="perm">iislandingcreator.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/landing-pages/{id}</td><td class="sum">ویرایش اطلاعات صفحه فرود<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;slug&quot;: &quot;نمونه&quot;,
+  &quot;is_active&quot;: false,
+  &quot;header_style&quot;: &quot;نمونه&quot;,
+  &quot;header_script&quot;: &quot;نمونه&quot;,
+  &quot;footer_script&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iislandingcreator.edit</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/landing-pages/{id}/sections</td><td class="sum">دریافت لیست بخش‌های یک صفحه فرود</td><td class="perms"><span class="perm">iislandingcreator.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/landing-pages/{id}/sections</td><td class="sum">ایجاد بخش جدید برای صفحه فرود<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;type&quot;: &quot;نمونه&quot;,
+  &quot;is_active&quot;: false,
+  &quot;prior_section_id&quot;: 1,
+  &quot;payload&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iislandingcreator.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/landing-sections/{id}</td><td class="sum">حذف کامل بخش صفحه فرود</td><td class="perms"><span class="perm">iislandingcreator.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/landing-sections/{id}</td><td class="sum">دریافت اطلاعات یک بخش صفحه فرود خاص</td><td class="perms"><span class="perm">iislandingcreator.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/landing-sections/{id}</td><td class="sum">ویرایش اطلاعات بخش صفحه فرود<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;is_active&quot;: false,
+  &quot;prior_section_id&quot;: 1,
+  &quot;payload&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iislandingcreator.edit</span></td></tr></tbody>
+  </table></div>
+</section>
+<section id="iispors">
+  <h2>🧠 Quiz Platform <span class="cnt">17 endpoint</span></h2>
+  <p class="desc">پرسمان‌ساز: آزمون، سؤال، شرکت، داوری</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>Verb</th><th>مسیر</th><th>شرح</th><th>دسترسی</th></tr></thead>
+    <tbody><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/judgements</td><td class="sum">دریافت لیست داوری‌ها (به همراه صفحه‌بندی و انتساب داور جاری)</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.judge</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/judgements/{id}</td><td class="sum">دریافت اطلاعات یک داوری به همراه معیارهای مرتب آن و پاسخ‌های داور جاری</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.judge</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/judgements/{id}/scores</td><td class="sum">دریافت لیست امتیازهای ثبت‌شده داور جاری برای انتساب خود در یک داوری</td><td class="perms"><span class="perm">iispors.judge</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/judgements/{id}/scores</td><td class="sum">ثبت (یا بروزرسانی) امتیاز داور جاری برای یک معیار داوری<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;criteria_id&quot;: 1,
+  &quot;answer&quot;: &quot;نمونه&quot;
+}</pre></details></td><td class="perms"><span class="perm">iispors.judge</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/quiz-questions/{id}</td><td class="sum">حذف یک پرسش آزمون (به همراه اصلاح زنجیره ترتیب پرسش‌ها)</td><td class="perms"><span class="perm">iispors.delete</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/quiz-questions/{id}</td><td class="sum">ویرایش یک پرسش آزمون<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;payload&quot;: [],
+  &quot;media&quot;: [],
+  &quot;required&quot;: false,
+  &quot;show_question_number&quot;: false,
+  &quot;update_prior&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iispors.edit</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/quizzes</td><td class="sum">دریافت لیست آزمون‌ها / نظرسنجی‌ها (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/quizzes</td><td class="sum">ایجاد آزمون / نظرسنجی جدید<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;name&quot;: &quot;نمونه&quot;,
+  &quot;type&quot;: &quot;نمونه&quot;,
+  &quot;intro_page&quot;: [],
+  &quot;ending_page&quot;: [],
+  &quot;is_active&quot;: false,
+  &quot;is_visible&quot;: false,
+  &quot;is_evaluable&quot;: false,
+  &quot;is_scoreable&quot;: false,
+  &quot;is_membership_required&quot;: false,
+  &quot;is_sms_verification_needed&quot;: false,
+  &quot;start_at&quot;: 1,
+  &quot;end_at&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iispors.add</span></td></tr><tr><td class="verb"><span class="m del">DELETE</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}</td><td class="sum">حذف کامل آزمون به همراه پرسش‌ها، شرکت‌کنندگان و داوری‌های آن</td><td class="perms"><span class="perm">iispors.delete</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}</td><td class="sum">دریافت اطلاعات یک آزمون خاص به همراه پرسش‌های آن</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.show</span></td></tr><tr><td class="verb"><span class="m patch">PATCH</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}</td><td class="sum">ویرایش اطلاعات آزمون<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;name&quot;: &quot;نمونه&quot;,
+  &quot;intro_page&quot;: [],
+  &quot;ending_page&quot;: [],
+  &quot;is_active&quot;: false,
+  &quot;is_visible&quot;: false,
+  &quot;is_evaluable&quot;: false,
+  &quot;is_scoreable&quot;: false,
+  &quot;is_membership_required&quot;: false,
+  &quot;is_sms_verification_needed&quot;: false,
+  &quot;start_at&quot;: 1,
+  &quot;end_at&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iispors.edit</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}/questions</td><td class="sum">دریافت لیست مرتب پرسش‌های یک آزمون</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}/questions</td><td class="sum">افزودن پرسش جدید به یک آزمون<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;title&quot;: &quot;نمونه&quot;,
+  &quot;question_type&quot;: &quot;نمونه&quot;,
+  &quot;description&quot;: &quot;نمونه&quot;,
+  &quot;payload&quot;: [],
+  &quot;media&quot;: [],
+  &quot;prior_question&quot;: 1,
+  &quot;group&quot;: 1,
+  &quot;required&quot;: false,
+  &quot;show_question_number&quot;: false,
+  &quot;update_prior&quot;: 1
+}</pre></details></td><td class="perms"><span class="perm">iispors.add</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}/statistics</td><td class="sum">دریافت آمار تجمیعی یک آزمون (تعداد شرکت‌کنندگان، میانگین زمان پاسخ و شمارش آرا)</td><td class="perms"><span class="perm">iispors.view</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}/submissions</td><td class="sum">دریافت لیست شرکت‌های کاربر جاری در یک آزمون (به همراه صفحه‌بندی)</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.list</span></td></tr><tr><td class="verb"><span class="m post">POST</span></td><td class="uri" dir="ltr">/api/v1/quizzes/{id}/submissions</td><td class="sum">شرکت در آزمون: شروع (یا ادامه) شرکت، ثبت پاسخ‌های ارسالی و در صورت درخواست اتمام آزمون<details><summary>بدنه</summary><pre dir="ltr">{
+  &quot;answers&quot;: [],
+  &quot;finish&quot;: false
+}</pre></details></td><td class="perms"><span class="perm">iispors.participate</span></td></tr><tr><td class="verb"><span class="m get">GET</span></td><td class="uri" dir="ltr">/api/v1/submissions/{id}</td><td class="sum">دریافت اطلاعات یک شرکت در آزمون به همراه پاسخ‌های ثبت‌شده</td><td class="perms"><span class="perm">iispors.view</span> <span class="perm">iispors.show</span></td></tr></tbody>
+  </table></div>
+</section>
+
+<p class="foot">Generated from source · Motoshub API v1 · cheedafar.ir/reports</p>
+</div>
+</body>
+</html>
