@@ -141,7 +141,7 @@
     <div class="stat ok"><div class="big">5</div><div class="lbl">دامنه‌ی منتقل‌شده</div></div>
     <div class="stat bad"><div class="big">~20+</div><div class="lbl">دامنه‌ی باقی‌مانده</div></div>
     <div class="stat new"><div class="big">168</div><div class="lbl">op منطق آماده در گیت‌وی قدیمی</div></div>
-  </div>
+</div>
 </header>
 
 <nav class="toc">
@@ -153,7 +153,7 @@
   <a href="#decision">۶ · تصمیم معلق</a>
 </nav>
 
-<div class="xref">📐 این سند مکملِ <a href="architecture.html">سند معماری و نقشه‌راه کلی محصول</a> است — آن‌جا تصویر بزرگ (multi-tenant، Django، SSO)، این‌جا تمرکز روی مهاجرت API.</div>
+<div class="xref">این سند مکملِ <a href="architecture.html">سند معماری و نقشه‌راه کلی محصول</a> است — آن‌جا تصویر بزرگ (multi-tenant، Django، SSO)، این‌جا تمرکز روی مهاجرت API.</div>
 
 <!-- 1 -->
 <section id="have">
@@ -173,7 +173,7 @@
     <strong>نکته‌ی کلیدی:</strong> این v1 با گیت‌وی قدیمی <code>iismobilesupport</code> (همان ۱۶۸ عملیاتِ
     <code>mobile/services/…</code>) فرق دارد. آن‌جا <strong>منطق کسب‌وکار همه‌ی فیچرهای اجتماعی از قبل نوشته شده</strong>
     (در سرویس‌های BOL اکسوال). پس مهاجرت یعنی «بسته‌بندی همان منطق موجود در تمپلیت تمیز v1» — نه نوشتن از صفر.
-  </div>
+</div>
 </section>
 
 <!-- 2 -->
@@ -181,11 +181,11 @@
   <h2><span class="n">02</span> تمپلیت «Bridge» — الگویی که باید تکرار شود</h2>
   <p class="sub">هر فیچر دقیقاً از این پنج قطعه ساخته می‌شود (نمونه: Blog).</p>
   <div class="flow">
-    <span class="node">Request<br/><small>اعتبارسنجی+sanitize</small></span><span class="arrow">←</span>
-    <span class="node acc">Controller<br/><small>API/V1 + OA + Route</small></span><span class="arrow">←→</span>
-    <span class="node">Service<br/><small>(interface)</small></span><span class="arrow">→</span>
+    <span class="node">Request<br/><small>اعتبارسنجی+sanitize</small></span><span class="arrow"></span>
+    <span class="node acc">Controller<br/><small>API/V1 + OA + Route</small></span><span class="arrow"></span>
+    <span class="node">Service<br/><small>(interface)</small></span><span class="arrow"></span>
     <span class="node">Oxwall BOL<br/><small>منطق موجود</small></span>
-  </div>
+</div>
   <p style="font-size:14px;color:var(--muted)">و خروجی از <strong>Resource</strong> عبور می‌کند؛ دسترسی با <strong>Policy</strong> کنترل می‌شود.</p>
 
   <pre class="code"><span class="c">// ow_plugins/blogs/src/Http/Controllers/API/V1/BlogController.php</span>
@@ -193,9 +193,9 @@
 class BlogController extends ApiController {
   public function __construct(private BlogServiceInterface $blogService){ parent::__construct(); }
 
-  <span class="k">#[OA\Get(path:'/v1/blogs', tags:["Blogs"], ...)]</span>  <span class="c">// ← داکس Swagger زنده</span>
-  <span class="k">#[RouteGet('api/v1/blogs', middleware:['auth.jwt'])]</span> <span class="c">// ← روت + JWT</span>
-  <span class="k">#[RoutePermissions(['blogs.view','blogs.list'])]</span>    <span class="c">// ← RBAC</span>
+  <span class="k">#[OA\Get(path:'/v1/blogs', tags:["Blogs"], ...)]</span>  <span class="c">//  داکس Swagger زنده</span>
+  <span class="k">#[RouteGet('api/v1/blogs', middleware:['auth.jwt'])]</span> <span class="c">//  روت + JWT</span>
+  <span class="k">#[RoutePermissions(['blogs.view','blogs.list'])]</span>    <span class="c">//  RBAC</span>
   public function index(BlogListRequest $request){
     $blogs = $this->blogService->fetchBlogs(true, $request-&gt;validated());
     return Response::json(BlogResource::collection($blogs));
@@ -223,9 +223,9 @@ class BlogController extends ApiController {
 <!-- 3 -->
 <section id="missing">
   <h2><span class="n">03</span> چه چیزی نداریم و باید بسازیم؟</h2>
-  <p class="sub">سه سطل: منتقل‌شده ✅ ، منطق آماده برای بسته‌بندی 🔨 ، و نبودِ کامل بک‌اند 🆕.</p>
+  <p class="sub">سه سطل: منتقل‌شده  ، منطق آماده برای بسته‌بندی  ، و نبودِ کامل بک‌اند 🆕.</p>
 
-  <h3>🔨 سطل اصلی — منطق در گیت‌وی قدیمی هست، فقط باید در تمپلیت v1 بسته‌بندی شود</h3>
+  <h3>سطل اصلی — منطق در گیت‌وی قدیمی هست، فقط باید در تمپلیت v1 بسته‌بندی شود</h3>
   <div class="tblwrap"><table>
     <thead><tr><th>دامنه</th><th class="num">op قدیمی</th><th>منبع منطق</th><th class="num">تخمین</th></tr></thead>
     <tbody>
@@ -257,13 +257,13 @@ class BlogController extends ApiController {
     این‌ها «امکانات فعلی موتوشاب» نیستند — در بک‌اند PHP هیچ اثری ندارند. پس در «مهاجرت API» نمی‌گنجند؛ یک
     <strong>خط کاری جداگانه‌ی «ساخت از صفر»</strong> هستند. اگر هدف کوتاه‌مدت است، می‌شود موقتاً به‌عنوان پلاگین اکسوال با
     همین تمپلیت ساختشان؛ اگر بلندمدت و مقیاس‌پذیر، روی Django.
-  </div>
+</div>
 </section>
 
 <!-- 4 -->
 <section id="howto">
   <h2><span class="n">04</span> فرایند ساخت یک API جدید (قدم‌به‌قدم)</h2>
-  <p class="sub">برای هر دامنه‌ی 🔨، این چرخه تکرار می‌شود. مثال: افزودن <code>Video</code>.</p>
+  <p class="sub">برای هر دامنه‌ی ، این چرخه تکرار می‌شود. مثال: افزودن <code>Video</code>.</p>
   <ol>
     <li>در پلاگین مقصد (مثلاً <code>ow_plugins/video</code>) پوشه‌های <code>src/Http/Controllers/API/V1</code>، <code>Requests</code>، <code>Resources</code>، <code>Services</code>، <code>Contracts/Services</code>، <code>Policies</code> را بساز.</li>
     <li><strong>Service:</strong> یک <code>VideoServiceInterface</code> + <code>VideoService</code> که داخلش همان متدهای منطقیِ موجود در <code>web_service_video.php</code> / BOL را صدا می‌زند (منطق را کپی نکن، فراخوانی کن).</li>
@@ -277,7 +277,7 @@ class BlogController extends ApiController {
   <div class="callout">
     <strong>چرا سریع است:</strong> چون منطق در BOL موجود است و تمپلیت تثبیت‌شده، بعد از دو-سه دامنه‌ی اول، هر CRUD ساده
     عملاً «کپی و تطبیق» می‌شود. بخش زمان‌بر، دامنه‌های بزرگ (Users، Groups، iispors) است که سطح عملیات بالایی دارند.
-  </div>
+</div>
 </section>
 
 <!-- 5 -->
@@ -288,28 +288,28 @@ class BlogController extends ApiController {
   <div class="phase"><span class="tag">فاز A<br/>هسته</span><div class="body">
     <h4>کاربر، دوستان، اعلان‌ها</h4>
     <p>Users/Profile (۴۲ op)، Friends، Notifications. بدون این‌ها هیچ صفحه‌ی واقعی‌ای در فرانت زنده نمی‌شود. ~۹–۱۲ روز.</p>
-  </div></div>
+</div></div>
   <div class="phase"><span class="tag">فاز B<br/>اجتماعی</span><div class="body">
     <h4>گروه، فید، کامنت، چت</h4>
     <p>Groups (+files)، Newsfeed، Comments، Messaging. قلب تعامل اجتماعی. ~۱۳–۱۷ روز.</p>
-  </div></div>
+</div></div>
   <div class="phase"><span class="tag">فاز C<br/>محتوا</span><div class="body">
     <h4>رویداد، فروم، ویدیو، نظرسنجی، جستجو</h4>
-    <p>Events، Forum، Video، Questions، Search/Privacy/Flag. ~۱۱–۱۵ روز. (Blog/News/Photo از قبل ✅)</p>
-  </div></div>
+    <p>Events، Forum، Video، Questions، Search/Privacy/Flag. ~۱۱–۱۵ روز. (Blog/News/Photo از قبل )</p>
+</div></div>
   <div class="phase"><span class="tag">فاز D<br/>تخصصی</span><div class="body">
     <h4>پرسمان‌ساز و لندینگ</h4>
     <p>iispors + judgement (بزرگ، ~۸۲ op) و Landing builder. ~۱۳–۱۸ روز.</p>
-  </div></div>
+</div></div>
   <div class="phase"><span class="tag">فاز E<br/>جدید</span><div class="body">
     <h4>ماژول‌های سازمانی (خط کاری موازی)</h4>
     <p>Projects/Contracts/Funds/Research/Reports — ساخت از صفر (Django یا پلاگین جدید). مستقل از A–D پیش می‌رود.</p>
-  </div></div>
+</div></div>
 
   <div class="callout">
     <strong>جمع تقریبی فازهای A تا D (بسته‌بندی امکانات موجود):</strong> حدود <strong>۴۶ تا ۶۲ روزِ کاری مهندسی خالص</strong>
     برای یک نفر (~۲.۵ تا ۳ ماه). با تیم دو نفره و موازی‌سازی دامنه‌ها، عملاً کمتر. فاز E جداگانه و بزرگ‌تر است.
-  </div>
+</div>
 </section>
 
 <!-- 6 -->
@@ -322,7 +322,7 @@ class BlogController extends ApiController {
     <li><strong>گیت‌وی موبایل</strong> (<code>iismobilesupport</code>, ۱۶۸ op) — کامل و کارآمد، ولی سبک قدیمی <code>mobile/services/:type</code>.</li>
     <li><strong>API v1</strong> (<code>ow_plugins/api</code>, ۲۴ op) — تمیز و RESTful و آینده‌ی محصول، ولی هنوز کوچک.</li>
   </ul>
-  <p><strong>پیشنهاد من:</strong> فرانت را روی <code>api/v1</code> هدف‌گذاری کن (چون آینده همین است) و مهاجرت را طبق فازهای بالا جلو ببریم؛
+  <p><strong>پیشنهاد:</strong> فرانت‌اند بر روی <code>api/v1</code> هدف‌گذاری شود و مهاجرت مطابق فازهای فوق پیش برود؛
   تا وقتی یک دامنه هنوز روی v1 نیامده، فرانت موقتاً از گیت‌وی موبایل همان دامنه استفاده کند. به‌همین‌دلیل داکسِ گیت‌وی موبایل را
   <strong>پوش نکردم</strong> و منتظر تصمیم تو ماندم. اگر بخواهی، همان را هم به‌عنوان «مرجع موقت» منتشر می‌کنم.</p>
 </section>

@@ -71,14 +71,14 @@
     <div class="stat ok"><div class="big">161</div><div class="lbl">endpoint REST</div></div>
     <div class="stat ok"><div class="big">510</div><div class="lbl">فایل بررسی‌شده</div></div>
     <div class="stat ok"><div class="big">0</div><div class="lbl">خطای lint (PHP 8.4)</div></div>
-  </div>
+</div>
   <div class="callout" style="margin-top:16px">
-    ✅ <strong>ساخت کامل شد.</strong> هر ۶ موج تمام: ۱۶۱ endpoint در ۱۹ ماژول، ۱۳۷ اکشن با Policy کامل، صفر تداخل روت، صفر خطای syntax.
+     <strong>ساخت کامل شد.</strong> هر ۶ موج تمام: ۱۶۱ endpoint در ۱۹ ماژول، ۱۳۷ اکشن با Policy کامل، صفر تداخل روت، صفر خطای syntax.
     فهرست کامل در <a href="api-reference.html">مرجع API v1</a> + فایل Postman آماده‌ی دانلود. در انتظار تأیید مالک برای push به گیت‌لب.
-  </div>
+</div>
 </header>
 
-<div class="xref">📚 مرتبط: <a href="api-v1.html">سند API v1 و نقشه‌ی مهاجرت</a> · <a href="architecture.html">معماری کلی</a> · <a href="index.html">فهرست اسناد</a></div>
+<div class="xref">مرتبط: <a href="api-v1.html">سند API v1 و نقشه‌ی مهاجرت</a> · <a href="architecture.html">معماری کلی</a> · <a href="index.html">فهرست اسناد</a></div>
 
 <div class="callout">
   <strong>روش کار:</strong> هر فیچر دقیقاً با تمپلیت ۵ فیچر قبلی (Auth/Blogs/News/Photos/Albums) ساخته شده —
@@ -90,7 +90,7 @@
 <p class="sub">هر چهار فیچر lint-clean روی PHP 8.4 و در SwaggerController ثبت شده‌اند.</p>
 
 <div class="feat">
-  <h3>🎬 Video <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Video <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/video/src · table <code>video_clip</code> · wraps VIDEO_BOL_ClipService</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/videos<br>
@@ -98,13 +98,13 @@
     <span class="m get">GET</span>    /api/v1/videos/{id}<br>
     <span class="m patch">PATCH</span>  /api/v1/videos/{id}<br>
     <span class="m del">DELETE</span> /api/v1/videos/{id}
-  </div>
+</div>
   <div class="flag">افزودن ویدیو از طریق event <code>video.add_clip</code> است که به پلاگین <code>iisvideoplus</code> وابسته‌ست.</div>
   <div class="flag">permissionهای <code>video.list/show/update/delete</code> باید به authorization اضافه شوند.</div>
 </div>
 
 <div class="feat">
-  <h3>📅 Events <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Events <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/event/src · table <code>event_item</code> · wraps EVENT_BOL_EventService</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/events<br>
@@ -112,13 +112,13 @@
     <span class="m get">GET</span>    /api/v1/events/{id}<br>
     <span class="m patch">PATCH</span>  /api/v1/events/{id}<br>
     <span class="m del">DELETE</span> /api/v1/events/{id}
-  </div>
+</div>
   <div class="flag">قرارداد ورودی تاریخ: الان Unix timestamp می‌گیرد — تأیید کن که با کلاینت‌ها می‌خواند (در برابر رشته‌ی شمسی).</div>
   <div class="flag">آپلود تصویر رویداد نیاز به endpoint multipart جدا دارد؛ رویدادهای «فقط دعوت‌شده» فعلاً در لیست نمی‌آیند.</div>
 </div>
 
 <div class="feat">
-  <h3>🤝 Friends <span class="chip ok">۱۶ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Friends <span class="chip ok">۱۶ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/friends/src · table <code>friends_friendship</code> · wraps FRIENDS_BOL_Service</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/friends<br>
@@ -126,12 +126,12 @@
     <span class="m post">POST</span>   /api/v1/friends<br>
     <span class="m post">POST</span>   /api/v1/friends/{id}/accept<br>
     <span class="m del">DELETE</span> /api/v1/friends/{id}
-  </div>
+</div>
   <div class="flag">حذف دوستِ فعال از طریق side-effect یک event انجام می‌شود (event handler پلاگین friends).</div>
 </div>
 
 <div class="feat">
-  <h3>🔔 Notifications <span class="chip ok">۱۶ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Notifications <span class="chip ok">۱۶ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/notifications/src · table <code>notifications_notification</code> · wraps NOTIFICATIONS_BOL_Service</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/notifications<br>
@@ -139,7 +139,7 @@
     <span class="m post">POST</span>   /api/v1/notifications/{id}/read<br>
     <span class="m get">GET</span>    /api/v1/notifications/settings<br>
     <span class="m patch">PATCH</span>  /api/v1/notifications/settings
-  </div>
+</div>
   <div class="flag">غنی‌سازی payload (آواتار فرستنده، متن آماده) که به ۱۰ پلاگین دیگر وصل است، فعلاً پورت نشده — فقط ستون‌های اصلی + data.</div>
 </div>
 
@@ -147,32 +147,32 @@
 <p class="sub">هر سه lint-clean روی PHP 8.4 و در SwaggerController ثبت شده‌اند.</p>
 
 <div class="feat">
-  <h3>💬 Forum <span class="chip ok">۳۲ فایل · ۲ ریسورس</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Forum <span class="chip ok">۳۲ فایل · ۲ ریسورس</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/forum/src · wraps FORUM_BOL_ForumService · Topic + Post</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/forum/topics · <span class="m post">POST</span> · <span class="m get">GET</span> /{id} · <span class="m patch">PATCH</span> · <span class="m del">DELETE</span><br>
     <span class="m get">GET</span>    /api/v1/forum/topics/{id}/posts · <span class="m post">POST</span><br>
     <span class="m patch">PATCH</span>  /api/v1/forum/posts/{id} · <span class="m del">DELETE</span>
-  </div>
+</div>
 </div>
 
 <div class="feat">
-  <h3>📊 Questions / Polls <span class="chip ok">۱۸ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Questions / Polls <span class="chip ok">۱۸ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/iisquestions/src · wraps iisquestions BOL</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/polls · <span class="m post">POST</span> · <span class="m get">GET</span> /{id} · <span class="m patch">PATCH</span> · <span class="m del">DELETE</span><br>
     <span class="m post">POST</span>   /api/v1/polls/{id}/vote
-  </div>
+</div>
 </div>
 
 <div class="feat">
-  <h3>💭 Comments <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint ✓</span></h3>
+  <h3>Comments <span class="chip ok">۱۷ فایل</span> <span class="chip ok">lint</span></h3>
   <p class="meta">ow_plugins/iiscommentplus/src · cross-entity · wraps BOL_CommentService + IISLIKE_BOL_Service</p>
   <div class="ep">
     <span class="m get">GET</span>    /api/v1/comments?entity_type=&entity_id=<br>
     <span class="m post">POST</span>   /api/v1/comments · <span class="m del">DELETE</span> /{id}<br>
     <span class="m post">POST</span>   /api/v1/comments/{id}/like · <span class="m del">DELETE</span> /{id}/like
-  </div>
+</div>
   <div class="flag">لایک کامنت از طریق پلاگین <code>iislike</code> است (باید فعال باشد).</div>
 </div>
 
@@ -202,12 +202,12 @@
 <h2><span class="n">04</span> ادامه‌ی کار</h2>
 <p class="sub">این صفحه با تکمیل هر موج به‌روز می‌شود.</p>
 <ul>
-  <li><span class="chip ok">موج ۱ ✓</span> Video · Events (۱۴ اکشن، پوشش کامل legacy) · Friends · Notifications</li>
-  <li><span class="chip ok">موج ۲ ✓</span> Forum (Topic+Post) · Questions/Polls · Comments</li>
-  <li><span class="chip ok">موج ۳ ✓</span> Search · Mention · Privacy · Flag · Contact</li>
-  <li><span class="chip ok">موج ۴ ✓</span> Newsfeed (۹ اکشن) · Groups (۳ کنترلر، ۱۵ روت) · Messaging (۱۳ روت)</li>
-  <li><span class="chip ok">موج ۵ ✓</span> Users/Profile (۵ کنترلر، ۱۳ روت) · Files/Upload (ClamAV + config)</li>
-  <li><span class="chip ok">موج ۶ ✓</span> iispors: آزمون/سؤال/شرکت/آمار/داوری (۱۷ روت) · Landing Builder (۱۰ روت)</li>
+  <li><span class="chip ok">موج ۱</span> Video · Events (۱۴ اکشن، پوشش کامل legacy) · Friends · Notifications</li>
+  <li><span class="chip ok">موج ۲</span> Forum (Topic+Post) · Questions/Polls · Comments</li>
+  <li><span class="chip ok">موج ۳</span> Search · Mention · Privacy · Flag · Contact</li>
+  <li><span class="chip ok">موج ۴</span> Newsfeed (۹ اکشن) · Groups (۳ کنترلر، ۱۵ روت) · Messaging (۱۳ روت)</li>
+  <li><span class="chip ok">موج ۵</span> Users/Profile (۵ کنترلر، ۱۳ روت) · Files/Upload (ClamAV + config)</li>
+  <li><span class="chip ok">موج ۶</span> iispors: آزمون/سؤال/شرکت/آمار/داوری (۱۷ روت) · Landing Builder (۱۰ روت)</li>
 </ul>
 <div class="callout">
   <strong>وضعیت پوش:</strong> هیچ‌چیز روی گیت‌لب <code>moto-next</code> پوش نشده. کل کد در برنچ ایزوله‌ی <code>feat/api-all-features</code> است.
