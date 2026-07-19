@@ -257,26 +257,20 @@ VITE_API_BASE_URL=https://motonext.shub.ir/api/v1</pre></li>
 
 // پاسخ عملیات نوشتن
 { "status": "success", "status_code": 201, "message": "...", "data": null }</pre>
-  <div class="note warn">
-    <b>پاسخ عملیات ساخت، بدنه‌ی منبع را برنمی‌گرداند.</b> <code>POST</code> با کد
-    <code>201</code> و <code>data: null</code> پاسخ می‌دهد و شناسه‌ی رکورد تازه در آن نیست.
-    برای نمایش رکورد ساخته‌شده، پس از دریافت <code>201</code> فهرست را مجدداً بخوانید
-    (معمولاً <code>GET /v1/&lt;resource&gt;?sort_by_created_at=desc&amp;per_page=1</code>).
-    این رفتار، قرارداد موجودِ ماژول‌های مستقر (Blogs، News، Photos، Albums) است و برای
-    یکدستی در همه‌ی منابع حفظ شده است.
+  <div class="note">
+    <b>پاسخ عملیات ساخت، منبع ساخته‌شده را برمی‌گرداند.</b> <code>POST</code> با کد
+    <code>201</code> پاسخ می‌دهد و <code>data</code> شامل رکورد تازه است — با همان
+    ساختاری که <code>GET</code> همان منبع برمی‌گرداند، فیلد‌به‌فیلد یکسان. نیازی به
+    خواندن مجدد فهرست پس از ساخت نیست.
 </div>
-  <div class="note warn">
-    <b>معناشناسی <code>PATCH</code> در دو گروه متفاوت است.</b> در <b>۱۹ منبع</b> — از جمله
-    <code>events</code>، <code>news</code>، <code>blogs</code>، <code>forum</code>،
-    <code>users/me</code> و <code>grants</code> — فیلدهای اصلی همچنان اجباری‌اند و ارسال تنها
-    یک فیلد پاسخ <code>422</code> می‌گیرد؛ در این منابع باید مقادیر فعلی را همراه با تغییرات
-    ارسال کنید (الگوی «خواندن، ادغام، ارسال»). در <b>۱۱ منبع</b> دیگر — مانند
-    <code>groups</code>، <code>competitions</code> و <code>articles</code> — ارسال جزئی
-    پشتیبانی می‌شود. مرجع دقیق برای هر منبع، فیلدهای علامت‌خورده با
-    <span class="pm req">اجباری</span> در جدول همان بخش است.
-<pre dir="ltr">// الگوی امن برای منابع گروه نخست
-const current = await api.get(`/v1/events/${id}`);
-await api.patch(`/v1/events/${id}`, { ...current.data, title: newTitle });</pre>
+  <div class="note">
+    <b><code>PATCH</code> به‌روزرسانی جزئی است.</b> تنها فیلدهایی را بفرستید که تغییر
+    کرده‌اند؛ فیلدهای ارسال‌نشده دست‌نخورده باقی می‌مانند.
+<pre dir="ltr">// فقط عنوان را عوض کن؛ بقیه‌ی فیلدها حفظ می‌شوند
+await api.patch(`/v1/events/${id}`, { title: newTitle });</pre>
+    استثنا: منابعی که تنها یک فیلد قابل ویرایش دارند — مانند
+    <code>forum/posts</code>، <code>messages</code> و <code>feed</code> — همان فیلد را
+    اجباری می‌دانند، چون <code>PATCH</code> با بدنه‌ی خالی در آن‌ها بی‌معناست.
 </div>
   <div class="note">
     تاریخ‌ها به‌صورت <b>ISO-8601</b> برمی‌گردند و هرجا معنا داشته باشد یک فیلد
