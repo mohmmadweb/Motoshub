@@ -26,6 +26,8 @@ import {
   Tag,
   SlidersHorizontal,
   HardDrive,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { SystemSection, StorageSection } from "./AdminSections";
 import {
@@ -38,6 +40,11 @@ import {
   integrations as initialIntegrations,
   guestAccounts as initialGuests,
   currentUser,
+  users as orgUsers,
+  permissionCatalog,
+  allPermissionIds,
+  initialRoleAssignments,
+  type RoleAssignment,
   type ModuleDef,
   type Tenant,
   type RoleDef,
@@ -133,7 +140,7 @@ export default function Admin() {
 
           {section === "pages" && <PagesSection pages={pages} setPages={setPages} extensions={extensions} setExtensions={setExtensions} notify={notify} />}
 
-          {section === "users" && <UsersSection tenant={tenant} notify={notify} />}
+          {section === "users" && <UsersSection tenant={tenant} roles={roles} notify={notify} />}
 
           {section === "integrations" && <IntegrationsSection integrations={integrations} setIntegrations={setIntegrations} notify={notify} />}
 
@@ -369,49 +376,134 @@ function BrandingSection({ tenant, notify }: { tenant: Tenant; notify: Notify })
 }
 
 function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles: (fn: (prev: RoleDef[]) => RoleDef[]) => void; notify: Notify }) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [scope, setScope] = useState<RoleDef["scope"]>("سازمان");
-  const [description, setDescription] = useState("");
+  const [editing, setEditing] = useState<RoleDef | "new" | null>(null);
 
-  const submit = () => {
-    if (!title.trim()) {
-      notify("عنوان نقش الزامی است.", "warning");
-      return;
-    }
-    const newRole: RoleDef = { id: `role-${Date.now()}`, title: title.trim(), scope, description: description.trim() || "بدون توضیحات", members: 0 };
-    setRoles((prev) => [...prev, newRole]);
-    notify(`نقش «${newRole.title}» ایجاد شد. اکنون می‌توانید آن را به کاربران تخصیص دهید.`);
-    setOpen(false);
-    setTitle("");
-    setDescription("");
-    setScope("سازمان");
+  if (editing !== null) {
+    return (
+      <RoleEditor
+        role={editing === "new" ? null : editing}
+        onCancel={() => setEditing(null)}
+        onSave={(saved) => {
+          if (editing === "new") {
+            setRoles((prev) => [...prev, saved]);
+            notify(`نقش سفارشی «${saved.title}» با ${saved.permissions.length.toLocaleString("fa-IR")} دسترسی ایجاد شد. اکنون می‌توانید آن را از بخش «کاربران» به اعضا تخصیص دهید.`);
+          } else {
+            setRoles((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+            notify(`دسترسی‌های نقش «${saved.title}» به‌روزرسانی شد.`);
+          }
+          setEditing(null);
+        }}
+      />
+    );
+  }
+
+  const removeRole = (role: RoleDef) => {
+    setRoles((prev) => prev.filter((r) => r.id !== role.id));
+    notify(`نقش «${role.title}» حذف شد. کاربران آن به نقش «عضو عادی» منتقل می‌شوند.`, "info");
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-ink-900">نقش‌ها و سطوح دسترسی</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setEditing("new")}>
           نقش جدید
         </Button>
+      </div>
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <KeyRound size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          علاوه بر نقش‌های پایه‌ی سامانه، می‌توانید نقش کاملاً سفارشی تعریف کنید و تک‌تک دسترسی‌های هر ماژول را
+          برای آن تیک بزنید. سپس از بخش «کاربران و واردسازی» این نقش را به هر کاربر تخصیص دهید.
+        </p>
       </div>
       <div className="card divide-y divide-ink-100">
         {roles.map((r) => (
           <div key={r.id} className="p-3.5 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-ink-900 flex items-center gap-2">
+              <p className="text-sm font-medium text-ink-900 flex items-center gap-2 flex-wrap">
                 {r.title} <Badge tone={r.scope === "پلتفرم" ? "navy" : r.scope === "سازمان" ? "brand" : "neutral"}>{r.scope}</Badge>
+                {!r.system && <Badge tone="warning">سفارشی</Badge>}
               </p>
               <p className="text-xs text-ink-400 mt-0.5">{r.description}</p>
             </div>
-            <span className="text-xs text-ink-400 shrink-0">{r.members.toLocaleString("fa-IR")} نفر</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs text-ink-400 hidden sm:block">{r.permissions.length.toLocaleString("fa-IR")} دسترسی</span>
+              <span className="text-xs text-ink-400 hidden sm:block">{r.members.toLocaleString("fa-IR")} نفر</span>
+              <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(r)}>
+                ویرایش دسترسی‌ها
+              </Button>
+              {!r.system && (
+                <button onClick={() => removeRole(r)} className="text-rose-500 hover:text-rose-700 p-1" title="حذف نقش">
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="ایجاد نقش دسترسی جدید">
-        <div className="space-y-3">
+function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: (r: RoleDef) => void; onCancel: () => void }) {
+  const [title, setTitle] = useState(role?.title ?? "");
+  const [scope, setScope] = useState<RoleDef["scope"]>(role?.scope ?? "سازمان");
+  const [description, setDescription] = useState(role?.description ?? "");
+  const [selected, setSelected] = useState<Set<string>>(new Set(role?.permissions ?? []));
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleGroup = (group: (typeof permissionCatalog)[number]) => {
+    const ids = group.actions.map((a) => a.id);
+    const allOn = ids.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => (allOn ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  };
+
+  const submit = () => {
+    if (!title.trim()) {
+      setError("عنوان نقش الزامی است.");
+      return;
+    }
+    if (selected.size === 0) {
+      setError("دست‌کم یک دسترسی برای این نقش انتخاب کنید.");
+      return;
+    }
+    onSave({
+      id: role?.id ?? `role-${Date.now()}`,
+      title: title.trim(),
+      scope,
+      description: description.trim() || "بدون توضیحات",
+      members: role?.members ?? 0,
+      permissions: Array.from(selected),
+      system: role?.system,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-ink-900 flex items-center gap-2">
+          <KeyRound size={15} className="text-brand-600" />
+          {role ? `ویرایش نقش «${role.title}»` : "تعریف نقش سفارشی جدید"}
+        </h3>
+        <Button variant="secondary" size="sm" onClick={onCancel}>بازگشت به فهرست نقش‌ها</Button>
+      </div>
+
+      <div className="card p-5">
+        <h4 className="text-xs font-bold text-ink-900 mb-4">مشخصات نقش</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان نقش</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: ناظر مالی پروژه" className="input-field" />
@@ -424,16 +516,82 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
               <option value="گروه">گروه</option>
             </select>
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-16" />
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد نقش</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          <div className="sm:col-span-2">
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات نقش</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="این نقش برای چه کسانی و با چه هدفی تعریف می‌شود؟" className="input-field min-h-16" />
           </div>
         </div>
-      </Modal>
+      </div>
+
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h4 className="text-xs font-bold text-ink-900">دسترسی‌ها</h4>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-ink-400">
+              {selected.size.toLocaleString("fa-IR")} از {allPermissionIds.length.toLocaleString("fa-IR")} دسترسی انتخاب شده
+            </span>
+            <button onClick={() => setSelected(new Set(allPermissionIds))} className="text-brand-600 font-medium hover:text-brand-700">
+              انتخاب همه
+            </button>
+            <button onClick={() => setSelected(new Set())} className="text-ink-500 font-medium hover:text-ink-700">
+              حذف همه
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {permissionCatalog.map((group) => {
+            const groupIds = group.actions.map((a) => a.id);
+            const onCount = groupIds.filter((id) => selected.has(id)).length;
+            const allOn = onCount === groupIds.length;
+            return (
+              <div key={group.id} className={`rounded-lg border p-3 ${onCount > 0 ? "border-brand-200 bg-brand-50/40" : "border-ink-200 bg-white"}`}>
+                <label className="flex items-center justify-between gap-2 cursor-pointer pb-2 mb-2 border-b border-ink-100">
+                  <span className="text-[12.5px] font-bold text-ink-900">{group.label}</span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-ink-400">
+                    {onCount.toLocaleString("fa-IR")}/{groupIds.length.toLocaleString("fa-IR")}
+                    <input
+                      type="checkbox"
+                      checked={allOn}
+                      ref={(el) => {
+                        if (el) el.indeterminate = onCount > 0 && !allOn;
+                      }}
+                      onChange={() => toggleGroup(group)}
+                      className="w-3.5 h-3.5 accent-brand-600"
+                    />
+                  </span>
+                </label>
+                <div className="space-y-1.5">
+                  {group.actions.map((a) => (
+                    <label key={a.id} className="flex items-center gap-2 cursor-pointer text-[12px] text-ink-700 hover:text-ink-900">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(a.id)}
+                        onChange={() => toggle(a.id)}
+                        className="w-3.5 h-3.5 accent-brand-600 shrink-0"
+                      />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+          <AlertTriangle size={14} className="shrink-0" /> {error}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
+          {role ? "ذخیره‌ی تغییرات نقش" : "افزودن نقش"}
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>انصراف</Button>
+      </div>
     </div>
   );
 }
@@ -552,8 +710,18 @@ function PagesSection({
   );
 }
 
-function UsersSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
+function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDef[]; notify: Notify }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [assignments, setAssignments] = useState<RoleAssignment>(initialRoleAssignments);
+
+  const assignRole = (userId: string, roleId: string) => {
+    setAssignments((prev) => ({ ...prev, [userId]: roleId }));
+    const user = orgUsers.find((u) => u.id === userId);
+    const role = roles.find((r) => r.id === roleId);
+    if (user && role) {
+      notify(`نقش «${role.title}» با ${role.permissions.length.toLocaleString("fa-IR")} دسترسی به «${user.name}» تخصیص یافت.`);
+    }
+  };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -581,6 +749,54 @@ function UsersSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
         <StatCard label="کل کاربران" value={tenant.users.toLocaleString("fa-IR")} icon={<Users size={16} />} tone="brand" />
         <StatCard label="کاربران فعال این هفته" value="۸۶۴" tone="success" />
         <StatCard label="در انتظار تایید" value="۱۲" tone="warning" />
+      </div>
+
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <UserCog size={15} className="text-ink-500" /> تخصیص نقش به کاربران
+          </h3>
+          <span className="text-[11px] text-ink-400">نقش‌های سفارشی را از بخش «نقش‌ها و دسترسی» تعریف کنید</span>
+        </div>
+        <p className="text-xs text-ink-400 mb-3">
+          هر کاربر دقیقاً به اندازه‌ی دسترسی‌های تیک‌خورده‌ی نقشِ تخصیص‌یافته، به بخش‌های سامانه دسترسی خواهد داشت.
+        </p>
+        <div className="divide-y divide-ink-100 border border-ink-100 rounded-lg">
+          {orgUsers.map((u) => {
+            const assigned = roles.find((r) => r.id === assignments[u.id]) ?? roles.find((r) => r.id === "r4");
+            return (
+              <div key={u.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: u.avatarColor }}>
+                    {u.name.slice(0, 1)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink-900 truncate">{u.name}</p>
+                    <p className="text-[11px] text-ink-400 truncate">{u.role} · {u.org}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {assigned && (
+                    <span className="text-[11px] text-ink-400 hidden md:block">
+                      {assigned.permissions.length.toLocaleString("fa-IR")} دسترسی
+                    </span>
+                  )}
+                  <select
+                    value={assignments[u.id] ?? "r4"}
+                    onChange={(e) => assignRole(u.id, e.target.value)}
+                    className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}{!r.system ? " (سفارشی)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="card p-5">

@@ -1076,13 +1076,240 @@ export const adminMenus: AdminMenuDef[] = [
   { id: "mn5", title: "طرح‌های اشتغال‌زایی", order: 5, visible: false },
 ];
 
-export type RoleDef = { id: string; title: string; scope: "پلتفرم" | "سازمان" | "گروه"; members: number; description: string };
-export const roles: RoleDef[] = [
-  { id: "r1", title: "راهبر پلتفرم", scope: "پلتفرم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌ها و تنظیمات زیرساخت" },
-  { id: "r2", title: "مدیر سازمان", scope: "سازمان", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی" },
-  { id: "r3", title: "ناظم گروه", scope: "گروه", members: 18, description: "مدیریت محتوا و اعضای یک گروه مشخص" },
-  { id: "r4", title: "عضو عادی", scope: "گروه", members: 1280, description: "دسترسی استاندارد به محتوای عمومی و گروه‌های عضو" },
+// ---------------------------------------------------------------------------
+// Roles & granular permissions (custom roles)
+// ---------------------------------------------------------------------------
+export type PermissionGroup = {
+  id: string;
+  label: string;
+  actions: { id: string; label: string }[];
+};
+
+export const permissionCatalog: PermissionGroup[] = [
+  {
+    id: "users",
+    label: "کاربران",
+    actions: [
+      { id: "users.list", label: "مشاهده فهرست کاربران" },
+      { id: "users.create", label: "ایجاد کاربر جدید" },
+      { id: "users.edit", label: "ویرایش کاربران" },
+      { id: "users.import", label: "واردسازی دسته‌ای کاربران" },
+      { id: "users.block", label: "مسدودسازی کاربران" },
+      { id: "users.guest", label: "دعوت حساب مهمان" },
+    ],
+  },
+  {
+    id: "roles",
+    label: "نقش‌ها و دسترسی",
+    actions: [
+      { id: "roles.list", label: "مشاهده فهرست نقش‌ها" },
+      { id: "roles.create", label: "ایجاد نقش جدید" },
+      { id: "roles.edit", label: "ویرایش نقش و دسترسی‌ها" },
+      { id: "roles.delete", label: "حذف نقش" },
+      { id: "roles.assign", label: "تخصیص نقش به کاربران" },
+    ],
+  },
+  {
+    id: "news",
+    label: "اخبار سازمان",
+    actions: [
+      { id: "news.list", label: "مشاهده اخبار" },
+      { id: "news.create", label: "افزودن خبر" },
+      { id: "news.edit", label: "ویرایش خبر" },
+      { id: "news.delete", label: "حذف خبر" },
+      { id: "news.pin", label: "سنجاق‌کردن خبر" },
+      { id: "news.comments", label: "مدیریت و تایید نظرات اخبار" },
+    ],
+  },
+  {
+    id: "blog",
+    label: "بلاگ",
+    actions: [
+      { id: "blog.list", label: "مشاهده یادداشت‌ها" },
+      { id: "blog.create", label: "انتشار یادداشت" },
+      { id: "blog.edit", label: "ویرایش یادداشت" },
+      { id: "blog.delete", label: "حذف یادداشت" },
+      { id: "blog.comments", label: "مدیریت نظرات بلاگ" },
+    ],
+  },
+  {
+    id: "groups",
+    label: "گروه‌های تعاملی",
+    actions: [
+      { id: "groups.list", label: "مشاهده گروه‌ها" },
+      { id: "groups.create", label: "ایجاد گروه" },
+      { id: "groups.edit", label: "ویرایش گروه" },
+      { id: "groups.delete", label: "حذف گروه" },
+      { id: "groups.members", label: "مدیریت اعضای گروه" },
+      { id: "groups.post", label: "انتشار پست در گروه" },
+    ],
+  },
+  {
+    id: "forum",
+    label: "انجمن",
+    actions: [
+      { id: "forum.list", label: "مشاهده مباحث" },
+      { id: "forum.create", label: "ایجاد مبحث جدید" },
+      { id: "forum.reply", label: "پاسخ به مباحث" },
+      { id: "forum.edit", label: "ویرایش مباحث" },
+      { id: "forum.delete", label: "حذف مباحث" },
+      { id: "forum.solve", label: "علامت‌گذاری پاسخ برگزیده" },
+    ],
+  },
+  {
+    id: "events",
+    label: "رویدادها و جلسات",
+    actions: [
+      { id: "events.list", label: "مشاهده رویدادها" },
+      { id: "events.create", label: "ایجاد رویداد" },
+      { id: "events.edit", label: "ویرایش رویداد" },
+      { id: "events.delete", label: "حذف رویداد" },
+      { id: "events.invite", label: "ارسال دعوت‌نامه" },
+    ],
+  },
+  {
+    id: "media",
+    label: "تصاویر و ویدیو",
+    actions: [
+      { id: "media.list", label: "مشاهده رسانه‌ها" },
+      { id: "media.upload", label: "بارگذاری تصویر و ویدیو" },
+      { id: "media.edit", label: "ویرایش رسانه" },
+      { id: "media.delete", label: "حذف رسانه" },
+      { id: "media.albums", label: "مدیریت آلبوم‌ها" },
+    ],
+  },
+  {
+    id: "chat",
+    label: "گفتگو و کانال‌ها",
+    actions: [
+      { id: "chat.view", label: "مشاهده و ارسال پیام" },
+      { id: "chat.channels", label: "ایجاد و مدیریت کانال" },
+      { id: "chat.pin", label: "سنجاق‌کردن پیام" },
+      { id: "chat.integrations", label: "مدیریت وب‌هوک‌ها و بات‌ها" },
+    ],
+  },
+  {
+    id: "knowledge",
+    label: "مدیریت دانش",
+    actions: [
+      { id: "knowledge.list", label: "مشاهده اسناد" },
+      { id: "knowledge.upload", label: "بارگذاری سند" },
+      { id: "knowledge.edit", label: "ویرایش سند" },
+      { id: "knowledge.delete", label: "حذف سند" },
+      { id: "knowledge.categories", label: "مدیریت دسته‌بندی اسناد" },
+      { id: "knowledge.visibility", label: "تغییر سطح دسترسی اسناد" },
+    ],
+  },
+  {
+    id: "projects",
+    label: "مدیریت پروژه",
+    actions: [
+      { id: "projects.list", label: "مشاهده پروژه‌ها" },
+      { id: "projects.create", label: "ایجاد پروژه" },
+      { id: "projects.edit", label: "ویرایش پروژه" },
+      { id: "projects.delete", label: "حذف پروژه" },
+      { id: "projects.tasks", label: "ایجاد و تخصیص وظایف" },
+      { id: "projects.progress", label: "ثبت گزارش پیشرفت" },
+    ],
+  },
+  {
+    id: "contracts",
+    label: "قراردادها",
+    actions: [
+      { id: "contracts.list", label: "مشاهده قراردادها" },
+      { id: "contracts.create", label: "ثبت قرارداد" },
+      { id: "contracts.edit", label: "ویرایش قرارداد" },
+      { id: "contracts.delete", label: "حذف قرارداد" },
+      { id: "contracts.stage", label: "تغییر مرحله قرارداد" },
+    ],
+  },
+  {
+    id: "funds",
+    label: "صندوق نوآوری و شتاب‌دهی",
+    actions: [
+      { id: "funds.list", label: "مشاهده طرح‌ها" },
+      { id: "funds.submit", label: "ثبت طرح جدید" },
+      { id: "funds.refer", label: "ارجاع طرح به داوری" },
+      { id: "funds.score", label: "امتیازدهی و داوری طرح" },
+      { id: "funds.allocate", label: "تخصیص منابع و اقساط" },
+      { id: "funds.monitor", label: "پایش و ثبت KPI طرح" },
+    ],
+  },
+  {
+    id: "research",
+    label: "فرصت‌های پژوهشی",
+    actions: [
+      { id: "research.list", label: "مشاهده فراخوان‌ها" },
+      { id: "research.create", label: "ایجاد فراخوان" },
+      { id: "research.edit", label: "ویرایش فراخوان" },
+      { id: "research.close", label: "بستن فراخوان" },
+    ],
+  },
+  {
+    id: "reports",
+    label: "گزارش‌گیری",
+    actions: [
+      { id: "reports.view", label: "مشاهده داشبورد گزارش‌ها" },
+      { id: "reports.export", label: "دریافت خروجی گزارش" },
+    ],
+  },
+  {
+    id: "settings",
+    label: "تنظیمات سامانه",
+    actions: [
+      { id: "settings.branding", label: "برندسازی سازمان" },
+      { id: "settings.modules", label: "فعال/غیرفعال‌سازی ماژول‌ها" },
+      { id: "settings.pages", label: "مدیریت صفحات و منوها" },
+      { id: "settings.security", label: "تنظیمات امنیت و انطباق" },
+      { id: "settings.system", label: "تنظیمات کلی سیستم" },
+      { id: "settings.storage", label: "مدیریت فضای ذخیره‌سازی" },
+    ],
+  },
 ];
+
+export const allPermissionIds: string[] = permissionCatalog.flatMap((g) => g.actions.map((a) => a.id));
+
+export type RoleDef = {
+  id: string;
+  title: string;
+  scope: "پلتفرم" | "سازمان" | "گروه";
+  members: number;
+  description: string;
+  permissions: string[];
+  system?: boolean;
+};
+
+export const roles: RoleDef[] = [
+  { id: "r1", title: "راهبر پلتفرم", scope: "پلتفرم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌ها و تنظیمات زیرساخت", permissions: [...allPermissionIds], system: true },
+  { id: "r2", title: "مدیر سازمان", scope: "سازمان", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی", permissions: allPermissionIds.filter((p) => !p.startsWith("settings.system") && !p.startsWith("settings.storage")), system: true },
+  { id: "r3", title: "ناظم گروه", scope: "گروه", members: 18, description: "مدیریت محتوا و اعضای یک گروه مشخص", permissions: ["groups.list", "groups.edit", "groups.members", "groups.post", "forum.list", "forum.create", "forum.reply", "forum.solve", "chat.view", "chat.pin", "media.list", "media.upload", "news.list", "blog.list", "events.list"], system: true },
+  {
+    id: "r4",
+    title: "عضو عادی",
+    scope: "گروه",
+    members: 1280,
+    description: "دسترسی استاندارد به محتوای عمومی و گروه‌های عضو",
+    permissions: ["news.list", "blog.list", "groups.list", "groups.post", "forum.list", "forum.reply", "events.list", "media.list", "chat.view", "knowledge.list", "reports.view"],
+    system: true,
+  },
+  {
+    id: "r5",
+    title: "کارشناس داوری صندوق",
+    scope: "سازمان",
+    members: 7,
+    description: "نقش سفارشی: بررسی، امتیازدهی و پایش طرح‌های صندوق نوآوری",
+    permissions: ["funds.list", "funds.refer", "funds.score", "funds.monitor", "reports.view", "knowledge.list", "events.list", "chat.view"],
+  },
+];
+
+export type RoleAssignment = Record<string, string>;
+export const initialRoleAssignments: RoleAssignment = {
+  u1: "r1",
+  u2: "r2",
+  u3: "r4",
+  u4: "r2",
+  u5: "r5",
+};
 
 export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];
 
