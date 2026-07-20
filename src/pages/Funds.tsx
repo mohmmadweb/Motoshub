@@ -1,7 +1,31 @@
 import { useMemo, useState } from "react";
-import { PiggyBank, Plus, TrendingUp, Landmark, ListFilter, CalendarClock, Gauge, Target } from "lucide-react";
+import {
+  PiggyBank,
+  Plus,
+  TrendingUp,
+  Landmark,
+  ListFilter,
+  CalendarClock,
+  Gauge,
+  Target,
+  Workflow,
+  FileClock,
+  Wallet,
+  ShieldCheck,
+  History,
+  GitBranch,
+  BellRing,
+  Send,
+} from "lucide-react";
 import { funds as initialFunds, type FundRecord } from "../data/mock";
 import { fundDetails, fundOverview, reviewSessions } from "../data/mockDetails";
+import {
+  nfProjects as initialNfProjects,
+  nfStages,
+  nfWorkflowRules,
+  type NfProject,
+  type NfStage,
+} from "../data/mockInnovationFund";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -9,6 +33,7 @@ import StatCard from "../components/ui/StatCard";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import Modal from "../components/ui/Modal";
 import Drawer from "../components/ui/Drawer";
+import Tabs from "../components/ui/Tabs";
 import { useToast } from "../components/ui/ToastProvider";
 
 const stageTone: Record<FundRecord["stage"], BadgeTone> = {
@@ -27,7 +52,453 @@ const trancheTone: Record<string, BadgeTone> = {
 
 const stages: FundRecord["stage"][] = ["ثبت‌شده", "انتخاب اولیه", "داوری", "تخصیص‌یافته", "در حال پایش"];
 
+const nfStageTone: Record<NfStage, BadgeTone> = {
+  "دریافت پروپوزال": "neutral",
+  "ارزیابی اولیه": "warning",
+  "ارزیابی موشکافانه": "warning",
+  "تصویب طرح": "brand",
+  "تنظیم قرارداد": "brand",
+  "نظارت و راهبری": "success",
+  "خروج از صندوق": "navy",
+};
+
+const chainStatusTone: Record<string, BadgeTone> = {
+  "تایید شده": "success",
+  "در انتظار بررسی": "warning",
+  "نیازمند اصلاح": "danger",
+};
+
+const paymentTone: Record<string, BadgeTone> = {
+  "در انتظار دستور پرداخت": "neutral",
+  "دستور پرداخت صادر شد": "warning",
+  "پرداخت انجام شد": "success",
+  "اسناد تحویل صندوق شد": "success",
+  "اسناد به تیم مجری ارسال شد": "success",
+};
+
 export default function Funds() {
+  const [tab, setTab] = useState<"nf" | "employment">("nf");
+  return (
+    <div>
+      <PageHeader
+        title="صندوق نوآوری و شتاب‌دهی"
+        description="روند کامل صندوق نوآور: دریافت پروپوزال، ارزیابی، تصویب، قرارداد، نظارت و راهبری، خروج — به‌همراه طرح‌های اشتغال‌زایی"
+        icon={<PiggyBank size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "nf", label: "صندوق نوآور — روند کامل", count: initialNfProjects.length },
+          { id: "employment", label: "طرح‌های اشتغال‌زایی", count: initialFunds.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "nf" ? <InnovationFundTab /> : <EmploymentFundTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// صندوق نوآور — روند کامل مطابق فرآیندهای موسسه دانشمند
+// ---------------------------------------------------------------------------
+function InnovationFundTab() {
+  const [projects, setProjects] = useState<NfProject[]>(initialNfProjects);
+  const [selected, setSelected] = useState<NfProject | null>(null);
+  const [stageFilter, setStageFilter] = useState<"همه" | NfStage>("همه");
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [teamName, setTeamName] = useState("");
+  const [macroField, setMacroField] = useState("اقتصاد دیجیتال و هوش مصنوعی");
+  const [budget, setBudget] = useState("");
+  const { notify } = useToast();
+
+  const pendingReports = projects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
+  const pendingPayments = projects.flatMap((p) => p.payments).filter((p) => p.status !== "اسناد به تیم مجری ارسال شد" && p.status !== "اسناد تحویل صندوق شد").length;
+  const lateReviews = projects.flatMap((p) => p.reports).flatMap((r) => r.chain).filter((c) => c.late).length;
+
+  const submitProposal = () => {
+    if (!title.trim() || !teamName.trim()) {
+      notify("عنوان طرح و نام تیم مجری الزامی است.", "warning");
+      return;
+    }
+    const seq = 1060 + projects.length;
+    const newProject: NfProject = {
+      id: `NF-1404-${seq}`,
+      titleFa: title.trim(),
+      titleEn: "—",
+      macroField,
+      field: "سایر",
+      motherProject: "ثبت مستقیم در سامانه",
+      team: { name: teamName.trim(), type: "تیم فناور", city: "—", manager: teamName.trim(), members: 1 },
+      rahbar: "در حال تعیین",
+      nazer: "در حال تعیین",
+      fundManager: "مدیر صندوق نوآور",
+      budget: budget.trim() ? `${budget.trim()} میلیون ریال` : "در انتظار ارزیابی",
+      shareDaneshmand: 50,
+      durationMonths: 0,
+      contractNo: "—",
+      stage: "دریافت پروپوزال",
+      subStatus: "دریافت طرح، تخصیص کد یکتا و ایجاد شناسنامه — در انتظار بررسی مستندات",
+      progress: 0,
+      finance: { prepayment: "—", approvedByProgress: "—", paid: "۰", pending: "۰", retention: "۰", remaining: "—" },
+      guarantees: [],
+      gantt: [],
+      reports: [],
+      payments: [],
+      timeline: [{ date: "امروز", time: "هم‌اکنون", step: "دریافت پروپوزال", text: "دریافت طرح، تخصیص کد یکتا و ایجاد شناسنامه پروژه" }],
+      requests: [],
+    };
+    setProjects((prev) => [newProject, ...prev]);
+    notify(`پروپوزال با کد یکتا «${newProject.id}» ثبت شد و شناسنامه پروژه ایجاد گردید. پس از تایید شکلی، ارزیابی اولیه هوشمند اجرا می‌شود.`);
+    setOpen(false);
+    setTitle("");
+    setTeamName("");
+    setBudget("");
+  };
+
+  const filtered = useMemo(
+    () => (stageFilter === "همه" ? projects : projects.filter((p) => p.stage === stageFilter)),
+    [projects, stageFilter]
+  );
+
+  const columns: Column<NfProject>[] = [
+    { key: "id", label: "کد یکتا", render: (p) => <span className="font-mono text-[11px] font-medium text-ink-800" dir="ltr">{p.id}</span> },
+    { key: "titleFa", label: "عنوان پروژه", render: (p) => <span className="font-medium text-ink-900">{p.titleFa}</span> },
+    { key: "team", label: "مجری", render: (p) => <span>{p.team.name}</span> },
+    { key: "stage", label: "گام اصلی", render: (p) => <Badge tone={nfStageTone[p.stage]}>{p.stage}</Badge> },
+    {
+      key: "progress",
+      label: "پیشرفت تاییدشده",
+      render: (p) => (
+        <div className="flex items-center gap-2 min-w-[90px]">
+          <div className="flex-1 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${p.progress}%` }} />
+          </div>
+          <span className="text-[11px] text-ink-500">{p.progress.toLocaleString("fa-IR")}٪</span>
+        </div>
+      ),
+    },
+    { key: "budget", label: "مبلغ" },
+  ];
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatCard label="پروژه‌های صندوق نوآور" value={projects.length.toLocaleString("fa-IR")} tone="brand" icon={<Target size={16} />} />
+        <StatCard label="در نظارت و راهبری" value={projects.filter((p) => p.stage === "نظارت و راهبری").length.toLocaleString("fa-IR")} tone="success" icon={<Gauge size={16} />} />
+        <StatCard label="گزارش در انتظار بررسی" value={pendingReports.toLocaleString("fa-IR")} tone="warning" icon={<FileClock size={16} />} />
+        <StatCard label="پرداخت در جریان" value={pendingPayments.toLocaleString("fa-IR")} tone="warning" icon={<Wallet size={16} />} />
+      </div>
+
+      {lateReviews > 0 && (
+        <div className="card p-3.5 mb-4 bg-amber-50 border-amber-200 flex items-center gap-2.5 text-xs text-amber-800">
+          <BellRing size={15} className="shrink-0" />
+          اعلان سیستمی: {lateReviews.toLocaleString("fa-IR")} بررسی گزارش از مهلت ۱۵ روزه عبور کرده است — به بررسی‌کننده یادآوری ارسال شد. (هیچ گزارشی به‌صورت خودکار تایید نمی‌شود)
+        </div>
+      )}
+
+      <div className="card p-4 mb-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <Workflow size={15} className="text-brand-600" /> گام‌های اصلی روند صندوق
+          </h3>
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+            ثبت پروپوزال جدید
+          </Button>
+        </div>
+        <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1">
+          {nfStages.map((s, i) => {
+            const count = projects.filter((p) => p.stage === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setStageFilter(stageFilter === s ? "همه" : s)}
+                className={`flex-1 min-w-[110px] rounded-lg border p-2.5 text-right transition-colors ${
+                  stageFilter === s ? "border-brand-500 bg-brand-50" : count > 0 ? "border-ink-200 bg-white hover:border-brand-300" : "border-ink-100 bg-ink-50/50"
+                }`}
+              >
+                <p className="text-[10.5px] text-ink-400 mb-1">گام {(i + 1).toLocaleString("fa-IR")}</p>
+                <p className="text-[12px] font-bold text-ink-900 leading-5">{s}</p>
+                <p className="text-[11px] text-ink-500 mt-1">{count.toLocaleString("fa-IR")} پروژه</p>
+              </button>
+            );
+          })}
+          <div className="flex-1 min-w-[110px] rounded-lg border border-dashed border-emerald-300 bg-emerald-50/50 p-2.5 text-right">
+            <p className="text-[10.5px] text-emerald-600 mb-1 flex items-center gap-1"><GitBranch size={11} /> مسیر ویژه</p>
+            <p className="text-[12px] font-bold text-emerald-800 leading-5">مسیر سبز</p>
+            <p className="text-[11px] text-emerald-600 mt-1">با دستور مدیرعامل / هیئت مدیره</p>
+          </div>
+        </div>
+        {stageFilter !== "همه" && (
+          <button onClick={() => setStageFilter("همه")} className="text-[11px] text-brand-600 font-medium mt-2 flex items-center gap-1">
+            <ListFilter size={12} /> حذف فیلتر «{stageFilter}»
+          </button>
+        )}
+      </div>
+
+      <div className="mb-5">
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          searchKeys={["id", "titleFa"]}
+          searchPlaceholder="جستجو در کد یکتا یا عنوان پروژه…"
+          onRowClick={(p) => setSelected(p)}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-ink-900 mb-3 flex items-center gap-1.5">
+          <BellRing size={15} className="text-brand-600" /> قواعد گردش کار سامانه‌ای صندوق
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {nfWorkflowRules.map((r) => (
+            <div key={r.title} className="card p-3.5">
+              <p className="text-[12.5px] font-bold text-ink-900 mb-1">{r.title}</p>
+              <p className="text-[11.5px] text-ink-500 leading-5">{r.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="ثبت پروپوزال جدید در صندوق نوآور"
+        description="با ثبت، کد یکتا تخصیص می‌یابد و شناسنامه پروژه ایجاد می‌شود. پس از تایید شکلی، ارزیابی اولیه هوشمند (اجرای پرامپت ارزیابی) انجام و در صورت کسب حد نصاب، طرح به ارزیابی موشکافانه ارجاع می‌شود."
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح (فارسی)</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: سامانه پایش هوشمند زنجیره سرد" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام تیم / شرکت مجری</label>
+            <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="مثلاً: تیم فناور آرتان" className="input-field" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">کلان محور</label>
+              <select value={macroField} onChange={(e) => setMacroField(e.target.value)} className="input-field">
+                <option>امنیت غذایی</option>
+                <option>حمل و نقل ترکیبی</option>
+                <option>صنایع بالادستی نفت و گاز</option>
+                <option>صنعتی‌سازی ساختمان</option>
+                <option>اقتصاد دیجیتال و هوش مصنوعی</option>
+                <option>معدن و زنجیره ارزش فولاد</option>
+                <option>سایر زمینه‌های فناوری</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">مبلغ پیشنهادی (میلیون ریال)</label>
+              <input value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="۲٬۵۰۰" className="input-field" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" icon={<Send size={14} />} onClick={submitProposal}>
+              ثبت پروپوزال و تخصیص کد یکتا
+            </Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Drawer open={selected !== null} onClose={() => setSelected(null)} title="پرونده پروژه صندوق نوآور">
+        {selected && <NfProjectFile project={selected} />}
+      </Drawer>
+    </div>
+  );
+}
+
+function NfProjectFile({ project: p }: { project: NfProject }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          <span className="font-mono text-[11px] font-bold text-brand-700 bg-brand-50 rounded px-1.5 py-0.5" dir="ltr">{p.id}</span>
+          <Badge tone={nfStageTone[p.stage]}>{p.stage}</Badge>
+          {p.greenPath && <Badge tone="success">مسیر سبز</Badge>}
+        </div>
+        <p className="text-sm font-bold text-ink-900 leading-6">{p.titleFa}</p>
+        <p className="text-[11px] text-ink-400 mt-0.5" dir="ltr">{p.titleEn}</p>
+        <div className="mt-2 p-2.5 rounded-lg bg-ink-50 text-[11.5px] text-ink-600 leading-5">
+          <span className="font-medium text-ink-800">ریزوضعیت فعلی:</span> {p.subStatus}
+        </div>
+      </div>
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2">شناسنامه پروژه</h4>
+        <div className="text-xs text-ink-600 space-y-1.5">
+          <p><span className="text-ink-400">کلان محور:</span> {p.macroField} · <span className="text-ink-400">زمینه:</span> {p.field}</p>
+          <p><span className="text-ink-400">پروژه مادر:</span> {p.motherProject}</p>
+          <p><span className="text-ink-400">مجری:</span> {p.team.name} ({p.team.type} — {p.team.city}، {p.team.members.toLocaleString("fa-IR")} عضو)</p>
+          <p><span className="text-ink-400">راهبر:</span> {p.rahbar}</p>
+          <p><span className="text-ink-400">ناظر:</span> {p.nazer} · <span className="text-ink-400">مدیر صندوق:</span> {p.fundManager}</p>
+          <p>
+            <span className="text-ink-400">مبلغ:</span> {p.budget} · <span className="text-ink-400">سهم دانشمند:</span> {p.shareDaneshmand.toLocaleString("fa-IR")}٪
+          </p>
+          <p>
+            <span className="text-ink-400">مدت:</span> {p.durationMonths > 0 ? `${p.durationMonths.toLocaleString("fa-IR")} ماه` : "—"} · <span className="text-ink-400">شماره قرارداد:</span> <span dir="ltr">{p.contractNo}</span>
+          </p>
+        </div>
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="font-bold text-ink-900">درصد پیشرفت تاییدشده</span>
+            <span className="text-ink-500">{p.progress.toLocaleString("fa-IR")}٪</span>
+          </div>
+          <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${p.progress}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Wallet size={13} className="text-ink-400" /> وضعیت مالی</h4>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          {[
+            ["پیش‌پرداخت", p.finance.prepayment],
+            ["تاییدشده بر اساس پیشرفت", p.finance.approvedByProgress],
+            ["پرداخت‌شده به مجری", p.finance.paid],
+            ["در انتظار پرداخت", p.finance.pending],
+            ["حسن انجام کار نزد مجری", p.finance.retention],
+            ["باقی‌مانده", p.finance.remaining],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-ink-50 rounded-lg p-2">
+              <p className="text-ink-400">{label}</p>
+              <p className="font-medium text-ink-800 mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {p.gantt.length > 0 && (
+        <div className="border-t border-ink-100 pt-4">
+          <h4 className="text-xs font-bold text-ink-900 mb-2">گانت‌چارت و درصد وزنی فعالیت‌ها</h4>
+          <div className="space-y-2">
+            {p.gantt.map((g) => (
+              <div key={g.title} className="text-[11px] bg-ink-50 rounded-lg p-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="font-medium text-ink-800">{g.title}</p>
+                  <Badge tone="neutral">وزن {g.weight.toLocaleString("fa-IR")}٪</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-ink-200/60 overflow-hidden">
+                    <div className={`h-full rounded-full ${g.done === 100 ? "bg-emerald-500" : "bg-brand-500"}`} style={{ width: `${g.done}%` }} />
+                  </div>
+                  <span className="text-ink-500 shrink-0">{g.done.toLocaleString("fa-IR")}٪</span>
+                </div>
+                <p className="text-ink-400 mt-1">{g.months} · هزینه گام: {g.cost}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><FileClock size={13} className="text-ink-400" /> گزارش‌ها و زنجیره تایید</h4>
+        {p.reports.length === 0 && <p className="text-xs text-ink-400">گزارشی ثبت نشده — سررسید گزارش‌ها طبق گانت‌چارت تعیین و یک هفته قبل یادآوری می‌شود.</p>}
+        <div className="space-y-2">
+          {p.reports.map((r) => (
+            <div key={r.id} className="text-[11px] border border-ink-100 rounded-lg p-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="font-medium text-ink-800">{r.title}</p>
+                <Badge tone={r.status === "تایید نهایی" ? "success" : r.status === "در حال بررسی" ? "warning" : r.status === "نیازمند اصلاح" ? "danger" : "neutral"}>{r.status}</Badge>
+              </div>
+              <p className="text-ink-400 mt-1">نوع: {r.type} · سررسید {r.due} · بارگذاری: {r.uploadedBy}{r.uploadedAt ? ` (${r.uploadedAt})` : ""}</p>
+              {r.chain.length > 0 && (
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {r.chain.map((c) => (
+                    <span key={c.role} className="flex items-center gap-1">
+                      <Badge tone={chainStatusTone[c.status]}>
+                        {c.role}: {c.status}
+                      </Badge>
+                      {c.late && <Badge tone="danger">عبور از مهلت ۱۵ روز</Badge>}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Landmark size={13} className="text-ink-400" /> پرداخت‌ها</h4>
+        {p.payments.length === 0 && <p className="text-xs text-ink-400">پرداختی ثبت نشده است.</p>}
+        <div className="space-y-2">
+          {p.payments.map((pay) => (
+            <div key={pay.id} className="text-[11px] bg-ink-50 rounded-lg p-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="font-medium text-ink-800">{pay.title}</p>
+                <Badge tone={paymentTone[pay.status]}>{pay.status}</Badge>
+              </div>
+              <p className="text-ink-400 mt-1">
+                {pay.type} · {pay.amount}
+                {pay.orderedBy ? ` · دستور پرداخت: ${pay.orderedBy}` : ""}
+                {pay.paidAt ? ` · واریز ${pay.paidAt}` : ""}
+                {pay.docNo ? ` · ${pay.docNo}` : ""}
+              </p>
+              {pay.paidAt && <p className="text-emerald-600 mt-1">اطلاع‌رسانی سیستمی واریز به تمامی اعضای تیم ارسال شد.</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><ShieldCheck size={13} className="text-ink-400" /> تضامین</h4>
+        {p.guarantees.length === 0 && <p className="text-xs text-ink-400">تضمینی ثبت نشده است.</p>}
+        <div className="space-y-1.5">
+          {p.guarantees.map((g) => (
+            <div key={g.type} className="flex items-center justify-between text-[11px] border border-ink-100 rounded-lg p-2.5">
+              <span className="text-ink-700">{g.type} — {g.amount}</span>
+              <Badge tone={g.status === "دریافت‌شده" ? "success" : g.status === "آزادشده" ? "navy" : "warning"}>{g.status}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {p.requests.length > 0 && (
+        <div className="border-t border-ink-100 pt-4">
+          <h4 className="text-xs font-bold text-ink-900 mb-2">درخواست‌های خارج از قرارداد</h4>
+          <div className="space-y-2">
+            {p.requests.map((rq) => (
+              <div key={rq.id} className="text-[11px] border border-ink-100 rounded-lg p-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="font-medium text-ink-800">{rq.type}</p>
+                  <Badge tone={rq.status.startsWith("تایید") ? "success" : rq.status === "رد شده" ? "danger" : "warning"}>{rq.status}</Badge>
+                </div>
+                <p className="text-ink-500 mt-1 leading-5">{rq.note}</p>
+                <p className="text-ink-400 mt-1">{rq.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-ink-100 pt-4">
+        <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><History size={13} className="text-ink-400" /> گام‌نما (تاریخچه کامل پروژه)</h4>
+        <div className="space-y-0">
+          {p.timeline.map((t, i) => (
+            <div key={i} className="flex gap-2.5 text-[11px]">
+              <div className="flex flex-col items-center">
+                <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${i === p.timeline.length - 1 ? "bg-brand-500" : "bg-ink-300"}`} />
+                {i < p.timeline.length - 1 && <span className="w-px flex-1 bg-ink-200" />}
+              </div>
+              <div className="pb-3 min-w-0">
+                <p className="text-ink-400">{t.date} · {t.time} · <span className="text-ink-500 font-medium">{t.step}</span></p>
+                <p className="text-ink-700 leading-5 mt-0.5">{t.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// طرح‌های اشتغال‌زایی (محتوای قبلی صفحه — بدون تغییر)
+// ---------------------------------------------------------------------------
+function EmploymentFundTab() {
   const [funds, setFunds] = useState<FundRecord[]>(initialFunds);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -93,16 +564,11 @@ export default function Funds() {
 
   return (
     <div>
-      <PageHeader
-        title="صندوق نوآوری و شتاب‌دهی"
-        description="ثبت طرح سرمایه‌گذاری، انتخاب اولیه، داوری، تخصیص منابع و گزارش بازگشت سرمایه"
-        icon={<PiggyBank size={18} />}
-        actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
-            ثبت طرح جدید
-          </Button>
-        }
-      />
+      <div className="flex items-center justify-end mb-4">
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          ثبت طرح جدید
+        </Button>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="سرمایه صندوق" value={fundOverview.totalCapital} tone="brand" icon={<Landmark size={16} />} />
