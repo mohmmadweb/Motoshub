@@ -3,244 +3,918 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Motoshub — تسک‌های تیم Front و Backend</title>
+<title>Motoshub — برنامه‌ی تحویل: تسک‌های تیم Front و Backend</title>
 <style>
   :root{
-    --bg:#f4f6f8;--surface:#ffffff;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;
-    --front:#2f6f9e;--back:#7a4fb0;--ok:#2e7d5b;--warn:#b4832a;--todo:#b0475e;
-    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,Arial,sans-serif;
+    --bg:#eef1f4;--panel:#ffffff;--line:#d6dce3;--line2:#e6eaef;
+    --ink:#131a24;--ink2:#3a4655;--muted:#68727f;
+    --front:#1f6f9e;--front-bg:#e8f2f9;
+    --back:#7a41ad;--back-bg:#f2ebf9;
+    --p1:#b23a52;--p2:#b47a1e;--p3:#3f7d63;
+    --done:#2c7a56;--part:#a9791f;--todo:#a8394f;
+    --est:#0f4c75;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Vazirmatn","Segoe UI",Tahoma,system-ui,Arial,sans-serif;
   }
   @media (prefers-color-scheme:dark){
-    :root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;
-      --front:#5fa3d6;--back:#b48ae0;--ok:#5cc48d;--warn:#d9ab5a;--todo:#e07a92;}
+    :root{--bg:#0c1116;--panel:#141b23;--line:#28323d;--line2:#1d252e;
+      --ink:#e9eef4;--ink2:#c2ccd6;--muted:#8b96a3;
+      --front:#5aa6d8;--front-bg:#14222e;--back:#b389df;--back-bg:#211a2e;
+      --p1:#e07387;--p2:#d9ab5a;--p3:#63c495;
+      --done:#5cc48d;--part:#d9ab5a;--todo:#e07387;--est:#6fb2e0;}
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.85;padding:28px}
-  .wrap{max-width:1000px;margin:0 auto}
-  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
-  h1{font-size:29px;font-weight:800;margin:0 0 8px}
-  .lede{color:var(--muted);font-size:15.5px;margin:0 0 22px}
-  h2{font-size:22px;margin:34px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--line)}
-  h3{font-size:16.5px;margin:22px 0 6px}
-  h2.front{color:var(--front);border-color:var(--front)} h2.back{color:var(--back);border-color:var(--back)}
-  p,li{font-size:14px}
-  code{font-family:var(--mono);font-size:12px;background:rgba(127,127,127,.12);padding:2px 6px;border-radius:5px}
-  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:12px 0}
-  table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
-  th,td{padding:8px 11px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
-  th{background:rgba(127,127,127,.06);font-weight:700} tr:last-child td{border-bottom:none}
-  .note{background:var(--surface);border:1px solid var(--line);border-inline-start:3px solid var(--muted);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13.5px}
-  .note.warn{border-inline-start-color:var(--warn)}
-  ul{padding-right:20px} li{margin:3px 0}
-  .task{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 15px;margin:9px 0}
-  .task .id{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-  .task b{font-size:14.5px}
-  .task .meta{font-size:12px;color:var(--muted);margin-top:5px}
-  .task .meta code{font-size:11px}
-  .pill{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;white-space:nowrap;margin-inline-start:6px}
-  .p-done{background:rgba(46,125,91,.15);color:var(--ok)} .p-part{background:rgba(180,131,42,.16);color:var(--warn)} .p-todo{background:rgba(176,71,94,.15);color:var(--todo)}
-  .p-p1{background:rgba(176,71,94,.12);color:var(--todo)} .p-p2{background:rgba(180,131,42,.12);color:var(--warn)} .p-p3{background:rgba(92,140,120,.12);color:var(--muted)}
-  .toc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin:16px 0}
-  .toc a{color:var(--front);text-decoration:none;margin-inline-end:14px;font-size:13px}
-  .foot{margin-top:40px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.85;padding:26px 16px}
+  .wrap{max-width:1060px;margin:0 auto}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  h1{font-size:clamp(24px,4.4vw,33px);font-weight:800;letter-spacing:-.01em;margin:0 0 10px}
+  .lede{color:var(--ink2);font-size:15.5px;margin:0 0 8px;max-width:70ch}
+  .meta-line{font-family:var(--mono);font-size:12px;color:var(--muted);margin:0 0 22px}
+  .legend{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:16px 0;font-size:13px}
+  .legend b{font-size:13.5px}
+  .row{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px;align-items:center}
+  .pill{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:20px;white-space:nowrap;font-weight:600}
+  .p-done{background:rgba(44,122,86,.16);color:var(--done)} .p-part{background:rgba(169,121,31,.17);color:var(--part)} .p-todo{background:rgba(168,57,79,.15);color:var(--todo)}
+  .p-p1{background:rgba(178,58,82,.14);color:var(--p1)} .p-p2{background:rgba(180,122,30,.15);color:var(--p2)} .p-p3{background:rgba(63,125,99,.15);color:var(--p3)}
+  .est{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--est);background:rgba(15,76,117,.10);padding:2px 8px;border-radius:6px;white-space:nowrap}
+  @media (prefers-color-scheme:dark){.est{background:rgba(111,178,224,.12)}}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 18px;margin:16px 0;font-size:13px;columns:2;column-gap:26px}
+  .toc a{display:block;color:var(--front);text-decoration:none;padding:2px 0;break-inside:avoid}
+  .toc a:hover{text-decoration:underline}
+  @media (max-width:640px){.toc{columns:1}}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px;margin:12px 0}
+  table{border-collapse:collapse;width:100%;font-size:12.7px;min-width:560px}
+  th,td{padding:8px 11px;text-align:right;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{background:rgba(120,130,140,.07);font-weight:700}
+  tr:last-child td{border-bottom:none}
+  td.n,th.n{white-space:nowrap;font-family:var(--mono);font-size:11.5px;text-align:center;width:1%}
+  tfoot td{font-weight:800;background:rgba(120,130,140,.05)}
+  .phase{margin:40px 0 8px}
+  .phase-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:9px}
+  .phase-n{font-family:var(--mono);font-size:26px;font-weight:800;color:var(--muted);line-height:1}
+  .phase-h h2{font-size:21px;margin:0;font-weight:800}
+  .phase-goal{color:var(--muted);font-size:13.5px;margin:8px 0 0}
+  .band{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;margin:18px 0 4px}
+  .band.f{background:var(--front-bg);color:var(--front)}
+  .band.b{background:var(--back-bg);color:var(--back)}
+  .task{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 18px;margin:12px 0}
+  .task.f{border-inline-start:3px solid var(--front)}
+  .task.b{border-inline-start:3px solid var(--back)}
+  .task-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .task-id{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)}
+  .task-h b{font-size:15.5px}
+  .task-h .spacer{flex:1}
+  .story{background:rgba(120,130,140,.06);border-radius:9px;padding:9px 13px;margin:11px 0;font-size:13.3px}
+  .story .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:2px}
+  .desc{font-size:13.6px;color:var(--ink2);margin:10px 0}
+  .desc code,td code,.ac code,.story code,.ears code{font-family:var(--mono);font-size:11.3px;background:rgba(120,130,140,.14);padding:1px 6px;border-radius:5px;color:var(--ink)}
+  .ears{border-inline-start:3px solid var(--muted);padding:2px 12px;margin:9px 0;font-size:13px;color:var(--ink2);font-style:italic}
+  .ac{margin:10px 0 4px;font-size:12.9px}
+  .ac .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+  .ac ul{margin:0;padding-inline-start:18px}
+  .ac li{margin:3px 0}
+  .dep{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:9px}
+  .subhd{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+  .note{background:var(--panel);border:1px solid var(--line);border-inline-start:3px solid var(--p2);border-radius:10px;padding:12px 16px;margin:16px 0;font-size:13.4px}
+  .foot{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:center;line-height:2}
   a{color:var(--front)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <p class="kicker">Motoshub · Team Tasks · Front + Backend</p>
-  <h1>تسک‌های تیم Front و Backend</h1>
-  <p class="lede">هدف: ساختِ محصولِ واقعی مطابقِ پروتوتایپ (این سایت، cheedafar.ir). تیم Front صفحه‌ها را در Next.js می‌سازد و تیم Backend، API را در Django می‌سازد. هر تسک ریز، مستقل و اندازه‌ی یک issue است.</p>
 
-  <div class="note">
-    <b>راهنمای نشان‌ها:</b>
-    <span class="pill p-done">انجام‌شده</span> کار می‌کند ·
-    <span class="pill p-part">ناقص</span> UI هست ولی داده mock/بک‌اند ندارد ·
-    <span class="pill p-todo">نساخته</span> اصلاً وجود ندارد ·
-    و اولویت: <span class="pill p-p1">P1</span> پایه/بحرانی · <span class="pill p-p2">P2</span> مهم · <span class="pill p-p3">P3</span> بعدی.
+  <p class="kicker">Motoshub · Delivery Plan · Front + Backend</p>
+  <h1>برنامه‌ی تحویل: تسک‌های تیم Front و Backend</h1>
+  <p class="lede">نقشه‌ی اجراییِ ساختِ محصولِ واقعی تا رسیدن به همین پروتوتایپ (cheedafar.ir). هر تسک شکسته‌شده به subtask، هر تسک و subtask دارای تخمینِ زمانی، مرتب‌شده بر اساس فاز و اولویت، با شرحِ فنیِ دقیق، User Story و معیارهای پذیرش.</p>
+  <p class="meta-line">مبنا: خواندنِ کاملِ سه ریپو — <code>motoshub-prototype</code> (هدف)، <code>motoshub-web-client</code> (Front/Next.js)، <code>motoshub-new-api</code> (Backend/Django). واحد تخمین: روزِ‌نفر (۱ روز = ۸ ساعت مفید).</p>
+
+  <div class="legend">
+    <b>راهنمای خواندن</b>
+    <div class="row" style="margin-top:10px">
+      <span>وضعیت:</span>
+      <span class="pill p-done">انجام‌شده</span><span style="font-size:12px;color:var(--muted)">کار می‌کند</span>
+      <span class="pill p-part">ناقص</span><span style="font-size:12px;color:var(--muted)">UI هست، داده mock</span>
+      <span class="pill p-todo">نساخته</span><span style="font-size:12px;color:var(--muted)">اصلاً وجود ندارد</span>
+    </div>
+    <div class="row">
+      <span>اولویت:</span>
+      <span class="pill p-p1">P1</span><span style="font-size:12px;color:var(--muted)">پایه/بحرانی</span>
+      <span class="pill p-p2">P2</span><span style="font-size:12px;color:var(--muted)">مهم</span>
+      <span class="pill p-p3">P3</span><span style="font-size:12px;color:var(--muted)">تکمیلی</span>
+      <span style="margin-inline-start:10px">تخمین:</span><span class="est">۳ روز</span><span style="font-size:12px;color:var(--muted)">مجموعِ subtaskها</span>
+    </div>
+    <div class="row" style="margin-top:9px;font-size:12.5px;color:var(--muted)">
+      شناسه‌گذاری ساختار را رمزگذاری می‌کند: <code style="font-family:var(--mono)">F</code>=Front، <code style="font-family:var(--mono)">B</code>=Backend، عدد اول = ترتیب اجرا. subtaskها با <code style="font-family:var(--mono)">.1 .2 .3</code>. تخمین‌ها برای یک توسعه‌دهنده‌ی میان‌ردهٔ آشنا با استک.
+    </div>
   </div>
 
   <div class="toc">
-    <a href="#overview">تصویر کلی و معماری</a>
-    <a href="#front">تسک‌های Front (Next.js)</a>
-    <a href="#back">تسک‌های Backend (Django)</a>
-    <a href="#map">نگاشت صفحه ↔ endpoint ↔ تسک</a>
+    <a href="#summary">خلاصه‌ی زمان‌بندی و فازها</a>
+    <a href="#arch">تصمیم‌های معماریِ الزام‌آور</a>
+    <a href="#p0">فاز ۰ — پایه و زیرساخت</a>
+    <a href="#p1">فاز ۱ — احراز هویت، پوسته، لایه‌ی داده</a>
+    <a href="#p2">فاز ۲ — هسته‌ی محتوا</a>
+    <a href="#p3">فاز ۳ — فضاهای اجتماعی</a>
+    <a href="#p4">فاز ۴ — ارتباط و همکاری</a>
+    <a href="#p5">فاز ۵ — ماژول‌های سازمانی</a>
+    <a href="#p6">فاز ۶ — راهبری، جستجو، پولیش و تحویل</a>
+    <a href="#refs">منابع فنی</a>
   </div>
 
-  <!-- ================= OVERVIEW ================= -->
-  <h2 id="overview">تصویر کلی و معماری</h2>
-  <p>سه قطعه‌ی مستقل داریم که باید به هم برسند:</p>
-  <div class="tblwrap"><table>
-    <thead><tr><th>قطعه</th><th>چیست</th><th>وضعیت امروز</th></tr></thead>
-    <tbody>
-      <tr><td><b>Prototype</b> (cheedafar.ir)<br><code>motoshub-prototype</code></td><td>طرحِ هدف — React SPA، ۳۴ صفحه، ~۲۰ بخش، داده‌ی mock با شکلِ <code>/api/v1</code></td><td>کامل به‌عنوان طرح؛ داده‌اش mock است</td></tr>
-      <tr><td><b>Front</b> (motonextfront.shub.ir)<br><code>motoshub-web-client</code></td><td>Next.js 16 + React 19 + TanStack Query + Zustand + axios؛ به PHP <code>api/v1</code> (motonext.shub.ir) وصل</td><td>فقط <b>auth + blogs</b> واقعی؛ بقیه UIِ mock. ~۱۳ روت گمشده</td></tr>
-      <tr><td><b>Backend</b> (api2.shub.ir)<br><code>motoshub-new-api</code></td><td>Django 5.2 + DRF + SimpleJWT + drf-spectacular</td><td>فقط اسکلتِ auth (۲ endpoint: <code>/me</code>, <code>/health</code>)؛ فیچرها <b>۱۰۰٪ نساخته</b></td></tr>
-    </tbody>
-  </table></div>
+  <!-- ===================== SUMMARY ===================== -->
+  <section class="phase" id="summary">
+    <div class="phase-h"><span class="phase-n">Σ</span><h2>خلاصه‌ی زمان‌بندی و فازها</h2></div>
+    <p class="phase-goal">دو مسیرِ موازی. چون PHP <code>api/v1</code> همین حالا هر ۲۹۳ عملیات را پاسخ می‌دهد، تیم Front از فاز ۱ به‌بعد به آن وصل می‌شود و منتظرِ Django نمی‌ماند؛ Backend به‌موازات همان قرارداد را در Django بازمی‌سازد و Gateway هر مسیرِ آماده را سوییچ می‌کند.</p>
+    <div class="tblwrap"><table>
+      <thead><tr><th>فاز</th><th>محتوا</th><th class="n">Front</th><th class="n">Backend</th><th class="n">موازی</th></tr></thead>
+      <tbody>
+        <tr><td class="n">۰</td><td>پایه: axios/design-system · REST-infra/auth-JWT/deploy/data-model</td><td class="n">۵.۵ روز</td><td class="n">۱۲ روز</td><td class="n">~۱۲ روز</td></tr>
+        <tr><td class="n">۱</td><td>احراز هویت، پوسته و ناوبری، لایه‌ی داده · endpointهای auth + مدل‌ها</td><td class="n">۹.۵ روز</td><td class="n">۶ روز</td><td class="n">~۱۰ روز</td></tr>
+        <tr><td class="n">۲</td><td>هسته: داشبورد، تازه‌ها، بلاگ، کاربران/پروفایل</td><td class="n">۱۷ روز</td><td class="n">۱۶ روز</td><td class="n">~۱۷ روز</td></tr>
+        <tr><td class="n">۳</td><td>اجتماعی: گروه‌ها، اخبار، رویدادها، رسانه، فروم</td><td class="n">۲۴ روز</td><td class="n">۲۵ روز</td><td class="n">~۲۵ روز</td></tr>
+        <tr><td class="n">۴</td><td>ارتباط: چت، دانش، پروژه · پیام‌رسان، دوستان/اعلان، دانش/پروژه</td><td class="n">۱۶ روز</td><td class="n">۱۶ روز</td><td class="n">~۱۶ روز</td></tr>
+        <tr><td class="n">۵</td><td>سازمانی: قرارداد/صندوق/پژوهش/آموزش · نظرسنجی/مسابقات</td><td class="n">۸ روز</td><td class="n">۱۳ روز</td><td class="n">~۱۳ روز</td></tr>
+        <tr><td class="n">۶</td><td>راهبری، ظاهر، گزارش، اعلان، جستجو، راهنما، دستیار، پولیش، تست</td><td class="n">۱۶ روز</td><td class="n">۴ روز</td><td class="n">~۱۶ روز</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="2">مجموع (تک‌نفره، بدون همپوشانی)</td><td class="n">~۹۶ روز</td><td class="n">~۹۲ روز</td><td class="n">~۱۰۹ روز</td></tr></tfoot>
+    </table></div>
+    <div class="note">
+      <b>تفسیرِ زمان.</b> با <b>۲ توسعه‌دهنده‌ی Front + ۲ Backend</b> و اجرای موازیِ فازها، بازه‌ی واقع‌بینانه‌ی رسیدن به پروتوتایپِ کامل حدود <b>۱۳ تا ۱۶ هفته‌ی کاری</b> است. «حداقلِ محصولِ قابل‌نمایش» (فاز ۰ تا ۲) در حدود <b>۵ تا ۶ هفته</b> به‌دست می‌آید. این اعداد تخمینی‌اند و باید در Planningِ هر Sprint دوباره کالیبره شوند.
+    </div>
+  </section>
 
-  <div class="note warn">
-    <b>تصمیم معماری کلیدی (باید تیم‌ها هم‌راستا باشند):</b> Front امروز به <b>PHP <code>api/v1</code></b> (motonext.shub.ir) وصل است. قرار است Backendِ Django همان قراردادِ <code>api/v1</code> را بسازد تا بعداً بدون تغییرِ Front جایگزین شود. پس <b>Backend باید دقیقاً همان قراردادِ REST را پیاده کند</b> که در <a href="../reports/api-reference.html">مرجع API</a> و <a href="../reports/swagger.html">Swagger</a> مستند است (۲۹۳ عملیات). Front هم باید طوری بنویسد که مبدأ (PHP یا Django) برایش فرقی نکند.
-  </div>
+  <!-- ===================== ARCH ===================== -->
+  <section class="phase" id="arch">
+    <div class="phase-h"><span class="phase-n">!</span><h2>تصمیم‌های معماریِ الزام‌آور</h2></div>
+    <p class="phase-goal">پیش‌فرض‌هایی که هر دو تیم باید رعایت کنند تا کارها به هم برسند.</p>
+    <div class="note" style="border-inline-start-color:var(--p1)">
+      <b>۱) مبدأ داده‌ی Front مستقل از پیاده‌ساز است.</b> Front فقط با قراردادِ <code>api/v1</code> کار می‌کند؛ نباید بداند پاسخ از PHP می‌آید یا Django. همه‌ی مسیرها از <code>libs/axios.ts</code> با <code>baseURL=/api/v1</code> و rewrite در <code>next.config.ts</code>.
+    </div>
+    <div class="note" style="border-inline-start-color:var(--p1)">
+      <b>۲) auth واحد.</b> استانداردِ توکن = JWT HS256 با رازِ مشترک <code>OW_PASSWORD_PEPPER</code> و claims <code>{iat, exp, sub:userId}</code>. Django باید همین را verify (و در فاز بعد صادر) کند، نه صرفاً خواندنِ <code>ow_base_user_auth_token</code>.
+    </div>
+    <div class="note" style="border-inline-start-color:var(--p1)">
+      <b>۳) قراردادِ پاسخ ثابت است.</b> فهرست‌ها همیشه پاکتِ <code>{data, links, meta}</code> با <code>meta.current_page/per_page/total</code>؛ خطاها با کدهای <code>401/403/404/422</code> و بدنه‌ی یکسان. مرجعِ فیلدها: <a href="../reports/api-reference.html">مرجع API</a> و <a href="../reports/swagger.html">Swagger</a>.
+    </div>
+  </section>
 
-  <div class="note warn">
-    <b>نکته‌ی auth (اختلاف مهم):</b> Django فعلاً <b>JWT مشترک نمی‌سازد</b> — توکنِ دیتابیسِ اکسوال (<code>ow_base_user_auth_token</code>) را می‌خواند. Front از JWTِ PHP (<code>/auth/login</code>) استفاده می‌کند. این دو باید یکی شوند: یا Django همان JWT HS256 با رازِ مشترک (<code>OW_PASSWORD_PEPPER</code>) را صادر/تأیید کند، یا Gateway هماهنگ کند. (تسک B0.)
-  </div>
 
-  <!-- ================= FRONT ================= -->
-  <h2 id="front" class="front">تسک‌های تیم Front (Next.js — motoshub-web-client)</h2>
-  <p>دو دسته: (الف) پایه و بدهی فنی، (ب) ساختِ هر بخش مطابق پروتوتایپ با اتصال به API واقعی به‌جای mock.</p>
+  <!-- ===================== PHASE 0 ===================== -->
+  <section class="phase" id="p0">
+    <div class="phase-h"><span class="phase-n">۰</span><h2>پایه و زیرساخت</h2></div>
+    <p class="phase-goal">پیش‌نیازِ هر چیزِ دیگر. بدون این‌ها هر تسکِ بعدی روی شن ساخته می‌شود. دو تیم موازی کار می‌کنند.</p>
 
-  <h3>الف) پایه و زیرساخت</h3>
-  <div class="task"><span class="id">F0.1</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
-    <b>یکی‌کردن axios client و رفعِ کد مرده.</b>
-    <div class="meta">دو client موازی هست (<code>libs/axios.ts</code> زنده، <code>services/apiClient.ts</code> مرده). یکی بماند. حذف: <code>jsonwebtoken</code>، <code>next-themes</code>+<code>switcher.tsx</code>، <code>social/homepage/*</code>، <code>social/menu/*</code>، نقشه‌ی کهنه‌ی <code>libs/routes.ts</code>.</div>
-  </div>
-  <div class="task"><span class="id">F0.2</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
-    <b>جریان کامل احراز هویت: refresh توکن + محافظت مسیر.</b>
-    <div class="meta">interceptor پاسخِ <code>libs/axios.ts</code> الان no-op است. منطق ۴۰۱ → refresh (<code>/auth/refresh</code>) → retry پیاده شود. یک <code>middleware.ts</code> برای محافظت مسیرهای <code>/workspace</code> و <code>/social</code> اضافه شود. logout واقعی (الان stub است، <code>useAuth.ts</code>).</div>
-  </div>
-  <div class="task"><span class="id">F0.3</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>سیستمِ طراحی و RTL/تم.</b>
-    <div class="meta">Tailwind الان theme خالی دارد. tokenهای رنگ/فاصله/تایپوگرافی مطابق پروتوتایپ تعریف شود. تمِ روشن/تیره (<code>next-themes</code> نصب است ولی mount نشده). فونت IRANYekan و RTL از قبل هست.</div>
-  </div>
-  <div class="task"><span class="id">F0.4</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
-    <b>لایه‌ی داده‌ی استاندارد (hookهای query/mutation).</b>
-    <div class="meta">الان فقط <code>useAuth</code> و <code>useBlogs</code> هست؛ بقیه‌ی صفحه‌ها روی آرایه‌ی mock با <code>useState</code> کار می‌کنند و حتی mock را mutate می‌کنند. برای هر منبع یک سرویس + hook TanStack Query ساخته شود (الگوی <code>services/api/blogs.ts</code> + <code>hooks/queries/useBlogs.ts</code>).</div>
-  </div>
+    <div class="band f">◆ تیم Front</div>
 
-  <h3>ب) ساختِ هر بخش (مطابق پروتوتایپ)</h3>
-  <div class="task"><span class="id">F1</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
-    <b>داشبورد فعالیت‌ها.</b> صفحه‌ی <code>/workspace</code> و <code>/social</code> الان literalِ ثابت است. به فید/آمار/رویدادهای واقعی وصل شود.
-    <div class="meta">پروتوتایپ: <code>pages/Dashboard.tsx</code> · API: <code>GET /v1/posts?scope=feed</code>, <code>GET /v1/events</code>, <code>GET /v1/notifications</code></div>
-  </div>
-  <div class="task"><span class="id">F2</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
-    <b>تازه‌ها / فید (Channels).</b> <code>/social/channels</code> mock است. فید واقعی + انتشار + attachment (PDF/Word) + دسته‌بندی.
-    <div class="meta">پروتوتایپ: <code>Media/PublicShowcase</code> · API: <code>GET/POST /v1/newsfeed</code>، دسته‌بندیِ انتشار عمومی</div>
-  </div>
-  <div class="task"><span class="id">F3</span> <span class="pill p-p1">P1</span> <span class="pill p-done">انجام‌شده</span><br>
-    <b>بلاگ.</b> فهرست به <code>/blogs</code> وصل است. باقی‌مانده: صفحه‌ی جزئیات (<code>/social/blogs/[id]</code>)، صفحه‌ی ساخت (<code>/social/blogs/create</code>)، و رفعِ تگِ ساختگی (<code>blogsList.tsx:30</code>).
-    <div class="meta">API: <code>GET /v1/blogs</code>, <code>GET /v1/blogs/:id</code>, <code>POST/PATCH/DELETE /v1/blogs</code></div>
-  </div>
-  <div class="task"><span class="id">F4</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>اخبار سازمان.</b> روت <code>/social/news</code> وجود ندارد (۴۰۴). ساخت فهرست + جزئیات.
-    <div class="meta">پروتوتایپ: <code>News.tsx</code>, <code>NewsItemDetail.tsx</code> · API: <code>GET /v1/news</code>, <code>GET /v1/news/:id</code></div>
-  </div>
-  <div class="task"><span class="id">F5</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
-    <b>گروه‌های تعاملی.</b> <code>/social/groups</code> mock با handlerهای خالی. اتصال واقعی + جزئیات گروه + فایل‌ها + عضویت.
-    <div class="meta">پروتوتایپ: <code>Groups.tsx</code>, <code>GroupDetail.tsx</code> · API: <code>GET /v1/groups</code>, <code>/v1/groups/:id</code>, <code>/members</code>, <code>/files</code>, <code>/join</code></div>
-  </div>
-  <div class="task"><span class="id">F6</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>انجمن (فروم).</b> روت <code>/social/forums</code> وجود ندارد. فهرست موضوع‌ها + پست‌ها.
-    <div class="meta">پروتوتایپ: <code>Forum.tsx</code>, <code>ForumTopic</code> · API: <code>GET /v1/forum/topics</code>, <code>/topics/:id/posts</code></div>
-  </div>
-  <div class="task"><span class="id">F7</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>رویدادها و جلسات.</b> روت <code>/social/events</code> وجود ندارد. تقویم + جزئیات + دعوت.
-    <div class="meta">پروتوتایپ: <code>Events.tsx</code>, <code>EventItemDetail.tsx</code> · API: <code>GET/POST /v1/events</code>, <code>/invites</code></div>
-  </div>
-  <div class="task"><span class="id">F8</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>تصاویر و ویدیو (رسانه).</b> روت <code>/social/media</code> وجود ندارد. گالری + آپلود.
-    <div class="meta">پروتوتایپ: <code>Media.tsx</code>, <code>MediaItemDetail.tsx</code> · API: <code>/v1/photos</code>, <code>/v1/albums</code>, <code>/v1/videos</code></div>
-  </div>
-  <div class="task"><span class="id">F9</span> <span class="pill p-p3">P3</span> <span class="pill p-part">ناقص</span><br>
-    <b>گفتگو (چت/پیام‌رسان).</b> در پروتوتایپ + تبِ چتِ پروژه UIِ کامل mock دارد. به پیام‌رسان واقعی وصل شود.
-    <div class="meta">پروتوتایپ: <code>Chat.tsx</code> · API: <code>GET /v1/chat/threads</code>, <code>/v1/conversations</code>, <code>/messages</code></div>
-  </div>
-  <div class="task"><span class="id">F10</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
-    <b>مدیریت دانش.</b> روت وجود ندارد. کتابخانه‌ی اسناد.
-    <div class="meta">پروتوتایپ: <code>Knowledge</code> · API: <code>GET /v1/knowledge/documents</code></div>
-  </div>
-  <div class="task"><span class="id">F11</span> <span class="pill p-p3">P3</span> <span class="pill p-part">ناقص</span><br>
-    <b>مدیریت پروژه.</b> <code>/workspace/projects</code> (فهرست/جزئیات/کانبان/چت) کامل ولی mock. اتصال واقعی.
-    <div class="meta">پروتوتایپ: <code>Projects.tsx</code>, <code>ProjectBoard.tsx</code> · API: <code>GET /v1/projects</code>, <code>/v1/projects/:id</code></div>
-  </div>
-  <div class="task"><span class="id">F12</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
-    <b>قراردادها، صندوق نوآوری، پژوهش، آموزش.</b> بخش‌های سازمانی؛ روت‌ها وجود ندارند.
-    <div class="meta">پروتوتایپ: <code>Contracts/Funds/Research/Training</code> · API: <code>/v1/grants</code>, <code>/v1/cfps</code>, و منابع سازمانی</div>
-  </div>
-  <div class="task"><span class="id">F13</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
-    <b>کاربران و پروفایل.</b> جدولِ کاربران mock (Add/Edit مرده). پروفایل + ویرایش + تغییر رمز (endpoint هست، UI نیست).
-    <div class="meta">API: <code>GET /v1/users</code>, <code>GET /v1/auth/me</code>, <code>PATCH /v1/users/me</code>, <code>PATCH /v1/auth/change-password</code></div>
-  </div>
-  <div class="task"><span class="id">F14</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
-    <b>پنل راهبری، ظاهر/برندسازی، گزارش‌گیری، اعلان‌ها، جستجو، راهنما، دستیار هوشمند.</b> بخش‌های باقی‌مانده‌ی پروتوتایپ.
-    <div class="meta">پروتوتایپ: <code>Admin/Appearance/Reports/Notifications/SearchPage/Help/Assistant</code> · API: <code>/v1/notifications</code>, <code>/v1/search</code>, <code>/v1/admin/*</code></div>
-  </div>
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F1</span><b>یکپارچه‌سازی HTTP client و پاک‌سازی بدهیِ فنی</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۱.۵ روز</span></div>
+      <p class="desc">دو client موازی هست: <code>libs/axios.ts</code> (زنده) و <code>services/apiClient.ts</code> (مرده). باید یکی بماند، منبعِ همه‌ی درخواست‌ها شود و کدهای بلااستفاده حذف شوند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F1.1</td><td>حذف client مرده</td><td>حذف <code>services/apiClient.ts</code>؛ انتقالِ ارجاع‌ها به <code>libs/axios.ts</code></td><td class="n">۲ ساعت</td></tr>
+          <tr><td class="n">F1.2</td><td>حذف کد/وابستگیِ بلااستفاده</td><td>حذف <code>jsonwebtoken</code>، <code>social/homepage/*</code>، <code>social/menu/*</code>، <code>libs/routes.ts</code> کهنه</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">F1.3</td><td>پیکربندی پایه‌ی axios</td><td>تثبیت <code>baseURL/timeout</code>، هدرهای پیش‌فرض، اتصالِ توکن از store در request interceptor</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">F1.4</td><td>ESLint/type-check سبز</td><td>رفعِ importهای شکسته، اجرای <code>tsc --noEmit</code> و <code>lint</code></td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: ندارد (نقطه‌ی شروعِ Front).</div>
+    </div>
 
-  <!-- ================= BACKEND ================= -->
-  <h2 id="back" class="back">تسک‌های تیم Backend (Django — motoshub-new-api)</h2>
-  <p>هدف: پیاده‌سازیِ قراردادِ <code>api/v1</code> (همان که PHP دارد) در Django، منبع‌به‌منبع. مرجعِ دقیق: <a href="../reports/api-reference.html">مرجع API</a> و <a href="../reports/motoshub-api-v1.openapi.json">openapi.json</a>.</p>
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F2</span><b>سیستم طراحی، توکن‌های ظاهری و تمِ روشن/تیره</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۴ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان کاربر، می‌خواهم رابط با ظاهرِ یکدست، فارسی/RTL و قابلِ‌تعویض بین روشن/تیره ببینم، تا تجربه‌ی حرفه‌ای و خوانا داشته باشم.</div>
+      <p class="desc"><code>theme</code>ی Tailwind خالی است. توکن‌های طراحیِ برگرفته از پروتوتایپ (رنگ/فاصله/شعاع/سایه/تایپ) و کامپوننت‌های پایه ساخته شوند. طبقِ اصولِ طراحی: مقیاسِ تایپِ مشخص و هویتِ منطبق بر دامنه‌ی سازمانی، نه پیش‌فرضِ جنریک.</p>
+      <p class="ears">EARS: هرگاه کاربر تمِ نمایش را تغییر دهد، سامانه باید کلِ رابط را بدون بارگذاری مجدد به تمِ انتخابی درآورد و انتخاب را ماندگار کند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F2.1</td><td>استخراج توکن‌ها</td><td>استخراج پالت رنگ/فاصله/تایپ از پروتوتایپ → CSS variables + <code>tailwind.config</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F2.2</td><td>تایپوگرافی و فونت</td><td>مقیاس تایپ (وزن/عرض/فاصله)، فونت IRANYekan، RTL سراسری</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F2.3</td><td>کامپوننت‌های پایه</td><td>Button/Input/Select/Modal/Card/Badge/Toast/Skeleton/Table با variantها</td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">F2.4</td><td>تمِ روشن/تیره</td><td>mountِ <code>next-themes</code>، دو تم، سوییچرِ ماندگار، اجتناب از flash</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F2.5</td><td>حالت‌های وضعیت</td><td>الگوهای loading/empty/error استاندارد</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ac"><span class="lbl">معیار پذیرش</span><ul>
+        <li>Given تمِ تیره فعال، When صفحه رندر شود، Then همه‌ی کامپوننت‌ها رنگِ درست و کنتراستِ AA دارند.</li>
+        <li>Given تعویضِ تم، When رفرش شود، Then تمِ قبلی بدون پرشِ رنگ بازیابی شود.</li>
+      </ul></div>
+      <div class="dep">وابستگی: F1.</div>
+    </div>
 
-  <h3>الف) پایه و زیرساخت</h3>
-  <div class="task"><span class="id">B0.1</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
-    <b>استراتژی auth واحد PHP ↔ Django.</b> تصمیم: JWT HS256 با رازِ مشترک (<code>OW_PASSWORD_PEPPER</code>) با claims <code>{iat, exp, sub}</code>. Django باید همان را verify (و در صورت نیاز صادر) کند. بلوکِ <code>SIMPLE_JWT</code> (الگوریتم/کلید) الان اصلاً وجود ندارد.
-    <div class="meta">فایل: <code>config/settings/base.py</code> · مرجع: <a href="../reports/system-architecture.html">معماری</a> بخش auth</div>
-  </div>
-  <div class="task"><span class="id">B0.2</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
-    <b>endpointهای auth.</b> فقط <code>/me</code> و <code>/health</code> هست. باید: <code>POST /auth/login</code>, <code>POST /auth/register</code>, <code>POST /auth/refresh</code>, <code>PATCH /auth/change-password</code>, <code>GET /auth/permissions</code>.</div>
-  <div class="task"><span class="id">B0.3</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
-    <b>زیرساختِ REST مشترک.</b> صفحه‌بندی استاندارد (<code>data/links/meta</code> مثل PHP)، فیلتر/جستجو/مرتب‌سازی، CORS (نصب نیست)، مدیریت آپلود فایل/رسانه، فرمتِ خطای یکسان (۴۰۱/۴۰۳/۴۲۲/۴۰۴).</div>
-  <div class="task"><span class="id">B0.4</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
-    <b>رفعِ اشکالات استقرار.</b> <code>config/settings/production.py</code> خالی است؛ <code>docker/Dockerfile</code> ENTRYPOINT اشتباه دارد (<code>shub.asgi</code>, Celery <code>SharifAutoEDA</code> — کپی از پروژه‌ی دیگر)؛ کلیدهای <code>.env.example</code> برای legacy DB بدنویسی‌شده. requirements فاقد gunicorn/uvicorn/pytest/celery است.</div>
-  <div class="task"><span class="id">B0.5</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
-    <b>تصمیمِ داده: نگاشتِ جداولِ اکسوال یا مهاجرت به DB جدید.</b> الان فقط ۲ جدول (<code>ow_base_user</code>, <code>ow_base_user_auth_token</code>) به‌صورت <code>managed=False</code> نگاشت شده. برای هر منبع باید تصمیم گرفت: خواندن مستقیم از جداولِ <code>ow_</code> (managed=False) یا مهاجرت به <code>motoshub_new</code>.</div>
+    <div class="band b">◆ تیم Backend</div>
 
-  <h3>ب) پیاده‌سازی منابع (هر کدام: Model + Serializer + View + URL + تست)</h3>
-  <div class="note">هر ردیف یک تسکِ مستقل است؛ باید <b>دقیقاً</b> با قراردادِ endpoint مربوطه در PHP <code>api/v1</code> یکی باشد (همان مسیر، فیلدها، صفحه‌بندی، سطح دسترسی).</div>
-  <div class="tblwrap"><table>
-    <thead><tr><th>تسک</th><th>منبع</th><th>endpointها (مطابق api/v1)</th><th>اولویت</th></tr></thead>
-    <tbody>
-      <tr><td>B1</td><td>کاربران و پروفایل</td><td><code>GET /users</code>, <code>PATCH /users/me</code>, <code>/users/me/avatar</code>, <code>/users/blocked</code>, <code>/sessions</code></td><td>P1</td></tr>
-      <tr><td>B2</td><td>تازه‌ها (فید)</td><td><code>GET/POST /newsfeed</code>, لایک/کامنت/فوروارد، دسته‌بندیِ انتشار عمومی</td><td>P1</td></tr>
-      <tr><td>B3</td><td>بلاگ</td><td><code>GET/POST/PATCH/DELETE /blogs</code>, <code>/blogs/:id</code></td><td>P1</td></tr>
-      <tr><td>B4</td><td>اخبار</td><td><code>GET/POST /news</code>, <code>/news/:id</code></td><td>P2</td></tr>
-      <tr><td>B5</td><td>عکس/آلبوم/ویدیو</td><td><code>/photos</code>, <code>/albums</code>, <code>/videos</code> + آپلود</td><td>P2</td></tr>
-      <tr><td>B6</td><td>رویداد</td><td><code>GET/POST/PATCH/DELETE /events</code>, <code>/invites</code>, <code>/files</code></td><td>P2</td></tr>
-      <tr><td>B7</td><td>گروه‌ها</td><td><code>/groups</code>, <code>/members</code>, <code>/files</code>, <code>/join</code>, <code>/invites</code></td><td>P2</td></tr>
-      <tr><td>B8</td><td>فروم</td><td><code>/forum/topics</code>, <code>/topics/:id/posts</code></td><td>P2</td></tr>
-      <tr><td>B9</td><td>پیام‌رسان</td><td><code>/conversations</code>, <code>/messages</code></td><td>P3</td></tr>
-      <tr><td>B10</td><td>دوستان و اعلان‌ها</td><td><code>/friends</code>, <code>/notifications</code></td><td>P2</td></tr>
-      <tr><td>B11</td><td>نظرسنجی، مسابقات، ارزیابی</td><td><code>/polls</code>, <code>/competitions</code>, <code>/evaluations</code></td><td>P3</td></tr>
-      <tr><td>B12</td><td>سازمانی/پژوهشی</td><td><code>/grants</code>, <code>/cfps</code>, <code>/tickets</code>, <code>/journal-*</code>, <code>/technologies</code></td><td>P3</td></tr>
-      <tr><td>B13</td><td>جستجو</td><td><code>/search</code></td><td>P3</td></tr>
-    </tbody>
-  </table></div>
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B1</span><b>زیرساختِ REST مشترک (پاکت، صفحه‌بندی، خطا، CORS، آپلود)</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۴ روز</span></div>
+      <p class="desc">قبل از هر منبع، لایه‌های عرضیِ DRF باید ساخته شوند تا همه‌ی endpointها دقیقاً قراردادِ PHP را بدهند. الان هیچ‌کدام وجود ندارد.</p>
+      <p class="ears">EARS: هرگاه یک درخواستِ فهرست پردازش شود، سامانه باید پاسخ را در پاکتِ <code>{data, links, meta}</code> با <code>meta.current_page/per_page/total</code> بازگرداند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B1.1</td><td>Pagination class</td><td><code>PageNumberPagination</code> سفارشی با خروجیِ دقیقِ <code>data/links/meta</code></td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">B1.2</td><td>Exception handler</td><td>هندلرِ سراسری برای فرمتِ یکسانِ خطا در ۴۰۱/۴۰۳/۴۰۴/۴۲۲</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">B1.3</td><td>فیلتر/جستجو/مرتب‌سازی</td><td>backendهای مشترک با نام‌پارامترهای یکسان با PHP</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B1.4</td><td>CORS و هدرها</td><td>نصب/پیکربندی <code>django-cors-headers</code> (نصب نیست)، هدرهای امنیتی</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">B1.5</td><td>آپلود فایل/رسانه</td><td><code>MultiPartParser</code>، اعتبارسنجی نوع/اندازه، مسیرِ سازگار با اکسوال</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B1.6</td><td>پایه‌ی تست</td><td>راه‌اندازی <code>pytest-django</code> + factory + APIClient مبنا</td><td class="n">۵ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: ندارد (نقطه‌ی شروعِ Backend).</div>
+    </div>
 
-  <div class="note warn"><b>میان‌بُر مهم:</b> از آنجا که PHP <code>api/v1</code> این ۲۹۳ عملیات را <b>همین حالا کار می‌کند</b>، تیم Front می‌تواند بلافاصله همه‌ی بخش‌ها را به آن وصل کند (F1–F14) بدون منتظرماندنِ Django. تیم Backend به‌موازات، منبع‌به‌منبع همان قرارداد را در Django می‌سازد؛ هر منبع که آماده شد، Gateway ترافیک آن مسیر را از PHP به Django سوییچ می‌کند. این یعنی <b>هر دو تیم می‌توانند از امروز به‌طور موازی کار کنند.</b></div>
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B2</span><b>استراتژیِ auth واحد PHP↔Django (JWT مشترک)</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۳ روز</span></div>
+      <p class="desc">بلوکِ <code>SIMPLE_JWT</code> در <code>config/settings/base.py</code> نیست. Django باید همان JWT HS256 با رازِ مشترک و claimهای اکسوال را verify کند تا توکنِ PHP در Django معتبر باشد و بالعکس.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B2.1</td><td>پیکربندی SimpleJWT</td><td>HS256، <code>SIGNING_KEY = sha256(OW_PASSWORD_PEPPER)</code>، claim <code>sub</code>→userId، طولِ عمرِ منطبق</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B2.2</td><td>Authentication class</td><td>کلاسِ سفارشیِ DRF: verify JWTِ PHP و resolve کاربرِ legacy</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B2.3</td><td>Permission mapping</td><td>ترجمه‌ی مجوزِ پلاگینیِ اکسوال (<code>isAuthorized</code>) به permissionهای DRF</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B2.4</td><td>تستِ سازگاری متقابل</td><td>توکنِ رازِ PHP در Django بپذیرد؛ بدون‌امضا/منقضی رد شود</td><td class="n">۶ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ac"><span class="lbl">معیار پذیرش</span><ul>
+        <li>Given یک JWTِ معتبرِ PHP، When به endpointِ محافظت‌شده‌ی Django فرستاده شود، Then ۲۰۰ و همان کاربر resolve شود.</li>
+        <li>Given توکنِ منقضی/دست‌کاری‌شده، When فرستاده شود، Then ۴۰۱ برگردد.</li>
+      </ul></div>
+      <div class="dep">وابستگی: B1. مرجع: <a href="../reports/system-architecture.html">معماری — بخش auth</a>.</div>
+    </div>
 
-  <!-- ================= MAP ================= -->
-  <h2 id="map">نگاشت: صفحه‌ی پروتوتایپ ↔ endpoint ↔ تسک‌ها</h2>
-  <div class="tblwrap"><table>
-    <thead><tr><th>بخش (پروتوتایپ)</th><th>endpoint اصلی</th><th>تسک Front</th><th>تسک Backend</th></tr></thead>
-    <tbody>
-      <tr><td>داشبورد</td><td><code>/posts?scope=feed</code></td><td>F1</td><td>B2</td></tr>
-      <tr><td>تازه‌ها/فید</td><td><code>/newsfeed</code></td><td>F2</td><td>B2</td></tr>
-      <tr><td>بلاگ</td><td><code>/blogs</code></td><td>F3</td><td>B3</td></tr>
-      <tr><td>اخبار</td><td><code>/news</code></td><td>F4</td><td>B4</td></tr>
-      <tr><td>گروه‌ها</td><td><code>/groups</code></td><td>F5</td><td>B7</td></tr>
-      <tr><td>فروم</td><td><code>/forum/topics</code></td><td>F6</td><td>B8</td></tr>
-      <tr><td>رویدادها</td><td><code>/events</code></td><td>F7</td><td>B6</td></tr>
-      <tr><td>رسانه</td><td><code>/photos,/videos</code></td><td>F8</td><td>B5</td></tr>
-      <tr><td>گفتگو</td><td><code>/conversations</code></td><td>F9</td><td>B9</td></tr>
-      <tr><td>دانش</td><td><code>/knowledge/documents</code></td><td>F10</td><td>B12</td></tr>
-      <tr><td>پروژه</td><td><code>/projects</code></td><td>F11</td><td>B12</td></tr>
-      <tr><td>قرارداد/صندوق/پژوهش</td><td><code>/grants,/cfps</code></td><td>F12</td><td>B12</td></tr>
-      <tr><td>کاربران/پروفایل</td><td><code>/users,/auth/me</code></td><td>F13</td><td>B1</td></tr>
-      <tr><td>راهبری/گزارش/اعلان/جستجو</td><td><code>/admin,/notifications,/search</code></td><td>F14</td><td>B10,B13</td></tr>
-    </tbody>
-  </table></div>
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B3</span><b>رفعِ خطاهای استقرار و پیکربندیِ production</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۲ روز</span></div>
+      <p class="desc"><code>production.py</code> خالی است؛ <code>docker/Dockerfile</code> ENTRYPOINT اشتباه دارد (<code>shub.asgi</code>، Celery <code>SharifAutoEDA</code> — کپی از پروژه‌ی دیگر)؛ <code>requirements</code> فاقد gunicorn/uvicorn/pytest است.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B3.1</td><td>production.py</td><td>DEBUG=False، ALLOWED_HOSTS، DB از env، static/media، logging</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B3.2</td><td>Dockerfile</td><td>اصلاحِ ENTRYPOINT، حذف ارجاعِ Celery غلط، multi-stage تمیز</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B3.3</td><td>requirements و env</td><td>افزودن gunicorn/uvicorn/pytest؛ اصلاحِ <code>.env.example</code> برای دو DB</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">B3.4</td><td>healthcheck و اجرای محلی</td><td>تأیید بالاآمدنِ کانتینر، <code>/api/v1/health</code>، اتصالِ دو DB</td><td class="n">۵ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: مستقل؛ موازیِ B1/B2.</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 1 ===================== -->
+  <section class="phase" id="p1">
+    <div class="phase-h"><span class="phase-n">۱</span><h2>احراز هویت، پوسته و لایه‌ی داده</h2></div>
+    <p class="phase-goal">دروازه‌ی ورود و اسکلتِ همه‌ی صفحه‌های بعدی. تا اینجا تمام نشود، هیچ صفحه‌ی محتوایی قابلِ‌اتکا نیست.</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F3</span><b>جریان کاملِ احراز هویت: refresh، محافظتِ مسیر، logout</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۳.۵ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو سازمان، می‌خواهم یک‌بار وارد شوم و نشستم بی‌آنکه مدام بیرون بیفتم حفظ شود، و مسیرهای خصوصی بدونِ ورود در دسترس نباشند، تا کارم امن و بی‌وقفه باشد.</div>
+      <p class="desc">login/register هست ولی response interceptor در <code>libs/axios.ts</code> no-op است، logout در <code>useAuth.ts</code> صرفاً stub است و هیچ <code>middleware.ts</code>ای مسیرها را محافظت نمی‌کند.</p>
+      <p class="ears">EARS: هرگاه یک درخواستِ API با ۴۰۱ برگردد و refresh معتبر باشد، سامانه باید توکن را نو و همان درخواست را یک‌بار تکرار کند؛ در غیر این‌صورت کاربر را به ورود هدایت کند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F3.1</td><td>منطق refresh</td><td>interceptor: بر ۴۰۱ فراخوانیِ <code>POST /auth/refresh</code>، صف‌بندیِ همزمان، retry یک‌باره، خروج بر شکست</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F3.2</td><td>middleware مسیر</td><td><code>middleware.ts</code> گاردِ <code>/workspace/*</code> و <code>/social/*</code>؛ ریدایرکتِ مهمان به <code>/login?next=</code></td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F3.3</td><td>logout واقعی</td><td>ابطالِ سمتِ سرور، پاک‌سازیِ store و توکن‌ها، ریدایرکت</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">F3.4</td><td>هیدریشنِ نشست</td><td>بازخوانیِ کاربر از <code>GET /auth/me</code> در بوت، همگام‌سازی با store پایدار</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F3.5</td><td>ثبت‌نام و خطاها</td><td>اتصالِ فرمِ register، نمایشِ خطاهای ۴۲۲ فیلدی، loading</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F3.6</td><td>تغییر رمز</td><td>UIِ <code>PATCH /auth/change-password</code> (endpoint هست)</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ac"><span class="lbl">معیار پذیرش</span><ul>
+        <li>Given نشستِ منقضی، When کاربر عملی انجام دهد، Then توکن بی‌صدا نو و عمل بدونِ خروج ادامه یابد.</li>
+        <li>Given مهمان، When <code>/workspace</code> باز شود، Then به <code>/login</code> با پارامترِ بازگشت هدایت شود.</li>
+      </ul></div>
+      <div class="dep">وابستگی: F1؛ داده: B4 (تا آماده‌شدن به PHP <code>/auth/*</code> وصل شود).</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F4</span><b>پوسته‌ی برنامه: چیدمان، سایدبار، هدر و ناوبری</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۳ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان کاربر، می‌خواهم منوی کناریِ همه‌ی بخش‌ها، نوارِ بالا با پروفایل/اعلان/جستجو و مسیرِ فعال را ببینم، تا در ~۲۰ بخشِ محصول به‌راحتی جابه‌جا شوم.</div>
+      <p class="desc">پروتوتایپ سایدباری با ~۲۰ برچسب دارد (<code>components/Sidebar.tsx</code>). پوسته‌ی واکنش‌گرا با active-state، حالتِ موبایل و اسلاتِ محتوا ساخته شود تا صفحه‌های بعدی داخلش بنشینند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F4.1</td><td>Layout و گرید</td><td>layoutِ سه‌بخشی (سایدبار/هدر/محتوا)، اسکرول مستقل، RTL</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F4.2</td><td>سایدبار</td><td>~۲۰ آیتم منطبق بر پروتوتایپ، گروه‌بندی، آیکن، active-state از مسیر</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F4.3</td><td>هدر</td><td>منوی پروفایل، زنگِ اعلان (badge)، جستجوی سراسری، سوییچرِ تم</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F4.4</td><td>ناوبریِ موبایل</td><td>drawer/بستنِ خودکار، breakpointها، focus trap</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F4.5</td><td>Breadcrumb و عنوان</td><td>عنوانِ صفحه‌ی پویا و مسیر بر اساس روت</td><td class="n">۳ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F2، F3.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F5</span><b>لایه‌ی داده‌ی استاندارد (سرویس + hookهای Query/Mutation)</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۳ روز</span></div>
+      <p class="desc">الان فقط <code>useAuth</code> و <code>useBlogs</code> واقعی‌اند؛ بقیه روی آرایه‌ی mock با <code>useState</code> کار می‌کنند و حتی mock را mutate می‌کنند. یک الگوی تکرارپذیر (سرویس + hook) و ابزارهای مشترکِ TanStack Query ساخته شود تا هر بخشِ بعدی سریع و یکدست وصل شود.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F5.1</td><td>پیکربندی QueryClient</td><td>defaultها (staleTime/retry)، devtools، مرزهای خطا</td><td class="n">۳ ساعت</td></tr>
+          <tr><td class="n">F5.2</td><td>الگوی سرویس</td><td>قالبِ <code>services/api/&lt;resource&gt;.ts</code> بر پایه‌ی <code>blogs.ts</code>؛ typeها از قرارداد</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F5.3</td><td>hookهای عمومی</td><td><code>useList/useDetail/useCreate/useUpdate/useDelete</code> با کلیدِ کش و invalidation</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F5.4</td><td>ابزارِ صفحه‌بندی/فیلتر</td><td>هوکِ مشترکِ pagination/filter منطبق بر <code>meta</code>؛ infinite/صفحه‌ای</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F5.5</td><td>مدیریت خطا و توست</td><td>نگاشتِ ۴۲۲ به خطای فیلدی، توستِ سراسری، optimistic اختیاری</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F1. پیش‌نیازِ همه‌ی تسک‌های محتوایی (F6 به بعد).</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B4</span><b>endpointهای احراز هویت</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۳ روز</span></div>
+      <p class="desc">فقط <code>/me</code> و <code>/health</code> هست. مجموعه‌ی کاملِ auth منطبق بر قراردادِ PHP، روی مدلِ کاربرِ legacy.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B4.1</td><td>login</td><td><code>POST /auth/login</code>: راستیِ رمز به‌شیوه‌ی اکسوال (pepper+hash)، صدور JWT</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B4.2</td><td>refresh + logout</td><td><code>POST /auth/refresh</code>، ابطال، چرخشِ refresh</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">B4.3</td><td>register</td><td><code>POST /auth/register</code>: اعتبارسنجی، ایجادِ کاربر در جداولِ اکسوال</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B4.4</td><td>change-password + permissions</td><td><code>PATCH /auth/change-password</code>، <code>GET /auth/permissions</code></td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B4.5</td><td>تست</td><td>login/refresh/register/۴۲۲؛ برابری با پاسخِ PHP</td><td class="n">۳ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B1، B2.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B5</span><b>تصمیمِ داده + مدل‌های پایه‌ی legacy</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۳ روز</span></div>
+      <p class="desc">الان فقط ۲ جدول (<code>ow_base_user</code>, <code>ow_base_user_auth_token</code>) با <code>managed=False</code> نگاشت شده. سیاستِ داده تثبیت شود: خواندنِ مستقیم از <code>ow_</code> در برابر مهاجرت به <code>motoshub_new</code>؛ و مدل‌های پایه ساخته شوند.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B5.1</td><td>سندِ تصمیمِ داده (ADR)</td><td>کدام منابع مستقیم از <code>ow_</code>، کدام مهاجرت؛ روترِ DB</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B5.2</td><td>introspect جداول</td><td><code>inspectdb</code> روی جداولِ کلیدی، پاک‌سازیِ مدل‌ها، <code>managed=False</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B5.3</td><td>مدلِ کاربر و پروفایل</td><td>تکمیلِ <code>LegacyUser</code>، پروفایل/آواتار، رابطه‌ها</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B5.4</td><td>سرویس‌های مشترک</td><td>لایه‌ی سرویسِ پایه، تراکنش روی دو DB، تستِ اتصال</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B1. پیش‌نیازِ همه‌ی منابعِ B6 به بعد.</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 2 ===================== -->
+  <section class="phase" id="p2">
+    <div class="phase-h"><span class="phase-n">۲</span><h2>هسته‌ی محتوا</h2></div>
+    <p class="phase-goal">پرتکرارترین بخش‌هایی که کاربر روزانه می‌بیند: داشبورد، تازه‌ها، بلاگ، کاربران/پروفایل. رسیدن تا اینجا = «محصولِ قابلِ‌نمایش».</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F6</span><b>داشبورد فعالیت‌ها</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۴ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم در ورود، فیدِ فعالیت، رویدادهای پیشِ‌رو، اعلان‌ها و میان‌برهای کاری‌ام را یک‌جا ببینم، تا وضعیت روزم را سریع بفهمم.</div>
+      <p class="desc"><code>/workspace</code> و <code>/social</code> الان literalِ ثابت‌اند. ویجت‌های واقعی از چند endpoint ساخته شوند. مرجع: <code>pages/Dashboard.tsx</code>.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F6.1</td><td>ویجت فید</td><td>خلاصه از <code>GET /newsfeed?scope=feed</code>، خالی/loading</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F6.2</td><td>ویجت رویداد/اعلان</td><td><code>GET /events</code>، <code>GET /notifications</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F6.3</td><td>ویجت آمار/میان‌بر</td><td>کارت‌های آمار و میان‌برهای سریع منطبق بر پروتوتایپ</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F6.4</td><td>چیدمان واکنش‌گرا</td><td>گریدِ ویجت‌ها، ترتیب موبایل، اسکلتون</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F4، F5. داده: B7/B11/B15.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F7</span><b>تازه‌ها / فید سازمانی (Channels)</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-part">ناقص</span><span class="est">۶ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم مطلب (متن/عکس/فایل PDF/Word) منتشر کنم، آن را «انتشار عمومی» با یک «دسته‌بندی» بزنم و مطالبِ دیگران را لایک/نظر بدهم، تا جریانِ اطلاعاتِ سازمان زنده بماند.</div>
+      <p class="desc"><code>/social/channels</code> mock است. پیچیده‌ترین بخشِ فاز: کامپوزرِ انتشار با پیوست، دسته‌بندیِ انتشارِ عمومی (همان فیچرِ افزوده‌شده به پلاگین <code>iisnewsfeedpin</code>)، لایک/نظر/فوروارد و اسکرولِ بی‌نهایت.</p>
+      <p class="ears">EARS: هرگاه کاربر مطلبی را «انتشار عمومی» کند، سامانه باید امکانِ انتخابِ دسته‌بندیِ درختی را بدهد و مطلب را با آن دسته در فیدِ عمومی نمایش دهد.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F7.1</td><td>فهرست فید</td><td>اسکرول بی‌نهایت از <code>GET /newsfeed</code>، رندرِ انواع آیتم، اسکلتون</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F7.2</td><td>کامپوزر انتشار</td><td><code>POST /newsfeed</code>: متن، منشن، پیش‌نمایشِ لینک</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F7.3</td><td>پیوست فایل</td><td>آپلودِ PDF/Word/عکس، نوار پیشرفت، اعتبارسنجیِ نوع/اندازه</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F7.4</td><td>انتشار عمومی + دسته‌بندی</td><td>floatboxِ انتخابِ دسته‌ی درختی، اتصال به endpointِ دسته‌بندیِ انتشار</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F7.5</td><td>تعامل‌ها</td><td>لایک/نظر/فوروارد با optimistic و invalidation</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F7.6</td><td>فیلترِ دسته</td><td>فیلترِ فیدِ عمومی بر اساس دسته‌بندی</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ac"><span class="lbl">معیار پذیرش</span><ul>
+        <li>Given فایلِ PDF پیوست، When مطلب منتشر شود، Then در فید با لینکِ دانلود نمایش داده شود.</li>
+        <li>Given انتشارِ عمومیِ دسته‌دار، When فیدِ عمومی با آن دسته فیلتر شود، Then فقط مطالبِ همان دسته دیده شوند.</li>
+      </ul></div>
+      <div class="dep">وابستگی: F5. داده: B7.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F8</span><b>بلاگ (تکمیل: جزئیات و ساخت)</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-part">ناقص</span><span class="est">۳ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان نویسنده، می‌خواهم پستِ بلاگ بنویسم، ویرایش/حذف کنم و پست‌ها را کامل بخوانم، تا محتوای بلندِ سازمانی تولید و مصرف شود.</div>
+      <p class="desc">فهرست به <code>/blogs</code> وصل است. باقی‌مانده: صفحه‌ی جزئیات، ساخت/ویرایش با ادیتور، و رفعِ تگِ ساختگیِ <code>blogsList.tsx:30</code>.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F8.1</td><td>صفحه‌ی جزئیات</td><td><code>/social/blogs/[id]</code> از <code>GET /blogs/:id</code>، نظرات، متادیتا</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F8.2</td><td>ساخت/ویرایش</td><td><code>POST/PATCH /blogs</code> با ادیتورِ غنی، پیش‌نمایش، کاور</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F8.3</td><td>حذف و رفعِ mock</td><td><code>DELETE /blogs/:id</code> با تأیید؛ حذفِ تگِ ساختگیِ <code>blogsList.tsx:30</code></td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">F8.4</td><td>فهرست و فیلتر</td><td>صفحه‌بندی، جستجو، فیلترِ نویسنده/تاریخ</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B8 (قرارداد PHP آماده است).</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F9</span><b>کاربران، پروفایل و تنظیماتِ حساب</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-part">ناقص</span><span class="est">۴ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان کاربر، می‌خواهم پروفایلم را ببینم و ویرایش کنم، آواتار بگذارم و کاربرانِ دیگر را بیابم؛ و به‌عنوان مدیر، فهرستِ کاربران را مدیریت کنم.</div>
+      <p class="desc">جدولِ کاربران mock است و دکمه‌های Add/Edit مرده‌اند. فهرست، پروفایلِ عمومی، ویرایشِ پروفایلِ خود و آواتار ساخته شود.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F9.1</td><td>فهرست کاربران</td><td><code>GET /users</code> با جستجو/صفحه‌بندی/فیلتر</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F9.2</td><td>پروفایلِ عمومی</td><td>صفحه‌ی پروفایل، تب‌های فعالیت/دوستان/رسانه</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F9.3</td><td>ویرایش پروفایل</td><td><code>PATCH /users/me</code>، فیلدهای پویا، اعتبارسنجی</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F9.4</td><td>آواتار</td><td>آپلود/برش آواتار <code>/users/me/avatar</code></td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F9.5</td><td>تنظیمات حساب</td><td>یکپارچه‌سازی با تغییرِ رمز (F3.6)، حریمِ خصوصی، مسدودها</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B6.</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B6</span><b>منبعِ کاربران و پروفایل</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۴ روز</span></div>
+      <p class="desc">منبعِ پرکاربردِ همه‌ی بخش‌ها. مطابقِ endpointهای PHP: فهرست، پروفایل، ویرایش، آواتار، مسدودها و نشست‌ها.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B6.1</td><td>Model + Serializer</td><td>نگاشتِ کاربر/پروفایل/فیلدهای پویا (<code>ow_base_question*</code>)</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B6.2</td><td>list + detail</td><td><code>GET /users</code>، <code>GET /users/:id</code> با فیلتر/جستجو/صفحه‌بندی</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B6.3</td><td>update + avatar</td><td><code>PATCH /users/me</code>، <code>POST /users/me/avatar</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B6.4</td><td>blocked + sessions</td><td><code>/users/blocked</code>، <code>/sessions</code></td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B6.5</td><td>تست + مجوز</td><td>تست‌های دسترسی/مالکیت، برابری با PHP</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B4، B5.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B7</span><b>منبعِ تازه‌ها (فید) + دسته‌بندیِ انتشار</b><span class="spacer"></span><span class="pill p-p1">P1</span><span class="pill p-todo">نساخته</span><span class="est">۶ روز</span></div>
+      <p class="desc">پیچیده‌ترین منبعِ فاز: فید، انتشار با پیوست، لایک/نظر/فوروارد و دسته‌بندیِ انتشارِ عمومی (منطبق با فیچرِ <code>iisnewsfeedpin</code>).</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B7.1</td><td>مدل‌های فید</td><td>نگاشتِ <code>ow_newsfeed_*</code>، اکشن/آیتم/محتوا</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B7.2</td><td>list فید</td><td><code>GET /newsfeed</code> با scope (feed/site/user)، صفحه‌بندی</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B7.3</td><td>create + attachment</td><td><code>POST /newsfeed</code>، پیوستِ PDF/Word/عکس</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B7.4</td><td>لایک/نظر/فوروارد</td><td>endpointهای تعامل منطبق بر PHP</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B7.5</td><td>دسته‌بندیِ انتشار</td><td>منبعِ دسته‌ی درختی + فیلترِ فیدِ عمومی بر اساس دسته</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B7.6</td><td>تست</td><td>انتشار/تعامل/فیلترِ دسته</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5، B6.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B8</span><b>منبعِ بلاگ</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۳ روز</span></div>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B8.1</td><td>Model + Serializer</td><td>نگاشتِ <code>ow_blogs_post</code> و نظرات/برچسب</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B8.2</td><td>CRUD</td><td><code>GET/POST/PATCH/DELETE /blogs</code>، <code>GET /blogs/:id</code></td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B8.3</td><td>مالکیت/مجوز</td><td>چکِ مالکیت در ویرایش/حذف، منطبق بر منطقِ PHP</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B8.4</td><td>تست</td><td>lifecycle + دسترسی</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 3 ===================== -->
+  <section class="phase" id="p3">
+    <div class="phase-h"><span class="phase-n">۳</span><h2>فضاهای اجتماعی</h2></div>
+    <p class="phase-goal">بخش‌های تعاملیِ سازمان: گروه‌ها، اخبار، رویدادها، رسانه، فروم. الگوهای فاز ۲ اینجا تکرار و مقیاس‌پذیر می‌شوند.</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F10</span><b>گروه‌های تعاملی</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-part">ناقص</span><span class="est">۶ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم گروه بسازم/عضو شوم، در دیوارِ گروه مطلب بگذارم، فایل به اشتراک بگذارم و اعضا را ببینم، تا کارِ تیمی حولِ موضوع شکل بگیرد.</div>
+      <p class="desc"><code>/social/groups</code> mock با handlerهای خالی است. نیازمندِ فهرست، جزئیاتِ گروه (دیوار/اعضا/فایل)، عضویت و ساخت.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F10.1</td><td>فهرست + ساخت</td><td><code>GET /groups</code>، <code>POST /groups</code>، فیلتر/جستجو</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F10.2</td><td>جزئیات + دیوار</td><td><code>/groups/:id</code>، فیدِ اختصاصیِ گروه</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F10.3</td><td>اعضا و عضویت</td><td><code>/members</code>، <code>/join</code>، <code>/invites</code>، نقش‌ها</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F10.4</td><td>فایل‌های گروه</td><td><code>/files</code> با آپلود/دانلود</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F10.5</td><td>تنظیمات گروه</td><td>ویرایش/حریمِ خصوصی/حذف با مجوز</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5، F7 (الگوی دیوار). داده: B10.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F11</span><b>اخبار سازمان</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۲.۵ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم اخبارِ رسمیِ سازمان را با جزئیات بخوانم؛ و به‌عنوان مدیرِ محتوا خبر منتشر کنم، تا اطلاع‌رسانیِ رسمی متمرکز باشد.</div>
+      <p class="desc">روتِ <code>/social/news</code> اصلاً وجود ندارد (۴۰۴). مرجع: <code>News.tsx</code>, <code>NewsItemDetail.tsx</code>.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F11.1</td><td>فهرست اخبار</td><td>روتِ جدید، <code>GET /news</code>، دسته‌بندی/صفحه‌بندی</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F11.2</td><td>جزئیات خبر</td><td><code>/news/[id]</code> از <code>GET /news/:id</code>، رسانه/گالری</td><td class="n">۵ ساعت</td></tr>
+          <tr><td class="n">F11.3</td><td>انتشار/ویرایش</td><td><code>POST/PATCH /news</code> با مجوزِ مدیر</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F11.4</td><td>ویجت داشبورد</td><td>اتصالِ آخرین اخبار به داشبورد</td><td class="n">۳ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B9.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F12</span><b>رویدادها و جلسات</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۳.۵ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم رویداد بسازم، دیگران را دعوت کنم و حضورم را اعلام کنم و تقویمِ رویدادها را ببینم، تا جلساتِ سازمان هماهنگ شوند.</div>
+      <p class="desc">روتِ <code>/social/events</code> وجود ندارد. مرجع: <code>Events.tsx</code>, <code>EventItemDetail.tsx</code>. قراردادِ Backend از قبل تست‌شده است (Pest).</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F12.1</td><td>فهرست/تقویم</td><td><code>GET /events</code>، لیست + تقویم، فیلترِ زمان</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F12.2</td><td>ساخت/ویرایش</td><td><code>POST/PATCH /events</code> با زمان/مکان/سطحِ دید</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F12.3</td><td>دعوت و RSVP</td><td><code>/invites</code>، اعلامِ حضور، فهرستِ شرکت‌کنندگان</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F12.4</td><td>جزئیات + پیوست</td><td>جزئیات، فایل‌ها، حذف با مجوز</td><td class="n">۵ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B11 (آماده).</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F13</span><b>تصاویر و ویدیو (رسانه)</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۳.۵ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم آلبومِ عکس و ویدیو بسازم، رسانه آپلود کنم و گالریِ سازمان را مرور کنم، تا محتوای بصری به اشتراک گذاشته شود.</div>
+      <p class="desc">روتِ <code>/social/media</code> وجود ندارد. مرجع: <code>Media.tsx</code>, <code>MediaItemDetail.tsx</code>.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F13.1</td><td>گالری عکس/آلبوم</td><td><code>/photos</code>، <code>/albums</code>، لایت‌باکس، صفحه‌بندی</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F13.2</td><td>آپلود عکس</td><td>آپلودِ چندتایی، پیش‌نمایش، انتخابِ آلبوم</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F13.3</td><td>ویدیو</td><td><code>/videos</code>، پخش، آپلود/embed</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F13.4</td><td>مدیریت آلبوم</td><td>ساخت/ویرایش/حذف، کاور، مجوزِ مالکیت</td><td class="n">۵ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B12 (آماده، با اصلاحاتِ IDOR).</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F14</span><b>انجمن (فروم)</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۳ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم موضوع بسازم، پاسخ بدهم و بحث‌های دسته‌بندی‌شده را دنبال کنم، تا گفتگوهای ماندگارِ سازمان شکل بگیرد.</div>
+      <p class="desc">روتِ <code>/social/forums</code> وجود ندارد. مرجع: <code>Forum.tsx</code> و نوعِ <code>ForumTopic</code>.</p>
+      <div class="subhd">Subtaskها</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F14.1</td><td>دسته‌ها/بخش‌ها</td><td>فهرستِ بخش‌ها و موضوع‌ها <code>GET /forum/topics</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F14.2</td><td>موضوع + پست‌ها</td><td><code>/topics/:id/posts</code>، صفحه‌بندیِ پاسخ‌ها، نقل‌قول</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F14.3</td><td>ساخت موضوع/پاسخ</td><td>ادیتور، پیوست، اعلانِ اشتراک</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F14.4</td><td>مدیریت</td><td>قفل/پین/انتقال با مجوزِ ناظر</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B13.</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B9</span><b>منبعِ اخبار</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۳ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B9.1</td><td>Model + Serializer</td><td>نگاشتِ منبعِ خبر و دسته/رسانه</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B9.2</td><td>CRUD + list</td><td><code>GET/POST/PATCH /news</code>، <code>/news/:id</code></td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B9.3</td><td>مجوزِ انتشار</td><td>محدودسازیِ انتشار به نقشِ مدیرِ محتوا</td><td class="n">۴ ساعت</td></tr>
+          <tr><td class="n">B9.4</td><td>تست</td><td>lifecycle + دسترسی</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B10</span><b>منبعِ گروه‌ها</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۶ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B10.1</td><td>مدل‌ها</td><td>گروه/عضویت/نقش/دعوت، نگاشتِ جداولِ اکسوال</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B10.2</td><td>CRUD گروه</td><td><code>GET/POST/PATCH/DELETE /groups</code>، <code>/groups/:id</code></td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B10.3</td><td>اعضا/عضویت</td><td><code>/members</code>، <code>/join</code>، <code>/invites</code>، نقش/مجوز</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B10.4</td><td>دیوار/فایل</td><td>فیدِ گروه، <code>/files</code> آپلود/دانلود</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B10.5</td><td>تست</td><td>عضویت/مجوز/فایل</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5، B7 (الگوی فید).</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B11</span><b>منبعِ رویدادها</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-done">آماده در PHP</span><span class="est">۵ روز</span></div>
+      <p class="desc">قراردادِ PHP و تست‌های Pest موجودند (نمونه: <code>EventControllerTest</code>). این تسک بازسازیِ همان در Django است.</p>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B11.1</td><td>مدل‌ها</td><td>رویداد/دعوت/شرکت‌کننده/فایل</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B11.2</td><td>CRUD</td><td><code>GET/POST/PATCH/DELETE /events</code>، اعتبارسنجیِ زمان</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B11.3</td><td>دعوت/RSVP</td><td><code>/invites</code>، حضور، سطحِ دید/دعوت</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B11.4</td><td>تست معادلِ Pest</td><td>پورتِ سناریوهای <code>EventControllerTest</code> به pytest</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B12</span><b>منبعِ رسانه (عکس/آلبوم/ویدیو)</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-done">آماده در PHP</span><span class="est">۶ روز</span></div>
+      <p class="desc">در PHP کامل و امن‌شده است (اصلاحاتِ IDOR و چکِ مالکیت در <code>PhotoService</code>/<code>AlbumService</code>). Django باید همان قرارداد و چک‌های مالکیت را بدهد.</p>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B12.1</td><td>مدل‌ها</td><td>عکس/آلبوم/کاور/ویدیو، نگاشتِ <code>ow_photo_*</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B12.2</td><td>آلبوم CRUD</td><td><code>/albums</code> با چکِ مالکیت (مثلِ PHP: مالک یا ناظر)</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B12.3</td><td>عکس CRUD + آپلود</td><td><code>/photos</code>، آپلود، به‌روزرسانیِ کاور، PATCH جزئی (بدون null‌کردن)</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B12.4</td><td>ویدیو</td><td><code>/videos</code> CRUD + پردازش/embed</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B12.5</td><td>تست IDOR</td><td>عدمِ دسترسیِ غیرمالک به ویرایش/حذف</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5، B1.5 (آپلود).</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B13</span><b>منبعِ فروم</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۵ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B13.1</td><td>مدل‌ها</td><td>بخش/موضوع/پست، نگاشتِ <code>ow_forum_*</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B13.2</td><td>موضوع‌ها</td><td><code>GET/POST /forum/topics</code>، دسته‌بندی</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B13.3</td><td>پست‌ها</td><td><code>/topics/:id/posts</code>، پاسخ/نقل‌قول</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B13.4</td><td>مدیریت + تست</td><td>قفل/پین/انتقال با مجوز؛ تست</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 4 ===================== -->
+  <section class="phase" id="p4">
+    <div class="phase-h"><span class="phase-n">۴</span><h2>ارتباط و همکاری</h2></div>
+    <p class="phase-goal">ابزارهای کارِ روزمره: پیام‌رسان، مدیریت دانش، مدیریت پروژه (کانبان).</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F15</span><b>گفتگو (پیام‌رسان)</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-part">ناقص</span><span class="est">۶ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم گفتگوی خصوصی/گروهی داشته باشم، پیام و فایل بفرستم و پیامِ جدید را بی‌درنگ ببینم، تا هماهنگیِ سریع ممکن شود.</div>
+      <p class="desc">در پروتوتایپ و تبِ چتِ پروژه UIِ کاملِ mock هست. اتصال به پیام‌رسانِ واقعی؛ به‌روزرسانیِ بی‌درنگ (polling یا WebSocket).</p>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F15.1</td><td>فهرست گفتگوها</td><td><code>GET /conversations</code>، شمارشِ نخوانده، جستجو</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F15.2</td><td>پنجره‌ی پیام</td><td><code>/messages</code>، ارسال، بارگذاریِ تاریخچه (اسکرول معکوس)</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F15.3</td><td>بی‌درنگ</td><td>polling/WebSocket، وضعیتِ خوانده، تایپینگ</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F15.4</td><td>پیوست</td><td>ارسالِ فایل/عکس، پیش‌نمایش</td><td class="n">۶ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B14.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F16</span><b>مدیریت دانش</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۲.۵ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضو، می‌خواهم اسناد و راهنماهای سازمانی را در یک کتابخانه‌ی دسته‌بندی‌شده بیابم و بخوانم، تا دانشِ سازمان حفظ و بازیابی شود.</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F16.1</td><td>کتابخانه</td><td><code>GET /knowledge/documents</code>، درختِ دسته، جستجو</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F16.2</td><td>نمای سند</td><td>نمایشگر/دانلود، متادیتا، نسخه</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F16.3</td><td>افزودن سند</td><td>آپلود/دسته‌بندی با مجوز</td><td class="n">۵ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B16.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F17</span><b>مدیریت پروژه (کانبان + چت پروژه)</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-part">ناقص</span><span class="est">۷ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان عضوِ تیم، می‌خواهم پروژه بسازم، وظایف را روی بردِ کانبان بکشم‌و‌رها کنم، اعضا را تخصیص دهم و در چتِ پروژه گفتگو کنم، تا کارِ تیمی مدیریت شود.</div>
+      <p class="desc"><code>/workspace/projects</code> (فهرست/جزئیات/کانبان/چت) کامل ولی mock است. اتصالِ همه به API واقعی، از جمله drag-and-drop با persist.</p>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F17.1</td><td>فهرست/ساخت پروژه</td><td><code>GET/POST /projects</code>، اعضا، وضعیت</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F17.2</td><td>بردِ کانبان</td><td>ستون‌ها/کارت‌ها، drag-and-drop، persistِ ترتیب/وضعیت</td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">F17.3</td><td>وظیفه</td><td>جزئیاتِ وظیفه، تخصیص، سررسید، چک‌لیست، پیوست</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F17.4</td><td>چتِ پروژه</td><td>استفاده‌ی مجددِ کامپوننتِ چت (F15) در بستر پروژه</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F17.5</td><td>نماها</td><td>لیست/کانبان/تقویم، فیلترِ عضو/وضعیت</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5، F15. داده: B16.</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B14</span><b>منبعِ پیام‌رسان</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۶ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B14.1</td><td>مدل‌ها</td><td>گفتگو/پیام/عضو/وضعیتِ خوانده، نگاشتِ <code>ow_mailbox_*</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B14.2</td><td>گفتگوها</td><td><code>GET /conversations</code>، ساخت، شمارشِ نخوانده</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B14.3</td><td>پیام‌ها</td><td><code>/messages</code> ارسال/فهرست، صفحه‌بندیِ تاریخچه</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B14.4</td><td>بی‌درنگ</td><td>Channels/WebSocket یا long-poll؛ پیوست</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">B14.5</td><td>تست</td><td>ارسال/خواندن/دسترسیِ عضو</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5. (WebSocket نیازمندِ ASGI؛ مرتبط با B3.)</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B15</span><b>منبعِ دوستان و اعلان‌ها</b><span class="spacer"></span><span class="pill p-p2">P2</span><span class="pill p-todo">نساخته</span><span class="est">۴ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B15.1</td><td>دوستان</td><td><code>/friends</code>: درخواست/تأیید/حذف، نگاشتِ <code>ow_friends_*</code></td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B15.2</td><td>اعلان‌ها</td><td><code>GET /notifications</code>، علامتِ خوانده، شمارش</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B15.3</td><td>تولیدِ اعلان</td><td>hookهای رویداد (لایک/نظر/دعوت) → اعلان</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B15.4</td><td>تست</td><td>چرخه‌ی دوستی/اعلان</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B16</span><b>منبعِ دانش و پروژه</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۶ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B16.1</td><td>دانش</td><td><code>/knowledge/documents</code> CRUD + دسته + آپلود</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B16.2</td><td>پروژه</td><td><code>/projects</code> CRUD + اعضا + وضعیت</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B16.3</td><td>وظیفه/کانبان</td><td>ستون/کارت/ترتیب، endpointِ جابه‌جایی و تخصیص</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B16.4</td><td>تست</td><td>CRUD + persistِ ترتیب</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5. (اگر پروژه در اکسوال منبع ندارد، مدلِ جدید در <code>motoshub_new</code>.)</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 5 ===================== -->
+  <section class="phase" id="p5">
+    <div class="phase-h"><span class="phase-n">۵</span><h2>ماژول‌های سازمانی</h2></div>
+    <p class="phase-goal">بخش‌های تخصصیِ سازمان: قراردادها، صندوقِ نوآوری، پژوهش، آموزش، نظرسنجی/مسابقات/ارزیابی.</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F18</span><b>ماژول‌های سازمانی (قرارداد/صندوق/پژوهش/آموزش)</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۸ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان کاربرِ سازمانی، می‌خواهم قراردادها، فراخوان‌های صندوقِ نوآوری، پروژه‌های پژوهشی و دوره‌های آموزشی را ببینم و در آن‌ها اقدام کنم، تا فرایندهای سازمانی دیجیتال شوند.</div>
+      <p class="desc">چهار بخشِ مجزا با روت‌های موجودنبوده. مرجع: <code>Contracts/Funds/Research/Training</code>. هر بخش الگوی فهرست/جزئیات/فرم دارد.</p>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F18.1</td><td>قراردادها</td><td>روت، فهرست/جزئیات، وضعیت/گردش‌کار</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F18.2</td><td>صندوقِ نوآوری</td><td>فراخوان‌ها <code>/cfps</code>، ثبتِ درخواست <code>/grants</code></td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">F18.3</td><td>پژوهش</td><td>فهرست/جزئیاتِ پروژه‌های پژوهشی، فناوری‌ها</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F18.4</td><td>آموزش</td><td>دوره‌ها، ثبت‌نام، پیشرفت</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F18.5</td><td>یکپارچه‌سازی منو</td><td>افزودن به سایدبار/داشبورد، مجوزها</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5. داده: B17.</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B17</span><b>منبعِ ماژول‌های سازمانی</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۸ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B17.1</td><td>قراردادها/تیکت</td><td><code>/tickets</code> و منبعِ قرارداد، گردش‌کارِ وضعیت</td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">B17.2</td><td>صندوق</td><td><code>/cfps</code>، <code>/grants</code>: فراخوان/درخواست/داوری</td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">B17.3</td><td>پژوهش/فناوری</td><td><code>/technologies</code>، <code>/journal-*</code></td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">B17.4</td><td>آموزش</td><td>دوره/ثبت‌نام/پیشرفت</td><td class="n">۱۲ ساعت</td></tr>
+          <tr><td class="n">B17.5</td><td>تست</td><td>CRUD + گردش‌کار</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B18</span><b>منبعِ نظرسنجی، مسابقات و ارزیابی</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۵ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B18.1</td><td>نظرسنجی</td><td><code>/polls</code>: ساخت/رأی/نتیجه</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B18.2</td><td>مسابقات</td><td><code>/competitions</code>: ثبت/داوری</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B18.3</td><td>ارزیابی</td><td><code>/evaluations</code></td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B18.4</td><td>تست</td><td>رأی/نتیجه/دسترسی</td><td class="n">۴ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: B5.</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== PHASE 6 ===================== -->
+  <section class="phase" id="p6">
+    <div class="phase-h"><span class="phase-n">۶</span><h2>راهبری، جستجو، پولیش و تحویل</h2></div>
+    <p class="phase-goal">بخش‌های مدیریتی و پایانی که محصول را «کامل» و آماده‌ی تحویل می‌کنند.</p>
+
+    <div class="band f">◆ تیم Front</div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F19</span><b>پنل راهبری، ظاهر/برندسازی و گزارش‌گیری</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۸ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان مدیرِ سامانه، می‌خواهم کاربران/محتوا/تنظیمات را مدیریت کنم، ظاهر و برندِ سازمان را تغییر دهم و گزارش‌های کاربری بگیرم، تا سامانه را اداره کنم.</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F19.1</td><td>داشبوردِ راهبری</td><td>آمار کلی، مدیریتِ کاربران/نقش‌ها <code>/admin/*</code></td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F19.2</td><td>ظاهر/برند</td><td>لوگو/رنگ/نامِ سازمان (per-tenant)، پیش‌نمایشِ زنده</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F19.3</td><td>گزارش‌گیری</td><td>گزارش‌های کاربری/محتوایی، نمودار، خروجی</td><td class="n">۱۰ ساعت</td></tr>
+          <tr><td class="n">F19.4</td><td>مدیریتِ محتوا/مجوز</td><td>ابزارهای مدیریتِ محتوا و نقش/دسترسی</td><td class="n">۶ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: F5، F9. داده: endpointهای admin.</div>
+    </div>
+
+    <div class="task f">
+      <div class="task-h"><span class="task-id">F20</span><b>اعلان، جستجوی سراسری، راهنما، دستیار و پولیشِ نهایی</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-part">ناقص</span><span class="est">۸ روز</span></div>
+      <div class="story"><span class="lbl">User Story</span>به‌عنوان کاربر، می‌خواهم اعلان‌هایم را ببینم، در کلِ سامانه جستجو کنم، راهنما بگیرم و از دستیارِ هوشمند کمک بخواهم، و رابطی روان و بی‌نقص داشته باشم.</div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">F20.1</td><td>مرکز اعلان</td><td><code>GET /notifications</code>، خواندن/تنظیمات، هدرِ زنگ</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F20.2</td><td>جستجوی سراسری</td><td><code>GET /search</code>، نتایجِ چنددسته، صفحه‌ی نتایج</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">F20.3</td><td>راهنما و دستیار</td><td>صفحه‌ی راهنما، دستیارِ هوشمند (طبقِ پروتوتایپ)</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F20.4</td><td>پولیشِ a11y/RTL</td><td>پیمایشِ کیبورد، aria، کنتراست، بازبینیِ RTL همه‌ی صفحه‌ها</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F20.5</td><td>عملکرد</td><td>code-splitting، بهینه‌ی تصویر، بازبینیِ کش، Lighthouse</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">F20.6</td><td>تستِ E2E</td><td>سناریوهای کلیدی با Playwright</td><td class="n">۶ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: همه‌ی تسک‌های Front.</div>
+    </div>
+
+    <div class="band b">◆ تیم Backend</div>
+
+    <div class="task b">
+      <div class="task-h"><span class="task-id">B19</span><b>منبعِ جستجو + یکپارچه‌سازی و تحویل</b><span class="spacer"></span><span class="pill p-p3">P3</span><span class="pill p-todo">نساخته</span><span class="est">۴ روز</span></div>
+      <div class="tblwrap"><table>
+        <thead><tr><th class="n">#</th><th>کار</th><th>جزئیات فنی</th><th class="n">تخمین</th></tr></thead>
+        <tbody>
+          <tr><td class="n">B19.1</td><td>جستجوی سراسری</td><td><code>GET /search</code> چنددسته (کاربر/بلاگ/فروم/...)، صفحه‌بندی</td><td class="n">۸ ساعت</td></tr>
+          <tr><td class="n">B19.2</td><td>برابریِ قرارداد</td><td>تستِ diffِ پاسخِ Django با PHP روی endpointهای کلیدی</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B19.3</td><td>سوییچِ Gateway</td><td>مستندِ گذارِ مسیر‌به‌مسیر از PHP به Django بدونِ downtime</td><td class="n">۶ ساعت</td></tr>
+          <tr><td class="n">B19.4</td><td>OpenAPI + تحویل</td><td>هم‌ترازیِ <code>drf-spectacular</code> با قراردادِ v1، انتشارِ داکِ نهایی</td><td class="n">۶ ساعت</td></tr>
+        </tbody>
+      </table></div>
+      <div class="dep">وابستگی: همه‌ی منابعِ Backend.</div>
+    </div>
+  </section>
 
   <div class="note">
-    <b>منابعِ کمکی برای هر دو تیم:</b>
-    <a href="../reports/frontend-guide.html">راهنمای فرانت‌اند</a> ·
-    <a href="../reports/api-reference.html">مرجع کامل API</a> ·
-    <a href="../reports/swagger.html">Swagger تعاملی</a> ·
-    <a href="../reports/system-architecture.html">معماری سیستم</a> ·
-    <a href="../reports/motoshub-api-v1.postman_collection.json">Postman</a>
+    <b>یادداشتِ برنامه‌ریزی.</b> ترتیبِ فازها ترتیبِ اجراست، اما درونِ هر فاز تسک‌های Front و Backend موازی‌اند. توصیه: در آغازِ هر فاز یک جلسه‌ی Planning و کالیبراسیونِ تخمین، و در پایانِ هر فاز یک Demo روی همان صفحه‌ی پروتوتایپ برای سنجشِ «چقدر به هدف رسیدیم». تخمین‌ها بدونِ زمانِ بازکاریِ ناشی از تغییرِ نیازمندی و بدونِ زمانِ استقرار محاسبه شده‌اند؛ یک بافرِ ۱۵–۲۰٪ در برنامه لحاظ شود.
   </div>
 
-  <div class="foot">Motoshub · تسک‌های تیم Front و Backend · تهیه‌شده پس از خواندن کاملِ هر سه ریپو (prototype, web-client, new-api)</div>
+  <!-- ===================== REFS ===================== -->
+  <section class="phase" id="refs">
+    <div class="phase-h"><span class="phase-n">§</span><h2>منابع فنی</h2></div>
+    <div class="tblwrap"><table>
+      <thead><tr><th>سند</th><th>کاربرد</th></tr></thead>
+      <tbody>
+        <tr><td><a href="../reports/frontend-guide.html">راهنمای فرانت‌اند</a></td><td>قرارداد، احراز هویت، صفحه‌بندی، خطاها، همه‌ی endpointها</td></tr>
+        <tr><td><a href="../reports/api-reference.html">مرجع کامل API</a> · <a href="../reports/swagger.html">Swagger</a></td><td>امضای دقیقِ هر endpoint برای Backend (بازسازی) و Front (اتصال)</td></tr>
+        <tr><td><a href="../reports/system-architecture.html">معماری سیستم</a></td><td>Gateway/دو ORM/اسکیمای ۴۰۷ جدول، استراتژیِ auth</td></tr>
+        <tr><td><a href="../reports/ops-guide.html">راهنمای Ops</a></td><td>نیازمندیِ سرور، استقرار، پایشِ منابع</td></tr>
+        <tr><td><a href="../reports/motoshub-api-v1.postman_collection.json">Postman</a> · <a href="../reports/motoshub-api-v1.openapi.json">openapi.json</a></td><td>تستِ قرارداد و مبنای برابریِ Django با PHP</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="foot">
+    Motoshub · برنامه‌ی تحویلِ تیم Front و Backend<br>
+    ۳۹ تسک · ~۱۷۰ subtask · تخمینِ کلِ تک‌نفره ~۱۸۸ روزِ‌نفر · مسیرِ موازیِ ۴‌نفره ~۱۳ تا ۱۶ هفته<br>
+    روش‌شناسی: Feature-Forge (User Story + EARS + Given/When/Then) و اصولِ Frontend-Design · تهیه‌شده پس از خواندنِ کاملِ سه ریپو
+  </div>
 </div>
 </body>
 </html>
