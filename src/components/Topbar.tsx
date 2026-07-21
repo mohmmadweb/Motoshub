@@ -147,7 +147,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                   <ShieldCheck size={15} className="text-ink-400" /> امنیت و نشست‌ها
                 </Link>
                 <Link to="/dashboard/appearance" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <Palette size={15} className="text-ink-400" /> شخصی‌سازی ظاهر
+                  <Palette size={15} className="text-ink-400" /> ظاهر و برندسازی
                 </Link>
                 <Link to="/dashboard/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <Settings size={15} className="text-ink-400" /> پنل راهبری

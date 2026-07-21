@@ -30,6 +30,7 @@ export const navSections: { title: string; items: Item[] }[] = [
     items: [
       { to: "/dashboard", label: "داشبورد فعالیت‌ها", icon: LayoutDashboard, end: true },
       { to: "/dashboard/news", label: "اخبار سازمان", icon: Newspaper },
+      { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot },
     ],
   },
   {
@@ -52,7 +53,6 @@ export const navSections: { title: string; items: Item[] }[] = [
       { to: "/dashboard/funds", label: "صندوق نوآوری و شتاب‌دهی", icon: PiggyBank },
       { to: "/dashboard/research", label: "فرصت‌های پژوهشی", icon: FlaskConical },
       { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap },
-      { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot },
       { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3 },
     ],
   },
@@ -60,7 +60,7 @@ export const navSections: { title: string; items: Item[] }[] = [
     title: "مدیریت",
     items: [
       { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings },
-      { to: "/dashboard/appearance", label: "شخصی‌سازی ظاهر", icon: Palette },
+      { to: "/dashboard/appearance", label: "ظاهر و برندسازی", icon: Palette },
       { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
     ],
   },

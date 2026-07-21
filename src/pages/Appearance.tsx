@@ -1,6 +1,9 @@
-import { Palette, Sun, Moon, MonitorSmartphone, Type, Check, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Palette, Sun, Moon, MonitorSmartphone, Type, Check, Sparkles, Building2 } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
+import Tabs from "../components/ui/Tabs";
+import BrandingPanel from "../components/BrandingPanel";
 import { useTheme, accentPresets, type ThemeMode, type FontScale } from "../context/ThemeContext";
 import { useToast } from "../components/ui/ToastProvider";
 
@@ -16,17 +19,40 @@ const fontOptions: { id: FontScale; label: string; desc: string }[] = [
 ];
 
 export default function Appearance() {
+  const [tab, setTab] = useState<"me" | "org">("me");
+  return (
+    <div>
+      <PageHeader
+        title="ظاهر و برندسازی"
+        description="تنظیمات ظاهری شخصی شما، و برندسازی سطح سازمان (ویژه راهبر) — همه در یک‌جا"
+        icon={<Palette size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "me", label: "ظاهر من (شخصی)" },
+          { id: "org", label: "برندسازی سازمان (راهبر)" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "me" ? <MyAppearanceTab /> : (
+        <div className="space-y-3">
+          <div className="card p-3.5 bg-brand-50 border-brand-200 flex items-center gap-2.5 text-xs text-brand-800">
+            <Building2 size={15} className="shrink-0" />
+            این تنظیمات برای کل سازمان اعمال می‌شود و فقط راهبران به آن دسترسی دارند. (همین بخش در «پنل راهبری ← برندسازی سازمان» نیز در دسترس است.)
+          </div>
+          <BrandingPanel />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyAppearanceTab() {
   const { mode, setMode, accent, setAccent, fontScale, setFontScale, resolved } = useTheme();
   const { notify } = useToast();
 
   return (
-    <div>
-      <PageHeader
-        title="شخصی‌سازی ظاهر"
-        description="حالت نمایش، رنگ برند و اندازه متن را مطابق سلیقه خودتان تنظیم کنید — بدون نیاز به راهبر سامانه"
-        icon={<Palette size={18} />}
-      />
-
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
         <div className="space-y-5">
           {/* حالت نمایش */}
@@ -148,6 +174,5 @@ export default function Appearance() {
           </p>
         </div>
       </div>
-    </div>
   );
 }

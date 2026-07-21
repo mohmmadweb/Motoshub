@@ -12,6 +12,13 @@ import {
   ClipboardCheck,
   AtSign,
   ChevronLeft,
+  Clock3,
+  CheckCircle2,
+  Circle,
+  Sunrise,
+  Sun,
+  Sunset,
+  MoonStar,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { groups, users, currentUser, notifications, chatThreads, channels, type Post } from "../data/mock";
@@ -22,11 +29,53 @@ import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 
+// ساعت و تاریخ زنده‌ی شمسی + سلام متناسب با ساعت روز
+function useNow() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  return now;
+}
+
+function greetingFor(hour: number) {
+  if (hour >= 5 && hour < 12) return { text: "صبح بخیر", icon: Sunrise, tone: "text-amber-500" };
+  if (hour >= 12 && hour < 16) return { text: "ظهر بخیر", icon: Sun, tone: "text-amber-500" };
+  if (hour >= 16 && hour < 20) return { text: "عصر بخیر", icon: Sunset, tone: "text-orange-500" };
+  return { text: "شب بخیر", icon: MoonStar, tone: "text-brand-400" };
+}
+
+function LiveDateTime() {
+  const now = useNow();
+  const time = now.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const date = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
+  const g = greetingFor(now.getHours());
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap justify-between">
+      <span className="flex items-center gap-2 text-sm font-bold text-ink-900">
+        <g.icon size={17} className={g.tone} />
+        {g.text}، {currentUser.name.split(" ")[0] === "پایگاه" ? "همکار گرامی" : currentUser.name}
+      </span>
+      <span className="flex items-center gap-2.5 text-[12px] text-ink-500">
+        <span className="flex items-center gap-1.5 bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5">
+          <Clock3 size={13} className="text-brand-500" />
+          <span className="font-bold text-ink-800 tabular-nums min-w-[64px] text-center">{time}</span>
+        </span>
+        <span className="bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5 font-medium">{date}</span>
+      </span>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // «امروزِ شما» — نمای شخصی‌سازی‌شده: هرچه این کاربر امروز باید ببیند؛
-// اعلان‌ها، پیام‌ها، منشن‌ها و اقداماتِ در انتظارِ خودِ او.
+// اعلان‌ها، پیام‌ها، منشن‌ها و اقداماتِ در انتظارِ خودِ او — با امکان تیک‌زدن.
 // ---------------------------------------------------------------------------
 function PersonalToday() {
+  const [doneIds, setDoneIds] = useState<string[]>([]);
+  const toggleDone = (id: string) => setDoneIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const { events } = useContent();
   const unreadNotifs = notifications.filter((n) => !n.read);
   const unreadChats = chatThreads.filter((c) => c.unread > 0);
@@ -56,11 +105,12 @@ function PersonalToday() {
     { icon: ClipboardCheck, label: "اقدام در انتظار شما", value: pendingActions.length, to: "/dashboard/funds", tone: "text-rose-600" },
   ];
 
+  const doneCount = pendingActions.filter((a) => doneIds.includes(a.id)).length;
+
   return (
     <div className="card p-4 mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-ink-900">امروزِ شما</h3>
-        <span className="text-[11px] text-ink-400">شخصی‌سازی‌شده برای {currentUser.name}</span>
+      <div className="mb-4 pb-3 border-b border-ink-100">
+        <LiveDateTime />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -95,16 +145,33 @@ function PersonalToday() {
           </div>
         </div>
         <div>
-          <p className="text-[11px] font-bold text-ink-500 mb-2">اقدامات در انتظار شما</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-ink-500">کارهای امروز شما</p>
+            {pendingActions.length > 0 && (
+              <span className="flex items-center gap-1.5 text-[10.5px] text-ink-400">
+                {doneCount.toLocaleString("fa-IR")} از {pendingActions.length.toLocaleString("fa-IR")} انجام شد
+                <span className="w-14 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+                  <span className="block h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pendingActions.length ? (doneCount / pendingActions.length) * 100 : 0}%` }} />
+                </span>
+              </span>
+            )}
+          </div>
           <div className="space-y-1.5">
-            {pendingActions.map((a) => (
-              <Link key={a.id} to={a.to} className="flex items-center gap-2 text-[12px] text-ink-700 hover:text-brand-700 rounded-lg border border-ink-100 px-2.5 py-2">
-                <ClipboardCheck size={12} className={`shrink-0 ${a.late ? "text-rose-500" : "text-amber-500"}`} />
-                <span className="flex-1 truncate">{a.text}</span>
-                {a.late && <Badge tone="danger">تاخیر</Badge>}
-                <ChevronLeft size={13} className="text-ink-300 shrink-0" />
-              </Link>
-            ))}
+            {pendingActions.map((a) => {
+              const done = doneIds.includes(a.id);
+              return (
+                <div key={a.id} className={`flex items-center gap-2 text-[12px] rounded-lg border px-2.5 py-2 transition-colors ${done ? "border-emerald-200 bg-emerald-50/50" : "border-ink-100"}`}>
+                  <button onClick={() => toggleDone(a.id)} aria-label={done ? "بازگردانی به در انتظار" : "علامت‌گذاری به‌عنوان انجام‌شده"} className="shrink-0">
+                    {done ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Circle size={15} className="text-ink-300 hover:text-brand-500" />}
+                  </button>
+                  <Link to={a.to} className={`flex-1 truncate ${done ? "line-through text-ink-400" : "text-ink-700 hover:text-brand-700"}`}>
+                    {a.text}
+                  </Link>
+                  {a.late && !done && <Badge tone="danger">تاخیر</Badge>}
+                  <ChevronLeft size={13} className="text-ink-300 shrink-0" />
+                </div>
+              );
+            })}
             {pendingActions.length === 0 && <p className="text-[11.5px] text-ink-400">اقدامی در انتظار شما نیست. 🎉</p>}
             {todayEvent && (
               <Link to="/dashboard/events" className="flex items-center gap-2 text-[12px] text-ink-700 hover:text-brand-700 rounded-lg border border-ink-100 px-2.5 py-2">
