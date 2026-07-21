@@ -30,9 +30,11 @@ import {
   Trash2,
   Gauge,
   RotateCcw,
+  Activity,
 } from "lucide-react";
 import { SystemSection, StorageSection } from "./AdminSections";
 import { holdings as daneshmandHoldings } from "../data/mockDaneshmand";
+import LiveUsagePanel from "../components/LiveUsagePanel";
 import { useSettings, settingsMeta, defaultSettings, type WorkflowSettings } from "../context/SettingsContext";
 import {
   tenants as initialTenants,
@@ -64,7 +66,7 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "system" | "storage";
+type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
@@ -78,6 +80,7 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "security", label: "امنیت و انطباق", icon: ShieldCheck },
   { id: "network", label: "تعامل بین‌سازمانی", icon: Network },
   { id: "workflow", label: "پارامترهای گردش کار", icon: Gauge },
+  { id: "monitor", label: "پایش زنده سامانه", icon: Activity },
   { id: "system", label: "تنظیمات سیستم", icon: SlidersHorizontal },
   { id: "storage", label: "فضای ذخیره‌سازی", icon: HardDrive },
 ];
@@ -159,6 +162,16 @@ export default function Admin() {
           )}
 
           {section === "workflow" && <WorkflowParamsSection notify={notify} />}
+
+          {section === "monitor" && (
+            <div className="space-y-4">
+              <LiveUsagePanel />
+              <p className="text-[11px] text-ink-400 leading-5">
+                این متریک‌ها مربوط به کل سامانه است و فقط برای راهبران نمایش داده می‌شود. جزئیات دیسک در بخش
+                «فضای ذخیره‌سازی» و محدودیت نرخ درخواست در «پارامترهای گردش کار» قابل مدیریت است.
+              </p>
+            </div>
+          )}
 
           {section === "system" && <SystemSection notify={notify} />}
 
