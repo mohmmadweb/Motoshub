@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — معماری کامل سیستم</title>
+<style>
+  :root{
+    --bg:#f4f6f8;--surface:#ffffff;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;
+    --accent:#2f7d78;--accent2:#b45e28;--warn:#b4832a;--ok:#2e7d5b;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;
+      --accent:#4bb3ac;--accent2:#d98a4f;--warn:#d9ab5a;--ok:#5cc48d;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.9;padding:32px}
+  .wrap{max-width:960px;margin:0 auto}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:30px;font-weight:800;margin:0 0 8px}
+  h2{font-size:22px;margin:36px 0 12px;border-bottom:2px solid var(--line);padding-bottom:8px}
+  h3{font-size:17px;margin:22px 0 8px;color:var(--accent)}
+  p,li{font-size:14.5px}
+  code{font-family:var(--mono);font-size:12.5px;background:rgba(127,127,127,.12);padding:2px 6px;border-radius:5px}
+  .lede{color:var(--muted);font-size:16px;margin:0 0 26px}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:rgba(127,127,127,.06);font-weight:700}
+  tr:last-child td{border-bottom:none}
+  .note{background:var(--surface);border:1px solid var(--line);border-inline-start:3px solid var(--accent);border-radius:8px;padding:12px 16px;margin:14px 0}
+  .note.warn{border-inline-start-color:var(--warn)}
+  ul{padding-right:22px}
+  .diagram{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;margin:18px 0;overflow-x:auto}
+  .layer{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:rgba(127,127,127,.03)}
+  .layer h4{margin:0 0 8px;font-size:14px;font-family:var(--mono);color:var(--accent)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .box{flex:1;min-width:140px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);font-size:13px}
+  .box b{display:block;margin-bottom:3px}
+  .box small{color:var(--muted);font-size:11.5px}
+  .arrow{text-align:center;color:var(--muted);font-family:var(--mono);font-size:18px;margin:2px 0}
+  .tag{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .t-live{background:rgba(46,125,91,.14);color:var(--ok)} .t-plan{background:rgba(180,131,42,.16);color:var(--warn)}
+  .toc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 20px;margin:18px 0}
+  .toc a{color:var(--accent);text-decoration:none;margin-inline-end:14px;font-size:13.5px}
+  pre{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+  .foot{margin-top:40px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Motoshub · System Architecture</p>
+  <h1>معماری کامل سیستم موتوشاب</h1>
+  <p class="lede">این سند معماری محصول، معماری نرم‌افزار، بک‌اند، فرانت‌اند و اسکیمای کامل داده را به‌صورت جداگانه و دقیق شرح می‌دهد. مبنای همه‌ی توضیحات، مطالعه‌ی کامل سورس و اندازه‌گیری زنده روی استک در حال اجراست.</p>
+
+  <div class="toc">
+    <a href="#product">۱. معماری محصول</a>
+    <a href="#software">۲. معماری نرم‌افزار</a>
+    <a href="#backend">۳. بک‌اند</a>
+    <a href="#frontend">۴. فرانت‌اند</a>
+    <a href="#schema">۵. اسکیمای داده</a>
+    <a href="#deploy">۶. معماری استقرار</a>
+  </div>
+
+  <!-- ===================== 1. PRODUCT ===================== -->
+  <h2 id="product">۱. معماری محصول</h2>
+  <p>موتوشاب در حال گذار از یک وب‌سایت اکسوالِ یکپارچه به یک معماری <strong>Gateway + Strangler-Fig</strong> است: یک درگاه واحد جلوی چند بک‌اند می‌ایستد و به‌تدریج قابلیت‌ها از هسته‌ی قدیمی PHP به بک‌اند جدید Django منتقل می‌شوند، بدون قطع سرویس.</p>
+
+  <div class="diagram">
+    <div class="layer">
+      <h4>مصرف‌کننده‌ها</h4>
+      <div class="row">
+        <div class="box"><b>اپ موبایل</b><small>iOS / Android</small></div>
+        <div class="box"><b>فرانت جدید</b><small>motonextfront.shub.ir</small></div>
+        <div class="box"><b>سایت زنده‌ی فعلی</b><small>motonext.shub.ir</small></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>درگاه (Gateway)</h4>
+      <div class="row">
+        <div class="box"><b>api.shub.ir</b><small>نقطه‌ی ورود واحد برای موبایل و کل اپ آینده؛ توکن را pass-through و بین بک‌اندها مسیردهی می‌کند</small> <span class="tag t-plan">برنامه‌ریزی</span></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>بک‌اندها</h4>
+      <div class="row">
+        <div class="box"><b>api1.shub.ir</b><small>موتوشاب فعلی (PHP/Oxwall + REST API v1). قابلیت‌های امروز اینجاست.</small> <span class="tag t-plan">آماده‌ی استقرار</span></div>
+        <div class="box"><b>api2.shub.ir</b><small>بک‌اند Django (بازنویسی تدریجی). endpointها یکی‌یکی از api1 به اینجا منتقل می‌شوند.</small> <span class="tag t-plan">در حال توسعه</span></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>داده و مستندات</h4>
+      <div class="row">
+        <div class="box"><b>MariaDB مشترک</b><small>پایگاه‌داده‌ی واحد؛ هر دو لایه‌ی PHP روی همان جدول‌ها</small></div>
+        <div class="box"><b>docs.shub.ir</b><small>مستندات فنی و API</small> <span class="tag t-live">زنده</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>وضعیت فعلی ساب‌دامین‌ها</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>ساب‌دامین</th><th>نقش</th><th>وضعیت</th></tr></thead>
+    <tbody>
+      <tr><td>motonext.shub.ir</td><td>سایت زنده‌ی فعلی (شاخه‌ی motonext)</td><td><span class="tag t-live">بالا</span></td></tr>
+      <tr><td>motonextfront.shub.ir</td><td>فرانت جدید موتوشاب</td><td><span class="tag t-live">بالا</span></td></tr>
+      <tr><td>docs.shub.ir</td><td>مستندات (این سند)</td><td><span class="tag t-live">بالا، گواهی معتبر</span></td></tr>
+      <tr><td>api.shub.ir</td><td>Gateway — موبایل و کل اپ آینده</td><td><span class="tag t-plan">نیازمند DNS</span></td></tr>
+      <tr><td>api1.shub.ir</td><td>موتوشاب فعلی (کار REST API v1)</td><td><span class="tag t-plan">نیازمند DNS</span></td></tr>
+      <tr><td>api2.shub.ir</td><td>بک‌اند Django</td><td><span class="tag t-plan">نیازمند DNS</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note"><strong>چرا این معماری؟</strong> api1 (موتوشاب فعلی) باید یک قرارداد تمیز، پایدار و ماژولار باشد تا (۱) Gateway بتواند جلویش بایستد و (۲) Django بتواند به‌تدریج هر endpoint را جداگانه تحویل بگیرد. به همین دلیل REST API v1 به‌صورت ماژول‌های مستقل ساخته شده است.</div>
+
+  <!-- ===================== 2. SOFTWARE ===================== -->
+  <h2 id="software">۲. معماری نرم‌افزار (api1 — موتوشاب فعلی)</h2>
+  <p>موتوشاب یک fork از Oxwall است که یک لایه‌ی REST مدرن به نام <strong>Bridge</strong> رویش سوار شده. دو لایه‌ی دسترسی به داده روی یک پایگاه‌داده هم‌زیستی دارند.</p>
+
+  <div class="diagram">
+    <div class="layer">
+      <h4>لایه‌ی HTTP</h4>
+      <div class="row">
+        <div class="box"><b>nginx</b><small>reverse proxy، FastCGI به PHP-FPM</small></div>
+        <div class="box"><b>Bridge Router</b><small>routing مبتنی بر attribute، middleware، dispatcher</small></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>لایه‌ی REST API v1 (جدید) — تمپلیت هر فیچر</h4>
+      <div class="row">
+        <div class="box"><b>Controller</b><small>attribute route + OpenAPI</small></div>
+        <div class="box"><b>FormRequest</b><small>اعتبارسنجی و sanitize</small></div>
+        <div class="box"><b>Resource</b><small>سریال‌سازی خروجی</small></div>
+        <div class="box"><b>Policy</b><small>مجوز per-action</small></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="box"><b>Service</b><small>منطق کسب‌وکار؛ BOL موجود را صدا می‌زند</small></div>
+        <div class="box"><b>Repository</b><small>کوئری Eloquent</small></div>
+        <div class="box"><b>Model / DTO</b><small>Eloquent Model + DTO</small></div>
+        <div class="box"><b>Queries</b><small>Filter / Search / Sort</small></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>لایه‌ی BOL قدیمی Oxwall</h4>
+      <div class="row">
+        <div class="box"><b>*_BOL_*Service</b><small>منطق شیپ‌شده‌ی هر پلاگین (بازنویسی نشده)</small></div>
+        <div class="box"><b>OW_BaseDao + OW_Example</b><small>دسترسی داده‌ی قدیمی (SQL دستی)</small></div>
+        <div class="box"><b>OW_EventManager</b><small>رویدادها، کش، اعلان‌ها</small></div>
+      </div>
+    </div>
+    <div class="arrow">&#8595;</div>
+    <div class="layer">
+      <h4>داده و احراز هویت</h4>
+      <div class="row">
+        <div class="box"><b>MariaDB 10.5</b><small>۴۰۷ جدول، پیشوند ow_</small></div>
+        <div class="box"><b>JWT (HS256)</b><small>پل بین توکن و OW::getUser() در هر درخواست</small></div>
+        <div class="box"><b>RBAC اکسوال</b><small>گروه/اکشن/نقش</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note warn"><strong>نکته‌ی مهم — دو ORM روی یک دیتابیس:</strong> لایه‌ی جدید از <strong>Eloquent</strong> (کامپوننت ORM لاراول، نه خود لاراول) و لایه‌ی قدیمی از <code>OW_BaseDao</code> استفاده می‌کند؛ هر دو به همان جدول‌ها می‌نویسند. نوشتن با Eloquent، رویداد/کش لایه‌ی قدیمی را دور می‌زند. جزئیات در <a href="ops-guide.html">راهنمای عملیات</a>.</div>
+
+  <h3>اعداد کلیدی لایه‌ی API</h3>
+  <div class="tblwrap"><table>
+    <thead><tr><th>مورد</th><th>مقدار</th></tr></thead>
+    <tbody>
+      <tr><td>عملیات REST</td><td>۲۹۳ (GET ۱۱۵ / POST ۸۵ / DELETE ۵۶ / PATCH ۳۷)</td></tr>
+      <tr><td>مسیرها</td><td>۱۷۸</td></tr>
+      <tr><td>مدل‌های Eloquent</td><td>۷۴ مدل در ۲۶ پلاگین</td></tr>
+      <tr><td>پلاگین‌های فعال</td><td>۵۱ (هرکدام init.php در هر درخواست)</td></tr>
+      <tr><td>تست‌های Pest</td><td>۴۴ فایل، ۱۲۰ assertion سبز</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ===================== 3. BACKEND ===================== -->
+  <h2 id="backend">۳. بک‌اند</h2>
+  <h3>api1 — PHP / Oxwall (فعلی)</h3>
+  <ul>
+    <li><strong>پشته:</strong> PHP 8.4-FPM، MariaDB 10.5، nginx. OPcache فعال. Composer با Smarty + Twig + اجزای Illuminate (Eloquent) + Symfony + Guzzle + Shieldon (WAF) + swagger-php + firebase/php-jwt.</li>
+    <li><strong>الگوی مهاجرت:</strong> هر فیچر یک ماژول کامل (Controller+Request+Resource+Service+Policy+Repository+Model+DTO+Queries). منطق کسب‌وکار بازنویسی نشده — هر Service همان BOL موجود را صدا می‌زند.</li>
+    <li><strong>مجوزها:</strong> هر پلاگین اکشن‌های REST خودش را در install.php و update.php ثبت و به نقش‌ها grant می‌کند (خودکفا، بدون دستور مرکزی).</li>
+  </ul>
+
+  <h3>api2 — Django (در حال توسعه)</h3>
+  <ul>
+    <li>بازنویسی تدریجی؛ endpointها یکی‌یکی از api1 به api2 منتقل می‌شوند و Gateway مسیر را عوض می‌کند.</li>
+    <li>برای هم‌زیستی، هر دو بک‌اند باید هویت مشترک بفهمند (بخش احراز هویت).</li>
+  </ul>
+
+  <h3>احراز هویت میان PHP و Django</h3>
+  <p>API فعلی با <strong>JWT (HS256)</strong> کار می‌کند؛ توکن با <code>sha256(OW_PASSWORD_PEPPER)</code> امضا و claims دارد: <code>{ iat, exp, sub: userId }</code>.</p>
+  <ul>
+    <li><strong>راه کم‌ریسک (بدون تغییر کد):</strong> راز مشترک — همان pepper را به Django بدهید؛ Django با PyJWT همان توکن HS256 را verify کند؛ Gateway توکن را pass-through کند. <code>sub</code> همان userId جدول <code>ow_base_user</code> است.</li>
+    <li><strong>مسیر بلندمدت:</strong> RS256 (کلید نامتقارن، تک صادرکننده) یا یک Identity Provider مرکزی (Keycloak) با verify کلید عمومی در همه‌ی سرویس‌ها.</li>
+  </ul>
+
+  <!-- ===================== 4. FRONTEND ===================== -->
+  <h2 id="frontend">۴. فرانت‌اند</h2>
+  <ul>
+    <li><strong>motonextfront.shub.ir</strong> — فرانت جدید که REST API v1 را مصرف می‌کند (دیگر از رندر سمت‌سرور اکسوال استفاده نمی‌کند).</li>
+    <li><strong>قرارداد مصرف:</strong> ورود از <code>POST /v1/auth/login</code>، ارسال <code>Authorization: Bearer &lt;token&gt;</code> در هر درخواست، مدیریت ۴۰۱/۴۰۳/۴۲۲/۴۰۴، تولید کلاینت از <code>openapi.json</code>. جزئیات کامل در <a href="frontend-guide.html">راهنمای فرانت‌اند</a>.</li>
+    <li><strong>motonext.shub.ir</strong> — سایت زنده‌ی فعلی (رندر سمت‌سرور اکسوال) که تا کامل‌شدن فرانت جدید پابرجاست.</li>
+  </ul>
+
+  <!-- ===================== 5. SCHEMA ===================== -->
+  <h2 id="schema">۵. اسکیمای داده (MariaDB — ۴۰۷ جدول، پیشوند ow_)</h2>
+  <p>اسکیما بر پایه‌ی هسته‌ی Oxwall است؛ هر پلاگین جدول‌های خودش را دارد. مهم‌ترین دامنه‌ها:</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>دامنه</th><th>جداول کلیدی</th><th>توضیح</th></tr></thead>
+    <tbody>
+      <tr><td>هویت و کاربر</td><td><code>ow_base_user</code>, <code>ow_base_user_profile</code>, <code>ow_base_question_data</code></td><td>حساب کاربری، پروفایل، مقادیر پرسش‌های پروفایل (نام نمایشی از اینجا)</td></tr>
+      <tr><td>مجوز (RBAC)</td><td><code>ow_base_authorization_role</code>, <code>_action</code>, <code>_group</code>, <code>_role_permission</code></td><td>گروه/اکشن/نقش و grant؛ مبنای Policyهای API</td></tr>
+      <tr><td>پلاگین و ویجت</td><td><code>ow_base_plugin</code>, <code>ow_base_component</code>, <code>ow_base_component_place</code></td><td>پلاگین‌های نصب/فعال، ویجت‌های صفحه‌ی اصلی (index/dashboard)</td></tr>
+      <tr><td>تازه‌ها (فید)</td><td><code>ow_newsfeed_action</code>, <code>_activity</code>, <code>_action_feed</code>, <code>_status</code></td><td>پست‌ها؛ <code>visibility</code> bitmask و <code>privacy</code> کنترل دیده‌شدن برای مهمان</td></tr>
+      <tr><td>رسانه</td><td><code>ow_photo</code>, <code>ow_photo_album</code>, <code>ow_video_clip</code></td><td>عکس/آلبوم/ویدیو</td></tr>
+      <tr><td>محتوا</td><td><code>ow_blogs_post</code>, <code>ow_iisnews_entry</code>, <code>ow_forum_topic</code>, <code>ow_forum_post</code></td><td>بلاگ، خبر، فروم</td></tr>
+      <tr><td>اجتماع</td><td><code>ow_groups_group</code>, <code>ow_event_item</code>, <code>ow_friends_friendship</code>, <code>ow_mailbox_conversation</code></td><td>گروه، رویداد، دوستی، پیام‌رسان</td></tr>
+      <tr><td>سازمانی/پژوهشی</td><td><code>ow_iisgrant_*</code>, <code>ow_iiscfp_*</code>, <code>ow_iisticketing_*</code>, <code>ow_iisjcse_*</code></td><td>گرنت، فراخوان، تیکتینگ، نشریه</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note"><strong>نکته‌ی طراحی داده:</strong> اسکیمای اکسوال ستون‌های <code>created_at/updated_at</code> استاندارد لاراول را ندارد؛ به همین دلیل مدل‌های Eloquent با <code>$timestamps=false</code> تنظیم شده‌اند و فیلدهای زمانی (مثل <code>addDatetime</code>) دستی مدیریت می‌شوند. تاریخ‌ها به‌صورت timestamp عددی ذخیره و در خروجی API به ISO-8601 + جلالی تبدیل می‌شوند.</div>
+
+  <h3>مدل رابطه‌ای نمونه (رسانه)</h3>
+  <pre>ow_base_user (id) ────&lt; ow_photo_album (userId)
+                              │
+                              └────&lt; ow_photo (albumId)
+                                          │
+                                          └── ow_photo_album_cover (photoId)</pre>
+
+  <!-- ===================== 6. DEPLOY ===================== -->
+  <h2 id="deploy">۶. معماری استقرار (این سند و docs.shub.ir)</h2>
+  <ul>
+    <li><strong>موتوشاب مستقل است:</strong> استک اپ به‌صورت Docker جداگانه اجرا می‌شود (app=PHP-FPM، db=MariaDB، web=nginx) و هیچ ارتباطی با زیرساخت‌های دیگر ندارد.</li>
+    <li><strong>docs.shub.ir</strong> در یک namespace کاملاً جدا و برچسب‌خورده‌ی <code>motoshub-docs</code> سرو می‌شود، ایزوله از سایر سرویس‌های سرور؛ گواهی معتبر Let's Encrypt با تمدید خودکار.</li>
+    <li><strong>مصرف منابع:</strong> app بی‌بار ~۵۲MB، db ~۱۶۶MB، هر worker PHP ~۵۵MB. سیستم memory-bound است. مشخصات سرور برای هر مشتری و پایش زنده در <a href="ops-guide.html">راهنمای عملیات</a>.</li>
+  </ul>
+
+  <div class="foot">docs.shub.ir · معماری کامل سیستم موتوشاب · نسخه‌ی زنده و قابل‌به‌روزرسانی</div>
+</div>
+</body>
+</html>
