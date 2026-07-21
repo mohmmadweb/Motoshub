@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — تسک‌های تیم Front و Backend</title>
+<style>
+  :root{
+    --bg:#f4f6f8;--surface:#ffffff;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;
+    --front:#2f6f9e;--back:#7a4fb0;--ok:#2e7d5b;--warn:#b4832a;--todo:#b0475e;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;
+      --front:#5fa3d6;--back:#b48ae0;--ok:#5cc48d;--warn:#d9ab5a;--todo:#e07a92;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.85;padding:28px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  h1{font-size:29px;font-weight:800;margin:0 0 8px}
+  .lede{color:var(--muted);font-size:15.5px;margin:0 0 22px}
+  h2{font-size:22px;margin:34px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  h3{font-size:16.5px;margin:22px 0 6px}
+  h2.front{color:var(--front);border-color:var(--front)} h2.back{color:var(--back);border-color:var(--back)}
+  p,li{font-size:14px}
+  code{font-family:var(--mono);font-size:12px;background:rgba(127,127,127,.12);padding:2px 6px;border-radius:5px}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:12px 0}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+  th,td{padding:8px 11px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:rgba(127,127,127,.06);font-weight:700} tr:last-child td{border-bottom:none}
+  .note{background:var(--surface);border:1px solid var(--line);border-inline-start:3px solid var(--muted);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13.5px}
+  .note.warn{border-inline-start-color:var(--warn)}
+  ul{padding-right:20px} li{margin:3px 0}
+  .task{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:12px 15px;margin:9px 0}
+  .task .id{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .task b{font-size:14.5px}
+  .task .meta{font-size:12px;color:var(--muted);margin-top:5px}
+  .task .meta code{font-size:11px}
+  .pill{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;white-space:nowrap;margin-inline-start:6px}
+  .p-done{background:rgba(46,125,91,.15);color:var(--ok)} .p-part{background:rgba(180,131,42,.16);color:var(--warn)} .p-todo{background:rgba(176,71,94,.15);color:var(--todo)}
+  .p-p1{background:rgba(176,71,94,.12);color:var(--todo)} .p-p2{background:rgba(180,131,42,.12);color:var(--warn)} .p-p3{background:rgba(92,140,120,.12);color:var(--muted)}
+  .toc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin:16px 0}
+  .toc a{color:var(--front);text-decoration:none;margin-inline-end:14px;font-size:13px}
+  .foot{margin-top:40px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center}
+  a{color:var(--front)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Motoshub · Team Tasks · Front + Backend</p>
+  <h1>تسک‌های تیم Front و Backend</h1>
+  <p class="lede">هدف: ساختِ محصولِ واقعی مطابقِ پروتوتایپ (این سایت، cheedafar.ir). تیم Front صفحه‌ها را در Next.js می‌سازد و تیم Backend، API را در Django می‌سازد. هر تسک ریز، مستقل و اندازه‌ی یک issue است.</p>
+
+  <div class="note">
+    <b>راهنمای نشان‌ها:</b>
+    <span class="pill p-done">انجام‌شده</span> کار می‌کند ·
+    <span class="pill p-part">ناقص</span> UI هست ولی داده mock/بک‌اند ندارد ·
+    <span class="pill p-todo">نساخته</span> اصلاً وجود ندارد ·
+    و اولویت: <span class="pill p-p1">P1</span> پایه/بحرانی · <span class="pill p-p2">P2</span> مهم · <span class="pill p-p3">P3</span> بعدی.
+  </div>
+
+  <div class="toc">
+    <a href="#overview">تصویر کلی و معماری</a>
+    <a href="#front">تسک‌های Front (Next.js)</a>
+    <a href="#back">تسک‌های Backend (Django)</a>
+    <a href="#map">نگاشت صفحه ↔ endpoint ↔ تسک</a>
+  </div>
+
+  <!-- ================= OVERVIEW ================= -->
+  <h2 id="overview">تصویر کلی و معماری</h2>
+  <p>سه قطعه‌ی مستقل داریم که باید به هم برسند:</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>قطعه</th><th>چیست</th><th>وضعیت امروز</th></tr></thead>
+    <tbody>
+      <tr><td><b>Prototype</b> (cheedafar.ir)<br><code>motoshub-prototype</code></td><td>طرحِ هدف — React SPA، ۳۴ صفحه، ~۲۰ بخش، داده‌ی mock با شکلِ <code>/api/v1</code></td><td>کامل به‌عنوان طرح؛ داده‌اش mock است</td></tr>
+      <tr><td><b>Front</b> (motonextfront.shub.ir)<br><code>motoshub-web-client</code></td><td>Next.js 16 + React 19 + TanStack Query + Zustand + axios؛ به PHP <code>api/v1</code> (motonext.shub.ir) وصل</td><td>فقط <b>auth + blogs</b> واقعی؛ بقیه UIِ mock. ~۱۳ روت گمشده</td></tr>
+      <tr><td><b>Backend</b> (api2.shub.ir)<br><code>motoshub-new-api</code></td><td>Django 5.2 + DRF + SimpleJWT + drf-spectacular</td><td>فقط اسکلتِ auth (۲ endpoint: <code>/me</code>, <code>/health</code>)؛ فیچرها <b>۱۰۰٪ نساخته</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn">
+    <b>تصمیم معماری کلیدی (باید تیم‌ها هم‌راستا باشند):</b> Front امروز به <b>PHP <code>api/v1</code></b> (motonext.shub.ir) وصل است. قرار است Backendِ Django همان قراردادِ <code>api/v1</code> را بسازد تا بعداً بدون تغییرِ Front جایگزین شود. پس <b>Backend باید دقیقاً همان قراردادِ REST را پیاده کند</b> که در <a href="../reports/api-reference.html">مرجع API</a> و <a href="../reports/swagger.html">Swagger</a> مستند است (۲۹۳ عملیات). Front هم باید طوری بنویسد که مبدأ (PHP یا Django) برایش فرقی نکند.
+  </div>
+
+  <div class="note warn">
+    <b>نکته‌ی auth (اختلاف مهم):</b> Django فعلاً <b>JWT مشترک نمی‌سازد</b> — توکنِ دیتابیسِ اکسوال (<code>ow_base_user_auth_token</code>) را می‌خواند. Front از JWTِ PHP (<code>/auth/login</code>) استفاده می‌کند. این دو باید یکی شوند: یا Django همان JWT HS256 با رازِ مشترک (<code>OW_PASSWORD_PEPPER</code>) را صادر/تأیید کند، یا Gateway هماهنگ کند. (تسک B0.)
+  </div>
+
+  <!-- ================= FRONT ================= -->
+  <h2 id="front" class="front">تسک‌های تیم Front (Next.js — motoshub-web-client)</h2>
+  <p>دو دسته: (الف) پایه و بدهی فنی، (ب) ساختِ هر بخش مطابق پروتوتایپ با اتصال به API واقعی به‌جای mock.</p>
+
+  <h3>الف) پایه و زیرساخت</h3>
+  <div class="task"><span class="id">F0.1</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
+    <b>یکی‌کردن axios client و رفعِ کد مرده.</b>
+    <div class="meta">دو client موازی هست (<code>libs/axios.ts</code> زنده، <code>services/apiClient.ts</code> مرده). یکی بماند. حذف: <code>jsonwebtoken</code>، <code>next-themes</code>+<code>switcher.tsx</code>، <code>social/homepage/*</code>، <code>social/menu/*</code>، نقشه‌ی کهنه‌ی <code>libs/routes.ts</code>.</div>
+  </div>
+  <div class="task"><span class="id">F0.2</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
+    <b>جریان کامل احراز هویت: refresh توکن + محافظت مسیر.</b>
+    <div class="meta">interceptor پاسخِ <code>libs/axios.ts</code> الان no-op است. منطق ۴۰۱ → refresh (<code>/auth/refresh</code>) → retry پیاده شود. یک <code>middleware.ts</code> برای محافظت مسیرهای <code>/workspace</code> و <code>/social</code> اضافه شود. logout واقعی (الان stub است، <code>useAuth.ts</code>).</div>
+  </div>
+  <div class="task"><span class="id">F0.3</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>سیستمِ طراحی و RTL/تم.</b>
+    <div class="meta">Tailwind الان theme خالی دارد. tokenهای رنگ/فاصله/تایپوگرافی مطابق پروتوتایپ تعریف شود. تمِ روشن/تیره (<code>next-themes</code> نصب است ولی mount نشده). فونت IRANYekan و RTL از قبل هست.</div>
+  </div>
+  <div class="task"><span class="id">F0.4</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
+    <b>لایه‌ی داده‌ی استاندارد (hookهای query/mutation).</b>
+    <div class="meta">الان فقط <code>useAuth</code> و <code>useBlogs</code> هست؛ بقیه‌ی صفحه‌ها روی آرایه‌ی mock با <code>useState</code> کار می‌کنند و حتی mock را mutate می‌کنند. برای هر منبع یک سرویس + hook TanStack Query ساخته شود (الگوی <code>services/api/blogs.ts</code> + <code>hooks/queries/useBlogs.ts</code>).</div>
+  </div>
+
+  <h3>ب) ساختِ هر بخش (مطابق پروتوتایپ)</h3>
+  <div class="task"><span class="id">F1</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
+    <b>داشبورد فعالیت‌ها.</b> صفحه‌ی <code>/workspace</code> و <code>/social</code> الان literalِ ثابت است. به فید/آمار/رویدادهای واقعی وصل شود.
+    <div class="meta">پروتوتایپ: <code>pages/Dashboard.tsx</code> · API: <code>GET /v1/posts?scope=feed</code>, <code>GET /v1/events</code>, <code>GET /v1/notifications</code></div>
+  </div>
+  <div class="task"><span class="id">F2</span> <span class="pill p-p1">P1</span> <span class="pill p-part">ناقص</span><br>
+    <b>تازه‌ها / فید (Channels).</b> <code>/social/channels</code> mock است. فید واقعی + انتشار + attachment (PDF/Word) + دسته‌بندی.
+    <div class="meta">پروتوتایپ: <code>Media/PublicShowcase</code> · API: <code>GET/POST /v1/newsfeed</code>، دسته‌بندیِ انتشار عمومی</div>
+  </div>
+  <div class="task"><span class="id">F3</span> <span class="pill p-p1">P1</span> <span class="pill p-done">انجام‌شده</span><br>
+    <b>بلاگ.</b> فهرست به <code>/blogs</code> وصل است. باقی‌مانده: صفحه‌ی جزئیات (<code>/social/blogs/[id]</code>)، صفحه‌ی ساخت (<code>/social/blogs/create</code>)، و رفعِ تگِ ساختگی (<code>blogsList.tsx:30</code>).
+    <div class="meta">API: <code>GET /v1/blogs</code>, <code>GET /v1/blogs/:id</code>, <code>POST/PATCH/DELETE /v1/blogs</code></div>
+  </div>
+  <div class="task"><span class="id">F4</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>اخبار سازمان.</b> روت <code>/social/news</code> وجود ندارد (۴۰۴). ساخت فهرست + جزئیات.
+    <div class="meta">پروتوتایپ: <code>News.tsx</code>, <code>NewsItemDetail.tsx</code> · API: <code>GET /v1/news</code>, <code>GET /v1/news/:id</code></div>
+  </div>
+  <div class="task"><span class="id">F5</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
+    <b>گروه‌های تعاملی.</b> <code>/social/groups</code> mock با handlerهای خالی. اتصال واقعی + جزئیات گروه + فایل‌ها + عضویت.
+    <div class="meta">پروتوتایپ: <code>Groups.tsx</code>, <code>GroupDetail.tsx</code> · API: <code>GET /v1/groups</code>, <code>/v1/groups/:id</code>, <code>/members</code>, <code>/files</code>, <code>/join</code></div>
+  </div>
+  <div class="task"><span class="id">F6</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>انجمن (فروم).</b> روت <code>/social/forums</code> وجود ندارد. فهرست موضوع‌ها + پست‌ها.
+    <div class="meta">پروتوتایپ: <code>Forum.tsx</code>, <code>ForumTopic</code> · API: <code>GET /v1/forum/topics</code>, <code>/topics/:id/posts</code></div>
+  </div>
+  <div class="task"><span class="id">F7</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>رویدادها و جلسات.</b> روت <code>/social/events</code> وجود ندارد. تقویم + جزئیات + دعوت.
+    <div class="meta">پروتوتایپ: <code>Events.tsx</code>, <code>EventItemDetail.tsx</code> · API: <code>GET/POST /v1/events</code>, <code>/invites</code></div>
+  </div>
+  <div class="task"><span class="id">F8</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>تصاویر و ویدیو (رسانه).</b> روت <code>/social/media</code> وجود ندارد. گالری + آپلود.
+    <div class="meta">پروتوتایپ: <code>Media.tsx</code>, <code>MediaItemDetail.tsx</code> · API: <code>/v1/photos</code>, <code>/v1/albums</code>, <code>/v1/videos</code></div>
+  </div>
+  <div class="task"><span class="id">F9</span> <span class="pill p-p3">P3</span> <span class="pill p-part">ناقص</span><br>
+    <b>گفتگو (چت/پیام‌رسان).</b> در پروتوتایپ + تبِ چتِ پروژه UIِ کامل mock دارد. به پیام‌رسان واقعی وصل شود.
+    <div class="meta">پروتوتایپ: <code>Chat.tsx</code> · API: <code>GET /v1/chat/threads</code>, <code>/v1/conversations</code>, <code>/messages</code></div>
+  </div>
+  <div class="task"><span class="id">F10</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
+    <b>مدیریت دانش.</b> روت وجود ندارد. کتابخانه‌ی اسناد.
+    <div class="meta">پروتوتایپ: <code>Knowledge</code> · API: <code>GET /v1/knowledge/documents</code></div>
+  </div>
+  <div class="task"><span class="id">F11</span> <span class="pill p-p3">P3</span> <span class="pill p-part">ناقص</span><br>
+    <b>مدیریت پروژه.</b> <code>/workspace/projects</code> (فهرست/جزئیات/کانبان/چت) کامل ولی mock. اتصال واقعی.
+    <div class="meta">پروتوتایپ: <code>Projects.tsx</code>, <code>ProjectBoard.tsx</code> · API: <code>GET /v1/projects</code>, <code>/v1/projects/:id</code></div>
+  </div>
+  <div class="task"><span class="id">F12</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
+    <b>قراردادها، صندوق نوآوری، پژوهش، آموزش.</b> بخش‌های سازمانی؛ روت‌ها وجود ندارند.
+    <div class="meta">پروتوتایپ: <code>Contracts/Funds/Research/Training</code> · API: <code>/v1/grants</code>, <code>/v1/cfps</code>, و منابع سازمانی</div>
+  </div>
+  <div class="task"><span class="id">F13</span> <span class="pill p-p2">P2</span> <span class="pill p-part">ناقص</span><br>
+    <b>کاربران و پروفایل.</b> جدولِ کاربران mock (Add/Edit مرده). پروفایل + ویرایش + تغییر رمز (endpoint هست، UI نیست).
+    <div class="meta">API: <code>GET /v1/users</code>, <code>GET /v1/auth/me</code>, <code>PATCH /v1/users/me</code>, <code>PATCH /v1/auth/change-password</code></div>
+  </div>
+  <div class="task"><span class="id">F14</span> <span class="pill p-p3">P3</span> <span class="pill p-todo">نساخته</span><br>
+    <b>پنل راهبری، ظاهر/برندسازی، گزارش‌گیری، اعلان‌ها، جستجو، راهنما، دستیار هوشمند.</b> بخش‌های باقی‌مانده‌ی پروتوتایپ.
+    <div class="meta">پروتوتایپ: <code>Admin/Appearance/Reports/Notifications/SearchPage/Help/Assistant</code> · API: <code>/v1/notifications</code>, <code>/v1/search</code>, <code>/v1/admin/*</code></div>
+  </div>
+
+  <!-- ================= BACKEND ================= -->
+  <h2 id="back" class="back">تسک‌های تیم Backend (Django — motoshub-new-api)</h2>
+  <p>هدف: پیاده‌سازیِ قراردادِ <code>api/v1</code> (همان که PHP دارد) در Django، منبع‌به‌منبع. مرجعِ دقیق: <a href="../reports/api-reference.html">مرجع API</a> و <a href="../reports/motoshub-api-v1.openapi.json">openapi.json</a>.</p>
+
+  <h3>الف) پایه و زیرساخت</h3>
+  <div class="task"><span class="id">B0.1</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
+    <b>استراتژی auth واحد PHP ↔ Django.</b> تصمیم: JWT HS256 با رازِ مشترک (<code>OW_PASSWORD_PEPPER</code>) با claims <code>{iat, exp, sub}</code>. Django باید همان را verify (و در صورت نیاز صادر) کند. بلوکِ <code>SIMPLE_JWT</code> (الگوریتم/کلید) الان اصلاً وجود ندارد.
+    <div class="meta">فایل: <code>config/settings/base.py</code> · مرجع: <a href="../reports/system-architecture.html">معماری</a> بخش auth</div>
+  </div>
+  <div class="task"><span class="id">B0.2</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
+    <b>endpointهای auth.</b> فقط <code>/me</code> و <code>/health</code> هست. باید: <code>POST /auth/login</code>, <code>POST /auth/register</code>, <code>POST /auth/refresh</code>, <code>PATCH /auth/change-password</code>, <code>GET /auth/permissions</code>.</div>
+  <div class="task"><span class="id">B0.3</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
+    <b>زیرساختِ REST مشترک.</b> صفحه‌بندی استاندارد (<code>data/links/meta</code> مثل PHP)، فیلتر/جستجو/مرتب‌سازی، CORS (نصب نیست)، مدیریت آپلود فایل/رسانه، فرمتِ خطای یکسان (۴۰۱/۴۰۳/۴۲۲/۴۰۴).</div>
+  <div class="task"><span class="id">B0.4</span> <span class="pill p-p1">P1</span> <span class="pill p-todo">نساخته</span><br>
+    <b>رفعِ اشکالات استقرار.</b> <code>config/settings/production.py</code> خالی است؛ <code>docker/Dockerfile</code> ENTRYPOINT اشتباه دارد (<code>shub.asgi</code>, Celery <code>SharifAutoEDA</code> — کپی از پروژه‌ی دیگر)؛ کلیدهای <code>.env.example</code> برای legacy DB بدنویسی‌شده. requirements فاقد gunicorn/uvicorn/pytest/celery است.</div>
+  <div class="task"><span class="id">B0.5</span> <span class="pill p-p2">P2</span> <span class="pill p-todo">نساخته</span><br>
+    <b>تصمیمِ داده: نگاشتِ جداولِ اکسوال یا مهاجرت به DB جدید.</b> الان فقط ۲ جدول (<code>ow_base_user</code>, <code>ow_base_user_auth_token</code>) به‌صورت <code>managed=False</code> نگاشت شده. برای هر منبع باید تصمیم گرفت: خواندن مستقیم از جداولِ <code>ow_</code> (managed=False) یا مهاجرت به <code>motoshub_new</code>.</div>
+
+  <h3>ب) پیاده‌سازی منابع (هر کدام: Model + Serializer + View + URL + تست)</h3>
+  <div class="note">هر ردیف یک تسکِ مستقل است؛ باید <b>دقیقاً</b> با قراردادِ endpoint مربوطه در PHP <code>api/v1</code> یکی باشد (همان مسیر، فیلدها، صفحه‌بندی، سطح دسترسی).</div>
+  <div class="tblwrap"><table>
+    <thead><tr><th>تسک</th><th>منبع</th><th>endpointها (مطابق api/v1)</th><th>اولویت</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>کاربران و پروفایل</td><td><code>GET /users</code>, <code>PATCH /users/me</code>, <code>/users/me/avatar</code>, <code>/users/blocked</code>, <code>/sessions</code></td><td>P1</td></tr>
+      <tr><td>B2</td><td>تازه‌ها (فید)</td><td><code>GET/POST /newsfeed</code>, لایک/کامنت/فوروارد، دسته‌بندیِ انتشار عمومی</td><td>P1</td></tr>
+      <tr><td>B3</td><td>بلاگ</td><td><code>GET/POST/PATCH/DELETE /blogs</code>, <code>/blogs/:id</code></td><td>P1</td></tr>
+      <tr><td>B4</td><td>اخبار</td><td><code>GET/POST /news</code>, <code>/news/:id</code></td><td>P2</td></tr>
+      <tr><td>B5</td><td>عکس/آلبوم/ویدیو</td><td><code>/photos</code>, <code>/albums</code>, <code>/videos</code> + آپلود</td><td>P2</td></tr>
+      <tr><td>B6</td><td>رویداد</td><td><code>GET/POST/PATCH/DELETE /events</code>, <code>/invites</code>, <code>/files</code></td><td>P2</td></tr>
+      <tr><td>B7</td><td>گروه‌ها</td><td><code>/groups</code>, <code>/members</code>, <code>/files</code>, <code>/join</code>, <code>/invites</code></td><td>P2</td></tr>
+      <tr><td>B8</td><td>فروم</td><td><code>/forum/topics</code>, <code>/topics/:id/posts</code></td><td>P2</td></tr>
+      <tr><td>B9</td><td>پیام‌رسان</td><td><code>/conversations</code>, <code>/messages</code></td><td>P3</td></tr>
+      <tr><td>B10</td><td>دوستان و اعلان‌ها</td><td><code>/friends</code>, <code>/notifications</code></td><td>P2</td></tr>
+      <tr><td>B11</td><td>نظرسنجی، مسابقات، ارزیابی</td><td><code>/polls</code>, <code>/competitions</code>, <code>/evaluations</code></td><td>P3</td></tr>
+      <tr><td>B12</td><td>سازمانی/پژوهشی</td><td><code>/grants</code>, <code>/cfps</code>, <code>/tickets</code>, <code>/journal-*</code>, <code>/technologies</code></td><td>P3</td></tr>
+      <tr><td>B13</td><td>جستجو</td><td><code>/search</code></td><td>P3</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn"><b>میان‌بُر مهم:</b> از آنجا که PHP <code>api/v1</code> این ۲۹۳ عملیات را <b>همین حالا کار می‌کند</b>، تیم Front می‌تواند بلافاصله همه‌ی بخش‌ها را به آن وصل کند (F1–F14) بدون منتظرماندنِ Django. تیم Backend به‌موازات، منبع‌به‌منبع همان قرارداد را در Django می‌سازد؛ هر منبع که آماده شد، Gateway ترافیک آن مسیر را از PHP به Django سوییچ می‌کند. این یعنی <b>هر دو تیم می‌توانند از امروز به‌طور موازی کار کنند.</b></div>
+
+  <!-- ================= MAP ================= -->
+  <h2 id="map">نگاشت: صفحه‌ی پروتوتایپ ↔ endpoint ↔ تسک‌ها</h2>
+  <div class="tblwrap"><table>
+    <thead><tr><th>بخش (پروتوتایپ)</th><th>endpoint اصلی</th><th>تسک Front</th><th>تسک Backend</th></tr></thead>
+    <tbody>
+      <tr><td>داشبورد</td><td><code>/posts?scope=feed</code></td><td>F1</td><td>B2</td></tr>
+      <tr><td>تازه‌ها/فید</td><td><code>/newsfeed</code></td><td>F2</td><td>B2</td></tr>
+      <tr><td>بلاگ</td><td><code>/blogs</code></td><td>F3</td><td>B3</td></tr>
+      <tr><td>اخبار</td><td><code>/news</code></td><td>F4</td><td>B4</td></tr>
+      <tr><td>گروه‌ها</td><td><code>/groups</code></td><td>F5</td><td>B7</td></tr>
+      <tr><td>فروم</td><td><code>/forum/topics</code></td><td>F6</td><td>B8</td></tr>
+      <tr><td>رویدادها</td><td><code>/events</code></td><td>F7</td><td>B6</td></tr>
+      <tr><td>رسانه</td><td><code>/photos,/videos</code></td><td>F8</td><td>B5</td></tr>
+      <tr><td>گفتگو</td><td><code>/conversations</code></td><td>F9</td><td>B9</td></tr>
+      <tr><td>دانش</td><td><code>/knowledge/documents</code></td><td>F10</td><td>B12</td></tr>
+      <tr><td>پروژه</td><td><code>/projects</code></td><td>F11</td><td>B12</td></tr>
+      <tr><td>قرارداد/صندوق/پژوهش</td><td><code>/grants,/cfps</code></td><td>F12</td><td>B12</td></tr>
+      <tr><td>کاربران/پروفایل</td><td><code>/users,/auth/me</code></td><td>F13</td><td>B1</td></tr>
+      <tr><td>راهبری/گزارش/اعلان/جستجو</td><td><code>/admin,/notifications,/search</code></td><td>F14</td><td>B10,B13</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note">
+    <b>منابعِ کمکی برای هر دو تیم:</b>
+    <a href="../reports/frontend-guide.html">راهنمای فرانت‌اند</a> ·
+    <a href="../reports/api-reference.html">مرجع کامل API</a> ·
+    <a href="../reports/swagger.html">Swagger تعاملی</a> ·
+    <a href="../reports/system-architecture.html">معماری سیستم</a> ·
+    <a href="../reports/motoshub-api-v1.postman_collection.json">Postman</a>
+  </div>
+
+  <div class="foot">Motoshub · تسک‌های تیم Front و Backend · تهیه‌شده پس از خواندن کاملِ هر سه ریپو (prototype, web-client, new-api)</div>
+</div>
+</body>
+</html>
