@@ -5,6 +5,7 @@ import { contractDetails, type ContractDetail } from "../data/mockDetails";
 import { techTransferContracts, eSignDocuments, tenders, pendingReviewItems, type TechTransferContract, type TenderRecord } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -310,6 +311,7 @@ function TechContractsTab() {
   const [obligationState, setObligationState] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
 
@@ -382,10 +384,16 @@ function TechContractsTab() {
       render: (c) => (
         <RowActions
           onEdit={() => startEdit(c)}
-          onDelete={() => {
-            setContracts((prev) => prev.filter((x) => x.id !== c.id));
-            notify(`قرارداد «${c.title}» حذف شد.`, "info");
-          }}
+          onDelete={() =>
+            confirm({
+              title: `حذف قرارداد «${c.title}»؟`,
+              message: "پرونده قرارداد و تاریخچه‌ی آن بایگانی می‌شود.",
+              onConfirm: () => {
+                setContracts((prev) => prev.filter((x) => x.id !== c.id));
+                notify(`قرارداد «${c.title}» حذف شد.`, "info");
+              },
+            })
+          }
         />
       ),
     },

@@ -36,6 +36,7 @@ import {
 } from "../data/mockDaneshmand";
 import { useSettings, type WorkflowSettings } from "../context/SettingsContext";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -227,11 +228,17 @@ function InnovationFundTab() {
     setSelected((prev) => (prev && prev.id === updated.id ? updated : prev));
   };
 
-  const deleteProject = (p: NfProject) => {
-    setProjects((prev) => prev.filter((x) => x.id !== p.id));
-    setSelected((prev) => (prev && prev.id === p.id ? null : prev));
-    notify(`پروژه «${p.id}» حذف شد و در تاریخچه سامانه بایگانی گردید.`, "info");
-  };
+  const confirm = useConfirm();
+  const deleteProject = (p: NfProject) =>
+    confirm({
+      title: `حذف پروژه ${p.id}؟`,
+      message: `«${p.titleFa}» به همراه گام‌نما و سوابق مالی از فهرست فعال خارج و بایگانی می‌شود.`,
+      onConfirm: () => {
+        setProjects((prev) => prev.filter((x) => x.id !== p.id));
+        setSelected((prev) => (prev && prev.id === p.id ? null : prev));
+        notify(`پروژه «${p.id}» حذف شد و در تاریخچه سامانه بایگانی گردید.`, "info");
+      },
+    });
 
   const pendingReports = projects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
   const pendingPayments = projects.flatMap((p) => p.payments).filter((p) => p.status !== "اسناد به تیم مجری ارسال شد" && p.status !== "اسناد تحویل صندوق شد").length;

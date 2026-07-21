@@ -95,14 +95,7 @@ type DmThreadState = {
 
 const nowFa = () => new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
 
-// پس‌زمینه پترن‌دار گفتگو (به سبک تلگرام، رسمی و کم‌رنگ)
-const chatBg: React.CSSProperties = {
-  backgroundColor: "#eef2f7",
-  backgroundImage:
-    "radial-gradient(rgba(31,79,153,0.055) 1.2px, transparent 1.2px), radial-gradient(rgba(31,79,153,0.035) 1.2px, transparent 1.2px)",
-  backgroundSize: "22px 22px, 22px 22px",
-  backgroundPosition: "0 0, 11px 11px",
-};
+// پس‌زمینه پترن‌دار گفتگو: کلاس chat-surface در index.css (با نسخه تیره)
 
 export default function Chat() {
   const [selection, setSelection] = useState<Selection>({ kind: "dm", id: initialChatThreads[0].id });
@@ -500,8 +493,7 @@ export default function Chat() {
               const el = e.currentTarget;
               setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 240);
             }}
-            className="flex-1 overflow-y-auto px-4 py-3 relative"
-            style={chatBg}
+            className="flex-1 overflow-y-auto px-4 py-3 relative chat-surface"
           >
             <div className="flex justify-center mb-3 sticky top-0 z-10">
               <span className="text-[10.5px] bg-white/90 backdrop-blur text-ink-500 rounded-full px-3 py-1 shadow-sm border border-ink-100 font-medium">امروز</span>

@@ -18,12 +18,13 @@ import {
   HelpCircle,
   GraduationCap,
   Bot,
+  Palette,
 } from "lucide-react";
 import { currentTenant } from "../data/mock";
 
 type Item = { to: string; label: string; icon: typeof Users; end?: boolean };
 
-const sections: { title: string; items: Item[] }[] = [
+export const navSections: { title: string; items: Item[] }[] = [
   {
     title: "نمای کلی",
     items: [
@@ -59,10 +60,13 @@ const sections: { title: string; items: Item[] }[] = [
     title: "مدیریت",
     items: [
       { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings },
+      { to: "/dashboard/appearance", label: "شخصی‌سازی ظاهر", icon: Palette },
       { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
     ],
   },
 ];
+
+const sections = navSections;
 
 export default function Sidebar() {
   return (

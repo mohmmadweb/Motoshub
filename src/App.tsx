@@ -1,47 +1,70 @@
+import { Suspense, lazy } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastProvider } from "./components/ui/ToastProvider";
+import { ConfirmProvider } from "./components/ui/ConfirmProvider";
 import { ContentProvider } from "./context/ContentContext";
 import { SettingsProvider } from "./context/SettingsContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
-import Landing from "./pages/Landing";
-import PublicShowcase from "./pages/PublicShowcase";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import News from "./pages/News";
-import Groups from "./pages/Groups";
-import GroupDetail from "./pages/GroupDetail";
-import Forum from "./pages/Forum";
-import ForumTopic from "./pages/ForumTopic";
-import Events from "./pages/Events";
-import Blog from "./pages/Blog";
-import Media from "./pages/Media";
-import Chat from "./pages/Chat";
-import SearchPage from "./pages/SearchPage";
-import Profile from "./pages/Profile";
-import Knowledge from "./pages/Knowledge";
-import Projects from "./pages/Projects";
-import ProjectBoard from "./pages/ProjectBoard";
-import Contracts from "./pages/Contracts";
-import Funds from "./pages/Funds";
-import Research from "./pages/Research";
-import Assistant from "./pages/Assistant";
-import Training from "./pages/Training";
-import Reports from "./pages/Reports";
-import Notifications from "./pages/Notifications";
-import Admin from "./pages/Admin";
-import Help from "./pages/Help";
-import PublicItemDetail from "./pages/PublicItemDetail";
-import NewsItemDetail from "./pages/NewsItemDetail";
-import BlogPostDetail from "./pages/BlogPostDetail";
-import EventItemDetail from "./pages/EventItemDetail";
-import MediaItemDetail from "./pages/MediaItemDetail";
+
+// مسیرها به‌صورت lazy بارگذاری می‌شوند تا باندل اولیه سبک بماند
+const Landing = lazy(() => import("./pages/Landing"));
+const PublicShowcase = lazy(() => import("./pages/PublicShowcase"));
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const News = lazy(() => import("./pages/News"));
+const Groups = lazy(() => import("./pages/Groups"));
+const GroupDetail = lazy(() => import("./pages/GroupDetail"));
+const Forum = lazy(() => import("./pages/Forum"));
+const ForumTopic = lazy(() => import("./pages/ForumTopic"));
+const Events = lazy(() => import("./pages/Events"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Media = lazy(() => import("./pages/Media"));
+const Chat = lazy(() => import("./pages/Chat"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Knowledge = lazy(() => import("./pages/Knowledge"));
+const Projects = lazy(() => import("./pages/Projects"));
+const ProjectBoard = lazy(() => import("./pages/ProjectBoard"));
+const Contracts = lazy(() => import("./pages/Contracts"));
+const Funds = lazy(() => import("./pages/Funds"));
+const Research = lazy(() => import("./pages/Research"));
+const Assistant = lazy(() => import("./pages/Assistant"));
+const Training = lazy(() => import("./pages/Training"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Help = lazy(() => import("./pages/Help"));
+const Appearance = lazy(() => import("./pages/Appearance"));
+const PublicItemDetail = lazy(() => import("./pages/PublicItemDetail"));
+const NewsItemDetail = lazy(() => import("./pages/NewsItemDetail"));
+const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
+const EventItemDetail = lazy(() => import("./pages/EventItemDetail"));
+const MediaItemDetail = lazy(() => import("./pages/MediaItemDetail"));
+
+function PageFallback() {
+  return (
+    <div className="p-8 space-y-4" aria-busy="true" aria-label="در حال بارگذاری صفحه">
+      <div className="h-8 w-56 rounded-lg bg-ink-100 animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-xl bg-ink-100 animate-pulse" />
+        ))}
+      </div>
+      <div className="h-64 rounded-xl bg-ink-100 animate-pulse" />
+    </div>
+  );
+}
 
 export default function App() {
   return (
+    <ThemeProvider>
     <ToastProvider>
+    <ConfirmProvider>
     <SettingsProvider>
     <ContentProvider>
     <HashRouter>
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/public" element={<PublicShowcase />} />
@@ -77,15 +100,19 @@ export default function App() {
           <Route path="assistant" element={<Assistant />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="appearance" element={<Appearance />} />
           <Route path="admin" element={<Admin />} />
           <Route path="help" element={<Help />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </HashRouter>
     </ContentProvider>
     </SettingsProvider>
+    </ConfirmProvider>
     </ToastProvider>
+    </ThemeProvider>
   );
 }

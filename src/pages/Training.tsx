@@ -8,6 +8,7 @@ import StatCard from "../components/ui/StatCard";
 import Drawer from "../components/ui/Drawer";
 import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useToast } from "../components/ui/ToastProvider";
 
 const statusTone: Record<TrainingCourse["status"], BadgeTone> = {
@@ -54,10 +55,16 @@ export default function Training() {
     setOpen(true);
   };
 
-  const removeCourse = (c: TrainingCourse) => {
-    setCourses((prev) => prev.filter((x) => x.id !== c.id));
-    notify(`دوره «${c.title}» حذف شد و به ثبت‌نام‌کنندگان اطلاع‌رسانی گردید.`, "info");
-  };
+  const confirm = useConfirm();
+  const removeCourse = (c: TrainingCourse) =>
+    confirm({
+      title: `حذف دوره «${c.title}»؟`,
+      message: "لغو دوره به همه‌ی ثبت‌نام‌کنندگان اطلاع‌رسانی می‌شود.",
+      onConfirm: () => {
+        setCourses((prev) => prev.filter((x) => x.id !== c.id));
+        notify(`دوره «${c.title}» حذف شد و به ثبت‌نام‌کنندگان اطلاع‌رسانی گردید.`, "info");
+      },
+    });
 
   const submit = () => {
     if (!title.trim()) {

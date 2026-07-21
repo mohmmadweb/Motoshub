@@ -5,6 +5,7 @@ import { currentUser, type BlogPost, type Visibility } from "../data/mock";
 import { publicationIssues, type PublicationIssue } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -82,10 +83,15 @@ export default function Blog() {
     setOpen(true);
   };
 
-  const remove = (b: BlogPost) => {
-    setPosts((prev) => prev.filter((p) => p.id !== b.id));
-    notify(`یادداشت «${b.title}» حذف شد.`, "info");
-  };
+  const confirm = useConfirm();
+  const remove = (b: BlogPost) =>
+    confirm({
+      title: `حذف یادداشت «${b.title}»؟`,
+      onConfirm: () => {
+        setPosts((prev) => prev.filter((p) => p.id !== b.id));
+        notify(`یادداشت «${b.title}» حذف شد.`, "info");
+      },
+    });
 
   const submit = () => {
     if (!title.trim() || !excerpt.trim()) {

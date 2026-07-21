@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import Avatar from "./Avatar";
-import { currentUser, notifications, userPresence, type PresenceStatus } from "../data/mock";
+import { currentUser, notifications, userPresence, currentTenant, type PresenceStatus } from "../data/mock";
+import { navSections } from "./Sidebar";
+import { useTheme } from "../context/ThemeContext";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -14,11 +16,63 @@ const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
 export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const unread = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [status, setStatus] = useState<PresenceStatus>(userPresence[currentUser.id] ?? "online");
   const navigate = useNavigate();
+  const { resolved, setMode } = useTheme();
+
+  const toggleDark = () => setMode(resolved === "dark" ? "light" : "dark");
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 px-4 lg:px-6 h-16 bg-white border-b border-ink-200">
+      {/* ناوبری موبایل */}
+      <button
+        onClick={() => setNavOpen(true)}
+        aria-label="باز کردن منوی ناوبری"
+        className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600 shrink-0"
+      >
+        <Menu size={20} />
+      </button>
+
+      {navOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-label="منوی ناوبری">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setNavOpen(false)} />
+          <div className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-navy-900 shadow-2xl flex flex-col animate-[slideIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
+              <p className="font-bold text-sm text-white truncate">{currentTenant.name}</p>
+              <button onClick={() => setNavOpen(false)} aria-label="بستن منو" className="w-9 h-9 rounded-lg hover:bg-white/10 text-navy-200 flex items-center justify-center">
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+              {navSections.map((section) => (
+                <div key={section.title}>
+                  <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>
+                  <div className="space-y-0.5">
+                    {section.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        onClick={() => setNavOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-2.5 px-2.5 py-2.5 rounded-md text-[13.5px] font-medium transition-colors ${
+                            isActive ? "bg-brand-600 text-white" : "text-navy-200 hover:bg-white/5 hover:text-white"
+                          }`
+                        }
+                      >
+                        <item.icon size={17} className="shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 max-w-md flex items-center gap-2">
         <button
           onClick={() => navigate("/dashboard/search")}
@@ -38,6 +92,14 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={toggleDark}
+          title={resolved === "dark" ? "حالت روشن" : "حالت تیره"}
+          aria-label={resolved === "dark" ? "تغییر به حالت روشن" : "تغییر به حالت تیره"}
+          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600"
+        >
+          {resolved === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
         <Link
           to="/dashboard/notifications"
           className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600"
@@ -83,6 +145,9 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                 </Link>
                 <Link to="/dashboard/profile/u1?tab=security" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <ShieldCheck size={15} className="text-ink-400" /> امنیت و نشست‌ها
+                </Link>
+                <Link to="/dashboard/appearance" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                  <Palette size={15} className="text-ink-400" /> شخصی‌سازی ظاهر
                 </Link>
                 <Link to="/dashboard/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <Settings size={15} className="text-ink-400" /> پنل راهبری

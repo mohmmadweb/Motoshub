@@ -36,6 +36,8 @@ import { SystemSection, StorageSection } from "./AdminSections";
 import { holdings as daneshmandHoldings } from "../data/mockDaneshmand";
 import LiveUsagePanel from "../components/LiveUsagePanel";
 import { useSettings, settingsMeta, defaultSettings, type WorkflowSettings } from "../context/SettingsContext";
+import { useTheme, accentPresets } from "../context/ThemeContext";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import {
   tenants as initialTenants,
   moduleCatalog,
@@ -480,12 +482,13 @@ function ModulesSection({ enabledModules, toggleModule }: { enabledModules: stri
 }
 
 function BrandingSection({ tenant, notify }: { tenant: Tenant; notify: Notify }) {
-  const [color, setColor] = useState(tenant.logoColor);
+  const { accent, setAccent } = useTheme();
   const [domain, setDomain] = useState(tenant.domain);
   const [displayName, setDisplayName] = useState("بنیاد مستضعفان");
   const [logoName, setLogoName] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const colorOptions = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
+  const activePreset = accentPresets.find((p) => p.id === accent) ?? accentPresets[0];
+  const color = activePreset.swatch;
 
   const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -503,15 +506,21 @@ function BrandingSection({ tenant, notify }: { tenant: Tenant; notify: Notify })
         <div>
           <label className="text-xs font-medium text-ink-600 block mb-2">رنگ اصلی برند</label>
           <div className="flex items-center gap-2">
-            {colorOptions.map((c) => (
+            {accentPresets.map((p) => (
               <button
-                key={c}
-                onClick={() => setColor(c)}
-                className={`w-8 h-8 rounded-lg border-2 ${color === c ? "border-ink-900" : "border-transparent"}`}
-                style={{ backgroundColor: c }}
+                key={p.id}
+                title={p.label}
+                aria-label={`رنگ برند ${p.label}`}
+                onClick={() => {
+                  setAccent(p.id);
+                  notify(`رنگ برند سازمان به «${p.label}» تغییر کرد و بلافاصله روی کل سامانه اعمال شد.`, "success");
+                }}
+                className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${accent === p.id ? "border-ink-900" : "border-transparent"}`}
+                style={{ backgroundColor: p.swatch }}
               />
             ))}
           </div>
+          <p className="text-[11px] text-ink-400 mt-2">تغییر رنگ به‌صورت زنده روی دکمه‌ها، لینک‌ها و حالت‌های فعال کل سامانه اعمال می‌شود.</p>
         </div>
         <div>
           <label className="text-xs font-medium text-ink-600 block mb-2">لوگوی سازمان</label>
@@ -576,10 +585,16 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
     );
   }
 
-  const removeRole = (role: RoleDef) => {
-    setRoles((prev) => prev.filter((r) => r.id !== role.id));
-    notify(`نقش «${role.title}» حذف شد. کاربران آن به نقش «عضو عادی» منتقل می‌شوند.`, "info");
-  };
+  const confirm = useConfirm();
+  const removeRole = (role: RoleDef) =>
+    confirm({
+      title: `حذف نقش «${role.title}»؟`,
+      message: `${role.members.toLocaleString("fa-IR")} کاربر این نقش به «عضو عادی» منتقل می‌شوند.`,
+      onConfirm: () => {
+        setRoles((prev) => prev.filter((r) => r.id !== role.id));
+        notify(`نقش «${role.title}» حذف شد. کاربران آن به نقش «عضو عادی» منتقل می‌شوند.`, "info");
+      },
+    });
 
   return (
     <div>

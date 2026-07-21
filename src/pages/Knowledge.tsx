@@ -4,6 +4,7 @@ import { knowledgeDocs as allDocsForCategories, currentUser, type KnowledgeDoc, 
 import { rndOpportunityDocs, rndDocStates, supportedProducts, supportedVentures, partnerTechnologists } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -165,6 +166,7 @@ function KnowledgeBankTab() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploadVisibility, setUploadVisibility] = useState<Visibility>("عمومی");
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const categories = ["همه", ...Array.from(new Set(allDocsForCategories.map((d) => d.category)))];
   const filtered = active === "همه" ? docs : docs.filter((d) => d.category === active);
@@ -230,10 +232,16 @@ function KnowledgeBankTab() {
       render: (d) => (
         <RowActions
           onEdit={() => setSelected(d)}
-          onDelete={() => {
-            setDocs((prev) => prev.filter((x) => x.id !== d.id));
-            notify(`سند «${d.title}» حذف شد و در سطل بازیافت ۳۰ روز نگه‌داری می‌شود.`, "info");
-          }}
+          onDelete={() =>
+            confirm({
+              title: `حذف سند «${d.title}»؟`,
+              message: "سند حذف‌شده ۳۰ روز در سطل بازیافت نگه‌داری می‌شود.",
+              onConfirm: () => {
+                setDocs((prev) => prev.filter((x) => x.id !== d.id));
+                notify(`سند «${d.title}» حذف شد و در سطل بازیافت ۳۰ روز نگه‌داری می‌شود.`, "info");
+              },
+            })
+          }
         />
       ),
     },

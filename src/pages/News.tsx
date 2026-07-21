@@ -17,6 +17,7 @@ import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 import { VisibilityPicker, VisibilityToggle } from "../components/ui/VisibilityControl";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
@@ -28,7 +29,9 @@ export default function News() {
   const [pinned, setPinned] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ title?: boolean; summary?: boolean }>({});
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const startEdit = (n: NewsItem) => {
     setEditingId(n.id);
@@ -39,16 +42,20 @@ export default function News() {
     setOpen(true);
   };
 
-  const remove = (n: NewsItem) => {
-    setNewsItems((prev) => prev.filter((x) => x.id !== n.id));
-    notify(`خبر «${n.title}» حذف شد.`, "info");
-  };
+  const remove = (n: NewsItem) =>
+    confirm({
+      title: `حذف خبر «${n.title}»؟`,
+      message: "این خبر برای همه‌ی مخاطبان حذف می‌شود.",
+      onConfirm: () => {
+        setNewsItems((prev) => prev.filter((x) => x.id !== n.id));
+        notify(`خبر «${n.title}» حذف شد.`, "info");
+      },
+    });
 
   const submit = () => {
-    if (!title.trim() || !summary.trim()) {
-      notify("عنوان و متن خبر الزامی است.", "warning");
-      return;
-    }
+    const errs = { title: !title.trim(), summary: !summary.trim() };
+    setErrors(errs);
+    if (errs.title || errs.summary) return;
     if (editingId) {
       setNewsItems((prev) => prev.map((n) => (n.id === editingId ? { ...n, title: title.trim(), summary: summary.trim(), pinned, visibility } : n)));
       notify(`خبر «${title.trim()}» ویرایش شد.`);
@@ -149,12 +156,14 @@ export default function News() {
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش خبر" : "انتشار اطلاعیه‌ی رسمی جدید"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان خبر</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: به‌روزرسانی سیاست امنیتی ورود دومرحله‌ای" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان خبر <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: false })); }} placeholder="مثلاً: به‌روزرسانی سیاست امنیتی ورود دومرحله‌ای" className={`input-field ${errors.title ? "input-error" : ""}`} />
+            {errors.title && <p className="field-error">عنوان خبر الزامی است.</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">متن خبر</label>
-            <textarea value={summary} onChange={(e) => setSummary(e.target.value)} className="input-field min-h-24" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">متن خبر <span className="text-rose-500">*</span></label>
+            <textarea value={summary} onChange={(e) => { setSummary(e.target.value); setErrors((p) => ({ ...p, summary: false })); }} className={`input-field min-h-24 ${errors.summary ? "input-error" : ""}`} />
+            {errors.summary && <p className="field-error">متن خبر الزامی است.</p>}
           </div>
           <label className="flex items-center gap-2 text-xs text-ink-600 cursor-pointer">
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} className="accent-brand-600" />
@@ -187,6 +196,7 @@ function ScopedNewsSection() {
   const [ownerCompany, setOwnerCompany] = useState(allCompanies[0].id);
   const [scope, setScope] = useState<ContentScope>("شرکت");
   const { notify } = useToast();
+  const confirmDialog = useConfirm();
 
   const viewerCompany = allCompanies.find((c) => c.id === viewer);
 
@@ -278,10 +288,15 @@ function ScopedNewsSection() {
                 </Badge>
                 <span className="text-xs text-ink-400 whitespace-nowrap hidden sm:block">{n.date}</span>
                 <RowActions
-                  onDelete={() => {
-                    setItems((prev) => prev.filter((x) => x.id !== n.id));
-                    notify(`خبر شرکتی «${n.title}» حذف شد.`, "info");
-                  }}
+                  onDelete={() =>
+                    confirmDialog({
+                      title: `حذف خبر شرکتی «${n.title}»؟`,
+                      onConfirm: () => {
+                        setItems((prev) => prev.filter((x) => x.id !== n.id));
+                        notify(`خبر شرکتی «${n.title}» حذف شد.`, "info");
+                      },
+                    })
+                  }
                 />
               </div>
             </div>

@@ -6,6 +6,7 @@ import { awardTracks, awardEntries, type AwardEntry } from "../data/mockDaneshma
 import Tabs from "../components/ui/Tabs";
 import StatCard from "../components/ui/StatCard";
 import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -128,7 +129,9 @@ function EventsListTab() {
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ title?: boolean; date?: boolean }>({});
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const startEdit = (ev: EventItem) => {
     setEditingId(ev.id);
@@ -141,16 +144,20 @@ function EventsListTab() {
     setOpen(true);
   };
 
-  const remove = (ev: EventItem) => {
-    setEvents((prev) => prev.filter((e) => e.id !== ev.id));
-    notify(`رویداد «${ev.title}» حذف شد و لغو آن به دعوت‌شدگان اطلاع‌رسانی گردید.`, "info");
-  };
+  const remove = (ev: EventItem) =>
+    confirm({
+      title: `حذف رویداد «${ev.title}»؟`,
+      message: "لغو رویداد به همه‌ی دعوت‌شدگان اطلاع‌رسانی می‌شود.",
+      onConfirm: () => {
+        setEvents((prev) => prev.filter((e) => e.id !== ev.id));
+        notify(`رویداد «${ev.title}» حذف شد و لغو آن به دعوت‌شدگان اطلاع‌رسانی گردید.`, "info");
+      },
+    });
 
   const submit = () => {
-    if (!title.trim() || !jalaliDate.trim()) {
-      notify("عنوان و تاریخ رویداد الزامی است.", "warning");
-      return;
-    }
+    const errs = { title: !title.trim(), date: !jalaliDate.trim() };
+    setErrors(errs);
+    if (errs.title || errs.date) return;
     if (editingId) {
       setEvents((prev) =>
         prev.map((e) =>
@@ -292,13 +299,15 @@ function EventsListTab() {
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش رویداد" : "ایجاد رویداد جدید"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان رویداد</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: کارگاه آموزشی پنل راهبری برای مدیران سازمان" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان رویداد <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: false })); }} placeholder="مثلاً: کارگاه آموزشی پنل راهبری برای مدیران سازمان" className={`input-field ${errors.title ? "input-error" : ""}`} />
+            {errors.title && <p className="field-error">عنوان رویداد الزامی است.</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ (شمسی)</label>
-              <input value={jalaliDate} onChange={(e) => setJalaliDate(e.target.value)} placeholder="۱۴۰۵/۰۵/۱۰" className="input-field" />
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ (شمسی) <span className="text-rose-500">*</span></label>
+              <input value={jalaliDate} onChange={(e) => { setJalaliDate(e.target.value); setErrors((p) => ({ ...p, date: false })); }} placeholder="۱۴۰۵/۰۵/۱۰" className={`input-field ${errors.date ? "input-error" : ""}`} />
+              {errors.date && <p className="field-error">تاریخ الزامی است.</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-ink-600 block mb-1.5">ساعت</label>

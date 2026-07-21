@@ -38,7 +38,91 @@
   --color-ink-700: #383f4c;
   --color-ink-800: #232831;
   --color-ink-900: #14171d;
+
+  /* Semantic tokens — success/danger/warning/info */
+  --color-success: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-info: #0284c7;
+  --color-info-soft: #f0f9ff;
 }
+
+/* -----------------------------------------------------------------------
+   حالت تیره — با بازتعریف توکن‌ها؛ کلاس‌های موجود بدون تغییر کار می‌کنند
+   ----------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  /* مقیاس ink معکوس: سطح‌ها تیره، متن‌ها روشن */
+  --color-ink-50: #121722;
+  --color-ink-100: #1a2030;
+  --color-ink-200: #273044;
+  --color-ink-300: #3b465e;
+  --color-ink-400: #7e8aa0;
+  --color-ink-500: #9aa5b8;
+  --color-ink-600: #bcc5d4;
+  --color-ink-700: #d5dbe6;
+  --color-ink-800: #e8ecf2;
+  --color-ink-900: #f4f6fa;
+
+  --color-success-soft: #0b2e22;
+  --color-danger-soft: #331416;
+  --color-warning-soft: #33240d;
+  --color-info-soft: #0c2534;
+}
+
+/* سطح‌های سفید و تینت‌های رنگی در حالت تیره */
+:root[data-theme="dark"] .bg-white { background-color: #1a2030; }
+:root[data-theme="dark"] .bg-white\/90 { background-color: rgba(26, 32, 48, 0.9); }
+:root[data-theme="dark"] .bg-white\/80 { background-color: rgba(26, 32, 48, 0.8); }
+:root[data-theme="dark"] .bg-brand-50,
+:root[data-theme="dark"] .bg-brand-50\/50,
+:root[data-theme="dark"] .bg-brand-50\/40 { background-color: color-mix(in srgb, var(--color-brand-600) 16%, #1a2030); }
+:root[data-theme="dark"] .bg-brand-100 { background-color: color-mix(in srgb, var(--color-brand-600) 28%, #1a2030); }
+:root[data-theme="dark"] .border-brand-200 { border-color: color-mix(in srgb, var(--color-brand-500) 35%, #273044); }
+:root[data-theme="dark"] .text-brand-800 { color: var(--color-brand-200); }
+:root[data-theme="dark"] .text-brand-700 { color: var(--color-brand-300); }
+:root[data-theme="dark"] .bg-emerald-50, :root[data-theme="dark"] .bg-emerald-50\/60 { background-color: var(--color-success-soft); }
+:root[data-theme="dark"] .bg-rose-50 { background-color: var(--color-danger-soft); }
+:root[data-theme="dark"] .bg-amber-50, :root[data-theme="dark"] .bg-amber-50\/60 { background-color: var(--color-warning-soft); }
+:root[data-theme="dark"] .bg-sky-50 { background-color: var(--color-info-soft); }
+:root[data-theme="dark"] .border-amber-200 { border-color: #5c4514; }
+:root[data-theme="dark"] .border-emerald-200 { border-color: #14532d; }
+:root[data-theme="dark"] .border-rose-200 { border-color: #6b1f24; }
+:root[data-theme="dark"] .text-amber-800, :root[data-theme="dark"] .text-amber-700 { color: #fbbf24; }
+:root[data-theme="dark"] .text-emerald-700 { color: #34d399; }
+:root[data-theme="dark"] .text-rose-600 { color: #fb7185; }
+:root[data-theme="dark"] .text-ink-950, :root[data-theme="dark"] .text-black { color: var(--color-ink-900); }
+:root[data-theme="dark"] .shadow-sm, :root[data-theme="dark"] .shadow-md,
+:root[data-theme="dark"] .shadow-lg, :root[data-theme="dark"] .shadow-xl { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
+
+/* پس‌زمینه گفتگو */
+.chat-surface {
+  background-color: #eef2f7;
+  background-image: radial-gradient(rgba(31, 79, 153, 0.055) 1.2px, transparent 1.2px),
+    radial-gradient(rgba(31, 79, 153, 0.035) 1.2px, transparent 1.2px);
+  background-size: 22px 22px, 22px 22px;
+  background-position: 0 0, 11px 11px;
+}
+:root[data-theme="dark"] .chat-surface {
+  background-color: #0e131d;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1.2px, transparent 1.2px),
+    radial-gradient(rgba(255, 255, 255, 0.025) 1.2px, transparent 1.2px);
+}
+
+/* -----------------------------------------------------------------------
+   اندازه متن «بزرگ» — بازتعریف سایزهای ریز پرتکرار برای خوانایی بیشتر
+   ----------------------------------------------------------------------- */
+:root[data-font="large"] body { font-size: 15.5px; }
+:root[data-font="large"] .text-\[10px\],
+:root[data-font="large"] .text-\[10\.5px\] { font-size: 12px; }
+:root[data-font="large"] .text-\[11px\],
+:root[data-font="large"] .text-\[11\.5px\] { font-size: 12.5px; }
+:root[data-font="large"] .text-\[12px\],
+:root[data-font="large"] .text-\[12\.5px\] { font-size: 13.5px; }
+:root[data-font="large"] .text-\[13px\] { font-size: 14.5px; }
+:root[data-font="large"] .text-xs { font-size: 13px; }
 
 html,
 body,
@@ -52,6 +136,36 @@ body {
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* دسترس‌پذیری سراسری: حلقه فوکوس کیبورد + نشانگر کلیک */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button, [role="button"], a, select, label[for], summary {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* احترام به تنظیم کاهش حرکت کاربر */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 * {
@@ -75,6 +189,9 @@ body {
   background-color: #fff;
   border: 1px solid var(--color-ink-200);
   border-radius: 0.625rem;
+}
+:root[data-theme="dark"] .card {
+  background-color: #1a2030;
 }
 
 .tag-pill {
@@ -118,6 +235,24 @@ body {
 .input-field:focus {
   border-color: var(--color-brand-400);
   box-shadow: 0 0 0 3px var(--color-brand-100);
+}
+:root[data-theme="dark"] .input-field {
+  background-color: #121722;
+  color: var(--color-ink-900);
+}
+:root[data-theme="dark"] .input-field:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 30%, transparent);
+}
+.input-field.input-error {
+  border-color: var(--color-danger);
+}
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-danger);
+  font-size: 0.72rem;
+  margin-top: 0.3rem;
 }
 
 .table-shell {
