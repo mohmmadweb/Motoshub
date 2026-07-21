@@ -16,6 +16,8 @@ import {
   BarChart3,
   Settings,
   HelpCircle,
+  GraduationCap,
+  Bot,
 } from "lucide-react";
 import { currentTenant } from "../data/mock";
 
@@ -48,6 +50,8 @@ const sections: { title: string; items: Item[] }[] = [
       { to: "/dashboard/contracts", label: "قراردادهای فناورانه", icon: FileSignature },
       { to: "/dashboard/funds", label: "صندوق نوآوری و شتاب‌دهی", icon: PiggyBank },
       { to: "/dashboard/research", label: "فرصت‌های پژوهشی", icon: FlaskConical },
+      { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap },
+      { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot },
       { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3 },
     ],
   },

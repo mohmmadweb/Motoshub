@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark } from "lucide-react";
+import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3 } from "lucide-react";
 import { contracts as initialContracts, currentUser, type ContractRecord } from "../data/mock";
 import { contractDetails, type ContractDetail } from "../data/mockDetails";
+import { techTransferContracts, eSignDocuments, type TechTransferContract } from "../data/mockDaneshmand";
+import Tabs from "../components/ui/Tabs";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -34,6 +36,203 @@ const approvalTone: Record<string, BadgeTone> = {
 const stages: ContractRecord["stage"][] = ["فراخوان", "مذاکره", "داوری", "در حال اجرا", "تسویه‌شده"];
 
 export default function Contracts() {
+  const [tab, setTab] = useState<"tech" | "transfer" | "esign">("tech");
+  return (
+    <div>
+      <PageHeader
+        title="مدیریت قراردادهای فناورانه"
+        description="ثبت قرارداد، پورتفولیوی تبادل فناوری با هلدینگ‌ها، گردش امضای الکترونیک، تعهدات و پرداخت‌ها"
+        icon={<FileSignature size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "tech", label: "قراردادهای فناورانه", count: initialContracts.length },
+          { id: "transfer", label: "پورتفولیوی تبادل فناوری", count: techTransferContracts.length },
+          { id: "esign", label: "گردش امضای الکترونیک", count: eSignDocuments.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "tech" && <TechContractsTab />}
+      {tab === "transfer" && <TechTransferTab />}
+      {tab === "esign" && <ESignTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// پورتفولیوی تبادل فناوری — مطابق کاربرگ کنترل پروژه معاونت توسعه فناوری
+// (سه درصد پیشرفت مجزا: فیزیکی / زمانی / مالی)
+// ---------------------------------------------------------------------------
+function ProgressCell({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="min-w-[70px]">
+      <div className="flex items-center justify-between text-[10px] text-ink-400 mb-0.5">
+        <span>{label}</span>
+        <span>{value.toLocaleString("fa-IR")}٪</span>
+      </div>
+      <div className="h-1 rounded-full bg-ink-100 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${value >= 100 ? "bg-emerald-500" : value >= 50 ? "bg-brand-500" : "bg-amber-500"}`}
+          style={{ width: `${Math.min(value, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TechTransferTab() {
+  const [selected, setSelected] = useState<TechTransferContract | null>(null);
+
+  const columns: Column<TechTransferContract>[] = [
+    { key: "title", label: "موضوع قرارداد", render: (c) => <span className="font-medium text-ink-900">{c.title}</span> },
+    { key: "holding", label: "هلدینگ متقاضی" },
+    { key: "company", label: "شرکت متقاضی" },
+    { key: "mojri", label: "مجری" },
+    { key: "daneshmandRole", label: "نقش دانشمند", render: (c) => <Badge tone="navy">{c.daneshmandRole}</Badge> },
+    { key: "amount", label: "مبلغ" },
+    {
+      key: "progress",
+      label: "پیشرفت (فیزیکی / زمانی / مالی)",
+      render: (c) => (
+        <div className="flex items-center gap-3">
+          <ProgressCell value={c.physicalProgress} label="فیزیکی" />
+          <ProgressCell value={c.timeProgress} label="زمانی" />
+          <ProgressCell value={c.financialProgress} label="مالی" />
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <ArrowLeftRight size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          قراردادهای سه‌جانبه‌ی تبادل فناوری: شرکت بنیادی (کارفرما/بهره‌بردار) + فناور (مجری) + دانشمند
+          (ناظر/هماهنگ‌کننده با تعهد مالی معمولاً ۵۰٪). برای هر قرارداد سه درصد پیشرفت مجزا پایش می‌شود:
+          فیزیکی، زمانی و مالی — اختلاف بین آن‌ها سیگنال هشدار است.
+        </p>
+      </div>
+      <DataTable
+        columns={columns}
+        rows={techTransferContracts}
+        searchKeys={["title", "holding", "company", "mojri"]}
+        searchPlaceholder="جستجو در موضوع، هلدینگ، شرکت یا مجری…"
+        onRowClick={(c) => setSelected(c)}
+      />
+      <Drawer open={selected !== null} onClose={() => setSelected(null)} title="پرونده قرارداد تبادل فناوری">
+        {selected && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-bold text-ink-900 leading-6">{selected.title}</p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge tone="neutral">{selected.type}</Badge>
+                <Badge tone="navy">نقش دانشمند: {selected.daneshmandRole}</Badge>
+              </div>
+            </div>
+            <div className="text-xs text-ink-600 space-y-1.5">
+              <p><span className="text-ink-400">هلدینگ متقاضی:</span> {selected.holding} · <span className="text-ink-400">شرکت:</span> {selected.company} ({selected.companyRole})</p>
+              <p><span className="text-ink-400">مجری پروژه:</span> {selected.mojri}</p>
+              <p><span className="text-ink-400">ناظر فنی:</span> {selected.nazer} · <span className="text-ink-400">محل اجرا:</span> {selected.city}</p>
+              <p><span className="text-ink-400">مبلغ قرارداد:</span> {selected.amount} · <span className="text-ink-400">تعهد دانشمند:</span> {selected.commitment}</p>
+              <p><span className="text-ink-400">نوع ضمانت:</span> {selected.guarantee}</p>
+            </div>
+            <div className="border-t border-ink-100 pt-4 space-y-3">
+              <h4 className="text-xs font-bold text-ink-900">سه شاخص پیشرفت</h4>
+              {[
+                ["پیشرفت فیزیکی", selected.physicalProgress],
+                ["پیشرفت زمانی", selected.timeProgress],
+                ["پیشرفت مالی", selected.financialProgress],
+              ].map(([label, value]) => (
+                <div key={label as string}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-ink-700">{label}</span>
+                    <span className="text-ink-500">{(value as number).toLocaleString("fa-IR")}٪</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.min(value as number, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+              {selected.physicalProgress + 10 < selected.timeProgress && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                  هشدار: پیشرفت فیزیکی بیش از ۱۰ واحد از پیشرفت زمانی عقب است — نیازمند بررسی ناظر فنی.
+                </p>
+              )}
+            </div>
+            {selected.note && (
+              <div className="border-t border-ink-100 pt-3">
+                <h4 className="text-xs font-bold text-ink-900 mb-1">موانع و توضیحات</h4>
+                <p className="text-xs text-ink-500 leading-6">{selected.note}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// گردش امضای الکترونیک — زنجیره امضا: مجری ← راهبر/ناظر ← صاحبین امضای موسسه
+// ---------------------------------------------------------------------------
+function ESignTab() {
+  return (
+    <div className="space-y-4">
+      <div className="card p-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <PenLine size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          قراردادها و متمم‌ها به‌صورت غیرحضوری برای امضای الکترونیکی ارسال می‌شوند (اتصال به سرویس امضای
+          دیجیتال از طریق API). پس از تکمیل زنجیره امضا، شماره نامه به‌صورت خودکار تخصیص می‌یابد و نسخه‌ها
+          برای راهبر و مجری ارسال می‌شود.
+        </p>
+      </div>
+      {eSignDocuments.map((doc) => {
+        const done = doc.steps.filter((s) => s.status === "امضا شد").length;
+        return (
+          <div key={doc.id} className="card p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+              <p className="text-sm font-bold text-ink-900">{doc.title}</p>
+              <div className="flex items-center gap-2">
+                <Badge tone="neutral">{doc.kind}</Badge>
+                {doc.letterNo ? (
+                  <Badge tone="success">تکمیل — شماره نامه {doc.letterNo}</Badge>
+                ) : (
+                  <Badge tone="warning">{done.toLocaleString("fa-IR")} از {doc.steps.length.toLocaleString("fa-IR")} امضا</Badge>
+                )}
+              </div>
+            </div>
+            <p className="text-[11px] text-ink-400 mb-3">مرتبط با: {doc.relatedTo} · {doc.method}</p>
+            <div className="flex items-stretch gap-1.5 overflow-x-auto">
+              {doc.steps.map((s, i) => (
+                <div
+                  key={i}
+                  className={`flex-1 min-w-[130px] rounded-lg border p-2.5 ${
+                    s.status === "امضا شد"
+                      ? "border-emerald-200 bg-emerald-50/60"
+                      : s.status === "در انتظار امضا"
+                        ? "border-amber-300 bg-amber-50/60"
+                        : "border-ink-100 bg-ink-50/40"
+                  }`}
+                >
+                  <p className="text-[10.5px] text-ink-400 mb-0.5">مرحله {(i + 1).toLocaleString("fa-IR")} — {s.role}</p>
+                  <p className="text-[12px] font-medium text-ink-900">{s.name}</p>
+                  <p className={`text-[11px] mt-1 flex items-center gap-1 ${s.status === "امضا شد" ? "text-emerald-700" : s.status === "در انتظار امضا" ? "text-amber-700" : "text-ink-400"}`}>
+                    {s.status === "امضا شد" ? <CheckCircle2 size={11} /> : <Clock3 size={11} />}
+                    {s.status}{s.date ? ` · ${s.date}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TechContractsTab() {
   const [contracts, setContracts] = useState<ContractRecord[]>(initialContracts);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -108,16 +307,11 @@ export default function Contracts() {
 
   return (
     <div>
-      <PageHeader
-        title="مدیریت قراردادهای فناورانه"
-        description="ثبت قرارداد، وضعیت مذاکره/فراخوان، داوری و انتخاب فناوران، زمان‌بندی تعهدات و پرداخت‌ها"
-        icon={<FileSignature size={18} />}
-        actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
-            ثبت قرارداد جدید
-          </Button>
-        }
-      />
+      <div className="flex items-center justify-end mb-4">
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          ثبت قرارداد جدید
+        </Button>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="کل قراردادها" value={contracts.length} tone="brand" icon={<FileSignature size={16} />} />

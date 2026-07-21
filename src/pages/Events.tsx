@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { CalendarDays, MapPin, Users, Hash, Plus, Calendar, Send } from "lucide-react";
+import { CalendarDays, MapPin, Users, Hash, Plus, Calendar, Send, Trophy, PencilLine, ShieldQuestion } from "lucide-react";
 import { Link } from "react-router-dom";
 import { type EventItem, type Visibility } from "../data/mock";
+import { awardTracks, awardEntries, type AwardEntry } from "../data/mockDaneshmand";
+import Tabs from "../components/ui/Tabs";
+import StatCard from "../components/ui/StatCard";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -11,6 +14,109 @@ import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
 
 export default function Events() {
+  const [tab, setTab] = useState<"events" | "award">("events");
+  return (
+    <div>
+      <PageHeader
+        title="رویدادها و جلسات"
+        description="انتشار رویداد، دعوت از کاربران، مدیریت اسناد جلسات و رویداد سالانه جایزه نوآوری"
+        icon={<CalendarDays size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "events", label: "رویدادها و جلسات" },
+          { id: "award", label: "جایزه نوآوری و فناوری بنیاد", count: awardEntries.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "events" ? <EventsListTab /> : <AwardTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// رویداد جایزه نوآوری و فناوری بنیاد — سه محور، ثبت‌نام سامانه‌ای، صحت‌سنجی
+// هلدینگ، داوری و امتیازدهی (مطابق کتاب فرآیندهای معاونت ترویج نوآوری)
+// ---------------------------------------------------------------------------
+const entryStatusTone = {
+  "ثبت‌شده": "neutral",
+  "صحت‌سنجی هلدینگ": "warning",
+  "در حال داوری": "brand",
+  "امتیازدهی شده": "success",
+  "منتخب مرحله نهایی": "navy",
+} as const;
+
+function AwardTab() {
+  const { notify } = useToast();
+  const totalSubmissions = awardTracks.reduce((s, t) => s + t.submissions, 0);
+  const totalJudged = awardTracks.reduce((s, t) => s + t.judged, 0);
+
+  const requestEdit = (e: AwardEntry) =>
+    notify(
+      e.editUsed
+        ? `اثر «${e.title}» قبلاً یک بار ویرایش شده — طبق آیین‌نامه، امکان ویرایش مجدد وجود ندارد.`
+        : `فرم ویرایش اثر «${e.title}» باز شد. توجه: فقط یک بار امکان ویرایش وجود دارد.`,
+      e.editUsed ? "warning" : "info"
+    );
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="آثار ثبت‌شده" value={totalSubmissions.toLocaleString("fa-IR")} tone="brand" icon={<Trophy size={16} />} />
+        <StatCard label="داوری‌شده" value={totalJudged.toLocaleString("fa-IR")} tone="success" />
+        <StatCard label="محورهای رویداد" value={awardTracks.length.toLocaleString("fa-IR")} />
+        <StatCard label="در صحت‌سنجی هلدینگ" value={awardEntries.filter((e) => e.status === "صحت‌سنجی هلدینگ").length.toLocaleString("fa-IR")} tone="warning" icon={<ShieldQuestion size={16} />} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {awardTracks.map((t) => (
+          <div key={t.id} className="card p-4">
+            <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5 mb-2">
+              <Trophy size={14} className="text-amber-500" /> {t.title}
+            </p>
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
+              {t.categories.map((c) => (
+                <Badge key={c} tone="neutral">{c}</Badge>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-xs text-ink-500 pt-2 border-t border-ink-100">
+              <span>{t.submissions.toLocaleString("fa-IR")} اثر ثبت‌شده</span>
+              <span>{t.judged.toLocaleString("fa-IR")} داوری‌شده</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-ink-900 mb-2">آثار در جریان (نمونه)</h3>
+        <div className="card divide-y divide-ink-100">
+          {awardEntries.map((e) => (
+            <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink-900">{e.title}</p>
+                <p className="text-xs text-ink-400 mt-0.5">{e.track} · {e.company}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {e.score !== undefined && <Badge tone="success">امتیاز {e.score.toLocaleString("fa-IR")}</Badge>}
+                <Badge tone={entryStatusTone[e.status]}>{e.status}</Badge>
+                <button onClick={() => requestEdit(e)} className="text-ink-400 hover:text-brand-600 p-1" title="ویرایش (یک بار مجاز)">
+                  <PencilLine size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-400 mt-2 leading-5">
+          روند رویداد: ثبت‌نام از طریق سامانه ← صحت‌سنجی توسط هلدینگ همکار ← (یک بار امکان ویرایش) ← کمیته داوری و
+          امتیازدهی ← انتخاب برگزیدگان سه محور.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EventsListTab() {
   const { events, setEvents } = useContent();
   const [calendar, setCalendar] = useState<"jalali" | "gregorian">("jalali");
   const [open, setOpen] = useState(false);
@@ -58,12 +164,8 @@ export default function Events() {
 
   return (
     <div>
-      <PageHeader
-        title="رویدادها و جلسات"
-        description="انتشار رویداد، دعوت از کاربران و مدیریت اسناد جلسات"
-        icon={<CalendarDays size={18} />}
-        actions={
-          <>
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <>
             <div className="flex items-center gap-1 bg-ink-100 rounded-lg p-1">
               <button
                 onClick={() => setCalendar("jalali")}
@@ -82,8 +184,7 @@ export default function Events() {
               رویداد جدید
             </Button>
           </>
-        }
-      />
+      </div>
 
       <div className="card divide-y divide-ink-100">
         {/* header */}

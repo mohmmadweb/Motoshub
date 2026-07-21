@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { BookOpen, FileText, Upload, Clock, User, History, Download } from "lucide-react";
+import { BookOpen, FileText, Upload, Clock, User, History, Download, Lightbulb } from "lucide-react";
 import { knowledgeDocs as allDocsForCategories, currentUser, type KnowledgeDoc, type Visibility } from "../data/mock";
+import { rndOpportunityDocs, rndDocStates } from "../data/mockDaneshmand";
+import Tabs from "../components/ui/Tabs";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -21,6 +23,80 @@ const typeTone: Record<string, BadgeTone> = {
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function Knowledge() {
+  const [tab, setTab] = useState<"bank" | "rnd">("bank");
+  return (
+    <div>
+      <PageHeader
+        title="مدیریت دانش"
+        description="بانک اسناد سازمانی، آرشیو قراردادها، مستندات آموزشی و سندهای فرصت‌های تحقیق و توسعه شرکت‌ها"
+        icon={<BookOpen size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "bank", label: "بانک دانش", count: allDocsForCategories.length },
+          { id: "rnd", label: "سندهای فرصت‌های تحقیق و توسعه", count: rndOpportunityDocs.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "bank" ? <KnowledgeBankTab /> : <RndDocsTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// سندهای فرصت‌های R&D — یک سند به ازای هر شرکت بنیادی، با ماشین وضعیت تدوین
+// ---------------------------------------------------------------------------
+function RndDocsTab() {
+  const delivered = rndOpportunityDocs.filter((d) => d.progress === 100).length;
+  return (
+    <div>
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Lightbulb size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          برای هر شرکت بنیادی، «سند فرصت‌های تحقیق و توسعه» تدوین می‌شود: بازدید و احصاء عناوین ← تدوین ←
+          اصلاحات تیم تا ثریا ← پیش‌نویس نهایی ← تایید و تحویل. خروجی این سندها ورودی فراخوان‌های
+          نیازهای فناورانه و RFPهاست ({delivered.toLocaleString("fa-IR")} سند از {rndOpportunityDocs.length.toLocaleString("fa-IR")} سند تحویل شده است).
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 flex-wrap text-[11px] text-ink-500">
+        {rndDocStates.map((s) => (
+          <span key={s.threshold} className="flex items-center gap-1 bg-ink-50 border border-ink-100 rounded-md px-2 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-400" /> {s.threshold.toLocaleString("fa-IR")}٪ = {s.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="card divide-y divide-ink-100">
+        <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_1fr_180px_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
+          <span>شرکت بنیادی</span>
+          <span className="hidden sm:block">هلدینگ</span>
+          <span>پیشرفت تدوین</span>
+          <span className="text-center">وضعیت</span>
+        </div>
+        {rndOpportunityDocs.map((d) => (
+          <div key={d.id} className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[1fr_1fr_180px_auto] gap-4 items-center px-4 py-3">
+            <div className="min-w-0">
+              <p className="font-medium text-sm text-ink-900 truncate">{d.company}</p>
+              {d.obstacles && <p className="text-[11px] text-amber-700 mt-0.5">مانع: {d.obstacles}</p>}
+            </div>
+            <span className="text-xs text-ink-400 hidden sm:block">{d.holding}</span>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 rounded-full bg-ink-100 overflow-hidden min-w-[70px]">
+                <div className={`h-full rounded-full ${d.progress === 100 ? "bg-emerald-500" : "bg-brand-500"}`} style={{ width: `${d.progress}%` }} />
+              </div>
+              <span className="text-[11px] text-ink-500 shrink-0">{d.progress.toLocaleString("fa-IR")}٪</span>
+            </div>
+            <Badge tone={d.progress === 100 ? "success" : d.progress >= 65 ? "brand" : "neutral"}>{d.statusLabel}</Badge>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeBankTab() {
   const { knowledgeDocs: docs, setKnowledgeDocs: setDocs } = useContent();
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
@@ -91,16 +167,11 @@ export default function Knowledge() {
 
   return (
     <div>
-      <PageHeader
-        title="مدیریت دانش"
-        description="بانک اسناد سازمانی، آرشیو قراردادها و مستندات آموزشی با جستجوی پیشرفته"
-        icon={<BookOpen size={18} />}
-        actions={
-          <Button variant="primary" icon={<Upload size={15} />} onClick={() => setUploadOpen(true)}>
-            بارگذاری سند
-          </Button>
-        }
-      />
+      <div className="flex items-center justify-end mb-4">
+        <Button variant="primary" icon={<Upload size={15} />} onClick={() => setUploadOpen(true)}>
+          بارگذاری سند
+        </Button>
+      </div>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {categories.map((c) => (

@@ -1053,6 +1053,9 @@ export const moduleCatalog: ModuleDef[] = [
   { id: "funds", name: "طرح‌های اشتغال‌زایی", description: "ثبت طرح، داوری، تخصیص منابع، گزارش اثربخشی", category: "دانش و پروژه" },
   { id: "research", name: "فرصت‌های پژوهشی", description: "فراخوان، داوری، پیگیری اجرای پژوهش", category: "دانش و پروژه" },
   { id: "reports", name: "گزارش‌گیری پیشرفته", description: "داشبورد مدیریتی و گزارش تجمیعی", category: "دانش و پروژه" },
+  { id: "training", name: "آموزش و توانمندسازی", description: "دوره‌ها، تقویم آموزشی، حضور و غیاب، ارزشیابی، گواهینامه", category: "دانش و پروژه" },
+  { id: "assistant", name: "دستیار هوشمند (AI)", description: "پرسش‌وپاسخ فارسی از داده‌ها، ارزیابی هوشمند پروپوزال، چت‌بات", category: "دانش و پروژه" },
+  { id: "award", name: "جایزه نوآوری", description: "ثبت‌نام سه محور، صحت‌سنجی هلدینگ، داوری و امتیازدهی", category: "اجتماعی" },
   { id: "sms", name: "اعلان پیامکی", description: "اتصال به درگاه‌های پیامک (کاوه‌نگار، فراپیامک و ...)", category: "زیرساخت" },
   { id: "sso", name: "ورود سازمانی (SSO/LDAP)", description: "اتصال به Active Directory یا OIDC سازمان", category: "امنیت" },
   { id: "waf", name: "فایروال و ضدویروس", description: "محدودسازی نرخ درخواست، اسکن ClamAV، کپچا", category: "امنیت" },
@@ -1251,6 +1254,36 @@ export const permissionCatalog: PermissionGroup[] = [
     actions: [
       { id: "reports.view", label: "مشاهده داشبورد گزارش‌ها" },
       { id: "reports.export", label: "دریافت خروجی گزارش" },
+    ],
+  },
+  {
+    id: "training",
+    label: "آموزش و توانمندسازی",
+    actions: [
+      { id: "training.list", label: "مشاهده دوره‌ها" },
+      { id: "training.create", label: "تعریف دوره جدید" },
+      { id: "training.enroll", label: "ثبت‌نام در دوره" },
+      { id: "training.evaluate", label: "ارزشیابی و سنجش اثربخشی" },
+      { id: "training.certificate", label: "صدور گواهینامه" },
+    ],
+  },
+  {
+    id: "companies",
+    label: "هلدینگ‌ها و شرکت‌ها",
+    actions: [
+      { id: "companies.view", label: "مشاهده ساختار هلدینگ‌ها" },
+      { id: "companies.manage", label: "مدیریت شرکت‌های زیرمجموعه" },
+      { id: "companies.publish-global", label: "انتشار محتوای سراسری" },
+      { id: "companies.publish-holding", label: "انتشار در سطح هلدینگ" },
+    ],
+  },
+  {
+    id: "assistant",
+    label: "دستیار هوشمند",
+    actions: [
+      { id: "assistant.chat", label: "پرسش‌وپاسخ از دستیار مدیریتی" },
+      { id: "assistant.evaluate", label: "اجرای ارزیابی هوشمند پروپوزال" },
+      { id: "assistant.configure", label: "پیکربندی چت‌بات‌ها" },
     ],
   },
   {

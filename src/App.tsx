@@ -23,6 +23,8 @@ import ProjectBoard from "./pages/ProjectBoard";
 import Contracts from "./pages/Contracts";
 import Funds from "./pages/Funds";
 import Research from "./pages/Research";
+import Assistant from "./pages/Assistant";
+import Training from "./pages/Training";
 import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Admin from "./pages/Admin";
@@ -69,6 +71,8 @@ export default function App() {
           <Route path="contracts" element={<Contracts />} />
           <Route path="funds" element={<Funds />} />
           <Route path="research" element={<Research />} />
+          <Route path="training" element={<Training />} />
+          <Route path="assistant" element={<Assistant />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="admin" element={<Admin />} />

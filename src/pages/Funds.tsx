@@ -26,6 +26,7 @@ import {
   type NfProject,
   type NfStage,
 } from "../data/mockInnovationFund";
+import { nfEvaluations } from "../data/mockDaneshmand";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -350,6 +351,53 @@ function NfProjectFile({ project: p }: { project: NfProject }) {
           </div>
         </div>
       </div>
+
+      {nfEvaluations[p.id] && (
+        <div className="border-t border-ink-100 pt-4">
+          <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Gauge size={13} className="text-ink-400" /> فرم‌های امتیازدهی ارزیابی</h4>
+          <div className="text-[11px] bg-ink-50 rounded-lg p-2.5 mb-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="font-medium text-ink-800">غربالگری اولیه (۲۲ معیار)</p>
+              <Badge tone={nfEvaluations[p.id].screening.total >= nfEvaluations[p.id].screening.threshold ? "success" : "danger"}>
+                {nfEvaluations[p.id].screening.total.toLocaleString("fa-IR")} از ۲۰۰ — حد نصاب {nfEvaluations[p.id].screening.threshold.toLocaleString("fa-IR")}
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              {nfEvaluations[p.id].screening.topCriteria.map((c) => (
+                <div key={c.title} className="flex items-center gap-2">
+                  <span className="flex-1 text-ink-600 truncate">{c.title}</span>
+                  <div className="w-20 h-1 rounded-full bg-ink-200/70 overflow-hidden shrink-0">
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(c.score / c.max) * 100}%` }} />
+                  </div>
+                  <span className="text-ink-400 shrink-0 w-10 text-left" dir="ltr">{c.score}/{c.max}</span>
+                </div>
+              ))}
+              <p className="text-ink-400 pt-1">… و {`${(22 - nfEvaluations[p.id].screening.topCriteria.length).toLocaleString("fa-IR")}`} معیار دیگر</p>
+            </div>
+          </div>
+          {nfEvaluations[p.id].jury && (
+            <div className="text-[11px] bg-ink-50 rounded-lg p-2.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="font-medium text-ink-800">ارزیابی داوری (۵ بُعد — با تعهد رازداری داور)</p>
+                <Badge tone={nfEvaluations[p.id].jury!.total >= nfEvaluations[p.id].jury!.threshold ? "success" : "danger"}>
+                  {nfEvaluations[p.id].jury!.total.toLocaleString("fa-IR")} از ۱۰۰ — حد نصاب {nfEvaluations[p.id].jury!.threshold.toLocaleString("fa-IR")}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                {nfEvaluations[p.id].jury!.dimensions.map((d) => (
+                  <div key={d.title} className="flex items-center gap-2">
+                    <span className="flex-1 text-ink-600">{d.title}</span>
+                    <div className="w-20 h-1 rounded-full bg-ink-200/70 overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-brand-500" style={{ width: `${(d.score / d.max) * 100}%` }} />
+                    </div>
+                    <span className="text-ink-400 shrink-0 w-10 text-left" dir="ltr">{d.score}/{d.max}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-ink-100 pt-4">
         <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Wallet size={13} className="text-ink-400" /> وضعیت مالی</h4>

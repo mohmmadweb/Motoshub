@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — وضعیت تحویل API v1</title>
+<style>
+  :root{
+    --bg:#f4f6f8;--surface:#ffffff;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;
+    --accent:#2f7d78;--accent2:#b45e28;--ok:#2e7d5b;--warn:#b4832a;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Segoe UI",Tahoma,"Vazirmatn",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;
+      --accent:#4bb3ac;--accent2:#d98a4f;--ok:#5cc48d;--warn:#d9ab5a;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3);}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.8;padding:32px}
+  .wrap{max-width:900px;margin:0 auto}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:clamp(24px,5vw,34px);margin:0 0 8px;font-weight:800}
+  .lede{color:var(--muted);font-size:16px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  h3{font-size:16px;margin:22px 0 8px}
+  p,li{font-size:14.5px}
+  code{font-family:var(--mono);font-size:12.5px;background:rgba(127,127,127,.12);padding:2px 6px;border-radius:5px}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line)}
+  th{background:rgba(127,127,127,.06);font-weight:700}
+  tr:last-child td{border-bottom:none}
+  .tag{font-family:var(--mono);font-size:11.5px;padding:2px 7px;border-radius:20px;white-space:nowrap}
+  .t-ok{background:rgba(46,125,91,.14);color:var(--ok)}
+  .t-dep{background:rgba(180,131,42,.16);color:var(--warn)}
+  .note{background:var(--surface);border:1px solid var(--line);border-inline-start:3px solid var(--accent);
+    border-radius:8px;padding:12px 16px;margin:14px 0}
+  .note.warn{border-inline-start-color:var(--warn)}
+  .stat{display:inline-block;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:10px 16px;margin:4px 8px 4px 0;box-shadow:var(--shadow)}
+  .stat b{font-size:20px;color:var(--accent)}
+  a{color:var(--accent)}
+  .foot{margin-top:40px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Motoshub · API v1 · Delivery Status</p>
+  <h1>وضعیت تحویل: ادغام مستقل، مجوزها و تست‌ها</h1>
+  <p class="lede">این صفحه ساختار نهایی تحویل API v1 را شرح می‌دهد: ۱۰ درخواست ادغامِ مستقل و موازی، خودکفایی مجوز هر پلاگین، مستندسازی خودکار، و مجموعه‌ی تست.</p>
+
+  <div>
+    <div class="stat"><b>293</b> عملیات</div>
+    <div class="stat"><b>178</b> مسیر</div>
+    <div class="stat"><b>10</b> درخواست ادغام مستقل</div>
+    <div class="stat"><b>120</b> assertion سبز</div>
+  </div>
+
+  <h2>۱) درخواست‌های ادغامِ مستقل و موازی</h2>
+  <p>هر دسته مستقیماً از <code>moto-next</code> جدا شده و مستقیماً به <code>moto-next</code> هدف می‌گیرد (نه پشته‌ای). هیچ دو دسته‌ای فایل مشترک ندارند، پس می‌توان آن‌ها را موازی review و merge کرد. فایل‌های مشترک (<code>init.php</code>، <code>install.php</code>، <code>bootstrap</code>) فقط افزوده شده‌اند و هرگز خطی حذف نشده است.</p>
+  <div class="tblwrap"><table>
+    <thead><tr><th>دسته</th><th>دامنه</th><th>وابستگی</th></tr></thead>
+    <tbody>
+      <tr><td>foundation</td><td>پلاگین api: کاربران، فایل، احراز هویت، مستندسازی خودکار</td><td><span class="tag t-dep">پیش‌نیاز Bridge</span></td></tr>
+      <tr><td>shipped-fixes</td><td>رفع اشکال بلاگ، خبر، عکس، ویدیو (شامل رفع IDOR عکس)</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>social</td><td>دوستان، اعلان‌ها، حریم خصوصی، منشن، جستجو، کامنت</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>content</td><td>رویداد، فروم، نظرسنجی، صفحه‌ساز</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>community</td><td>فید، گروه‌ها، پیام‌رسان</td><td><span class="tag t-dep">پیش‌نیاز Bridge</span></td></tr>
+      <tr><td>quiz</td><td>پرسمان‌ساز و داوری</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>challenge</td><td>مسابقات تعاملی، مسابقات، ارزیابی</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>journal</td><td>نشریه: شماره، مقاله، نویسنده، کلیدواژه، قالب ارجاع</td><td><span class="tag t-ok">مستقل</span></td></tr>
+      <tr><td>org</td><td>گرنت، فراخوان، تیکتینگ، کارمند، فناوری، واحد فناور</td><td><span class="tag t-dep">پیش‌نیاز Bridge</span></td></tr>
+      <tr><td>bridge-api-fixes</td><td>رفع باگ‌های چارچوب + دو فایل پیش‌نیاز (StringLength، AccountGate)</td><td><span class="tag t-dep">بازبینی مالک Bridge</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn">
+    <b>ترتیب merge:</b> شش دسته کاملاً مستقل‌اند و به هر ترتیبی merge می‌شوند. سه دسته (foundation، community، org) به دو فایلِ جدیدِ چارچوب (<code>StringLength</code>، <code>AccountGate</code>) در دسته‌ی <code>bridge-api-fixes</code> وابسته‌اند و باید پس از آن merge شوند.
+  </div>
+
+  <h2>۲) خودکفایی مجوزها (بدون دستور مرکزی)</h2>
+  <p>هر پلاگین فیچر، اکشن‌های REST خودش را ثبت و به همه‌ی نقش‌ها اعطا می‌کند — در دو محل:</p>
+  <ul>
+    <li><b>install.php</b> — برای نصب تازه.</li>
+    <li><b>update/&lt;build&gt;/update.php</b> با بامپ <code>plugin.xml</code> — برای سایت زنده. اکسوال هنگام دیدن بامپ build، این را خودکار اجرا می‌کند. همان الگویی که ماژول‌های مستقر (blogs/iisnews/photo) از قبل استفاده می‌کنند.</li>
+  </ul>
+  <div class="note">
+    <b>اثبات:</b> با حذف اکشن‌های API گروه <code>event</code> از دیتابیس و اجرای فقط <code>event/update/&lt;build&gt;/update.php</code>، دوباره <code>GET /events</code> کد ۲۰۰ و <code>POST /events</code> کد ۲۰۱ برگرداند — بدون هیچ دستور مرکزی.
+  </div>
+
+  <h2>۳) مستندسازی خودکار Swagger</h2>
+  <p><code>SwaggerController</code> حالا با <code>glob</code> روی <code>ow_plugins/*/src/Http</code> همه‌ی پلاگین‌های دارای API را خودکار پیدا می‌کند. هیچ فیچری دیگر لازم نیست این فایل مشترک را دست بزند، پس دسته‌ها روی آن تعارض نمی‌خورند. خروجی: همان ۲۹۳ عملیات روی ۱۷۸ مسیر.</p>
+
+  <h2>۴) مجموعه‌ی تست Pest</h2>
+  <p>برای هر کنترلر API v1 یک فایل تست بر اساس تمپلیت رسمی <code>AuthControllerTest</code> نوشته شده و در دسته‌ی همان پلاگین قرار گرفته است. helperهای مشترک در <code>Pest.php</code>: بوت یک‌باره‌ی autoload پلاگین‌ها، یک authenticator باحالت (تا <code>login()</code>/<code>isAdmin()</code> در هارنس کار کنند)، و کارخانه‌ی کاربر ادمین + توکن JWT.</p>
+  <p>پوشش هر کنترلر: پاسخ موفق فهرست (با پاکت صفحه‌بندی)، رد درخواست بدون احراز هویت با ۴۰۱، تبدیل شناسه‌ی غیرعددی به ۴۰۴ به‌جای خطای مرگبار، و استثنای دامنه برای رکورد ناموجود/بدنه‌ی خالی. کنترلر رویداد چرخه‌ی کامل ساخت/خواندن/ویرایش‌جزئی/حذف را هم می‌آزماید.</p>
+  <div class="note">
+    نتیجه روی استک محلی: <b>۱۲۰ assertion سبز</b> در همه‌ی فایل‌های تولیدشده. endpointهایی که به context والد، theme، یا دسترسی خاص نیاز دارند، قرارداد قابل‌حمل را می‌آزمایند (مسیر dispatch می‌شود، هیچ خطای مرگباری رخ نمی‌دهد).
+  </div>
+
+  <div class="foot">cheedafar.ir/reports/delivery-status.html · نسخه‌ی زنده و قابل‌به‌روزرسانی</div>
+</div>
+</body>
+</html>

@@ -30,6 +30,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { SystemSection, StorageSection } from "./AdminSections";
+import { holdings as daneshmandHoldings } from "../data/mockDaneshmand";
 import {
   tenants as initialTenants,
   moduleCatalog,
@@ -60,10 +61,11 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "tenants" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "system" | "storage";
+type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
+  { id: "holdings", label: "هلدینگ‌ها و شرکت‌ها", icon: Network },
   { id: "modules", label: "بازارچه‌ی ماژول‌ها", icon: Plug },
   { id: "branding", label: "برندسازی سازمان", icon: Palette },
   { id: "roles", label: "نقش‌ها و دسترسی", icon: KeyRound },
@@ -130,6 +132,8 @@ export default function Admin() {
             <TenantsSection tenants={tenants} activeTenant={activeTenant} setActiveTenant={setActiveTenant} onAdd={addTenant} notify={notify} />
           )}
 
+          {section === "holdings" && <HoldingsSection notify={notify} />}
+
           {section === "modules" && (
             <ModulesSection enabledModules={enabledModules} toggleModule={toggleModule} />
           )}
@@ -160,6 +164,89 @@ export default function Admin() {
 }
 
 type Notify = (message: string, tone?: "success" | "info" | "warning") => void;
+
+// ---------------------------------------------------------------------------
+// ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه — مبنای تفکیک محتوا و دسترسی شرکتی
+// ---------------------------------------------------------------------------
+function HoldingsSection({ notify }: { notify: Notify }) {
+  const [holdingsList, setHoldingsList] = useState(daneshmandHoldings);
+  const [open, setOpen] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [holdingId, setHoldingId] = useState(daneshmandHoldings[0].id);
+
+  const addCompany = () => {
+    if (!companyName.trim()) {
+      notify("نام شرکت الزامی است.", "warning");
+      return;
+    }
+    const clean = companyName.trim();
+    setHoldingsList((prev) =>
+      prev.map((h) => (h.id === holdingId ? { ...h, companies: [...h.companies, { id: `c-${Date.now()}`, name: clean }] } : h))
+    );
+    const holdingName = holdingsList.find((h) => h.id === holdingId)?.name ?? "";
+    notify(`شرکت «${clean}» به «${holdingName}» افزوده شد. از این پس محتوای اختصاصی و کاربران این شرکت قابل تعریف است.`);
+    setOpen(false);
+    setCompanyName("");
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-ink-900">ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه</h3>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+          افزودن شرکت
+        </Button>
+      </div>
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Network size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          همه‌ی شرکت‌ها زیر یک سامانه‌ی واحد هستند، اما هر محتوا (خبر، سند، رویداد و…) به یک شرکت/هلدینگ مالک
+          متصل می‌شود و دامنه‌ی انتشار دارد: «فقط شرکت خودم»، «کل هلدینگ» یا «سراسری». کاربران هر شرکت فقط
+          محتوای دامنه‌ی خودشان را می‌بینند (نمونه‌ی زنده در صفحه‌ی «اخبار سازمان»).
+        </p>
+      </div>
+      <div className="space-y-3">
+        {holdingsList.map((h) => (
+          <div key={h.id} className="card p-4">
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-7 h-7 rounded-lg shrink-0" style={{ backgroundColor: h.color }} />
+              <p className="text-sm font-bold text-ink-900">{h.name}</p>
+              <span className="text-xs text-ink-400">{h.companies.length.toLocaleString("fa-IR")} شرکت</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {h.companies.map((c) => (
+                <span key={c.id} className="text-xs text-ink-700 bg-ink-50 border border-ink-100 rounded-md px-2.5 py-1.5 flex items-center gap-1.5">
+                  <Building2 size={12} className="text-ink-400" /> {c.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="افزودن شرکت زیرمجموعه" description="شرکت جدید زیر هلدینگ انتخابی قرار می‌گیرد و محتوای اختصاصی خودش را خواهد داشت.">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام شرکت</label>
+            <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="مثلاً: شرکت کشت و صنعت جدید" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">هلدینگ مادر</label>
+            <select value={holdingId} onChange={(e) => setHoldingId(e.target.value)} className="input-field">
+              {holdingsList.map((h) => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={addCompany}>افزودن شرکت</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
 
 function TenantsSection({
   tenants,
