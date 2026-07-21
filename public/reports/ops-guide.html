@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motoshub — راهنمای استقرار و عملیات</title>
+<style>
+:root{--bg:#f4f6f8;--surface:#fff;--line:#d9dee4;--ink:#1b2431;--muted:#5c6675;--accent:#2f7d78;--warn:#b4832a;
+--mono:ui-monospace,Menlo,Consolas,monospace;--sans:"Segoe UI",Tahoma,Vazirmatn,system-ui,Arial,sans-serif;}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1319;--surface:#161d26;--line:#2a3542;--ink:#e7edf4;--muted:#9aa6b4;--accent:#4bb3ac;--warn:#d9ab5a;}}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.9;padding:32px}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:30px;font-weight:800;margin:0 0 8px} h2{font-size:22px;margin:32px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+h3{font-size:17px;margin:22px 0 8px} p,li{font-size:14.5px}
+code{font-family:var(--mono);font-size:12.5px;background:rgba(127,127,127,.12);padding:2px 6px;border-radius:5px}
+pre{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+pre code{background:none;padding:0;font-size:12.5px;line-height:1.7}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line)} th{background:rgba(127,127,127,.06);font-weight:700}
+tr:last-child td{border-bottom:none} ul{padding-right:22px}
+blockquote{border-inline-start:3px solid var(--accent);background:var(--surface);margin:14px 0;padding:12px 16px;border-radius:8px;color:var(--muted)}
+hr{border:none;border-top:1px solid var(--line);margin:28px 0} .muted{color:var(--muted);font-size:12.5px}
+a{color:var(--accent)}
+</style></head><body><div class="wrap"><h1>راهنمای استقرار و عملیات موتوشاب (Motoshub Ops Guide)</h1>
+
+<blockquote>این سند برای تیم DevOps و فروش تهیه شده است: نیازمندی‌های سرور برای هر مشتری، خط‌لوله‌ی استقرار، پایش زنده‌ی مصرف منابع، استراتژی احراز هویت میان PHP و Django، و وضعیت ORM. همه‌ی اعداد از اندازه‌گیری واقعی روی استک در حال اجرا به‌دست آمده‌اند.</blockquote>
+
+<hr>
+
+<h2>۱) پشته‌ی اجرایی (Runtime Stack)</h2>
+
+<div class="tblwrap"><table><thead><tr><th>سرویس</th><th>ایمیج/بیلد</th><th>نقش</th></tr></thead><tbody><tr><td>app</td><td><code>php:8.4-fpm-bullseye</code> (build <code>docker/Dockerfile</code>)</td><td>PHP-FPM</td></tr><tr><td>web</td><td><code>nginx:alpine</code></td><td>reverse proxy / FastCGI</td></tr><tr><td>db</td><td><code>mariadb:10.5</code></td><td>پایگاه‌داده</td></tr><tr><td>cron</td><td>همان app</td><td>اجرای <code>ow_cron/run.php</code> هر ۶۰ ثانیه (تعریف‌شده، فعلاً غیرفعال)</td></tr></tbody></table></div>
+
+<ul><li><strong>PHP 8.4.11</strong>، افزونه‌ها: <code>pdo_mysql, mysqli, mbstring, exif, pcntl, bcmath, gd, sockets, zip, soap, intl, ftp</code> + <code>OPcache</code> (فعال، ۱۲۸MB).</li>
+<li><strong>MariaDB 10.5.29</strong> — همه‌ی تنظیمات روی پیش‌فرض ایمیج (بدون tuning).</li>
+<li><strong>nginx</strong>: <code>client_max_body_size 20M</code>, <code>fastcgi_read_timeout 300</code>.</li>
+<li><strong>وابستگی‌های Composer سنگین</strong>: Smarty + Twig (دو موتور قالب)، <code>illuminate/database|events|support|container|pagination</code> (اجزای Eloquent لاراول)، Symfony (cache/console/http-foundation)، Guzzle، Monolog، PhpSpreadsheet، Shieldon (WAF)، swagger-php، firebase/php-jwt، php-di، wideimage، morilog/jalali. <strong>درخت vendor ≈ ۲۰۵MB</strong>.</li>
+</ul>
+<h3>سرویس‌های خارجی که کد فرض می‌کند</h3>
+<div class="tblwrap"><table><thead><tr><th>سرویس</th><th>وضعیت</th></tr></thead><tbody><tr><td>RabbitMQ/AMQP</td><td>در کد هست ولی <strong>log-over-RabbitMQ غیرفعال</strong> شده؛ broker در compose نیست</td></tr><tr><td>WebSocket (Ratchet)</td><td>سرویس <code>socket</code> در compose <strong>کامنت</strong> شده</td></tr><tr><td>Elasticsearch (<code>ruflin/elastica</code>)</td><td>backend جستجو؛ container ندارد</td></tr><tr><td>درگاه پیامک (<code>iistpnetsms</code>)</td><td>فعال؛ API خارجی صدا می‌زند</td></tr><tr><td>SMTP</td><td>نیازمند relay خارجی</td></tr><tr><td>S3/CloudFiles</td><td><code>OW_USE_CLOUDFILES=false</code> (غیرفعال؛ فایل‌ها محلی)</td></tr><tr><td>Nexus/Debian mirror (<code>nexus.danafakher.ir</code>, <code>debian-main.devneeds.ir</code>)</td><td><strong>وابستگی زمان build</strong>؛ بدون دسترسی به این میرورها ایمیج build نمی‌شود</td></tr><tr><td>Redis</td><td><strong>ندارد</strong></td></tr></tbody></table></div>
+
+<hr>
+
+<h2>۲) مصرف منابع واقعی (اندازه‌گیری‌شده)</h2>
+
+<h3><code>docker stats --no-stream</code> (استک بی‌بار)</h3>
+<div class="tblwrap"><table><thead><tr><th>کانتینر</th><th>RAM</th></tr></thead><tbody><tr><td>app (php-fpm)</td><td><strong>~۵۲ MiB</strong> بی‌بار → ~۶۹ زیر بار</td></tr><tr><td>db (MariaDB)</td><td><strong>~۱۶۶ MiB</strong> (با دیتابیس ۱۷MB و buffer pool پیش‌فرض ۱۲۸MB)</td></tr><tr><td>web (nginx)</td><td><strong>~۲۶ MiB</strong></td></tr></tbody></table></div>
+
+<h3>هر worker از php-fpm (اندازه‌گیری VmRSS زیر بار)</h3>
+<ul><li>master: ~۳۲ MB</li>
+<li>هر worker استخر www: <strong>~۵۵–۵۷ MB</strong> حتی برای یک صفحه‌ی ساده.</li>
+<li>علت این کف بالا: <strong>۵۱ پلاگین فعال، <code>init.php</code> هرکدام در هر درخواست اجرا می‌شود</strong> (Oxwall پلاگین‌های فعال را eager-load می‌کند؛ lazy loading ندارد) + بارگذاری Smarty/Twig/Illuminate/Symfony/Guzzle/Shieldon.</li>
+</ul>
+<h3>فرمول بدترین حالت RAM کانتینر app</h3>
+<pre><code>RAM app  =  master  +  pm.max_children × RSS هر worker</code></pre>
+<ul><li>تنظیم فعلی (اندازه‌گیری‌شده): <code>31 + 5 × 57 ≈ 316 MB</code> سقف پایدار.</li>
+<li><strong>بدترین حالت مطلق</strong> (هر درخواست سنگین: resize تصویر با gd/wideimage، خروجی PhpSpreadsheet، رندر بزرگ فید تا <code>memory_limit</code>):</li>
+</ul><pre><code>31 + 5 × 256 MB  =  1.31 GB</code></pre>
+
+<h3>چرا RAM سرور شما زیاد مصرف می‌شود (تشخیص دقیق)</h3>
+<ul><li><strong>کف هر worker بالا و ثابت است (~۵۵MB)</strong> چون ۵۱ پلاگین هر درخواست بوت می‌شوند — این یک مالیات ثابت است، نه وابسته به بار.</li>
+<li><strong><code>pm.max_children</code> ضریب است.</strong> مقدار shipped برابر ۵ است (سقف ~۳۱۶MB)؛ اما اپراتورها معمولاً برای همزمانی آن را بالا می‌برند: در <code>max_children=20</code> تنها PHP = <code>20×57 ≈ 1.14GB</code>، در ۴۰ → <code>2.3GB</code>. این مکانیزم گم‌شدن RAM است.</li>
+<li><strong>نکته‌ی مهم پیکربندی:</strong> فایل tune‌شده‌ی <code>docker/php/www.conf</code> (که <code>pm.max_children=10</code> + status page + slowlog دارد) <strong>هرگز داخل ایمیج کپی نمی‌شود</strong> — Dockerfile فقط <code>docker/php-fpm.conf</code> را کپی می‌کند. پس کانتینر روی <code>www.conf</code> استاندارد (max_children=5) اجرا می‌شود و هر tuning در <code>docker/php/www.conf</code> بی‌اثر است. <strong>باید این کپی در Dockerfile اضافه شود.</strong></li>
+<li><strong><code>memory_limit=256MB</code> هر درخواست</strong> یعنی رگبار درخواست‌های سنگین می‌تواند هرکدام ۴–۵ برابر worker بی‌بار متورم شود پیش از reap.</li>
+<li><strong>OPcache فعال است (خوب)</strong> — مشکل OPcache نیست؛ مشکل heap هر پروسه × تعداد worker است.</li>
+<li><strong>MariaDB حتی بی‌بار ~۱۶۰MB</strong> ثابت اضافه می‌کند (buffer pool پیش‌فرض ۱۲۸MB)؛ داده‌ی واقعی این را بالا می‌برد.</li>
+</ul>
+<hr>
+
+<h2>۳) مشخصات سرور برای هر مشتری (بدبینانه)</h2>
+
+<p><strong>فرض‌ها:</strong> بدون swap (سقف سخت RAM)، ~۲۰٪ headroom، هر worker ۷۰MB (بدبینانه برای جذب spike تصویر/اکسپورت)، OS+Docker ~۵۰۰MB.</p>
+
+<div class="tblwrap"><table><thead><tr><th>پروفایل</th><th>worker های PHP</th><th>buffer pool</th><th>ریاضی سقف</th><th><strong>RAM (بدبینانه)</strong></th><th><strong>vCPU</strong></th><th><strong>دیسک</strong></th></tr></thead><tbody><tr><td>بار تست فعلی</td><td>۵</td><td>۱۲۸MB</td><td>۳۱۶ + ۱۶۰ + ۳۰ + ۵۰۰ ≈ ۱GB</td><td><strong>۲GB</strong></td><td>۱–۲</td><td>۲۰GB</td></tr><tr><td>کوچک (&lt;۵۰۰ کاربر)</td><td>۱۰</td><td>۲۵۶MB</td><td>۷۳۰ + ۳۲۰ + ۴۰ + ۵۰۰ ≈ ۱.۶GB</td><td><strong>۲–۳GB</strong></td><td>۲</td><td>۲۰–۳۰GB</td></tr><tr><td>متوسط (&lt;۵۰۰۰ کاربر)</td><td>۲۵–۳۰</td><td>۱–۲GB</td><td>۲.۱GB + ۲GB + ۵۰ + ۵۰۰ ≈ ۴.۷GB</td><td><strong>۸GB</strong></td><td>۴</td><td>۶۰–۱۰۰GB</td></tr></tbody></table></div>
+
+<p class="muted">هشدارهای بدبینانه:</p>
+<ul><li>اگر Elasticsearch/RabbitMQ فعال شوند: <strong>+۱GB برای ES</strong> و <strong>+۲۵۶MB برای هر RabbitMQ</strong>. پروفایل متوسط باید +۱.۵GB بودجه بگیرد.</li>
+<li>worker cron یک ایمیج PHP کامل دوم است: هنگام استقرار ~۵۵–۹۰MB اضافه کنید.</li>
+<li>اگر کسی <code>max_children</code> را بدون RAM متناسب بالا ببرد، OOM-kill تقریباً حتمی است: شعاع انفجار واقعی <code>max_children × 256MB</code> است (۲۰ worker × ۲۵۶MB = ۵.۱GB).</li>
+<li><code>ow_log</code> بدون rotation رشد نامحدود دارد — روی استوریج پایش‌شده نگه دارید.</li>
+</ul>
+<p><strong>جمله‌ی نهایی:</strong> این اپ <strong>memory-bound است، نه CPU-bound</strong>. هرگز روی &lt;۲GB اجرا نکنید. RAM را این‌طور اندازه بگیرید:</p>
+<pre><code>500MB (OS) + buffer_pool + (max_children × 70MB) + 20% headroom</code></pre>
+
+<hr>
+
+<h2>۴) خط‌لوله‌ی استقرار برای مشتری (تمیز و مرحله‌به‌مرحله)</h2>
+
+<h3>پیش‌نیازها روی سرور مشتری</h3>
+<ul><li>Docker + Docker Compose، دسترسی به میرورهای build (Nexus) یا ایمیج از پیش build‌شده.</li>
+<li>دامنه/ساب‌دامین با رکورد A به IP سرور.</li>
+</ul>
+<h3>مراحل</h3>
+<pre><code># ۱) کد
+git clone &lt;repo&gt; motoshub &amp;&amp; cd motoshub
+git checkout motonext            # شاخه‌ی زنده
+
+# ۲) تنظیمات محیط
+cp .env.example .env
+#   ویرایش .env: DB_*، SITE_URL، PROJECT_NAME، OW_PASSWORD_PEPPER (کلید امضای JWT)
+
+# ۳) بالا آوردن استک
+docker compose up -d --build     # app + db + web (+ cron در prod)
+
+# ۴) نصب/آپدیت اکسوال و پلاگین‌ها
+#   نصب تازه از طریق ماژول init یا صفحه‌ی نصب؛
+#   سایت موجود: از پنل مدیریت، آپدیت‌های در انتظار پلاگین‌ها را اجرا کنید
+#   (اکسوال با دیدن بامپ build در plugin.xml، update.php ها را خودکار اجرا می‌کند).
+
+# ۵) پاک‌سازی کش
+rm -rf ow_smarty/template_c/* ow_static/tmp/*
+
+# ۶) راستی‌آزمایی
+curl -i https://&lt;domain&gt;/                 # 200
+curl -i https://&lt;domain&gt;/api/v1/docs/json # 200، خروجی OpenAPI</code></pre>
+
+<h3>اصلاحات لازم پیش از production (بدهی فنی شناسایی‌شده)</h3>
+<ul><li><strong>Dockerfile:</strong> کپی <code>docker/php/www.conf</code> را اضافه کنید تا tuning استخر (max_children، status page، slowlog) واقعاً اعمال شود.</li>
+<li><strong><code>docker/nexus.pem</code></strong> روی هیچ شاخه‌ای نیست و مرحله‌ی build را می‌شکند — یا گواهی Nexus را به مخزن/CI بیفزایید یا آن خط Dockerfile را مشروط کنید.</li>
+<li><strong>rotation لاگ</strong> برای <code>ow_log</code> تنظیم کنید.</li>
+<li><strong>SSL</strong> (Let&#x27;s Encrypt) روی nginx.</li>
+</ul>
+<hr>
+
+<h2>۵) پایش زنده‌ی مصرف (چطور live چک کنم؟)</h2>
+
+<h3>سطح کانتینر (روی هاست production)</h3>
+<pre><code>docker stats                    # زنده CPU/MEM هر کانتینر
+docker stats --no-stream        # snapshot یک‌باره برای اسکریپت</code></pre>
+
+<h3>داخل کانتینر PHP</h3>
+<pre><code>docker compose exec app top                      # اگر procps نصب باشد
+# fallback بدون top/ps (این ایمیج ندارد):
+docker compose exec app sh -c &#x27;for p in $(ls /proc|grep -E &quot;^[0-9]+$&quot;); do \
+  grep -qa &quot;pool www&quot; /proc/$p/cmdline 2&gt;/dev/null &amp;&amp; \
+  echo &quot;$p $(grep VmRSS /proc/$p/status|awk &quot;{print \$2}&quot;)kB&quot;; done&#x27;</code></pre>
+
+<h3>صفحه‌ی وضعیت php-fpm (پس از رفع کپی www.conf)</h3>
+<pre><code>curl -s &quot;https://&lt;domain&gt;/status?full&quot;   # worker های active/idle/total، صف، peak
+curl -s https://&lt;domain&gt;/ping            # → pong</code></pre>
+
+<h3>MariaDB</h3>
+<pre><code>docker compose exec db mysql -uroot -p&lt;pass&gt; -e &quot;SHOW FULL PROCESSLIST;&quot;
+docker compose exec db mysql -uroot -p&lt;pass&gt; -e &quot;SHOW ENGINE INNODB STATUS\G&quot;
+docker compose exec db mysql -uroot -p&lt;pass&gt; -e \
+  &quot;SET GLOBAL slow_query_log=ON; SET GLOBAL long_query_time=1; \
+   SET GLOBAL slow_query_log_file=&#x27;/var/lib/mysql/slow.log&#x27;;&quot;   # فعال‌سازی بدون restart
+# روند رشد دیتابیس:
+docker compose exec db mysql -uroot -p&lt;pass&gt; -e \
+  &quot;SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,1) MB \
+   FROM information_schema.tables GROUP BY table_schema;&quot;</code></pre>
+
+<h3>گزینه‌های always-on (با overhead خودشان)</h3>
+<div class="tblwrap"><table><thead><tr><th>ابزار</th><th>overhead</th><th>توضیح</th></tr></thead><tbody><tr><td><strong>ctop</strong></td><td>~۱۰–۲۰MB</td><td>باینری Go تک‌فایل، نمای top مثل هر کانتینر. بهترین انتخاب کم‌زحمت</td></tr><tr><td><strong>glances --docker</strong></td><td>~۵۰–۸۰MB</td><td>داشبورد یک‌صفحه‌ای host+container</td></tr><tr><td><strong>cAdvisor</strong></td><td>~۵۰–۱۰۰MB</td><td>صادرکننده‌ی متریک کانتینر، خوراک Prometheus</td></tr><tr><td><strong>node_exporter + Prometheus + Grafana</strong></td><td>~۵۰۰MB مجموع</td><td>استک کامل متریک/هشدار؛ برای ناوگان، نه یک هاست کوچک</td></tr></tbody></table></div>
+
+<hr>
+
+<h2>۶) مدیریت احراز هویت میان PHP و Django (استراتژی — بدون تغییر کد)</h2>
+
+<p><strong>وضعیت فعلی:</strong> API (لایه‌ی جدید) با <strong>JWT (الگوریتم HS256)</strong> کار می‌کند. توکن با <code>hash(&#x27;sha256&#x27;, OW_PASSWORD_PEPPER)</code> امضا می‌شود و claims دارد: <code>{ iat, exp, sub: userId }</code>. ورود از <code>POST /api/v1/auth/login</code> توکن یک‌ساعته می‌دهد.</p>
+
+<p>معماری هدف شما: <code>api.shub.ir (Gateway)</code> جلوی <code>api1 (PHP/Oxwall)</code> و <code>api2 (Django)</code>.</p>
+
+<h3>گزینه‌ی توصیه‌شده (کم‌ریسک، بدون تغییر کد فعلی): <strong>کلید متقارن مشترک</strong></h3>
+<ul><li><strong>همان راز را به هر دو بدهید.</strong> <code>OW_PASSWORD_PEPPER</code> در PHP همان رازی باشد که Django برای امضا/اعتبارسنجی JWT استفاده می‌کند. کلید نهایی = <code>sha256(pepper)</code>.</li>
+<li><strong>Django با همان الگوریتم و claims اعتبارسنجی کند</strong> (HS256، بررسی <code>exp</code>، خواندن <code>sub</code> به‌عنوان userId). کتابخانه: <code>PyJWT</code> — <code>jwt.decode(token, key, algorithms=[&#x27;HS256&#x27;])</code> که <code>key = sha256(pepper).hexdigest()</code> (باید دقیقاً همان hex که PHP می‌سازد باشد).</li>
+<li><strong>Gateway توکن را pass-through کند</strong> — هدر <code>Authorization: Bearer &lt;token&gt;</code> را دست‌نخورده به api1 و api2 بفرستد. هر دو سرویس مستقل همان توکن را می‌پذیرند.</li>
+<li><strong>هویت کاربر مشترک:</strong> <code>sub</code> همان <code>userId</code> جدول <code>ow_base_user</code> است. Django باید به همان دیتابیس (یا یک نگاشت) دسترسی داشته باشد تا userId را به کاربرش وصل کند.</li>
+</ul>
+<p><strong>مزیت:</strong> هیچ تغییری در کد PHP لازم نیست؛ فقط راز مشترک + پیاده‌سازی decode در Django.</p>
+
+<p class="muted">محدودیت‌ها (صادقانه):</p>
+<ul><li>کلید متقارن یعنی هر دو سرویس می‌توانند توکن <strong>صادر</strong> کنند. اگر می‌خواهید فقط یک صادرکننده باشد، به <strong>RS256 (کلید نامتقارن)</strong> بروید: صادرکننده (مثلاً Gateway یا یک Identity Provider) با کلید خصوصی امضا می‌کند، PHP و Django با کلید عمومی فقط verify می‌کنند. این تغییر کد لازم دارد (JWTService باید RS256 بپذیرد) — فعلاً انجام ندهید، ولی مسیر درست بلندمدت است.</li>
+<li><strong>ابطال توکن:</strong> JWT بی‌حالت است؛ برای logout/ban فوری، یک لیست سیاه کوتاه‌مدت (Redis) در Gateway لازم است.</li>
+</ul>
+<h3>گزینه‌ی بلندمدت (تمیزتر): <strong>Identity Provider مرکزی (Keycloak)</strong></h3>
+<p>همه (فرانت، Gateway، PHP، Django) توکن را از یک IdP می‌گیرند و با کلید عمومی verify می‌کنند. تک‌نقطه‌ی حقیقت برای هویت، پشتیبانی refresh/revoke استاندارد. برای مقیاس چندسرویسی درست است، ولی راه‌اندازی جدا می‌خواهد.</p>
+
+<hr>
+
+<h2>۷) وضعیت ORM (آیا Laravel Eloquent است؟)</h2>
+
+<p><strong>پاسخ دقیق: بله و نه — بستگی به لایه دارد.</strong> دو لایه‌ی دسترسی به داده روی <strong>یک MariaDB مشترک</strong> (<code>shub_db</code>، پیشوند <code>ow_</code>):</p>
+
+<ul><li><strong>لایه‌ی قدیمی Oxwall (DAO):</strong> <code>ow_plugins/*/bol/*_dao.php</code> که از <code>OW_BaseDao</code> ارث می‌برند. <strong>Eloquent نیست</strong> — خودش SQL می‌سازد (<code>SELECT * FROM ow_photo WHERE id = ?</code>) و از <code>OW_Example</code> فیلتر می‌گیرد. نمونه: <code>PHOTO_BOL_PhotoDao::getInstance()-&gt;findById($id)</code>.</li>
+<li><strong>لایه‌ی جدید REST API v1:</strong> <code>ow_plugins/*/src/Models/*.php</code> و <code>src/Repositories/*.php</code>. <strong>واقعاً Eloquent است</strong> — مدل پایه <code>Bridge\Models\BaseModel</code> از <code>Illuminate\Database\Eloquent\Model</code> ارث می‌برد؛ <strong>۷۴ مدل در ۲۶ پلاگین</strong>. نمونه: <code>Photo::query()-&gt;with(&#x27;album&#x27;)-&gt;find($id)</code> و <code>Photo::create([...])</code>.</li>
+</ul>
+<p><strong>نکته‌ی صادقانه:</strong> این <strong>Laravel نیست</strong>. در composer.json هیچ <code>laravel/framework</code> نیست؛ فقط اجزای مستقل Illuminate (<code>illuminate/database</code> <strong>v13.16.1</strong> و چند بسته). Eloquent دستی و از طریق یک «Bridge» سفارشی راه‌اندازی شده (<code>bridge/src/Kernel.php</code> با <code>Capsule::bootEloquent()</code>). پس عبارت درست: «API جدید از <strong>کامپوننت ORM لاراول (Eloquent)</strong> استفاده می‌کند، اما اپ یک اپ لاراولی نیست؛ یک اپ Oxwall است که Eloquent به آن اضافه شده.»</p>
+
+<p><strong>ORM یعنی چه؟</strong> ابزاری که ردیف‌های جدول را به شیء PHP تبدیل می‌کند تا به‌جای SQL با متدهای شیء کار کنید. <strong>Eloquent</strong> ORM لاراول با الگوی <strong>Active Record</strong> است: هر کلاس مدل = یک جدول، هر شیء = یک ردیف که خودش می‌داند چطور ذخیره/به‌روزرسانی/حذف شود.</p>
+
+<p><strong>ریسک مهم — نوشتن دوگانه:</strong> هر دو لایه به همان جدول‌ها می‌نویسند. نوشتن با Eloquent، <strong>رویدادها و پاک‌سازی کشِ لایه‌ی قدیمی را دور می‌زند</strong>:</p>
+<ul><li><code>OW_BaseDao::save()</code> رویداد امنیتی/کش/اعلان trigger می‌کند؛ <code>Photo::create()</code>/<code>update()</code> این‌ها را اجرا نمی‌کند.</li>
+<li>نوشتن API کش Oxwall را پاک نمی‌کند ⇒ ممکن است UI قدیمی داده‌ی کهنه نشان دهد.</li>
+<li><strong>کاهش‌یافته:</strong> <code>BaseModel::$timestamps=false</code> است، پس Eloquent <code>created_at/updated_at</code> نمی‌نویسد (که اسکیمای اکسوال ندارد) — از رایج‌ترین crash جلوگیری می‌کند.</li>
+</ul>
+<p><strong>جمع‌بندی برای مستندات:</strong> لایه‌ی API یک بازنویسی مشروع مبتنی بر Eloquent روی لایه‌ی DAO قدیمی است، هر دو روی یک MariaDB. <strong>Eloquent است، نه Laravel.</strong> خطر اصلی، مسیر نوشتن دوگانه است؛ هر جدولی که هر دو لایه می‌نویسند نیاز به دقت (یا یک نویسنده‌ی معتبر واحد) دارد.</p>
+
+<hr>
+
+<p class="muted">تهیه‌شده پس از مطالعه‌ی کامل سورس و اندازه‌گیری زنده روی استک Docker.</p>
+</div></body></html>
