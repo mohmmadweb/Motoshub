@@ -22,11 +22,20 @@ import { fundDetails, fundOverview, reviewSessions } from "../data/mockDetails";
 import {
   nfProjects as initialNfProjects,
   nfStages,
-  nfWorkflowRules,
   type NfProject,
   type NfStage,
 } from "../data/mockInnovationFund";
-import { nfEvaluations } from "../data/mockDaneshmand";
+import {
+  nfEvaluations,
+  nfSubStatuses,
+  screeningCriteriaCatalog,
+  screeningScores,
+  fundCatalog,
+  seedInvestments,
+  type SeedInvestment,
+} from "../data/mockDaneshmand";
+import { useSettings, type WorkflowSettings } from "../context/SettingsContext";
+import RowActions from "../components/ui/RowActions";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -78,23 +87,105 @@ const paymentTone: Record<string, BadgeTone> = {
 };
 
 export default function Funds() {
-  const [tab, setTab] = useState<"nf" | "employment">("nf");
+  const [tab, setTab] = useState<"nf" | "allFunds" | "employment">("nf");
   return (
     <div>
       <PageHeader
         title="صندوق نوآوری و شتاب‌دهی"
-        description="روند کامل صندوق نوآور: دریافت پروپوزال، ارزیابی، تصویب، قرارداد، نظارت و راهبری، خروج — به‌همراه طرح‌های اشتغال‌زایی"
+        description="روند کامل صندوق نوآور، شبکه‌ی صندوق‌های دانشمند (باور، فرصت، CVC و…) و طرح‌های اشتغال‌زایی"
         icon={<PiggyBank size={18} />}
       />
       <Tabs
         tabs={[
           { id: "nf", label: "صندوق نوآور — روند کامل", count: initialNfProjects.length },
+          { id: "allFunds", label: "شبکه صندوق‌ها و بذرمایه باور", count: fundCatalog.length },
           { id: "employment", label: "طرح‌های اشتغال‌زایی", count: initialFunds.length },
         ]}
         active={tab}
         onChange={setTab}
       />
-      {tab === "nf" ? <InnovationFundTab /> : <EmploymentFundTab />}
+      {tab === "nf" && <InnovationFundTab />}
+      {tab === "allFunds" && <AllFundsTab />}
+      {tab === "employment" && <EmploymentFundTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// شبکه صندوق‌های دانشمند + خط لوله بذرمایه صندوق باور (تملک سهام و خروج)
+// ---------------------------------------------------------------------------
+const seedStageTone: Record<SeedInvestment["stage"], BadgeTone> = {
+  غربالگری: "neutral",
+  ارزیابی: "warning",
+  "ارزیابی موشکافانه": "warning",
+  قرارداد: "brand",
+  "نظارت و راهبری": "success",
+  خروج: "navy",
+};
+
+function AllFundsTab() {
+  const { notify } = useToast();
+  return (
+    <div className="space-y-5">
+      <div className="card p-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Landmark size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          هر طرح بر اساس سطح بلوغ فناوری (TRL) به صندوق مناسب هدایت می‌شود؛ اگر در ارزیابی اولیه «مغایرت TRL»
+          تشخیص داده شود، طرح به‌جای رد شدن به کمیته سرمایه‌گذاری ارجاع و به صندوق مناسب منتقل می‌شود.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {fundCatalog.map((f) => (
+          <div key={f.id} className="card p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-bold text-ink-900">{f.name}</p>
+              <Badge tone="navy">{f.trlRange}</Badge>
+            </div>
+            <p className="text-[11.5px] text-ink-500 leading-5 flex-1">{f.focus}</p>
+            <div className="mt-3 pt-2.5 border-t border-ink-100 text-[11px] text-ink-400 space-y-1">
+              <p>مسئول: {f.manager}</p>
+              <p>{f.activeProjects.toLocaleString("fa-IR")} طرح فعال · سرمایه: {f.capital}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-ink-900">بذرمایه صندوق باور — تملک سهام و خروج</h3>
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => notify("فرم درخواست سرمایه‌گذاری بذرمایه برای متقاضی ارسال شد (غربالگری ← ارزیابی ← موشکافانه ← کمیته سرمایه‌گذاری).", "info")}>
+            ثبت درخواست بذرمایه
+          </Button>
+        </div>
+        <div className="card divide-y divide-ink-100">
+          {seedInvestments.map((s) => (
+            <div key={s.id} className="p-3.5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-ink-900">{s.startup}</p>
+                  <p className="text-[11px] text-ink-400 mt-0.5">{s.field} · درخواستی: {s.requested}{s.approved ? ` · مصوب: ${s.approved}` : ""}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {s.equityPercent !== undefined && <Badge tone="warning">{s.equityPercent.toLocaleString("fa-IR")}٪ سهام</Badge>}
+                  {s.valuation && <Badge tone="neutral">ارزش‌گذاری {s.valuation}</Badge>}
+                  <Badge tone={seedStageTone[s.stage]}>{s.stage}</Badge>
+                </div>
+              </div>
+              {(s.kpiStatus || s.exitPlan) && (
+                <p className="text-[11px] text-ink-500 mt-2 leading-5">
+                  {s.kpiStatus && <>پایش KPI: {s.kpiStatus}. </>}
+                  {s.exitPlan && <span className="text-emerald-700">خروج: {s.exitPlan}</span>}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-ink-400 mt-2 leading-5">
+          روند بذرمایه: دریافت طرح و غربالگری ← ارزیابی (تحقیق بازار، جلسه آشنایی، کمیته سرمایه‌گذاری) ← ارزیابی
+          موشکافانه (تعیین مبلغ و درصد تملک) ← قرارداد و تضامین ← نظارت با پرداخت قسطی مبتنی بر KPI ← خروج (فروش سهام).
+        </p>
+      </div>
     </div>
   );
 }
@@ -102,6 +193,20 @@ export default function Funds() {
 // ---------------------------------------------------------------------------
 // صندوق نوآور — روند کامل مطابق فرآیندهای موسسه دانشمند
 // ---------------------------------------------------------------------------
+function nfRules(s: WorkflowSettings) {
+  return [
+    { title: "یادآوری خودکار گزارش‌ها", text: `${s.reportReminderDays.toLocaleString("fa-IR")} روز قبل از سررسید هر گزارش (طبق گانت‌چارت)، یادآوری سیستمی برای مجری ارسال می‌شود.` },
+    { title: `اسکالیشن بررسی ${s.reviewEscalationDays.toLocaleString("fa-IR")} روزه`, text: `اگر ناظر، راهبر یا مدیر صندوق گزارشی را ظرف ${s.reviewEscalationDays.toLocaleString("fa-IR")} روز بررسی نکند، اعلان سیستمی صادر می‌شود — هیچ گزارشی خودکار تایید نمی‌شود.` },
+    { title: "اطلاع‌رسانی پرداخت به کل تیم", text: "با واریز هر مبلغ به حساب سرگروه، همه اعضای تیم مجری نوتیفیکیشن دریافت می‌کنند (شفافیت مالی)." },
+    { title: "زنجیره تایید گزارش", text: "گزارش مرحله‌ای: مدیر صندوق ← راهبر ← ناظر ← صدور دستور پرداخت ← پرداخت واحد مالی ← بارگذاری اسناد." },
+    { title: "تشخیص پروژه خوابیده", text: `اگر گزارش تعاملات معناداری در ${s.dormantProjectDays.toLocaleString("fa-IR")} روز ثبت نشود، پروژه به‌عنوان «در معرض توقف» به مدیریت ارشد هشدار داده می‌شود.` },
+    { title: "مسیر سبز", text: "پروژه‌های دارای دستور هیئت‌مدیره / مدیرعامل / ریاست بنیاد با روند فوری (جلسه دفاع ← پروپوزال ← قرارداد) وارد صندوق می‌شوند." },
+    { title: "حدنصاب‌های ارزیابی", text: `غربالگری ۲۲ معیاره: حداقل ${s.screeningThreshold.toLocaleString("fa-IR")} از ۲۰۰ · داوری ۵ بُعدی: حداقل ${s.juryThreshold.toLocaleString("fa-IR")} از ۱۰۰.` },
+    { title: "درخواست‌های خارج از قرارداد", text: "تمدید ددلاین میانی، متمم، افزایش بودجه و معرفی‌نامه در سامانه ثبت و پس از تایید مدیر صندوق به‌صورت خودکار اعمال می‌شود." },
+    { title: "حسن انجام کار و پیش‌پرداخت", text: `از هر پرداخت ${s.retentionPercent.toLocaleString("fa-IR")}٪ حسن انجام کار نگه داشته می‌شود؛ سقف پیش‌پرداخت ${s.prepaymentPercent.toLocaleString("fa-IR")}٪ مبلغ قرارداد در قبال ضمانت‌نامه است.` },
+  ];
+}
+
 function InnovationFundTab() {
   const [projects, setProjects] = useState<NfProject[]>(initialNfProjects);
   const [selected, setSelected] = useState<NfProject | null>(null);
@@ -111,7 +216,22 @@ function InnovationFundTab() {
   const [teamName, setTeamName] = useState("");
   const [macroField, setMacroField] = useState("اقتصاد دیجیتال و هوش مصنوعی");
   const [budget, setBudget] = useState("");
+  const [rahbar, setRahbar] = useState("شرکت شتابدهی و فناوری تا ثریا");
+  const [nazer, setNazer] = useState("");
+  const [projectManager, setProjectManager] = useState("");
   const { notify } = useToast();
+  const { settings } = useSettings();
+
+  const updateProject = (updated: NfProject) => {
+    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setSelected((prev) => (prev && prev.id === updated.id ? updated : prev));
+  };
+
+  const deleteProject = (p: NfProject) => {
+    setProjects((prev) => prev.filter((x) => x.id !== p.id));
+    setSelected((prev) => (prev && prev.id === p.id ? null : prev));
+    notify(`پروژه «${p.id}» حذف شد و در تاریخچه سامانه بایگانی گردید.`, "info");
+  };
 
   const pendingReports = projects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
   const pendingPayments = projects.flatMap((p) => p.payments).filter((p) => p.status !== "اسناد به تیم مجری ارسال شد" && p.status !== "اسناد تحویل صندوق شد").length;
@@ -130,9 +250,9 @@ function InnovationFundTab() {
       macroField,
       field: "سایر",
       motherProject: "ثبت مستقیم در سامانه",
-      team: { name: teamName.trim(), type: "تیم فناور", city: "—", manager: teamName.trim(), members: 1 },
-      rahbar: "در حال تعیین",
-      nazer: "در حال تعیین",
+      team: { name: teamName.trim(), type: "تیم فناور", city: "—", manager: projectManager.trim() || teamName.trim(), members: 1 },
+      rahbar: rahbar.trim() || "در حال تعیین",
+      nazer: nazer.trim() || "در حال تعیین",
       fundManager: "مدیر صندوق نوآور",
       budget: budget.trim() ? `${budget.trim()} میلیون ریال` : "در انتظار ارزیابی",
       shareDaneshmand: 50,
@@ -180,6 +300,11 @@ function InnovationFundTab() {
       ),
     },
     { key: "budget", label: "مبلغ" },
+    {
+      key: "actions",
+      label: "",
+      render: (p) => <RowActions onEdit={() => setSelected(p)} onDelete={() => deleteProject(p)} />,
+    },
   ];
 
   return (
@@ -194,7 +319,7 @@ function InnovationFundTab() {
       {lateReviews > 0 && (
         <div className="card p-3.5 mb-4 bg-amber-50 border-amber-200 flex items-center gap-2.5 text-xs text-amber-800">
           <BellRing size={15} className="shrink-0" />
-          اعلان سیستمی: {lateReviews.toLocaleString("fa-IR")} بررسی گزارش از مهلت ۱۵ روزه عبور کرده است — به بررسی‌کننده یادآوری ارسال شد. (هیچ گزارشی به‌صورت خودکار تایید نمی‌شود)
+          اعلان سیستمی: {lateReviews.toLocaleString("fa-IR")} بررسی گزارش از مهلت {settings.reviewEscalationDays.toLocaleString("fa-IR")} روزه عبور کرده است — به بررسی‌کننده یادآوری ارسال شد. (هیچ گزارشی به‌صورت خودکار تایید نمی‌شود)
         </div>
       )}
 
@@ -252,13 +377,16 @@ function InnovationFundTab() {
           <BellRing size={15} className="text-brand-600" /> قواعد گردش کار سامانه‌ای صندوق
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {nfWorkflowRules.map((r) => (
+          {nfRules(settings).map((r) => (
             <div key={r.title} className="card p-3.5">
               <p className="text-[12.5px] font-bold text-ink-900 mb-1">{r.title}</p>
               <p className="text-[11.5px] text-ink-500 leading-5">{r.text}</p>
             </div>
           ))}
         </div>
+        <p className="text-[11px] text-ink-400 mt-2">
+          همه‌ی این اعداد از «پنل راهبری ← پارامترهای گردش کار» قابل تغییرند و بلافاصله همین‌جا اعمال می‌شوند.
+        </p>
       </div>
 
       <Modal
@@ -294,6 +422,20 @@ function InnovationFundTab() {
               <input value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="۲٬۵۰۰" className="input-field" />
             </div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">راهبر (شتاب‌دهنده)</label>
+              <input value={rahbar} onChange={(e) => setRahbar(e.target.value)} className="input-field" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">ناظر</label>
+              <input value={nazer} onChange={(e) => setNazer(e.target.value)} placeholder="در حال تعیین" className="input-field" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">مدیر پروژه</label>
+              <input value={projectManager} onChange={(e) => setProjectManager(e.target.value)} placeholder="نماینده تیم" className="input-field" />
+            </div>
+          </div>
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" icon={<Send size={14} />} onClick={submitProposal}>
               ثبت پروپوزال و تخصیص کد یکتا
@@ -304,13 +446,40 @@ function InnovationFundTab() {
       </Modal>
 
       <Drawer open={selected !== null} onClose={() => setSelected(null)} title="پرونده پروژه صندوق نوآور">
-        {selected && <NfProjectFile project={selected} />}
+        {selected && <NfProjectFile project={selected} onUpdate={updateProject} onDelete={deleteProject} />}
       </Drawer>
     </div>
   );
 }
 
-function NfProjectFile({ project: p }: { project: NfProject }) {
+function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject; onUpdate: (p: NfProject) => void; onDelete: (p: NfProject) => void }) {
+  const { notify } = useToast();
+  const { settings } = useSettings();
+  const [showAllCriteria, setShowAllCriteria] = useState(false);
+
+  const changeStage = (stage: NfStage) => {
+    const firstSub = nfSubStatuses[stage]?.[0] ?? "";
+    onUpdate({
+      ...p,
+      stage,
+      subStatus: firstSub,
+      timeline: [...p.timeline, { date: "امروز", time: "هم‌اکنون", step: stage, text: `انتقال به گام «${stage}» — ${firstSub}` }],
+    });
+    notify(`پروژه ${p.id} به گام «${stage}» منتقل شد و در گام‌نما ثبت گردید.`);
+  };
+
+  const changeSubStatus = (sub: string) => {
+    onUpdate({
+      ...p,
+      subStatus: sub,
+      timeline: [...p.timeline, { date: "امروز", time: "هم‌اکنون", step: p.stage, text: `تغییر ریزوضعیت: ${sub}` }],
+    });
+    notify("ریزوضعیت به‌روزرسانی و در گام‌نما ثبت شد.");
+  };
+
+  const scores = screeningScores[p.id];
+  const screeningTotal = scores ? scores.reduce((a, b) => a + b, 0) : nfEvaluations[p.id]?.screening.total;
+
   return (
     <div className="space-y-5">
       <div>
@@ -321,8 +490,34 @@ function NfProjectFile({ project: p }: { project: NfProject }) {
         </div>
         <p className="text-sm font-bold text-ink-900 leading-6">{p.titleFa}</p>
         <p className="text-[11px] text-ink-400 mt-0.5" dir="ltr">{p.titleEn}</p>
-        <div className="mt-2 p-2.5 rounded-lg bg-ink-50 text-[11.5px] text-ink-600 leading-5">
-          <span className="font-medium text-ink-800">ریزوضعیت فعلی:</span> {p.subStatus}
+        <div className="mt-2 p-2.5 rounded-lg bg-ink-50 space-y-2">
+          <p className="text-[11.5px] text-ink-600 leading-5">
+            <span className="font-medium text-ink-800">ریزوضعیت فعلی:</span> {p.subStatus}
+          </p>
+          <div className="grid grid-cols-1 gap-1.5">
+            <select
+              value={p.stage}
+              onChange={(e) => changeStage(e.target.value as NfStage)}
+              className="text-[11px] border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white w-full"
+            >
+              {nfStages.map((s) => (
+                <option key={s} value={s}>گام: {s}</option>
+              ))}
+            </select>
+            <select
+              value={nfSubStatuses[p.stage]?.includes(p.subStatus) ? p.subStatus : ""}
+              onChange={(e) => e.target.value && changeSubStatus(e.target.value)}
+              className="text-[11px] border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white w-full"
+            >
+              <option value="">تغییر ریزوضعیت این گام…</option>
+              {(nfSubStatuses[p.stage] ?? []).map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={() => onDelete(p)} className="text-[11px] text-rose-500 hover:text-rose-700 flex items-center gap-1">
+            حذف این پروژه از صندوق
+          </button>
         </div>
       </div>
 
@@ -352,35 +547,39 @@ function NfProjectFile({ project: p }: { project: NfProject }) {
         </div>
       </div>
 
-      {nfEvaluations[p.id] && (
+      {(scores || nfEvaluations[p.id]) && (
         <div className="border-t border-ink-100 pt-4">
           <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Gauge size={13} className="text-ink-400" /> فرم‌های امتیازدهی ارزیابی</h4>
-          <div className="text-[11px] bg-ink-50 rounded-lg p-2.5 mb-2">
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="font-medium text-ink-800">غربالگری اولیه (۲۲ معیار)</p>
-              <Badge tone={nfEvaluations[p.id].screening.total >= nfEvaluations[p.id].screening.threshold ? "success" : "danger"}>
-                {nfEvaluations[p.id].screening.total.toLocaleString("fa-IR")} از ۲۰۰ — حد نصاب {nfEvaluations[p.id].screening.threshold.toLocaleString("fa-IR")}
-              </Badge>
-            </div>
-            <div className="space-y-1">
-              {nfEvaluations[p.id].screening.topCriteria.map((c) => (
-                <div key={c.title} className="flex items-center gap-2">
-                  <span className="flex-1 text-ink-600 truncate">{c.title}</span>
-                  <div className="w-20 h-1 rounded-full bg-ink-200/70 overflow-hidden shrink-0">
-                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(c.score / c.max) * 100}%` }} />
+          {scores && screeningTotal !== undefined && (
+            <div className="text-[11px] bg-ink-50 rounded-lg p-2.5 mb-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="font-medium text-ink-800">غربالگری اولیه (۲۲ معیار)</p>
+                <Badge tone={screeningTotal >= settings.screeningThreshold ? "success" : "danger"}>
+                  {screeningTotal.toLocaleString("fa-IR")} از ۲۰۰ — حد نصاب {settings.screeningThreshold.toLocaleString("fa-IR")}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                {screeningCriteriaCatalog.slice(0, showAllCriteria ? 22 : 5).map((c, i) => (
+                  <div key={c.title} className="flex items-center gap-2">
+                    <span className="flex-1 text-ink-600 truncate">{c.title}</span>
+                    <div className="w-20 h-1 rounded-full bg-ink-200/70 overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-brand-500" style={{ width: `${(scores[i] / c.max) * 100}%` }} />
+                    </div>
+                    <span className="text-ink-400 shrink-0 w-10 text-left" dir="ltr">{scores[i]}/{c.max}</span>
                   </div>
-                  <span className="text-ink-400 shrink-0 w-10 text-left" dir="ltr">{c.score}/{c.max}</span>
-                </div>
-              ))}
-              <p className="text-ink-400 pt-1">… و {`${(22 - nfEvaluations[p.id].screening.topCriteria.length).toLocaleString("fa-IR")}`} معیار دیگر</p>
+                ))}
+              </div>
+              <button onClick={() => setShowAllCriteria((v) => !v)} className="text-brand-600 font-medium mt-1.5">
+                {showAllCriteria ? "نمایش خلاصه" : `نمایش هر ${(22).toLocaleString("fa-IR")} معیار`}
+              </button>
             </div>
-          </div>
-          {nfEvaluations[p.id].jury && (
+          )}
+          {nfEvaluations[p.id]?.jury && (
             <div className="text-[11px] bg-ink-50 rounded-lg p-2.5">
               <div className="flex items-center justify-between mb-1.5">
                 <p className="font-medium text-ink-800">ارزیابی داوری (۵ بُعد — با تعهد رازداری داور)</p>
-                <Badge tone={nfEvaluations[p.id].jury!.total >= nfEvaluations[p.id].jury!.threshold ? "success" : "danger"}>
-                  {nfEvaluations[p.id].jury!.total.toLocaleString("fa-IR")} از ۱۰۰ — حد نصاب {nfEvaluations[p.id].jury!.threshold.toLocaleString("fa-IR")}
+                <Badge tone={nfEvaluations[p.id].jury!.total >= settings.juryThreshold ? "success" : "danger"}>
+                  {nfEvaluations[p.id].jury!.total.toLocaleString("fa-IR")} از ۱۰۰ — حد نصاب {settings.juryThreshold.toLocaleString("fa-IR")}
                 </Badge>
               </div>
               <div className="space-y-1">

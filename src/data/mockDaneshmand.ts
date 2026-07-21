@@ -435,3 +435,355 @@ export const assistantSamples: AssistantExchange[] = [
     a: "بر اساس گزارش‌های تعاملات، هیچ پروژه‌ای بیش از یک ماه بدون تعامل معنادار نبوده است. نزدیک‌ترین مورد به هشدار: NF-1404-1001 که گزارش تعاملات ماه چهارم آن هنوز بارگذاری نشده — اگر تا ۷ روز دیگر ثبت نشود، به‌عنوان «در معرض توقف» علامت‌گذاری می‌شود.",
   },
 ];
+
+// ------------------- کاتالوگ صندوق‌های سرمایه‌گذاری دانشمند -------------------
+export type FundEntity = {
+  id: string;
+  name: string;
+  focus: string;
+  trlRange: string;
+  manager: string;
+  activeProjects: number;
+  capital: string;
+};
+
+export const fundCatalog: FundEntity[] = [
+  { id: "f-novaavar", name: "صندوق نوآور", focus: "پیش‌شتابدهی — ساخت پروتوتایپ و منتورینگ", trlRange: "TRL 3-6", manager: "مدیر صندوق نوآور", activeProjects: 5, capital: "۱۴٬۰۰۰ میلیون ریال" },
+  { id: "f-bavar", name: "صندوق باور", focus: "بذرمایه و شتابدهی — تملک سهام", trlRange: "TRL 4-7", manager: "مدیر مرکز شتابدهی", activeProjects: 3, capital: "۲۰٬۰۰۰ میلیون ریال" },
+  { id: "f-forsat", name: "صندوق فرصت", focus: "فرصت مطالعاتی صنعتی اعضای هیئت علمی", trlRange: "TRL 2-5", manager: "مدیر صندوق فرصت", activeProjects: 4, capital: "۶٬۰۰۰ میلیون ریال" },
+  { id: "f-cvc", name: "سینا وی‌سی (CVC)", focus: "سرمایه‌گذاری خطرپذیر شرکتی", trlRange: "TRL 6-9", manager: "شرکت توسعه دانش‌بنیان سینا", activeProjects: 2, capital: "۱۲۰٬۰۰۰ میلیون ریال" },
+  { id: "f-rnd", name: "صندوق سرمایه‌گذاری تحقیق و توسعه دانشمند", focus: "پوشش کامل زنجیره", trlRange: "TRL 1-9", manager: "هیئت مدیره موسسه", activeProjects: 0, capital: "در حال تاسیس" },
+  { id: "f-pf", name: "صندوق پژوهش و فناوری", focus: "ضمانت‌نامه و تسهیلات فناوران", trlRange: "—", manager: "صندوق پژوهش و فناوری", activeProjects: 6, capital: "۴۵٬۰۰۰ میلیون ریال" },
+  { id: "f-niko", name: "صندوق نیکوکاری", focus: "حمایت از نوآوری‌های اجتماعی", trlRange: "—", manager: "معاونت ترویج نوآوری", activeProjects: 1, capital: "۳٬۰۰۰ میلیون ریال" },
+];
+
+// خط لوله بذرمایه صندوق باور — تملک سهام و خروج
+export type SeedInvestment = {
+  id: string;
+  startup: string;
+  field: string;
+  stage: "غربالگری" | "ارزیابی" | "ارزیابی موشکافانه" | "قرارداد" | "نظارت و راهبری" | "خروج";
+  requested: string;
+  approved?: string;
+  equityPercent?: number;
+  valuation?: string;
+  kpiStatus?: string;
+  exitPlan?: string;
+};
+
+export const seedInvestments: SeedInvestment[] = [
+  { id: "sv1", startup: "زیست‌پالا (تصفیه پساب صنعتی)", field: "محیط زیست", stage: "نظارت و راهبری", requested: "۴٬۰۰۰ میلیون ریال", approved: "۳٬۲۰۰ میلیون ریال", equityPercent: 12, valuation: "۲۶٬۶۰۰ میلیون ریال", kpiStatus: "۲ از ۳ KPI محقق — قسط سوم آزاد شد" },
+  { id: "sv2", startup: "آی‌داک (نسخه‌نویسی الکترونیک)", field: "سلامت دیجیتال", stage: "قرارداد", requested: "۶٬۰۰۰ میلیون ریال", approved: "۵٬۰۰۰ میلیون ریال", equityPercent: 15, valuation: "۳۳٬۰۰۰ میلیون ریال", kpiStatus: "در انتظار مصوبه هیئت مدیره و تضامین" },
+  { id: "sv3", startup: "رهیاب‌انرژی (بهینه‌سازی مصرف)", field: "انرژی", stage: "خروج", requested: "۲٬۵۰۰ میلیون ریال", approved: "۲٬۵۰۰ میلیون ریال", equityPercent: 10, valuation: "۴۸٬۰۰۰ میلیون ریال", kpiStatus: "همه KPIها محقق", exitPlan: "فروش سهام به سینا وی‌سی — بازده ۱.۹ برابر" },
+];
+
+// ------------------- فراخوان نیازهای فناورانه و انتخاب فناور برتر -------------------
+export type RfpVendor = {
+  id: string;
+  name: string;
+  bizScore?: number; // نمره کسب‌وکاری (از ۱۰۰)
+  techScore?: number; // نمره فنی (از ۱۰۰)
+  priceOpened?: boolean;
+  price?: string;
+  winner?: boolean;
+};
+
+export type RfpCall = {
+  id: string;
+  title: string;
+  company: string;
+  holding: string;
+  stage: "انتشار فراخوان" | "دریافت مستندات" | "ارزیابی کسب‌وکاری" | "ارزیابی فنی" | "بازگشایی پاکات" | "فناور برتر انتخاب شد";
+  deadline: string;
+  vendors: RfpVendor[];
+  channels: string[]; // محل‌های انتشار
+};
+
+export const rfpCalls: RfpCall[] = [
+  {
+    id: "rfp1",
+    title: "RFP سامانه پایش برخط کیفیت شیر خام در زنجیره سرد",
+    company: "لبنیات پاک",
+    holding: "صنایع غذایی سینا",
+    stage: "فناور برتر انتخاب شد",
+    deadline: "۱۴۰۵/۰۲/۳۰",
+    channels: ["سامانه دانشمند", "سامانه ساخت داخل", "سامانه نان"],
+    vendors: [
+      { id: "v1", name: "زیست‌فناور کیمیا", bizScore: 82, techScore: 88, priceOpened: true, price: "۹٬۸۰۰ میلیون ریال", winner: true },
+      { id: "v2", name: "پایش‌گستر آزما", bizScore: 74, techScore: 79, priceOpened: true, price: "۱۱٬۲۰۰ میلیون ریال" },
+      { id: "v3", name: "تیم دانشگاهی صنعتی‌شریف", bizScore: 68, techScore: 84, priceOpened: true, price: "۸٬۹۰۰ میلیون ریال" },
+    ],
+  },
+  {
+    id: "rfp2",
+    title: "RFP هوشمندسازی توزین و بارگیری ناوگان ریلی",
+    company: "سینا ریل پارس",
+    holding: "پایا ترابر سینا",
+    stage: "ارزیابی فنی",
+    deadline: "۱۴۰۵/۰۵/۱۵",
+    channels: ["سامانه دانشمند", "سامانه جان"],
+    vendors: [
+      { id: "v1", name: "فوتونیک آریا", bizScore: 78, techScore: undefined },
+      { id: "v2", name: "رهاورد سنجش", bizScore: 71 },
+      { id: "v3", name: "مکاترونیک پیشرو", bizScore: 64 },
+    ],
+  },
+  {
+    id: "rfp3",
+    title: "RFP بازیافت حرارت کوره‌های عملیات حرارتی",
+    company: "نیروگاه‌های صبا",
+    holding: "برق و انرژی صبا",
+    stage: "دریافت مستندات",
+    deadline: "۱۴۰۵/۰۶/۰۱",
+    channels: ["سامانه دانشمند", "سامانه ساخت داخل"],
+    vendors: [
+      { id: "v1", name: "حرارت گستر" },
+      { id: "v2", name: "ترمودینا" },
+    ],
+  },
+];
+
+// ------------------- فرصت مطالعاتی اساتید (صندوق فرصت) -------------------
+export type SabbaticalReport = {
+  no: 1 | 2 | 3;
+  title: string;
+  status: "در انتظار" | "ارسال به صنعت و داور" | "نیازمند اصلاح" | "تایید و پرداخت شد";
+  paidAmount?: string;
+};
+
+export type Sabbatical = {
+  id: string;
+  professor: string;
+  university: string;
+  industry: string; // شرکت صنعتی میزبان
+  topic: string;
+  trlBefore: number;
+  trlAfter?: number;
+  contract: string;
+  reports: SabbaticalReport[]; // ۳ گزارش: شناخت / راهکار / RFPها
+  stage: "فراخوان" | "انتخاب استاد" | "قرارداد" | "در حال اجرا" | "کتابچه و ارائه نهایی" | "خاتمه";
+};
+
+export const sabbaticals: Sabbatical[] = [
+  {
+    id: "sb1",
+    professor: "دکتر فرزانه توکلی",
+    university: "دانشگاه صنعتی اصفهان",
+    industry: "صنایع غذایی سینا — بهنوش",
+    topic: "کاهش ضایعات خط تولید نوشیدنی با تحلیل داده",
+    trlBefore: 2,
+    trlAfter: 4,
+    contract: "ف/۱۴۰۴/۰۸",
+    stage: "در حال اجرا",
+    reports: [
+      { no: 1, title: "گزارش شناخت شرکت", status: "تایید و پرداخت شد", paidAmount: "۲۵۰ میلیون ریال" },
+      { no: 2, title: "گزارش ارائه راهکار", status: "ارسال به صنعت و داور" },
+      { no: 3, title: "گزارش RFPهای پیشنهادی (حداقل ۶ عنوان: ۳ نوپا، ۲ R&D، ۱ کلان)", status: "در انتظار" },
+    ],
+  },
+  {
+    id: "sb2",
+    professor: "دکتر امیرحسین شعبانی",
+    university: "دانشگاه تبریز",
+    industry: "کاوه پارس — زنجیره فولاد",
+    topic: "کاهش مصرف انرژی در کوره‌های قوس الکتریکی",
+    trlBefore: 3,
+    contract: "ف/۱۴۰۴/۱۱",
+    stage: "قرارداد",
+    reports: [
+      { no: 1, title: "گزارش شناخت شرکت", status: "در انتظار" },
+      { no: 2, title: "گزارش ارائه راهکار", status: "در انتظار" },
+      { no: 3, title: "گزارش RFPهای پیشنهادی", status: "در انتظار" },
+    ],
+  },
+  {
+    id: "sb3",
+    professor: "دکتر لیلا قنبری",
+    university: "دانشگاه فردوسی مشهد",
+    industry: "فردوس پارس — دشت ناز",
+    topic: "الگوی آبیاری دقیق مبتنی بر سنجش از دور",
+    trlBefore: 2,
+    trlAfter: 5,
+    contract: "ف/۱۴۰۳/۲۱",
+    stage: "خاتمه",
+    reports: [
+      { no: 1, title: "گزارش شناخت شرکت", status: "تایید و پرداخت شد", paidAmount: "۲۲۰ میلیون ریال" },
+      { no: 2, title: "گزارش ارائه راهکار", status: "تایید و پرداخت شد", paidAmount: "۲۸۰ میلیون ریال" },
+      { no: 3, title: "گزارش RFPهای پیشنهادی (۷ عنوان)", status: "تایید و پرداخت شد", paidAmount: "۳۰۰ میلیون ریال" },
+    ],
+  },
+];
+
+// ------------------- مناقصه، مزایده و کمیسیون معاملات -------------------
+export type TenderRecord = {
+  id: string;
+  title: string;
+  method: "مناقصه عمومی" | "مناقصه محدود" | "مزایده" | "ترک تشریفات";
+  stage: "انتشار آگهی" | "دریافت پاکات" | "کمیسیون معاملات" | "ابلاغ برنده" | "عقد قرارداد";
+  participants: number;
+  sessionDate?: string;
+  winner?: string;
+  note?: string;
+};
+
+export const tenders: TenderRecord[] = [
+  { id: "tn1", title: "تجهیز آزمایشگاه مرکز نوآوری پارک پیامبر اعظم", method: "مناقصه عمومی", stage: "کمیسیون معاملات", participants: 6, sessionDate: "۱۴۰۵/۰۴/۲۵", note: "بازگشایی پاکات الف و ب انجام شد؛ پاکت ج در جلسه کمیسیون" },
+  { id: "tn2", title: "واگذاری فضای کار اشتراکی خانه خلاقیت علوی", method: "مزایده", stage: "دریافت پاکات", participants: 3 },
+  { id: "tn3", title: "خرید سرویس رایانش ابری پروژه‌های هوش مصنوعی", method: "ترک تشریفات", stage: "عقد قرارداد", participants: 1, winner: "ابر آروان (نمونه)", note: "مصوبه ترک تشریفات هیئت مدیره پیوست است" },
+  { id: "tn4", title: "چاپ و توزیع شماره ۱۲ مجله دانشمند", method: "مناقصه محدود", stage: "ابلاغ برنده", participants: 4, winner: "چاپخانه اندیشه" },
+];
+
+// ------------------- نشریات: مجله دانشمند و بنیادتک -------------------
+export type PublicationIssue = {
+  id: string;
+  magazine: "مجله دانشمند" | "نشریه بنیادتک";
+  issueNo: number;
+  title: string;
+  season: string;
+  stage: "گردآوری محتوا" | "ویراستاری" | "صفحه‌آرایی" | "چاپ و توزیع" | "منتشر شده";
+  articles: number;
+};
+
+export const publicationIssues: PublicationIssue[] = [
+  { id: "pb1", magazine: "مجله دانشمند", issueNo: 12, title: "ویژه‌نامه هوش مصنوعی در صنایع بنیاد", season: "تابستان ۱۴۰۵", stage: "صفحه‌آرایی", articles: 14 },
+  { id: "pb2", magazine: "مجله دانشمند", issueNo: 11, title: "زنجیره ارزش فولاد و فناوری‌های سبز", season: "بهار ۱۴۰۵", stage: "منتشر شده", articles: 12 },
+  { id: "pb3", magazine: "نشریه بنیادتک", issueNo: 8, title: "گزارش رویداد راهی شو ۱۴۰۳ و تیم‌های برگزیده", season: "بهار ۱۴۰۵", stage: "منتشر شده", articles: 9 },
+  { id: "pb4", magazine: "نشریه بنیادتک", issueNo: 9, title: "ویژه فراخوان‌های نیازهای فناورانه", season: "تابستان ۱۴۰۵", stage: "گردآوری محتوا", articles: 5 },
+];
+
+// ------------------- شناسنامه‌های تجمیعی -------------------
+export type SupportedProduct = { id: string; name: string; company: string; trl: number; status: string };
+export const supportedProducts: SupportedProduct[] = [
+  { id: "sp1", name: "کیت تشخیص سریع آنتی‌بیوتیک شیر", company: "زیست‌فناور کیمیا", trl: 7, status: "در حال استقرار در لبنیات پاک" },
+  { id: "sp2", name: "سامانه تشخیص خودکار حوادث جاده‌ای", company: "بینا رایان", trl: 9, status: "بهره‌برداری تجاری" },
+  { id: "sp3", name: "پهپاد سمپاش ۲۰ لیتری", company: "پرواز سبز", trl: 8, status: "پایلوت مزارع دشت ناز" },
+  { id: "sp4", name: "خمیرکاغذ کرافت ارگانوسولو", company: "اکال زیست پایدار", trl: 4, status: "پروتوتایپ در صندوق نوآور" },
+];
+
+export type SupportedVenture = { id: string; name: string; supportType: "قرارداد فناورانه" | "بذرمایه" | "سرمایه خطرپذیر"; field: string; year: string };
+export const supportedVentures: SupportedVenture[] = [
+  { id: "sv1", name: "اکال زیست پایدار", supportType: "قرارداد فناورانه", field: "زیست‌فناوری", year: "۱۴۰۴" },
+  { id: "sv2", name: "زیست‌پالا", supportType: "بذرمایه", field: "محیط زیست", year: "۱۴۰۴" },
+  { id: "sv3", name: "رهیاب‌انرژی", supportType: "بذرمایه", field: "انرژی", year: "۱۴۰۳" },
+  { id: "sv4", name: "بینا رایان", supportType: "سرمایه خطرپذیر", field: "بینایی ماشین", year: "۱۴۰۲" },
+  { id: "sv5", name: "سیگنال امید", supportType: "قرارداد فناورانه", field: "هوش مصنوعی", year: "۱۴۰۴" },
+];
+
+export type PartnerTechnologist = { id: string; name: string; expertise: string; projects: number; rating: number };
+export const partnerTechnologists: PartnerTechnologist[] = [
+  { id: "pt1", name: "شرکت شتابدهی و فناوری تا ثریا", expertise: "راهبری و شتابدهی تیم‌ها", projects: 5, rating: 4.6 },
+  { id: "pt2", name: "زیست‌فناور کیمیا", expertise: "کیت‌های تشخیصی", projects: 2, rating: 4.4 },
+  { id: "pt3", name: "فوتونیک آریا", expertise: "لیدار و سنجش نوری", projects: 1, rating: 4.0 },
+  { id: "pt4", name: "پرواز سبز", expertise: "پهپاد کشاورزی", projects: 1, rating: 4.5 },
+];
+
+// ------------------- طرح‌های در دست بررسی (شیت کنترل پروژه) -------------------
+export type PendingReviewItem = { id: string; topic: string; holding: string; company: string; mojri?: string; obstacles?: string; note?: string };
+export const pendingReviewItems: PendingReviewItem[] = [
+  { id: "pv1", topic: "اتوماسیون انبار قطعات یدکی نیروگاه", holding: "برق و انرژی صبا", company: "نیروگاه‌های صبا", obstacles: "در انتظار تخصیص بودجه هلدینگ" },
+  { id: "pv2", topic: "سامانه رزرو و فروش برخط هتل‌ها", holding: "سیاحتی پارسیان", company: "هتل‌های پارسیان", mojri: "در حال انتخاب از فراخوان", note: "RFP در حال تدوین" },
+  { id: "pv3", topic: "ردیابی سرد زنجیره لبنیات با IoT", holding: "صنایع غذایی سینا", company: "لبنیات پاک", obstacles: "نیاز به استعلام از واحد مالی" },
+];
+
+// ------------------- ریزوضعیت‌های هر گام صندوق نوآور (شیت Statuses) -------------------
+export const nfSubStatuses: Record<string, string[]> = {
+  "دریافت پروپوزال": [
+    "دریافت طرح، تخصیص کد یکتا و ایجاد شناسنامه",
+    "بررسی مستندات و اعلام اصلاحات — در انتظار طرح اصلاح‌شده",
+    "دریافت طرح اصلاح‌شده",
+    "تایید شکلی و ارجاع به کارشناس",
+  ],
+  "ارزیابی اولیه": [
+    "اجرای پرامپت ارزیابی اولیه و آماده شدن گزارش",
+    "نیاز به جلسه — در حال هماهنگی",
+    "جلسه برگزار شد",
+    "نیاز به اصلاح طرح",
+    "مغایرت TRL با هدف صندوق — ارجاع به کمیته سرمایه‌گذاری",
+    "کسب حد نصاب — ارسال به ارزیابی موشکافانه",
+    "رد درخواست",
+  ],
+  "ارزیابی موشکافانه": [
+    "در حال تعیین تیم داوری/راهبری/ناظر",
+    "ارسال به داوران — تحت بررسی",
+    "یادآوری به داور دارای تاخیر",
+    "دریافت نتیجه تمامی داوران و جمع‌بندی",
+    "ارسال گزارش به کارگروه ارزیابی صندوق",
+    "نیاز به اصلاح",
+    "تایید و آماده تصویب",
+  ],
+  "تصویب طرح": [
+    "در دستور جلسه شورای راهبری",
+    "تایید شورا — در دستور جلسه هیئت مدیره",
+    "نیاز به اصلاح از نظر هیئت مدیره",
+    "تصویب در هیئت مدیره",
+    "رد در شورا/هیئت مدیره",
+  ],
+  "تنظیم قرارداد": [
+    "تعیین تیپ قرارداد و ارسال به مجری",
+    "در انتظار مشخصات از مجری/راهبر",
+    "قرارداد تنظیم شد",
+    "ارسال غیرحضوری برای امضای الکترونیکی — در انتظار امضای مجری",
+    "امضای راهبر و صاحبین امضا",
+    "همه امضاها اخذ شد — در انتظار شماره نامه",
+    "تخصیص شماره و تحویل نسخه‌ها",
+  ],
+  "نظارت و راهبری": [
+    "نیاز به پیش‌پرداخت — در انتظار تضامین",
+    "تضامین دریافت شد — در انتظار دستور پرداخت پیش‌پرداخت",
+    "دریافت گزارش پیشرفت و صورت‌وضعیت",
+    "بررسی پیشرفت نیازمند جلسه دفاع",
+    "گزارش نیازمند اصلاح",
+    "گزارش مورد تایید صندوق — در انتظار دستور پرداخت",
+    "دستور پرداخت صادر شد — در انتظار پرداخت واحد مالی",
+    "پرداخت انجام شد — اسناد در جریان",
+    "دریافت گزارش پیشرفت ماهانه اعضای تیم",
+    "پایان زمان و نیاز به متمم قرارداد",
+    "صدور معرفی‌نامه برای تیم مجری",
+  ],
+  "خروج از صندوق": [
+    "تحویل گزارش نهایی مورد تایید راهبر",
+    "جلسه دفاع اختتام",
+    "صورت‌مجلس پایان پروژه",
+    "پرداخت فاز نهایی — اسناد در جریان",
+    "در انتظار آزادسازی حسن انجام کار",
+    "جانمایی تیم در رویداد سرمایه‌گذاری",
+    "ورود تیم به فاز شتابدهی / فروش محصول",
+    "پروژه خاتمه یافته",
+    "لغو در فازهای میانی",
+  ],
+};
+
+// ------------------- فرم کامل ۲۲ معیار غربالگری (سقف ۲۰۰) -------------------
+export const screeningCriteriaCatalog: { title: string; max: number }[] = [
+  { title: "جانمایی در زنجیره ارزش بنیاد", max: 20 },
+  { title: "نوآوری و تمایز فناورانه", max: 15 },
+  { title: "توان فنی و سابقه تیم", max: 15 },
+  { title: "اندازه و رشد بازار", max: 15 },
+  { title: "آمادگی نمونه اولیه (TRL)", max: 10 },
+  { title: "مزیت رقابتی پایدار", max: 10 },
+  { title: "مدل درآمدی و قیمت‌گذاری", max: 10 },
+  { title: "تحلیل رقبا", max: 8 },
+  { title: "تیم‌سازی و تقسیم نقش‌ها", max: 8 },
+  { title: "تعهد تمام‌وقت اعضای کلیدی", max: 8 },
+  { title: "ریسک‌های فنی و راهکار کاهش", max: 8 },
+  { title: "ریسک‌های بازار", max: 7 },
+  { title: "مالکیت فکری و ثبت اختراع", max: 7 },
+  { title: "نیازمندی سرمایه و برنامه هزینه‌کرد", max: 7 },
+  { title: "قابلیت مقیاس‌پذیری", max: 7 },
+  { title: "هم‌افزایی با سایر پروژه‌های دانشمند", max: 6 },
+  { title: "امکان بومی‌سازی و ساخت داخل", max: 6 },
+  { title: "جذابیت برای سرمایه‌گذار بعدی", max: 6 },
+  { title: "الزامات مجوز و رگولاتوری", max: 6 },
+  { title: "اثر اجتماعی و اشتغال", max: 5 },
+  { title: "سازگاری زیست‌محیطی", max: 5 },
+  { title: "کیفیت مستندات و ارائه", max: 5 },
+];
+
+// امتیازهای ۲۲گانه هر پروژه (هم‌ترتیب با کاتالوگ بالا)
+export const screeningScores: Record<string, number[]> = {
+  "NF-1404-1001": [16, 12, 11, 9, 7, 7, 6, 5, 6, 6, 5, 4, 3, 5, 5, 4, 5, 4, 4, 4, 5, 5],
+  "NF-1404-1004": [13, 12, 10, 10, 6, 6, 6, 5, 5, 5, 5, 4, 5, 4, 4, 3, 4, 4, 3, 3, 2, 2],
+  "NF-1404-1047": [17, 13, 12, 10, 8, 8, 7, 6, 6, 6, 6, 5, 4, 5, 5, 5, 4, 5, 4, 3, 3, 3],
+  "NF-1404-1051": [18, 12, 13, 11, 8, 8, 7, 6, 7, 6, 6, 5, 4, 6, 6, 6, 5, 5, 5, 3, 2, 3],
+  "NF-1404-1053": [12, 11, 9, 8, 6, 6, 5, 4, 5, 5, 4, 4, 3, 4, 4, 3, 5, 3, 3, 3, 6, 6],
+};

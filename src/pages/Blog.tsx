@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { NotebookPen, Star, Plus, Hash } from "lucide-react";
+import { NotebookPen, Star, Plus, Hash, BookMarked } from "lucide-react";
 import { Link } from "react-router-dom";
 import { currentUser, type BlogPost, type Visibility } from "../data/mock";
+import { publicationIssues, type PublicationIssue } from "../data/mockDaneshmand";
+import Tabs from "../components/ui/Tabs";
+import RowActions from "../components/ui/RowActions";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -12,33 +15,103 @@ import { useContent } from "../context/ContentContext";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
+const pubStageTone = {
+  "گردآوری محتوا": "neutral",
+  ویراستاری: "warning",
+  "صفحه‌آرایی": "brand",
+  "چاپ و توزیع": "navy",
+  "منتشر شده": "success",
+} as const;
+
+function PublicationsTab() {
+  const { notify } = useToast();
+  const grouped: PublicationIssue["magazine"][] = ["مجله دانشمند", "نشریه بنیادتک"];
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-ink-500 leading-6">
+        روند انتشار: گردآوری محتوا (معاونت ترویج نوآوری) ← ویراستاری ← صفحه‌آرایی ← چاپ و توزیع. نسخه دیجیتال
+        هر شماره پس از انتشار در بانک دانش بارگذاری می‌شود.
+      </p>
+      {grouped.map((mag) => (
+        <div key={mag}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+              <BookMarked size={14} className="text-brand-600" /> {mag}
+            </h3>
+            <button
+              onClick={() => notify(`فرم برنامه‌ریزی شماره جدید «${mag}» باز شد.`, "info")}
+              className="text-[11px] text-brand-600 font-medium hover:text-brand-700"
+            >
+              + شماره جدید
+            </button>
+          </div>
+          <div className="card divide-y divide-ink-100">
+            {publicationIssues.filter((p) => p.magazine === mag).map((p) => (
+              <div key={p.id} className="p-3.5 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-ink-900">شماره {p.issueNo.toLocaleString("fa-IR")} — {p.title}</p>
+                  <p className="text-[11px] text-ink-400 mt-0.5">{p.season} · {p.articles.toLocaleString("fa-IR")} مقاله</p>
+                </div>
+                <Badge tone={pubStageTone[p.stage]}>{p.stage}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Blog() {
+  const [tab, setTab] = useState<"blog" | "pubs">("blog");
   const { blogPosts: posts, setBlogPosts: setPosts } = useContent();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [tags, setTags] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+
+  const startEdit = (b: BlogPost) => {
+    setEditingId(b.id);
+    setTitle(b.title);
+    setExcerpt(b.excerpt);
+    setTags(b.tags.join("، "));
+    setVisibility(b.visibility);
+    setOpen(true);
+  };
+
+  const remove = (b: BlogPost) => {
+    setPosts((prev) => prev.filter((p) => p.id !== b.id));
+    notify(`یادداشت «${b.title}» حذف شد.`, "info");
+  };
 
   const submit = () => {
     if (!title.trim() || !excerpt.trim()) {
       notify("عنوان و متن یادداشت الزامی است.", "warning");
       return;
     }
-    const newPost: BlogPost = {
-      id: `b-${Date.now()}`,
-      title: title.trim(),
-      author: currentUser.name,
-      excerpt: excerpt.trim(),
-      date: jalaliToday,
-      rating: 0,
-      tags: tags.split("،").map((t) => t.trim()).filter(Boolean),
-      visibility,
-    };
-    setPosts((prev) => [newPost, ...prev]);
-    notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
+    const tagList = tags.split("،").map((t) => t.trim()).filter(Boolean);
+    if (editingId) {
+      setPosts((prev) => prev.map((p) => (p.id === editingId ? { ...p, title: title.trim(), excerpt: excerpt.trim(), tags: tagList, visibility } : p)));
+      notify(`یادداشت «${title.trim()}» ویرایش شد.`);
+    } else {
+      const newPost: BlogPost = {
+        id: `b-${Date.now()}`,
+        title: title.trim(),
+        author: currentUser.name,
+        excerpt: excerpt.trim(),
+        date: jalaliToday,
+        rating: 0,
+        tags: tagList,
+        visibility,
+      };
+      setPosts((prev) => [newPost, ...prev]);
+      notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
+    }
     setOpen(false);
+    setEditingId(null);
     setTitle(""); setExcerpt(""); setTags(""); setVisibility("عمومی");
   };
 
@@ -63,20 +136,33 @@ export default function Blog() {
         }
       />
 
+      <Tabs
+        tabs={[
+          { id: "blog", label: "یادداشت‌های بلاگ", count: posts.length },
+          { id: "pubs", label: "نشریات (دانشمند / بنیادتک)", count: publicationIssues.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      {tab === "pubs" && <PublicationsTab />}
+
+      {tab === "blog" && (
       <div className="card divide-y divide-ink-100">
         {/* header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
           <span>عنوان یادداشت</span>
           <span className="text-center">برچسب‌ها</span>
           <span className="text-center">نویسنده</span>
           <span className="text-center">امتیاز</span>
           <span className="text-center">دسترسی</span>
+          <span />
         </div>
 
         {posts.map((b) => (
           <div
             key={b.id}
-            className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
+            className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
           >
             {/* Title + excerpt */}
             <div className="min-w-0">
@@ -106,6 +192,7 @@ export default function Blog() {
               onChange={() => toggleVisibility(b.id)}
               size="xs"
             />
+            <RowActions onEdit={() => startEdit(b)} onDelete={() => remove(b)} />
           </div>
         ))}
 
@@ -113,8 +200,9 @@ export default function Blog() {
           <div className="p-8 text-center text-sm text-ink-400">هنوز یادداشتی ثبت نشده</div>
         )}
       </div>
+      )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="انتشار یادداشت جدید در بلاگ">
+      <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش یادداشت" : "انتشار یادداشت جدید در بلاگ"}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان</label>

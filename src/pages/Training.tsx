@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { GraduationCap, CalendarDays, Users, Award, Gauge, CheckCircle2 } from "lucide-react";
-import { trainingCourses, type TrainingCourse } from "../data/mockDaneshmand";
+import { GraduationCap, CalendarDays, Users, Award, Gauge, CheckCircle2, Plus } from "lucide-react";
+import { trainingCourses as initialCourses, type TrainingCourse } from "../data/mockDaneshmand";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import StatCard from "../components/ui/StatCard";
 import Drawer from "../components/ui/Drawer";
+import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
 import { useToast } from "../components/ui/ToastProvider";
 
 const statusTone: Record<TrainingCourse["status"], BadgeTone> = {
@@ -15,10 +17,19 @@ const statusTone: Record<TrainingCourse["status"], BadgeTone> = {
 };
 
 export default function Training() {
+  const [courses, setCourses] = useState<TrainingCourse[]>(initialCourses);
   const [selected, setSelected] = useState<TrainingCourse | null>(null);
   const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [instructor, setInstructor] = useState("");
+  const [date, setDate] = useState("");
+  const [hours, setHours] = useState("۸");
+  const [capacity, setCapacity] = useState("۳۰");
   const { notify } = useToast();
 
+  const trainingCourses = courses;
   const totalCerts = trainingCourses.reduce((s, c) => s + (c.certificates ?? 0), 0);
   const openCourses = trainingCourses.filter((c) => c.status === "ثبت‌نام باز").length;
 
@@ -31,12 +42,65 @@ export default function Training() {
     notify(`ثبت‌نام شما در دوره «${c.title}» انجام شد. جزئیات از طریق اعلان و پیامک ارسال می‌شود.`);
   };
 
+  const toNum = (s: string) => Number(s.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))) || 0;
+
+  const startEdit = (c: TrainingCourse) => {
+    setEditingId(c.id);
+    setTitle(c.title);
+    setInstructor(c.instructor);
+    setDate(c.date);
+    setHours(String(c.hours));
+    setCapacity(String(c.capacity));
+    setOpen(true);
+  };
+
+  const removeCourse = (c: TrainingCourse) => {
+    setCourses((prev) => prev.filter((x) => x.id !== c.id));
+    notify(`دوره «${c.title}» حذف شد و به ثبت‌نام‌کنندگان اطلاع‌رسانی گردید.`, "info");
+  };
+
+  const submit = () => {
+    if (!title.trim()) {
+      notify("عنوان دوره الزامی است.", "warning");
+      return;
+    }
+    if (editingId) {
+      setCourses((prev) =>
+        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), instructor: instructor.trim() || c.instructor, date: date.trim() || c.date, hours: toNum(hours) || c.hours, capacity: toNum(capacity) || c.capacity } : c))
+      );
+      notify(`دوره «${title.trim()}» ویرایش شد.`);
+    } else {
+      setCourses((prev) => [
+        {
+          id: `tc-${Date.now()}`,
+          title: title.trim(),
+          instructor: instructor.trim() || "مدیریت آموزش‌های تخصصی",
+          date: date.trim() || "متعاقباً اعلام می‌شود",
+          hours: toNum(hours) || 8,
+          capacity: toNum(capacity) || 30,
+          enrolled: 0,
+          status: "ثبت‌نام باز",
+        },
+        ...prev,
+      ]);
+      notify(`دوره «${title.trim()}» تعریف شد و در تقویم آموزشی قرار گرفت.`);
+    }
+    setOpen(false);
+    setEditingId(null);
+    setTitle(""); setInstructor(""); setDate(""); setHours("۸"); setCapacity("۳۰");
+  };
+
   return (
     <div>
       <PageHeader
         title="آموزش و توانمندسازی"
         description="دوره‌های تخصصی، تقویم آموزشی، حضور و غیاب، ارزشیابی، سنجش اثربخشی و صدور گواهینامه"
         icon={<GraduationCap size={18} />}
+        actions={
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+            تعریف دوره جدید
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -63,16 +127,48 @@ export default function Training() {
             <span className="text-xs text-ink-400 whitespace-nowrap hidden sm:block">{c.date}</span>
             <span className="text-xs text-ink-500 whitespace-nowrap">{c.enrolled.toLocaleString("fa-IR")} / {c.capacity.toLocaleString("fa-IR")}</span>
             <Badge tone={statusTone[c.status]}>{c.status}</Badge>
-            <span className="hidden sm:block">
+            <span className="hidden sm:flex items-center gap-1">
               {c.status === "ثبت‌نام باز" && (
                 <Button variant={enrolledIds.includes(c.id) ? "secondary" : "primary"} size="sm" onClick={() => enroll(c)}>
                   {enrolledIds.includes(c.id) ? "ثبت‌نام شد" : "ثبت‌نام"}
                 </Button>
               )}
+              <RowActions onEdit={() => startEdit(c)} onDelete={() => removeCourse(c)} />
             </span>
           </div>
         ))}
       </div>
+
+      <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش دوره" : "تعریف دوره آموزشی جدید"}>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان دوره</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: آشنایی با ارزیابی TRL" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">مدرس / مجری</label>
+            <input value={instructor} onChange={(e) => setInstructor(e.target.value)} placeholder="مدیریت آموزش‌های تخصصی" className="input-field" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ شروع</label>
+              <input value={date} onChange={(e) => setDate(e.target.value)} placeholder="۱۴۰۵/۰۶/۱۵" className="input-field" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">ساعت آموزشی</label>
+              <input value={hours} onChange={(e) => setHours(e.target.value)} className="input-field" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">ظرفیت</label>
+              <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="input-field" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "تعریف دوره"}</Button>
+            <Button variant="secondary" onClick={() => { setOpen(false); setEditingId(null); }}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Drawer open={selected !== null} onClose={() => setSelected(null)} title="شناسنامه دوره آموزشی">
         {selected && (

@@ -28,9 +28,12 @@ import {
   HardDrive,
   Pencil,
   Trash2,
+  Gauge,
+  RotateCcw,
 } from "lucide-react";
 import { SystemSection, StorageSection } from "./AdminSections";
 import { holdings as daneshmandHoldings } from "../data/mockDaneshmand";
+import { useSettings, settingsMeta, defaultSettings, type WorkflowSettings } from "../context/SettingsContext";
 import {
   tenants as initialTenants,
   moduleCatalog,
@@ -61,7 +64,7 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "system" | "storage";
+type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
@@ -74,6 +77,7 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "integrations", label: "یکپارچه‌سازی و اتوماسیون", icon: Webhook },
   { id: "security", label: "امنیت و انطباق", icon: ShieldCheck },
   { id: "network", label: "تعامل بین‌سازمانی", icon: Network },
+  { id: "workflow", label: "پارامترهای گردش کار", icon: Gauge },
   { id: "system", label: "تنظیمات سیستم", icon: SlidersHorizontal },
   { id: "storage", label: "فضای ذخیره‌سازی", icon: HardDrive },
 ];
@@ -154,6 +158,8 @@ export default function Admin() {
             <NetworkSection crossTenant={crossTenant} setCrossTenant={setCrossTenant} />
           )}
 
+          {section === "workflow" && <WorkflowParamsSection notify={notify} />}
+
           {section === "system" && <SystemSection notify={notify} />}
 
           {section === "storage" && <StorageSection notify={notify} />}
@@ -164,6 +170,79 @@ export default function Admin() {
 }
 
 type Notify = (message: string, tone?: "success" | "info" | "warning") => void;
+
+// ---------------------------------------------------------------------------
+// پارامترهای گردش کار — اعداد ثابت روندها (یادآوری‌ها، مهلت‌ها، حدنصاب‌ها)
+// همگی از اینجا قابل تغییرند و بلافاصله در کل سامانه اعمال می‌شوند.
+// ---------------------------------------------------------------------------
+function WorkflowParamsSection({ notify }: { notify: Notify }) {
+  const { settings, update, reset } = useSettings();
+  const [draft, setDraft] = useState<WorkflowSettings>(settings);
+
+  const save = () => {
+    update(draft);
+    notify("پارامترهای گردش کار ذخیره شد و از این لحظه در همه‌ی روندها اعمال می‌شود.");
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-ink-900">پارامترهای گردش کار</h3>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RotateCcw size={13} />}
+            onClick={() => {
+              reset();
+              setDraft(defaultSettings);
+              notify("پارامترها به مقادیر پیش‌فرض بازگشت.", "info");
+            }}
+          >
+            بازگشت به پیش‌فرض
+          </Button>
+          <Button variant="primary" size="sm" onClick={save}>ذخیره‌ی پارامترها</Button>
+        </div>
+      </div>
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Gauge size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          تمام اعداد ثابت روندها (مثل «۷ روز قبل از سررسید» یا «مهلت ۱۵ روزه بررسی») اینجا تعریف می‌شوند.
+          با تغییر هر عدد، متن قواعد، هشدارها و حدنصاب‌های ارزیابی در سراسر سامانه به‌روز می‌شود.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {settingsMeta.map((m) => (
+          <div key={m.key} className="card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink-900">{m.label}</p>
+                <p className="text-[11px] text-ink-400 mt-1 leading-5">{m.hint}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <input
+                  type="number"
+                  min={0}
+                  value={draft[m.key]}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [m.key]: Number(e.target.value) }))}
+                  className="w-20 text-sm text-center border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400"
+                  dir="ltr"
+                />
+                <span className="text-[11px] text-ink-400 whitespace-nowrap">{m.unit}</span>
+              </div>
+            </div>
+            {draft[m.key] !== settings[m.key] && (
+              <p className="text-[10.5px] text-amber-700 mt-2">تغییر ذخیره‌نشده (مقدار فعلی: {settings[m.key].toLocaleString("fa-IR")})</p>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-4">
+        <Button variant="primary" className="w-full justify-center" onClick={save}>ذخیره‌ی همه‌ی پارامترها</Button>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه — مبنای تفکیک محتوا و دسترسی شرکتی

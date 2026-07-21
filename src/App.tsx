@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { ContentProvider } from "./context/ContentContext";
+import { SettingsProvider } from "./context/SettingsContext";
 import AppLayout from "./layouts/AppLayout";
 import Landing from "./pages/Landing";
 import PublicShowcase from "./pages/PublicShowcase";
@@ -38,6 +39,7 @@ import MediaItemDetail from "./pages/MediaItemDetail";
 export default function App() {
   return (
     <ToastProvider>
+    <SettingsProvider>
     <ContentProvider>
     <HashRouter>
       <Routes>
@@ -83,6 +85,7 @@ export default function App() {
       </Routes>
     </HashRouter>
     </ContentProvider>
+    </SettingsProvider>
     </ToastProvider>
   );
 }

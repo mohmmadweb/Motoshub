@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3 } from "lucide-react";
 import { contracts as initialContracts, currentUser, type ContractRecord } from "../data/mock";
 import { contractDetails, type ContractDetail } from "../data/mockDetails";
-import { techTransferContracts, eSignDocuments, type TechTransferContract } from "../data/mockDaneshmand";
+import { techTransferContracts, eSignDocuments, tenders, pendingReviewItems, type TechTransferContract, type TenderRecord } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
+import RowActions from "../components/ui/RowActions";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -36,12 +37,12 @@ const approvalTone: Record<string, BadgeTone> = {
 const stages: ContractRecord["stage"][] = ["فراخوان", "مذاکره", "داوری", "در حال اجرا", "تسویه‌شده"];
 
 export default function Contracts() {
-  const [tab, setTab] = useState<"tech" | "transfer" | "esign">("tech");
+  const [tab, setTab] = useState<"tech" | "transfer" | "esign" | "tender">("tech");
   return (
     <div>
       <PageHeader
         title="مدیریت قراردادهای فناورانه"
-        description="ثبت قرارداد، پورتفولیوی تبادل فناوری با هلدینگ‌ها، گردش امضای الکترونیک، تعهدات و پرداخت‌ها"
+        description="ثبت قرارداد، پورتفولیوی تبادل فناوری، گردش امضای الکترونیک و مناقصه/کمیسیون معاملات"
         icon={<FileSignature size={18} />}
       />
       <Tabs
@@ -49,6 +50,7 @@ export default function Contracts() {
           { id: "tech", label: "قراردادهای فناورانه", count: initialContracts.length },
           { id: "transfer", label: "پورتفولیوی تبادل فناوری", count: techTransferContracts.length },
           { id: "esign", label: "گردش امضای الکترونیک", count: eSignDocuments.length },
+          { id: "tender", label: "مناقصه و کمیسیون معاملات", count: tenders.length },
         ]}
         active={tab}
         onChange={setTab}
@@ -56,6 +58,51 @@ export default function Contracts() {
       {tab === "tech" && <TechContractsTab />}
       {tab === "transfer" && <TechTransferTab />}
       {tab === "esign" && <ESignTab />}
+      {tab === "tender" && <TenderTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// مناقصه، مزایده، ترک تشریفات و کمیسیون معاملات (کتاب فرآیندها، بخش ۱)
+// ---------------------------------------------------------------------------
+const tenderStageTone: Record<TenderRecord["stage"], BadgeTone> = {
+  "انتشار آگهی": "neutral",
+  "دریافت پاکات": "warning",
+  "کمیسیون معاملات": "brand",
+  "ابلاغ برنده": "success",
+  "عقد قرارداد": "navy",
+};
+
+function TenderTab() {
+  const { notify } = useToast();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-500 leading-6 max-w-2xl">
+          تشریفات معاملات موسسه: انتشار آگهی ← دریافت پاکات (الف: تضمین، ب: فنی، ج: قیمت) ← بازگشایی در
+          کمیسیون معاملات با صورت‌جلسه ← ابلاغ برنده ← عقد قرارداد. ترک تشریفات فقط با مصوبه هیئت مدیره.
+        </p>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم آگهی مناقصه/مزایده جدید باز شد؛ پس از تایید، در روزنامه و سامانه منتشر می‌شود.", "info")}>
+          آگهی جدید
+        </Button>
+      </div>
+      <div className="card divide-y divide-ink-100">
+        {tenders.map((t) => (
+          <div key={t.id} className="p-3.5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink-900">{t.title}</p>
+              <p className="text-[11px] text-ink-400 mt-0.5">
+                {t.method} · {t.participants.toLocaleString("fa-IR")} شرکت‌کننده
+                {t.sessionDate ? ` · جلسه کمیسیون: ${t.sessionDate}` : ""}
+                {t.winner ? ` · برنده: ${t.winner}` : ""}
+              </p>
+              {t.note && <p className="text-[11px] text-amber-700 mt-0.5">{t.note}</p>}
+            </div>
+            <Badge tone={tenderStageTone[t.stage]}>{t.stage}</Badge>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -113,6 +160,23 @@ function TechTransferTab() {
           (ناظر/هماهنگ‌کننده با تعهد مالی معمولاً ۵۰٪). برای هر قرارداد سه درصد پیشرفت مجزا پایش می‌شود:
           فیزیکی، زمانی و مالی — اختلاف بین آن‌ها سیگنال هشدار است.
         </p>
+      </div>
+
+      <div className="mb-4">
+        <h3 className="text-xs font-bold text-ink-900 mb-2">طرح‌های در دست بررسی (پیش از انعقاد قرارداد)</h3>
+        <div className="card divide-y divide-ink-100">
+          {pendingReviewItems.map((pv) => (
+            <div key={pv.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink-900">{pv.topic}</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">
+                  {pv.holding} · {pv.company}{pv.mojri ? ` · مجری: ${pv.mojri}` : ""}{pv.note ? ` · ${pv.note}` : ""}
+                </p>
+              </div>
+              {pv.obstacles ? <Badge tone="warning">{pv.obstacles}</Badge> : <Badge tone="neutral">در بررسی</Badge>}
+            </div>
+          ))}
+        </div>
       </div>
       <DataTable
         columns={columns}
@@ -244,6 +308,7 @@ function TechContractsTab() {
   const [stageFilter, setStageFilter] = useState<"همه" | ContractRecord["stage"]>("همه");
   const [selected, setSelected] = useState<ContractRecord | null>(null);
   const [obligationState, setObligationState] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
@@ -253,18 +318,26 @@ function TechContractsTab() {
       notify("عنوان قرارداد و نام تامین‌کننده الزامی است.", "warning");
       return;
     }
-    const newItem: ContractRecord = {
-      id: `ct-${Date.now()}`,
-      title: title.trim(),
-      vendor: vendor.trim(),
-      stage: method === "فراخوان عمومی" ? "فراخوان" : "مذاکره",
-      value: value.trim() || "—",
-      deadline: deadline.trim() || "نامشخص",
-      owner: currentUser.name,
-    };
-    setContracts((prev) => [newItem, ...prev]);
-    notify(`قرارداد «${newItem.title}» (${contractType} — ${method}) ثبت شد و در وضعیت «${newItem.stage}» قرار گرفت.`);
+    if (editingId) {
+      setContracts((prev) =>
+        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), vendor: vendor.trim(), value: value.trim() || "—", deadline: deadline.trim() || "نامشخص" } : c))
+      );
+      notify(`قرارداد «${title.trim()}» ویرایش شد.`);
+    } else {
+      const newItem: ContractRecord = {
+        id: `ct-${Date.now()}`,
+        title: title.trim(),
+        vendor: vendor.trim(),
+        stage: method === "فراخوان عمومی" ? "فراخوان" : "مذاکره",
+        value: value.trim() || "—",
+        deadline: deadline.trim() || "نامشخص",
+        owner: currentUser.name,
+      };
+      setContracts((prev) => [newItem, ...prev]);
+      notify(`قرارداد «${newItem.title}» (${contractType} — ${method}) ثبت شد و در وضعیت «${newItem.stage}» قرار گرفت.`);
+    }
     setOpen(false);
+    setEditingId(null);
     setTitle("");
     setVendor("");
     setValue("");
@@ -303,7 +376,29 @@ function TechContractsTab() {
         </span>
       ),
     },
+    {
+      key: "actions",
+      label: "",
+      render: (c) => (
+        <RowActions
+          onEdit={() => startEdit(c)}
+          onDelete={() => {
+            setContracts((prev) => prev.filter((x) => x.id !== c.id));
+            notify(`قرارداد «${c.title}» حذف شد.`, "info");
+          }}
+        />
+      ),
+    },
   ];
+
+  const startEdit = (c: ContractRecord) => {
+    setEditingId(c.id);
+    setTitle(c.title);
+    setVendor(c.vendor);
+    setValue(c.value);
+    setDeadline(c.deadline);
+    setOpen(true);
+  };
 
   return (
     <div>
@@ -351,7 +446,15 @@ function TechContractsTab() {
         onRowClick={(c) => setSelected(c)}
       />
 
-      <Modal open={open} onClose={() => setOpen(false)} title="ثبت قرارداد فناورانه جدید" description="بر اساس روش انتخاب، قرارداد در وضعیت «فراخوان» یا «مذاکره» قرار می‌گیرد.">
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setEditingId(null);
+        }}
+        title={editingId ? "ویرایش قرارداد" : "ثبت قرارداد فناورانه جدید"}
+        description={editingId ? "تغییرات پس از ذخیره در پرونده قرارداد ثبت می‌شود." : "بر اساس روش انتخاب، قرارداد در وضعیت «فراخوان» یا «مذاکره» قرار می‌گیرد."}
+      >
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان قرارداد</label>

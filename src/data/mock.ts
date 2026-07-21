@@ -107,6 +107,15 @@ export const users: UserProfile[] = [
     skills: ["اشتغال‌زایی", "طرح‌های خرد و متوسط"],
     online: true,
   },
+  // --- نخبگان و فناوران شبکه (شخصیت‌های نمایشی) ---
+  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], online: true },
+  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], online: true },
+  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], online: false },
+  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], online: true },
+  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], online: true },
+  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], online: false },
+  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه دانشمند", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], online: true },
+  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], online: true },
 ];
 
 export type Group = {
@@ -191,6 +200,11 @@ export const groups: Group[] = [
     unread: 2,
     category: "امنیت",
   },
+  { id: "g8", name: "باشگاه نخبگان هوش مصنوعی", description: "هم‌فکری پژوهشگران AI کشور روی مسائل واقعی صنایع بنیاد — از بینایی ماشین تا LLMها", members: 148, privacy: "عمومی", color: "#dc2626", unread: 7, category: "فناوری" },
+  { id: "g9", name: "شبکه فناوران زیست‌فناوری و سلامت", description: "اتصال آزمایشگاه‌ها و استارتاپ‌های زیستی به نیازهای صنایع غذایی و کشاورزی", members: 86, privacy: "عمومی", color: "#0d9488", unread: 3, category: "فناوری" },
+  { id: "g10", name: "پل دانشگاه و صنعت", description: "طرح مسائل صنعتی هلدینگ‌ها و یافتن تیم حل‌مسئله از میان اساتید و دانشجویان نخبه", members: 214, privacy: "عمومی", color: "#1f4f99", unread: 12, category: "فناوری" },
+  { id: "g11", name: "تیم‌های راهی شو ۱۴۰۳", description: "فضای اختصاصی تیم‌های پذیرفته‌شده رویداد راهی شو: منتورینگ، هم‌رسانی تجربه و گزارش پیشرفت", members: 42, privacy: "خصوصی", color: "#7c3aed", unread: 5, category: "فناوری" },
+  { id: "g12", name: "انرژی و صنایع سبز", description: "گفتگوی متخصصان انرژی درباره بهینه‌سازی مصرف نیروگاه‌ها و فناوری‌های تجدیدپذیر", members: 97, privacy: "عمومی", color: "#b45309", unread: 0, category: "فناوری" },
 ];
 
 export type Post = {
@@ -252,6 +266,87 @@ export const posts: Post[] = [
     comments: 2,
     tags: ["گزارش", "اشتغال"],
     attachment: { type: "doc", label: "گزارش-عملکرد-فصلی-اشتغال.pdf" },
+  },
+  {
+    id: "p5",
+    authorId: "u6",
+    groupId: "g8",
+    content:
+      "مدل تشخیص نقص بطری که با تیم سیگنال امید روی خط زمزم آموزش دادیم به دقت ۹۸.۲٪ رسید. دیتاست برچسب‌خورده (۴۰ هزار فریم) را برای پژوهشگران باشگاه به اشتراک می‌گذارم — کافیست عضو گروه باشید.",
+    time: "۳ ساعت پیش",
+    likes: 41,
+    comments: 12,
+    tags: ["بینایی-ماشین", "صنعت"],
+    pinned: true,
+    attachment: { type: "doc", label: "dataset-bottling-defects-v2.md" },
+  },
+  {
+    id: "p6",
+    authorId: "u7",
+    groupId: "g9",
+    content:
+      "بعد از ۸ ماه، کیت تشخیص آنتی‌بیوتیک شیر ما مجوز آزمایش میدانی در لبنیات پاک را گرفت. مسیر از پروپوزال صندوق نوآور تا خط تولید را در یک یادداشت بلاگ نوشتم؛ برای تیم‌هایی که تازه شروع می‌کنند شاید مفید باشد.",
+    time: "۵ ساعت پیش",
+    likes: 33,
+    comments: 9,
+    tags: ["زیست‌فناوری", "تجربه"],
+  },
+  {
+    id: "p7",
+    authorId: "u9",
+    groupId: "g12",
+    content:
+      "برای مسئله بازیافت حرارت کوره‌های صبا دو راهکار ORC و مبدل صفحه‌ای را مقایسه کرده‌ام. نظرسنجی می‌گذارم — متخصصان ترمودینامیک لطفاً شرکت کنند.",
+    time: "دیروز",
+    likes: 19,
+    comments: 15,
+    tags: ["انرژی", "نظرسنجی"],
+    attachment: { type: "poll", label: "ORC در برابر مبدل صفحه‌ای برای بازیافت حرارت" },
+  },
+  {
+    id: "p8",
+    authorId: "u10",
+    groupId: "g10",
+    content:
+      "دنبال یک متخصص خاک‌شناسی برای فاز دوم پروژه آبیاری دقیق دشت ناز هستیم (همکاری پاره‌وقت، قرارداد از طریق موسسه دانشمند). رزومه‌ها را در همین گروه یا پیام مستقیم بفرستید.",
+    time: "دیروز",
+    likes: 14,
+    comments: 21,
+    tags: ["فرصت-همکاری", "کشاورزی-دقیق"],
+  },
+  {
+    id: "p9",
+    authorId: "u12",
+    groupId: "g11",
+    content:
+      "به ۵ تیم راهی شو: جلسات منتورینگ ارزش‌گذاری این هفته برگزار می‌شود. پیش از جلسه، بخش مالی شناسنامه پروژه‌تان را در سامانه به‌روز کنید تا وقت جلسه صرف اعداد نشود.",
+    time: "۲ روز پیش",
+    likes: 11,
+    comments: 4,
+    tags: ["منتورینگ", "راهی-شو"],
+  },
+  {
+    id: "p10",
+    authorId: "u1",
+    groupId: "g4",
+    content:
+      "هماهنگی درون‌سازمانی: جلسه مشترک معاونت توسعه فناوری بنیاد با مدیران R&D هلدینگ‌ها پنجشنبه برگزار می‌شود. دستور جلسه: جمع‌بندی سندهای فرصت‌های تحقیق و توسعه و اولویت‌بندی RFPهای پاییز.",
+    time: "۴ ساعت پیش",
+    likes: 9,
+    comments: 3,
+    tags: ["هماهنگی", "هلدینگ‌ها"],
+  },
+  {
+    id: "p11",
+    authorId: "u11",
+    groupId: "g8",
+    content:
+      "تجربه ساخت قطعه CFRP با قالب داخلی: هزینه ۴۰٪ کمتر از نمونه وارداتی و استحکام خمشی بهتر. مقاله روش ساخت را در بانک دانش گذاشتم؛ نقد فنی استقبال می‌شود.",
+    time: "۳ روز پیش",
+    likes: 27,
+    comments: 8,
+    tags: ["کامپوزیت", "ساخت-داخل"],
+    attachment: { type: "doc", label: "cfrp-layup-method-fa.pdf" },
   },
 ];
 
@@ -394,6 +489,12 @@ export const forumTopics: ForumTopic[] = [
     category: "محرومیت‌زدایی",
     visibility: "عمومی",
   },
+  { id: "f13", title: "چالش استقرار مدل‌های بینایی ماشین روی لبه (Edge) در محیط صنعتی — تجربه‌هایتان چیست؟", author: "دکتر آرین صدرا", replies: 23, views: 412, lastActivity: "۱ ساعت پیش", category: "فناوری", solved: false, visibility: "عمومی" },
+  { id: "f14", title: "مسیر اخذ مجوز کیت‌های تشخیصی آزمایشگاهی: از نمونه اولیه تا پروانه", author: "دکتر مهسا نیک‌اندیش", replies: 17, views: 268, lastActivity: "۴ ساعت پیش", category: "فناوری", solved: true, visibility: "عمومی" },
+  { id: "f15", title: "مقایسه UWB و BLE برای موقعیت‌یابی داخل انبار — دقت در برابر هزینه", author: "مهندس کیان راستین", replies: 14, views: 199, lastActivity: "دیروز", category: "فناوری", visibility: "عمومی" },
+  { id: "f16", title: "ارزش‌گذاری استارتاپ پیش‌درآمد: کدام روش برای کمیته سرمایه‌گذاری قانع‌کننده‌تر است؟", author: "دکتر یاسمن روشن", replies: 19, views: 301, lastActivity: "۶ ساعت پیش", category: "اقتصادی", solved: true, visibility: "عمومی" },
+  { id: "f17", title: "فرآیند داخلی بنیاد برای ارجاع مسئله فنی هلدینگ به شبکه نخبگان — پیشنهاد بهبود", author: "پایگاه اطلاع‌رسانی بنیاد", replies: 8, views: 122, lastActivity: "۲ روز پیش", category: "راهبری", visibility: "خصوصی" },
+  { id: "f18", title: "الگوی کشت کم‌آب‌بر با داده ماهواره‌ای: نتایج پایلوت جنوب کرمان", author: "مهندس پارسا یگانه", replies: 11, views: 187, lastActivity: "۳ روز پیش", category: "فناوری", visibility: "عمومی" },
 ];
 
 export type KnowledgeDoc = {
@@ -639,6 +740,32 @@ export const chatThreads: ChatThread[] = [
     online: false,
     messages: [
       { from: "them", text: "گزارش پیشرفت قلعه‌گنج آپلود شد، در بخش مدیریت دانش", time: "۰۹:۱۰" },
+    ],
+  },
+  {
+    id: "c4",
+    with: "دکتر آرین صدرا",
+    avatarColor: "#dc2626",
+    lastMessage: "دیتاست را برایتان به اشتراک گذاشتم",
+    time: "۱۱:۲۰",
+    unread: 1,
+    online: true,
+    messages: [
+      { from: "me", text: "سلام دکتر، برای مسئله کنترل کیفیت خط بهنوش امکان همکاری هست؟", time: "۱۱:۰۵", read: true },
+      { from: "them", text: "حتماً. مشابه پروژه زمزم است؛ دیتاست را برایتان به اشتراک گذاشتم، جلسه‌ای بگذاریم", time: "۱۱:۲۰" },
+    ],
+  },
+  {
+    id: "c5",
+    with: "دکتر مهسا نیک‌اندیش",
+    avatarColor: "#0d9488",
+    lastMessage: "پروپوزال فاز دوم را در سامانه ثبت کردم",
+    time: "دیروز",
+    unread: 0,
+    online: true,
+    messages: [
+      { from: "them", text: "پروپوزال فاز دوم کیت تشخیصی را در سامانه ثبت کردم، کد NF جدید گرفت", time: "دیروز" },
+      { from: "me", text: "عالی! ارزیابی اولیه هوشمند تا فردا انجام می‌شود و نتیجه اطلاع‌رسانی خواهد شد", time: "دیروز", read: true },
     ],
   },
 ];
@@ -1373,6 +1500,14 @@ export const userPresence: Record<string, PresenceStatus> = {
   u3: "offline",
   u4: "away",
   u5: "online",
+  u6: "online",
+  u7: "online",
+  u8: "offline",
+  u9: "online",
+  u10: "online",
+  u11: "away",
+  u12: "online",
+  u13: "dnd",
 };
 
 export type Channel = {
@@ -1393,6 +1528,8 @@ export const channels: Channel[] = [
   { id: "ch3", name: "روابط-عمومی", topic: "هماهنگی اخبار، بازدیدها و انتشار محتوا", type: "public", category: "کانال‌ها", unread: 0, mentions: 0, members: 6, pinnedCount: 1 },
   { id: "ch4", name: "حوادث-و-پشتیبانی", topic: "گزارش و پیگیری حوادث عملیاتی سامانه (Playbooks)", type: "private", category: "کانال‌ها", unread: 1, mentions: 0, members: 5, pinnedCount: 0 },
   { id: "ch5", name: "بایگانی-فراخوان-اول", topic: "آرشیو هماهنگی‌های فراخوان اول طرح‌های اشتغال", type: "private", category: "بایگانی‌شده", unread: 0, mentions: 0, members: 4, pinnedCount: 0 },
+  { id: "ch6", name: "شبکه-نخبگان", topic: "هماهنگی همکاری پژوهشگران برگزیده با مسائل صنایع بنیاد", type: "public", category: "کانال‌ها", unread: 6, mentions: 1, members: 148, pinnedCount: 3 },
+  { id: "ch7", name: "هماهنگی-هلدینگ‌ها", topic: "ارتباط ستاد بنیاد با رابطین R&D دوازده هلدینگ", type: "private", category: "کانال‌ها", unread: 4, mentions: 2, members: 14, pinnedCount: 2 },
 ];
 
 export type ReactionIcon = "ThumbsUp" | "Heart" | "Smile" | "CheckCircle2";
@@ -1417,6 +1554,10 @@ export const channelMessages: ChannelMessage[] = [
   { id: "cm4", channelId: "ch2", authorId: "u5", text: "فهرست ۳۸ طرح واجد شرایط فراخوان دوم نهایی شد و برای داوری آماده است.", time: "۰۹:۴۰", saved: true, reactions: [{ icon: "Heart", count: 2 }] },
   { id: "cm5", channelId: "ch3", authorId: "u1", text: "پیش‌نویس خبر بازدید از نمایشگاه آگروفود آماده است، نظرتان را می‌خواهم.", time: "دیروز", threadReplies: 7 },
   { id: "cm6", channelId: "ch4", authorId: "u5", text: "اجرای Playbook «واکنش به افزایش غیرعادی ترافیک» شروع شد — مرحله ۱ از ۵.", time: "۱۱:۰۲" },
+  { id: "cm7", channelId: "ch6", authorId: "u6", text: "نتایج مدل تشخیص نقص روی خط زمزم منتشر شد؛ چه کسی برای تعمیم به خط بهنوش داوطلب است؟", time: "۱۰:۱۵", pinned: true, reactions: [{ icon: "ThumbsUp", count: 12, reactedByMe: true }], threadReplies: 9 },
+  { id: "cm8", channelId: "ch6", authorId: "u9", text: "برای مسئله بازیافت حرارت صبا یک تیم سه‌نفره تشکیل دادیم؛ نیازمند یک متخصص مبدل حرارتی هستیم.", time: "۱۰:۴۰", reactions: [{ icon: "Heart", count: 5 }], threadReplies: 4 },
+  { id: "cm9", channelId: "ch7", authorId: "u1", text: "رابطین محترم هلدینگ‌ها: مهلت به‌روزرسانی سندهای فرصت‌های تحقیق و توسعه پایان تیرماه است. وضعیت فعلی در «مدیریت دانش ← سندهای فرصت» قابل مشاهده است.", time: "۰۹:۰۰", pinned: true, reactions: [{ icon: "CheckCircle2", count: 7 }] },
+  { id: "cm10", channelId: "ch7", authorId: "u12", text: "جمع‌بندی جلسه با بانک سینا: دو مسئله تحول دیجیتال برای فراخوان پاییز آماده شد؛ RFP تا هفته آینده تدوین می‌شود.", time: "۰۹:۳۵", threadReplies: 3 },
 ];
 
 export type Integration = {

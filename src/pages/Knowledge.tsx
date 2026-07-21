@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { BookOpen, FileText, Upload, Clock, User, History, Download, Lightbulb } from "lucide-react";
 import { knowledgeDocs as allDocsForCategories, currentUser, type KnowledgeDoc, type Visibility } from "../data/mock";
-import { rndOpportunityDocs, rndDocStates } from "../data/mockDaneshmand";
+import { rndOpportunityDocs, rndDocStates, supportedProducts, supportedVentures, partnerTechnologists } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
+import RowActions from "../components/ui/RowActions";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -23,23 +24,83 @@ const typeTone: Record<string, BadgeTone> = {
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function Knowledge() {
-  const [tab, setTab] = useState<"bank" | "rnd">("bank");
+  const [tab, setTab] = useState<"bank" | "rnd" | "registry">("bank");
   return (
     <div>
       <PageHeader
         title="مدیریت دانش"
-        description="بانک اسناد سازمانی، آرشیو قراردادها، مستندات آموزشی و سندهای فرصت‌های تحقیق و توسعه شرکت‌ها"
+        description="بانک اسناد سازمانی، سندهای فرصت‌های تحقیق و توسعه و شناسنامه‌های محصولات، واحدها و فناوران"
         icon={<BookOpen size={18} />}
       />
       <Tabs
         tabs={[
           { id: "bank", label: "بانک دانش", count: allDocsForCategories.length },
           { id: "rnd", label: "سندهای فرصت‌های تحقیق و توسعه", count: rndOpportunityDocs.length },
+          { id: "registry", label: "شناسنامه‌ها", count: supportedProducts.length + supportedVentures.length + partnerTechnologists.length },
         ]}
         active={tab}
         onChange={setTab}
       />
-      {tab === "bank" ? <KnowledgeBankTab /> : <RndDocsTab />}
+      {tab === "bank" && <KnowledgeBankTab />}
+      {tab === "rnd" && <RndDocsTab />}
+      {tab === "registry" && <RegistryTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// شناسنامه‌های تجمیعی: محصولات حمایت‌شده، واحدهای دانش‌بنیان، فناوران همکار
+// ---------------------------------------------------------------------------
+function RegistryTab() {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-sm font-bold text-ink-900 mb-2">شناسنامه محصولات و فناوری‌های حمایت‌شده</h3>
+        <div className="card divide-y divide-ink-100">
+          {supportedProducts.map((p) => (
+            <div key={p.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink-900">{p.name}</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">{p.company}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone="navy">TRL {p.trl.toLocaleString("fa-IR")}</Badge>
+                <Badge tone={p.trl >= 8 ? "success" : "brand"}>{p.status}</Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-ink-900 mb-2">شناسنامه واحدهای دانش‌بنیان حمایت‌شده</h3>
+        <div className="card divide-y divide-ink-100">
+          {supportedVentures.map((v) => (
+            <div key={v.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink-900">{v.name}</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">{v.field} · سال حمایت: {v.year}</p>
+              </div>
+              <Badge tone={v.supportType === "بذرمایه" ? "warning" : v.supportType === "سرمایه خطرپذیر" ? "navy" : "brand"}>{v.supportType}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-ink-900 mb-2">شناسنامه فناوران همکار</h3>
+        <div className="card divide-y divide-ink-100">
+          {partnerTechnologists.map((t) => (
+            <div key={t.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink-900">{t.name}</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">{t.expertise} · {t.projects.toLocaleString("fa-IR")} پروژه مشترک</p>
+              </div>
+              <Badge tone="success">امتیاز همکاری {t.rating.toLocaleString("fa-IR")}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -163,6 +224,19 @@ function KnowledgeBankTab() {
     { key: "updatedAt", label: "بروزرسانی" },
     { key: "size", label: "حجم" },
     { key: "visibility", label: "دسترسی", render: (d) => <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> },
+    {
+      key: "actions",
+      label: "",
+      render: (d) => (
+        <RowActions
+          onEdit={() => setSelected(d)}
+          onDelete={() => {
+            setDocs((prev) => prev.filter((x) => x.id !== d.id));
+            notify(`سند «${d.title}» حذف شد و در سطل بازیافت ۳۰ روز نگه‌داری می‌شود.`, "info");
+          }}
+        />
+      ),
+    },
   ];
 
   return (

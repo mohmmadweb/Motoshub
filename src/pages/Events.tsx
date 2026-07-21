@@ -5,6 +5,7 @@ import { type EventItem, type Visibility } from "../data/mock";
 import { awardTracks, awardEntries, type AwardEntry } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import StatCard from "../components/ui/StatCard";
+import RowActions from "../components/ui/RowActions";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -126,28 +127,57 @@ function EventsListTab() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+
+  const startEdit = (ev: EventItem) => {
+    setEditingId(ev.id);
+    setTitle(ev.title);
+    setJalaliDate(ev.jalaliDate);
+    setTime(ev.time);
+    setLocation(ev.location);
+    setDescription(ev.description);
+    setVisibility(ev.visibility);
+    setOpen(true);
+  };
+
+  const remove = (ev: EventItem) => {
+    setEvents((prev) => prev.filter((e) => e.id !== ev.id));
+    notify(`رویداد «${ev.title}» حذف شد و لغو آن به دعوت‌شدگان اطلاع‌رسانی گردید.`, "info");
+  };
 
   const submit = () => {
     if (!title.trim() || !jalaliDate.trim()) {
       notify("عنوان و تاریخ رویداد الزامی است.", "warning");
       return;
     }
-    const newEvent: EventItem = {
-      id: `e-${Date.now()}`,
-      title: title.trim(),
-      date: jalaliDate.trim(),
-      jalaliDate: jalaliDate.trim(),
-      time: time.trim() || "—",
-      location: location.trim() || "نامشخص",
-      attendees: 0,
-      hashtags: [],
-      description: description.trim() || "بدون توضیحات",
-      visibility,
-    };
-    setEvents((prev) => [newEvent, ...prev]);
-    notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
+    if (editingId) {
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === editingId
+            ? { ...e, title: title.trim(), jalaliDate: jalaliDate.trim(), time: time.trim() || "—", location: location.trim() || "نامشخص", description: description.trim() || e.description, visibility }
+            : e
+        )
+      );
+      notify(`رویداد «${title.trim()}» ویرایش شد و تغییرات به شرکت‌کنندگان اطلاع داده شد.`);
+    } else {
+      const newEvent: EventItem = {
+        id: `e-${Date.now()}`,
+        title: title.trim(),
+        date: jalaliDate.trim(),
+        jalaliDate: jalaliDate.trim(),
+        time: time.trim() || "—",
+        location: location.trim() || "نامشخص",
+        attendees: 0,
+        hashtags: [],
+        description: description.trim() || "بدون توضیحات",
+        visibility,
+      };
+      setEvents((prev) => [newEvent, ...prev]);
+      notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
+    }
     setOpen(false);
+    setEditingId(null);
     setTitle(""); setJalaliDate(""); setTime(""); setLocation(""); setDescription(""); setVisibility("عمومی");
   };
 
@@ -243,10 +273,13 @@ function EventsListTab() {
                 size="xs"
               />
 
-              {/* Invite */}
-              <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
-                دعوت
-              </Button>
+              {/* Invite + actions */}
+              <span className="flex items-center gap-0.5">
+                <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
+                  دعوت
+                </Button>
+                <RowActions onEdit={() => startEdit(e)} onDelete={() => remove(e)} />
+              </span>
             </div>
           );
         })}
@@ -256,7 +289,7 @@ function EventsListTab() {
         )}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="ایجاد رویداد جدید">
+      <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش رویداد" : "ایجاد رویداد جدید"}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان رویداد</label>

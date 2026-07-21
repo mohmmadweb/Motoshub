@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { FlaskConical, Plus, Users, ListFilter, GraduationCap, Wallet, Clock3, FileCheck2, CheckCircle2, XCircle } from "lucide-react";
+import { FlaskConical, Plus, Users, ListFilter, GraduationCap, Wallet, Clock3, FileCheck2, CheckCircle2, XCircle, Megaphone, Trophy, BookMarked } from "lucide-react";
 import { researchOpportunities as initialOpportunities, type ResearchOpportunity } from "../data/mock";
 import { researchDetails, type ResearchApplicant } from "../data/mockDetails";
+import { rfpCalls, sabbaticals, type RfpCall, type Sabbatical } from "../data/mockDaneshmand";
+import Tabs from "../components/ui/Tabs";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -28,6 +30,167 @@ const applicantTone: Record<ResearchApplicant["status"], BadgeTone> = {
 const stages: ResearchOpportunity["stage"][] = ["فراخوان باز", "بررسی درخواست‌ها", "داوری", "در حال اجرا", "پایان‌یافته"];
 
 export default function Research() {
+  const [tab, setTab] = useState<"opps" | "rfp" | "sabbatical">("opps");
+  return (
+    <div>
+      <PageHeader
+        title="مدیریت فرصت‌های پژوهشی"
+        description="فراخوان‌های پژوهشی، فراخوان نیازهای فناورانه (RFP و انتخاب فناور برتر) و فرصت مطالعاتی اساتید"
+        icon={<FlaskConical size={18} />}
+      />
+      <Tabs
+        tabs={[
+          { id: "opps", label: "فرصت‌های پژوهشی", count: initialOpportunities.length },
+          { id: "rfp", label: "فراخوان فناور برتر (RFP)", count: rfpCalls.length },
+          { id: "sabbatical", label: "فرصت مطالعاتی اساتید", count: sabbaticals.length },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === "opps" && <OpportunitiesTab />}
+      {tab === "rfp" && <RfpTab />}
+      {tab === "sabbatical" && <SabbaticalTab />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// فراخوان نیازهای فناورانه — RFP، ثبت‌نام فناوران، ارزیابی کسب‌وکاری/فنی،
+// بازگشایی پاکات در کمیسیون معاملات و انتخاب فناور برتر (کتاب فرآیندها، بخش ۲)
+// ---------------------------------------------------------------------------
+const rfpStageTone: Record<RfpCall["stage"], BadgeTone> = {
+  "انتشار فراخوان": "neutral",
+  "دریافت مستندات": "warning",
+  "ارزیابی کسب‌وکاری": "warning",
+  "ارزیابی فنی": "brand",
+  "بازگشایی پاکات": "brand",
+  "فناور برتر انتخاب شد": "success",
+};
+
+function RfpTab() {
+  const { notify } = useToast();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-500 leading-6 max-w-2xl">
+          روند: احصاء فرصت از شرکت بنیادی ← تدوین RFP ← انتشار فراخوان (سامانه دانشمند، ساخت داخل، نان، جان) ←
+          ثبت‌نام و ارسال مستندات فناوران ← جلسه ارزیابی توانمندی کسب‌وکاری (ثبت نمره) ← ارزیابی فنی (ثبت نمره) ←
+          دریافت پیشنهاد قیمت ← بازگشایی پاکات در کمیسیون معاملات ← انتخاب فناور برتر.
+        </p>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم تدوین RFP جدید باز شد؛ پس از تصویب، فراخوان در سامانه‌های هدف منتشر می‌شود.", "info")}>
+          RFP جدید
+        </Button>
+      </div>
+      {rfpCalls.map((call) => (
+        <div key={call.id} className="card p-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+              <Megaphone size={14} className="text-brand-600" /> {call.title}
+            </p>
+            <Badge tone={rfpStageTone[call.stage]}>{call.stage}</Badge>
+          </div>
+          <p className="text-[11px] text-ink-400 mb-3">
+            {call.company} ({call.holding}) · مهلت: {call.deadline} · انتشار در: {call.channels.join("، ")}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11.5px]">
+              <thead>
+                <tr className="text-ink-400 text-right">
+                  <th className="font-medium pb-1.5">فناور ثبت‌نامی</th>
+                  <th className="font-medium pb-1.5 text-center">نمره کسب‌وکاری</th>
+                  <th className="font-medium pb-1.5 text-center">نمره فنی</th>
+                  <th className="font-medium pb-1.5 text-center">پیشنهاد قیمت</th>
+                  <th className="font-medium pb-1.5 text-center">نتیجه</th>
+                </tr>
+              </thead>
+              <tbody className="text-ink-700">
+                {call.vendors.map((v) => (
+                  <tr key={v.id} className="border-t border-ink-100">
+                    <td className="py-2 font-medium text-ink-900">{v.name}</td>
+                    <td className="py-2 text-center">{v.bizScore !== undefined ? `${v.bizScore.toLocaleString("fa-IR")} / ۱۰۰` : "—"}</td>
+                    <td className="py-2 text-center">{v.techScore !== undefined ? `${v.techScore.toLocaleString("fa-IR")} / ۱۰۰` : "—"}</td>
+                    <td className="py-2 text-center">{v.priceOpened ? v.price : <span className="text-ink-400">پاکت بسته</span>}</td>
+                    <td className="py-2 text-center">
+                      {v.winner ? <Badge tone="success" icon={<Trophy size={10} />}>فناور برتر</Badge> : <span className="text-ink-300">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// فرصت مطالعاتی اساتید — صندوق فرصت (کتاب فرآیندها، بخش ۴):
+// سه گزارش مرحله‌ای، داوری صنعت و داور، پرداخت مرحله‌ای، TRL قبل/بعد
+// ---------------------------------------------------------------------------
+const sabbaticalStageTone: Record<Sabbatical["stage"], BadgeTone> = {
+  فراخوان: "neutral",
+  "انتخاب استاد": "warning",
+  قرارداد: "brand",
+  "در حال اجرا": "success",
+  "کتابچه و ارائه نهایی": "navy",
+  خاتمه: "neutral",
+};
+
+const sabbReportTone: Record<string, BadgeTone> = {
+  "در انتظار": "neutral",
+  "ارسال به صنعت و داور": "warning",
+  "نیازمند اصلاح": "danger",
+  "تایید و پرداخت شد": "success",
+};
+
+function SabbaticalTab() {
+  const { notify } = useToast();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-500 leading-6 max-w-2xl">
+          روند: فراخوان و انتخاب استاد خبره ← قرارداد ← سه گزارش مرحله‌ای (شناخت شرکت / ارائه راهکار / RFPهای
+          پیشنهادی) — هر گزارش پس از داوری صنعت و داور، تایید و دستور پرداخت آن صادر می‌شود ← کتابچه نهایی و جلسه
+          ارائه ← نامه اتمام طرح.
+        </p>
+        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فراخوان جدید فرصت مطالعاتی برای انتشار در درگاه صندوق باور و سامانه نان آماده شد.", "info")}>
+          فراخوان فرصت مطالعاتی
+        </Button>
+      </div>
+      {sabbaticals.map((sb) => (
+        <div key={sb.id} className="card p-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+              <BookMarked size={14} className="text-brand-600" /> {sb.topic}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge tone="neutral">TRL {sb.trlBefore.toLocaleString("fa-IR")}{sb.trlAfter ? ` ← ${sb.trlAfter.toLocaleString("fa-IR")}` : ""}</Badge>
+              <Badge tone={sabbaticalStageTone[sb.stage]}>{sb.stage}</Badge>
+            </div>
+          </div>
+          <p className="text-[11px] text-ink-400 mb-3">
+            {sb.professor} — {sb.university} · صنعت میزبان: {sb.industry} · قرارداد {sb.contract}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {sb.reports.map((r) => (
+              <div key={r.no} className="rounded-lg border border-ink-100 bg-ink-50/50 p-2.5">
+                <p className="text-[10.5px] text-ink-400 mb-0.5">گزارش {r.no.toLocaleString("fa-IR")}</p>
+                <p className="text-[11.5px] font-medium text-ink-900 leading-5">{r.title}</p>
+                <div className="flex items-center justify-between mt-1.5">
+                  <Badge tone={sabbReportTone[r.status]}>{r.status}</Badge>
+                  {r.paidAmount && <span className="text-[10.5px] text-emerald-700">{r.paidAmount}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OpportunitiesTab() {
   const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>(initialOpportunities);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -102,16 +265,11 @@ export default function Research() {
 
   return (
     <div>
-      <PageHeader
-        title="مدیریت فرصت‌های پژوهشی"
-        description="ثبت فراخوان، بررسی درخواست‌ها، داوری و پیگیری اجرای پژوهش"
-        icon={<FlaskConical size={18} />}
-        actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
-            فراخوان جدید
-          </Button>
-        }
-      />
+      <div className="flex items-center justify-end mb-4">
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          فراخوان جدید
+        </Button>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="فراخوان‌های باز" value={openCalls} tone="success" icon={<FlaskConical size={16} />} />
