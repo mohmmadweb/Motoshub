@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Users, Hash, Send } from "lucide-react";
+import { CalendarDays, MapPin, Users, Hash, Send, Video, ExternalLink } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -60,6 +60,22 @@ export default function EventItemDetail() {
                   <Users size={15} className="text-brand-600 shrink-0" />
                   <span>{event.attendees} شرکت‌کننده</span>
                 </div>
+                <div className="flex items-center gap-2 text-ink-600">
+                  {event.mode === "آنلاین" ? <Video size={15} className="text-brand-600 shrink-0" /> : <MapPin size={15} className="text-brand-600 shrink-0" />}
+                  <Badge tone={event.mode === "آنلاین" ? "brand" : "navy"}>{event.mode}</Badge>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
+                {event.mode === "آنلاین" && event.joinLink && (
+                  <a href={event.joinLink} target="_blank" rel="noopener noreferrer" className="btn bg-brand-600 text-white hover:bg-brand-700 text-xs px-3.5 py-2">
+                    <Video size={13} /> ورود به جلسه آنلاین <ExternalLink size={11} />
+                  </a>
+                )}
+                {event.mode === "حضوری" && event.mapUrl && (
+                  <a href={event.mapUrl} target="_blank" rel="noopener noreferrer" className="btn bg-white border border-ink-200 text-ink-700 hover:bg-ink-50 text-xs px-3.5 py-2">
+                    <MapPin size={13} /> مشاهده روی نقشه گوگل <ExternalLink size={11} />
+                  </a>
+                )}
               </div>
             </div>
           </div>

@@ -17,10 +17,10 @@ export default function PageHeader({
   breadcrumb?: Crumb[];
   actions?: ReactNode;
 }) {
-  // عنوان تب مرورگر با صفحه هماهنگ می‌شود (ناوبری و تاریخچه‌ی مرورگر خوانا)
+  // عنوان تب مرورگر با صفحه هماهنگ می‌شود (بدون نام برند سازنده)
   useEffect(() => {
     const prev = document.title;
-    document.title = `${title} · موتوشاب`;
+    document.title = title;
     return () => {
       document.title = prev;
     };

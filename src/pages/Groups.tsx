@@ -21,9 +21,14 @@ export default function Groups() {
   const [privacy, setPrivacy] = useState<Group["privacy"]>("خصوصی");
   const { notify } = useToast();
 
+  const [sort, setSort] = useState<"members" | "created" | "activity">("activity");
   const allCategories = Array.from(new Set(groups.map((g) => g.category)));
   const categories = ["همه", ...allCategories];
-  const filtered = active === "همه" ? groups : groups.filter((g) => g.category === active);
+  const filtered = (active === "همه" ? groups : groups.filter((g) => g.category === active)).slice().sort((a, b) =>
+    sort === "members" ? b.members - a.members :
+    sort === "created" ? (a.createdAt < b.createdAt ? 1 : -1) :
+    (a.lastActivityAt < b.lastActivityAt ? 1 : -1)
+  );
 
   const togglePrivacy = (id: string) => {
     setGroups((prev) =>
@@ -51,6 +56,9 @@ export default function Groups() {
       privacy,
       color: palette[groups.length % palette.length],
       unread: 0,
+      createdAt: "۱۴۰۵/۰۴/۳۱",
+      lastActivityAt: "۱۴۰۵/۰۴/۳۱",
+      lastActivityRel: "هم‌اکنون",
       category: category.trim(),
     };
     setGroups((prev) => [newGroup, ...prev]);
@@ -75,18 +83,31 @@ export default function Groups() {
         }
       />
 
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {categories.map((c) => (
-          <button
-            key={c}
-            onClick={() => setActive(c)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
-              active === c ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setActive(c)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
+                active === c ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 bg-ink-100 rounded-lg p-1">
+          {([["activity", "آخرین فعالیت"], ["members", "بیشترین عضو"], ["created", "جدیدترین"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setSort(k)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md ${sort === k ? "bg-white shadow text-brand-700" : "text-ink-500"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -30,6 +30,7 @@ export default function News() {
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ title?: boolean; summary?: boolean }>({});
+  const [month, setMonth] = useState<number | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
 
@@ -66,6 +67,7 @@ export default function News() {
         summary: summary.trim(),
         date: jalaliToday,
         comments: 0,
+        views: 0,
         pinned,
         visibility,
       };
@@ -85,6 +87,15 @@ export default function News() {
     notify(`«${item.title}» به ${next} تغییر یافت.`, next === "عمومی" ? "success" : "info");
   };
 
+  const jMonths = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+  const faToNum = (s: string) => Number(s.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))));
+  const monthOf = (d: string) => faToNum(d.split("/")[1] ?? "0");
+  const sortedNews = [...newsItems].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const latest = sortedNews[0];
+  const mostViewed = [...newsItems].sort((a, b) => b.views - a.views)[0];
+  const mostDiscussed = [...newsItems].sort((a, b) => b.comments - a.comments)[0];
+  const shownNews = month === null ? newsItems : newsItems.filter((n) => monthOf(n.date) === month);
+
   return (
     <div>
       <PageHeader
@@ -98,6 +109,48 @@ export default function News() {
         }
       />
 
+      {/* برجسته‌ها */}
+      {latest && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          {[
+            { tag: "تازه‌ترین", n: latest, cls: "from-brand-600 to-brand-800" },
+            { tag: "پربازدیدترین", n: mostViewed, cls: "from-emerald-600 to-emerald-800" },
+            { tag: "داغ‌ترین گفتگو", n: mostDiscussed, cls: "from-amber-500 to-orange-700" },
+          ].map(({ tag, n, cls }) => (
+            <Link key={tag} to={`/dashboard/news/${n.id}`} className={`group rounded-xl bg-gradient-to-l ${cls} p-3.5 text-white shadow-sm hover:shadow-md transition-shadow`}>
+              <span className="inline-block text-[10px] font-bold bg-white/20 rounded-full px-2 py-0.5 mb-1.5">{tag}</span>
+              <p className="text-[12.5px] font-bold leading-6 line-clamp-2 group-hover:underline">{n.title}</p>
+              <p className="text-[10px] text-white/70 mt-1.5">{n.date} · {n.views.toLocaleString("fa-IR")} بازدید · {n.comments.toLocaleString("fa-IR")} نظر</p>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* آرشیو ماهانه */}
+      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+        <button
+          onClick={() => setMonth(null)}
+          className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${month === null ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-500 border-ink-200 hover:bg-ink-50"}`}
+        >
+          همه‌ی سال
+        </button>
+        {jMonths.map((m, i) => {
+          const count = newsItems.filter((n) => monthOf(n.date) === i + 1).length;
+          if (count === 0) return null;
+          return (
+            <button
+              key={m}
+              onClick={() => setMonth(month === i + 1 ? null : i + 1)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                month === i + 1 ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
+              }`}
+            >
+              {m} <span className="text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="card divide-y divide-ink-100">
         {/* table header */}
         <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
@@ -109,7 +162,7 @@ export default function News() {
           <span />
         </div>
 
-        {newsItems.map((n) => (
+        {shownNews.map((n) => (
           <div
             key={n.id}
             className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"

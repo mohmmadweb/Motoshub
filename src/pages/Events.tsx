@@ -177,6 +177,7 @@ function EventsListTab() {
         jalaliDate: jalaliDate.trim(),
         time: time.trim() || "—",
         location: location.trim() || "نامشخص",
+        mode: "حضوری",
         attendees: 0,
         hashtags: [],
         description: description.trim() || "بدون توضیحات",

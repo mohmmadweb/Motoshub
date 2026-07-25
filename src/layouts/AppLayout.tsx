@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import CommandPalette from "../components/CommandPalette";
+import CreditFooter from "../components/CreditFooter";
 
 export default function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -33,6 +34,7 @@ export default function AppLayout() {
         <main id="main-content" tabIndex={-1} className="p-4 lg:p-6 max-w-7xl mx-auto outline-none">
           <Outlet />
         </main>
+        <CreditFooter />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>

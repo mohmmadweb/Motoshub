@@ -23,7 +23,11 @@ export default function Media() {
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const { notify } = useToast();
 
-  const filtered = kind === "all" ? items : items.filter((m) => m.kind === kind);
+  const [topic, setTopic] = useState<string>("همه");
+  const topics = ["همه", ...Array.from(new Set(items.map((m) => m.album)))];
+  const filtered = items
+    .filter((m) => (kind === "all" ? true : m.kind === kind))
+    .filter((m) => (topic === "همه" ? true : m.album === topic));
 
   const submit = () => {
     if (!file || !title.trim()) {
@@ -83,6 +87,24 @@ export default function Media() {
             {k.label}
           </button>
         ))}
+      </div>
+
+      {/* موضوع‌ها (آلبوم‌ها) */}
+      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+        {topics.map((t) => {
+          const count = t === "همه" ? items.length : items.filter((m) => m.album === t).length;
+          return (
+            <button
+              key={t}
+              onClick={() => setTopic(t)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                topic === t ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
+              }`}
+            >
+              {t} <span className="text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -127,11 +127,17 @@ export type Group = {
   color: string;
   unread: number;
   category: string;
+  createdAt: string; // تاریخ ساخت (شمسی)
+  lastActivityAt: string; // آخرین فعالیت (شمسی)
+  lastActivityRel: string; // نمایش نسبی
 };
 
 export const groups: Group[] = [
   {
     id: "g1",
+    createdAt: "۱۴۰۳/۰۹/۱۲",
+    lastActivityAt: "۱۴۰۵/۰۴/۳۱",
+    lastActivityRel: "۲ ساعت پیش",
     name: "ستاد محرومیت‌زدایی",
     description: "هماهنگی طرح‌های آبادانی و پیشرفت بنیاد علوی در قلعه‌گنج، لنده و چالدران",
     members: 18,
@@ -142,6 +148,9 @@ export const groups: Group[] = [
   },
   {
     id: "g2",
+    createdAt: "۱۴۰۴/۰۲/۰۵",
+    lastActivityAt: "۱۴۰۵/۰۴/۲۹",
+    lastActivityRel: "۲ روز پیش",
     name: "مردمی‌سازی اقتصاد",
     description: "پایش تفاهم‌نامه‌های هلدینگ‌ها و طرح‌های خرد و متوسط اشتغال‌زایی",
     members: 9,
@@ -152,6 +161,9 @@ export const groups: Group[] = [
   },
   {
     id: "g3",
+    createdAt: "۱۴۰۳/۱۱/۲۰",
+    lastActivityAt: "۱۴۰۵/۰۴/۳۰",
+    lastActivityRel: "دیروز",
     name: "قراردادها و واگذاری‌ها",
     description: "مدیریت مذاکره، ارزیابی و زمان‌بندی واگذاری اموال و بنگاه‌های بنیاد",
     members: 12,
@@ -162,6 +174,9 @@ export const groups: Group[] = [
   },
   {
     id: "g4",
+    createdAt: "۱۴۰۲/۰۶/۰۱",
+    lastActivityAt: "۱۴۰۵/۰۴/۳۱",
+    lastActivityRel: "۱ ساعت پیش",
     name: "اطلاع‌رسانی عمومی بنیاد",
     description: "کانال رسمی اخبار و اطلاعیه‌های بنیاد مستضعفان انقلاب اسلامی",
     members: 1280,
@@ -172,6 +187,9 @@ export const groups: Group[] = [
   },
   {
     id: "g5",
+    createdAt: "۱۴۰۳/۰۳/۱۵",
+    lastActivityAt: "۱۴۰۵/۰۴/۳۱",
+    lastActivityRel: "۳ ساعت پیش",
     name: "انجمن هلدینگ‌های بنیاد",
     description: "هم‌افزایی و تبادل تجربه میان مدیران هلدینگ‌ها و شرکت‌های زیرمجموعه بنیاد",
     members: 640,
@@ -182,6 +200,9 @@ export const groups: Group[] = [
   },
   {
     id: "g6",
+    createdAt: "۱۴۰۴/۰۱/۱۰",
+    lastActivityAt: "۱۴۰۵/۰۴/۲۵",
+    lastActivityRel: "۶ روز پیش",
     name: "باشگاه خیرین و مشارکت‌های اجتماعی",
     description: "معرفی برنامه‌های نیکوکاری، رویدادها و فرصت‌های مشارکت اجتماعی بنیاد",
     members: 305,
@@ -192,6 +213,9 @@ export const groups: Group[] = [
   },
   {
     id: "g7",
+    createdAt: "۱۴۰۴/۰۵/۰۲",
+    lastActivityAt: "۱۴۰۵/۰۴/۳۰",
+    lastActivityRel: "دیروز",
     name: "کمیته راهبری امنیت اطلاعات",
     description: "پایش سیاست‌های امنیتی، بررسی حوادث و تصمیم‌گیری درباره انطباق با استاندارد افتا",
     members: 11,
@@ -200,11 +224,11 @@ export const groups: Group[] = [
     unread: 2,
     category: "امنیت",
   },
-  { id: "g8", name: "باشگاه نخبگان هوش مصنوعی", description: "هم‌فکری پژوهشگران AI کشور روی مسائل واقعی صنایع بنیاد — از بینایی ماشین تا LLMها", members: 148, privacy: "عمومی", color: "#dc2626", unread: 7, category: "فناوری" },
-  { id: "g9", name: "شبکه فناوران زیست‌فناوری و سلامت", description: "اتصال آزمایشگاه‌ها و استارتاپ‌های زیستی به نیازهای صنایع غذایی و کشاورزی", members: 86, privacy: "عمومی", color: "#0d9488", unread: 3, category: "فناوری" },
-  { id: "g10", name: "پل دانشگاه و صنعت", description: "طرح مسائل صنعتی هلدینگ‌ها و یافتن تیم حل‌مسئله از میان اساتید و دانشجویان نخبه", members: 214, privacy: "عمومی", color: "#1f4f99", unread: 12, category: "فناوری" },
-  { id: "g11", name: "تیم‌های راهی شو ۱۴۰۳", description: "فضای اختصاصی تیم‌های پذیرفته‌شده رویداد راهی شو: منتورینگ، هم‌رسانی تجربه و گزارش پیشرفت", members: 42, privacy: "خصوصی", color: "#7c3aed", unread: 5, category: "فناوری" },
-  { id: "g12", name: "انرژی و صنایع سبز", description: "گفتگوی متخصصان انرژی درباره بهینه‌سازی مصرف نیروگاه‌ها و فناوری‌های تجدیدپذیر", members: 97, privacy: "عمومی", color: "#b45309", unread: 0, category: "فناوری" },
+  { id: "g8", createdAt: "۱۴۰۴/۱۱/۰۱", lastActivityAt: "۱۴۰۵/۰۴/۳۱", lastActivityRel: "۳۰ دقیقه پیش", name: "باشگاه نخبگان هوش مصنوعی", description: "هم‌فکری پژوهشگران AI کشور روی مسائل واقعی صنایع بنیاد — از بینایی ماشین تا LLMها", members: 148, privacy: "عمومی", color: "#dc2626", unread: 7, category: "فناوری" },
+  { id: "g9", createdAt: "۱۴۰۴/۱۲/۱۰", lastActivityAt: "۱۴۰۵/۰۴/۳۰", lastActivityRel: "دیروز", name: "شبکه فناوران زیست‌فناوری و سلامت", description: "اتصال آزمایشگاه‌ها و استارتاپ‌های زیستی به نیازهای صنایع غذایی و کشاورزی", members: 86, privacy: "عمومی", color: "#0d9488", unread: 3, category: "فناوری" },
+  { id: "g10", createdAt: "۱۴۰۴/۰۸/۲۰", lastActivityAt: "۱۴۰۵/۰۴/۳۱", lastActivityRel: "۱ ساعت پیش", name: "پل دانشگاه و صنعت", description: "طرح مسائل صنعتی هلدینگ‌ها و یافتن تیم حل‌مسئله از میان اساتید و دانشجویان نخبه", members: 214, privacy: "عمومی", color: "#1f4f99", unread: 12, category: "فناوری" },
+  { id: "g11", createdAt: "۱۴۰۳/۱۲/۰۵", lastActivityAt: "۱۴۰۵/۰۴/۲۹", lastActivityRel: "۲ روز پیش", name: "تیم‌های راهی شو ۱۴۰۳", description: "فضای اختصاصی تیم‌های پذیرفته‌شده رویداد راهی شو: منتورینگ، هم‌رسانی تجربه و گزارش پیشرفت", members: 42, privacy: "خصوصی", color: "#7c3aed", unread: 5, category: "فناوری" },
+  { id: "g12", createdAt: "۱۴۰۴/۰۹/۱۵", lastActivityAt: "۱۴۰۵/۰۴/۲۸", lastActivityRel: "۳ روز پیش", name: "انرژی و صنایع سبز", description: "گفتگوی متخصصان انرژی درباره بهینه‌سازی مصرف نیروگاه‌ها و فناوری‌های تجدیدپذیر", members: 97, privacy: "عمومی", color: "#b45309", unread: 0, category: "فناوری" },
 ];
 
 export type Post = {
@@ -784,11 +808,16 @@ export type EventItem = {
   hashtags: string[];
   description: string;
   visibility: Visibility;
+  mode: "حضوری" | "آنلاین";
+  joinLink?: string;
+  mapUrl?: string;
 };
 
 export const events: EventItem[] = [
   {
     id: "e1",
+    mode: "حضوری",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Milad+Tower+Tehran",
     title: "جلسه هیات عامل — مرور برنامه محرومیت‌زدایی",
     date: "2026-07-12",
     jalaliDate: "۱۴۰۵/۰۴/۲۱",
@@ -801,6 +830,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e2",
+    mode: "حضوری",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Azadi+Tower",
     title: "کارگاه آموزشی راهبران سامانه ارتباطات سازمانی",
     date: "2026-07-20",
     jalaliDate: "۱۴۰۵/۰۴/۲۹",
@@ -813,6 +844,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e3",
+    mode: "آنلاین",
+    joinLink: "https://meet.example.ir/davari-f2",
     title: "داوری طرح‌های اشتغال‌زایی — فراخوان دوم",
     date: "2026-08-02",
     jalaliDate: "۱۴۰۵/۰۵/۱۲",
@@ -825,6 +858,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e4",
+    mode: "آنلاین",
+    joinLink: "https://www.skyroom.online/ch/bonyad/kb-webinar",
     title: "وبینار معرفی بانک دانش بنیاد برای واحدهای سازمانی",
     date: "2026-07-15",
     jalaliDate: "۱۴۰۵/۰۴/۲۴",
@@ -837,6 +872,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e5",
+    mode: "حضوری",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Book+Garden",
     title: "گردهمایی مدیران هلدینگ‌های بنیاد",
     date: "2026-07-28",
     jalaliDate: "۱۴۰۵/۰۵/۰۶",
@@ -849,6 +886,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e6",
+    mode: "حضوری",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=University+of+Tehran",
     title: "کارگاه امنیت سایبری و آشنایی با استاندارد افتا",
     date: "2026-08-10",
     jalaliDate: "۱۴۰۵/۰۵/۲۰",
@@ -861,6 +900,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e7",
+    mode: "حضوری",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Milad+Tower",
     title: "نشست فصلی پایش تفاهم‌نامه‌های مردمی‌سازی اقتصاد",
     date: "2026-08-18",
     jalaliDate: "۱۴۰۵/۰۵/۲۸",
@@ -998,6 +1039,7 @@ export type NewsItem = {
   summary: string;
   date: string;
   comments: number;
+  views: number;
   pinned?: boolean;
   visibility: Visibility;
 };
@@ -1005,6 +1047,7 @@ export type NewsItem = {
 export const newsItems: NewsItem[] = [
   {
     id: "nw1",
+    views: 2140,
     title: "خدمات محرومیت‌زدایی بنیاد پنج برابر می‌شود",
     summary: "در چارچوب ماموریت‌های جدید بنیاد، دامنه خدمات محرومیت‌زدایی در مناطق هدف گسترش می‌یابد.",
     date: "۱۴۰۵/۰۳/۰۵",
@@ -1014,6 +1057,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw2",
+    views: 3480,
     title: "آمادگی بنیاد برای واگذاری هتل‌ها به ارزش ۴۷ همت",
     summary: "برنامه عرضه عمومی هتل‌ها و اموال مازاد بنیاد در راستای مردمی‌سازی اقتصاد اعلام شد.",
     date: "۱۴۰۵/۰۳/۰۲",
@@ -1022,6 +1066,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw3",
+    views: 860,
     title: "به‌روزرسانی سیاست‌های دسترسی و نقش‌های سازمانی سامانه",
     summary: "از این پس راهبران واحدها می‌توانند نقش‌های سفارشی ایجاد کنند. مستندات جدید در بانک دانش منتشر شد.",
     date: "۱۴۰۵/۰۲/۲۸",
@@ -1030,6 +1075,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw4",
+    views: 2960,
     title: "امضای هفت تفاهم‌نامه مردمی‌سازی اقتصاد میان بنیاد علوی و هلدینگ‌ها",
     summary: "هلدینگ‌های فردوس پارس، کوثر، پارسیان، کاوه پارس، صبا، پایا ترابر سینا و صنایع غذایی سینا برای حمایت از بیش از ۸ هزار طرح خرد و متوسط همکاری می‌کنند.",
     date: "۱۴۰۵/۰۳/۰۸",
@@ -1039,6 +1085,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw5",
+    views: 1725,
     title: "توزیع ۳۰۰ هزار جفت کفش میان دانش‌آموزان مناطق کم‌برخوردار",
     summary: "برنامه تجهیز دانش‌آموزان مناطق هدف تا پایان شهریور تکمیل می‌شود؛ ۲۰ هزار جفت نخست توزیع شد.",
     date: "۱۴۰۵/۰۲/۲۲",
@@ -1047,6 +1094,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw6",
+    views: 1210,
     title: "بازدید رئیس بنیاد از نمایشگاه آگروفود ۱۴۰۵ و رونمایی از محصولات جدید صنایع غذایی سینا",
     summary: "در حاشیه نمایشگاه، از محصولات جدید هلدینگ صنایع غذایی سینا رونمایی شد.",
     date: "۱۴۰۵/۰۲/۱۴",
@@ -1055,6 +1103,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw7",
+    views: 1490,
     title: "برنامه زمان‌بندی جمع‌آوری مدارس ناایمن تا مهرماه اعلام شد",
     summary: "بنیاد برنامه نوسازی و ایمن‌سازی مدارس مناطق هدف را پیش از آغاز سال تحصیلی اجرا می‌کند.",
     date: "۱۴۰۵/۰۲/۰۳",
