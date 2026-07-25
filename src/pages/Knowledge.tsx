@@ -14,6 +14,7 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityBadge, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTabParam } from "../lib/useTabParam";
 
 const typeTone: Record<string, BadgeTone> = {
   قرارداد: "warning",
@@ -25,7 +26,7 @@ const typeTone: Record<string, BadgeTone> = {
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function Knowledge() {
-  const [tab, setTab] = useState<"bank" | "rnd" | "registry">("bank");
+  const [tab, setTab] = useTabParam<"bank" | "rnd" | "registry">("bank", ["bank", "rnd", "registry"]);
   return (
     <div>
       <PageHeader

@@ -8,6 +8,7 @@ import StatCard from "../components/ui/StatCard";
 import Drawer from "../components/ui/Drawer";
 import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
+import JalaliDatePicker from "../components/ui/JalaliDatePicker";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useToast } from "../components/ui/ToastProvider";
 
@@ -28,6 +29,7 @@ export default function Training() {
   const [date, setDate] = useState("");
   const [hours, setHours] = useState("۸");
   const [capacity, setCapacity] = useState("۳۰");
+  const [titleError, setTitleError] = useState(false);
   const { notify } = useToast();
 
   const trainingCourses = courses;
@@ -68,9 +70,10 @@ export default function Training() {
 
   const submit = () => {
     if (!title.trim()) {
-      notify("عنوان دوره الزامی است.", "warning");
+      setTitleError(true);
       return;
     }
+    setTitleError(false);
     if (editingId) {
       setCourses((prev) =>
         prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), instructor: instructor.trim() || c.instructor, date: date.trim() || c.date, hours: toNum(hours) || c.hours, capacity: toNum(capacity) || c.capacity } : c))
@@ -149,8 +152,9 @@ export default function Training() {
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش دوره" : "تعریف دوره آموزشی جدید"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان دوره</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: آشنایی با ارزیابی TRL" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان دوره <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setTitleError(false); }} placeholder="مثلاً: آشنایی با ارزیابی TRL" className={`input-field ${titleError ? "input-error" : ""}`} />
+            {titleError && <p className="field-error">عنوان دوره الزامی است.</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">مدرس / مجری</label>
@@ -159,7 +163,7 @@ export default function Training() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ شروع</label>
-              <input value={date} onChange={(e) => setDate(e.target.value)} placeholder="۱۴۰۵/۰۶/۱۵" className="input-field" />
+              <JalaliDatePicker value={date} onChange={setDate} />
             </div>
             <div>
               <label className="text-xs font-medium text-ink-600 block mb-1.5">ساعت آموزشی</label>

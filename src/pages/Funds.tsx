@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTabParam } from "../lib/useTabParam";
 import {
   PiggyBank,
   Plus,
@@ -88,7 +89,7 @@ const paymentTone: Record<string, BadgeTone> = {
 };
 
 export default function Funds() {
-  const [tab, setTab] = useState<"nf" | "allFunds" | "employment">("nf");
+  const [tab, setTab] = useTabParam<"nf" | "allFunds" | "employment">("nf", ["nf", "allFunds", "employment"]);
   return (
     <div>
       <PageHeader
@@ -220,6 +221,7 @@ function InnovationFundTab() {
   const [rahbar, setRahbar] = useState("شرکت شتابدهی و فناوری تا ثریا");
   const [nazer, setNazer] = useState("");
   const [projectManager, setProjectManager] = useState("");
+  const [formErrors, setFormErrors] = useState<{ title?: boolean; team?: boolean }>({});
   const { notify } = useToast();
   const { settings } = useSettings();
 
@@ -245,10 +247,9 @@ function InnovationFundTab() {
   const lateReviews = projects.flatMap((p) => p.reports).flatMap((r) => r.chain).filter((c) => c.late).length;
 
   const submitProposal = () => {
-    if (!title.trim() || !teamName.trim()) {
-      notify("عنوان طرح و نام تیم مجری الزامی است.", "warning");
-      return;
-    }
+    const errs = { title: !title.trim(), team: !teamName.trim() };
+    setFormErrors(errs);
+    if (errs.title || errs.team) return;
     const seq = 1060 + projects.length;
     const newProject: NfProject = {
       id: `NF-1404-${seq}`,
@@ -404,12 +405,14 @@ function InnovationFundTab() {
       >
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح (فارسی)</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: سامانه پایش هوشمند زنجیره سرد" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح (فارسی) <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setFormErrors((p) => ({ ...p, title: false })); }} placeholder="مثلاً: سامانه پایش هوشمند زنجیره سرد" className={`input-field ${formErrors.title ? "input-error" : ""}`} />
+            {formErrors.title && <p className="field-error">عنوان طرح الزامی است.</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام تیم / شرکت مجری</label>
-            <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="مثلاً: تیم فناور آرتان" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام تیم / شرکت مجری <span className="text-rose-500">*</span></label>
+            <input value={teamName} onChange={(e) => { setTeamName(e.target.value); setFormErrors((p) => ({ ...p, team: false })); }} placeholder="مثلاً: تیم فناور آرتان" className={`input-field ${formErrors.team ? "input-error" : ""}`} />
+            {formErrors.team && <p className="field-error">نام تیم مجری الزامی است.</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

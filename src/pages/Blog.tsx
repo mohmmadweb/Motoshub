@@ -13,6 +13,7 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTabParam } from "../lib/useTabParam";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
@@ -64,7 +65,7 @@ function PublicationsTab() {
 }
 
 export default function Blog() {
-  const [tab, setTab] = useState<"blog" | "pubs">("blog");
+  const [tab, setTab] = useTabParam<"blog" | "pubs">("blog", ["blog", "pubs"]);
   const { blogPosts: posts, setBlogPosts: setPosts } = useContent();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -72,6 +73,7 @@ export default function Blog() {
   const [tags, setTags] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ title?: boolean; excerpt?: boolean }>({});
   const { notify } = useToast();
 
   const startEdit = (b: BlogPost) => {
@@ -94,10 +96,9 @@ export default function Blog() {
     });
 
   const submit = () => {
-    if (!title.trim() || !excerpt.trim()) {
-      notify("عنوان و متن یادداشت الزامی است.", "warning");
-      return;
-    }
+    const errs = { title: !title.trim(), excerpt: !excerpt.trim() };
+    setErrors(errs);
+    if (errs.title || errs.excerpt) return;
     const tagList = tags.split("،").map((t) => t.trim()).filter(Boolean);
     if (editingId) {
       setPosts((prev) => prev.map((p) => (p.id === editingId ? { ...p, title: title.trim(), excerpt: excerpt.trim(), tags: tagList, visibility } : p)));
@@ -211,12 +212,14 @@ export default function Blog() {
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش یادداشت" : "انتشار یادداشت جدید در بلاگ"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: تجربه‌ی یک‌ساله از مهاجرت به معماری چندمستأجری" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: false })); }} placeholder="مثلاً: تجربه‌ی یک‌ساله از مهاجرت به معماری چندمستأجری" className={`input-field ${errors.title ? "input-error" : ""}`} />
+            {errors.title && <p className="field-error">عنوان الزامی است.</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">متن یادداشت</label>
-            <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} className="input-field min-h-24" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">متن یادداشت <span className="text-rose-500">*</span></label>
+            <textarea value={excerpt} onChange={(e) => { setExcerpt(e.target.value); setErrors((p) => ({ ...p, excerpt: false })); }} className={`input-field min-h-24 ${errors.excerpt ? "input-error" : ""}`} />
+            {errors.excerpt && <p className="field-error">متن یادداشت الزامی است.</p>}
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">برچسب‌ها (با «،» جدا کنید)</label>

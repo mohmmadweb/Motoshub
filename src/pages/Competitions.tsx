@@ -5,6 +5,7 @@ import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Tabs from "../components/ui/Tabs";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTabParam } from "../lib/useTabParam";
 
 // مسابقات (iiscompetition) + چالش‌ها (iischallenge)
 type Competition = {
@@ -64,7 +65,7 @@ const challenges: Challenge[] = [
 const compTone: Record<Competition["status"], BadgeTone> = { "ثبت‌نام باز": "success", "در حال داوری": "warning", "اعلام نتایج": "navy" };
 
 export default function Competitions() {
-  const [tab, setTab] = useState<"comp" | "challenge">("comp");
+  const [tab, setTab] = useTabParam<"comp" | "challenge">("comp", ["comp", "challenge"]);
   const [comps, setComps] = useState(initialCompetitions);
   const [joined, setJoined] = useState<string[]>(["ch1"]);
   const { notify } = useToast();

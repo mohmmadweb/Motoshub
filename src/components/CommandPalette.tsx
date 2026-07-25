@@ -2,19 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Hash, User, Compass } from "lucide-react";
 import { channels, users } from "../data/mock";
+import { navSections } from "./Sidebar";
 
 type Item = { id: string; label: string; hint: string; icon: typeof Hash; to: string };
 
-const pages: Item[] = [
-  { id: "dashboard", label: "داشبورد فعالیت‌ها", hint: "صفحه", icon: Compass, to: "/dashboard" },
-  { id: "groups", label: "گروه‌های تعاملی", hint: "صفحه", icon: Compass, to: "/dashboard/groups" },
-  { id: "knowledge", label: "مدیریت دانش", hint: "صفحه", icon: Compass, to: "/dashboard/knowledge" },
-  { id: "projects", label: "مدیریت پروژه", hint: "صفحه", icon: Compass, to: "/dashboard/projects" },
-  { id: "contracts", label: "قراردادهای فناورانه", hint: "صفحه", icon: Compass, to: "/dashboard/contracts" },
-  { id: "funds", label: "صندوق نوآوری و شتاب‌دهی", hint: "صفحه", icon: Compass, to: "/dashboard/funds" },
-  { id: "reports", label: "گزارش‌گیری پیشرفته", hint: "صفحه", icon: Compass, to: "/dashboard/reports" },
-  { id: "admin", label: "پنل راهبری", hint: "صفحه", icon: Compass, to: "/dashboard/admin" },
-];
+// همه‌ی صفحات سایدبار به‌صورت خودکار در پالت هستند — صفحه‌ی جدید = خودکار قابل جستجو
+const pages: Item[] = navSections.flatMap((s) =>
+  s.items.map((i) => ({ id: i.to, label: i.label, hint: "صفحه", icon: Compass, to: i.to }))
+);
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");

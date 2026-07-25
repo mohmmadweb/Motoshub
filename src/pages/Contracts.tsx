@@ -14,6 +14,7 @@ import DataTable, { type Column } from "../components/ui/DataTable";
 import Modal from "../components/ui/Modal";
 import Drawer from "../components/ui/Drawer";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTabParam } from "../lib/useTabParam";
 
 const stageTone: Record<ContractRecord["stage"], BadgeTone> = {
   مذاکره: "warning",
@@ -38,7 +39,7 @@ const approvalTone: Record<string, BadgeTone> = {
 const stages: ContractRecord["stage"][] = ["فراخوان", "مذاکره", "داوری", "در حال اجرا", "تسویه‌شده"];
 
 export default function Contracts() {
-  const [tab, setTab] = useState<"tech" | "transfer" | "esign" | "tender">("tech");
+  const [tab, setTab] = useTabParam<"tech" | "transfer" | "esign" | "tender">("tech", ["tech", "transfer", "esign", "tender"]);
   return (
     <div>
       <PageHeader
@@ -310,16 +311,16 @@ function TechContractsTab() {
   const [selected, setSelected] = useState<ContractRecord | null>(null);
   const [obligationState, setObligationState] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ title?: boolean; vendor?: boolean }>({});
   const { notify } = useToast();
   const confirm = useConfirm();
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
 
   const submit = () => {
-    if (!title.trim() || !vendor.trim()) {
-      notify("عنوان قرارداد و نام تامین‌کننده الزامی است.", "warning");
-      return;
-    }
+    const errs = { title: !title.trim(), vendor: !vendor.trim() };
+    setErrors(errs);
+    if (errs.title || errs.vendor) return;
     if (editingId) {
       setContracts((prev) =>
         prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), vendor: vendor.trim(), value: value.trim() || "—", deadline: deadline.trim() || "نامشخص" } : c))
@@ -465,12 +466,14 @@ function TechContractsTab() {
       >
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان قرارداد</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: توسعه و استقرار سامانه مانیتورینگ ناوگان" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان قرارداد <span className="text-rose-500">*</span></label>
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: false })); }} placeholder="مثلاً: توسعه و استقرار سامانه مانیتورینگ ناوگان" className={`input-field ${errors.title ? "input-error" : ""}`} />
+            {errors.title && <p className="field-error">عنوان قرارداد الزامی است.</p>}
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">تامین‌کننده / فناور</label>
-            <input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="مثلاً: شرکت دانش‌بنیان رایان‌فناوران" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">تامین‌کننده / فناور <span className="text-rose-500">*</span></label>
+            <input value={vendor} onChange={(e) => { setVendor(e.target.value); setErrors((p) => ({ ...p, vendor: false })); }} placeholder="مثلاً: شرکت دانش‌بنیان رایان‌فناوران" className={`input-field ${errors.vendor ? "input-error" : ""}`} />
+            {errors.vendor && <p className="field-error">نام تامین‌کننده الزامی است.</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

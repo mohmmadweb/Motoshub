@@ -533,7 +533,7 @@ export default function Chat() {
                             );
                           })}
 
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                          <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-lg:opacity-100 transition-opacity flex items-center gap-0.5">
                             <MsgIconBtn title="پسندیدن" onClick={() => toggleReaction(m.id, "ThumbsUp")}><ThumbsUp size={12} /></MsgIconBtn>
                             <MsgIconBtn title="سنجاق" onClick={() => togglePin(m.id)}><Pin size={12} /></MsgIconBtn>
                             <MsgIconBtn title="ذخیره" onClick={() => toggleSave(m.id)}><Bookmark size={12} /></MsgIconBtn>
@@ -568,7 +568,7 @@ export default function Chat() {
                 return (
                   <div key={m.id} className={`group flex ${mine ? "justify-start" : "justify-end"} ${groupedWithPrev ? "mt-0.5" : "mt-2.5"}`}>
                     {/* اکشن‌های شناور پیام */}
-                    <div className={`self-center flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${mine ? "order-2 mr-1.5" : "order-0 ml-1.5"}`}>
+                    <div className={`self-center flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-lg:opacity-100 transition-opacity ${mine ? "order-2 mr-1.5" : "order-0 ml-1.5"}`}>
                       <MsgIconBtn title="پاسخ" onClick={() => { setReplyTo(m); setEditing(null); }}><Reply size={13} /></MsgIconBtn>
                       <MsgIconBtn title="هدایت" onClick={() => setForwarding(m)}><Forward size={13} /></MsgIconBtn>
                       {m.text && <MsgIconBtn title="کپی" onClick={() => copyText(m.text)}><Copy size={13} /></MsgIconBtn>}

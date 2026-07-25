@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -17,6 +17,15 @@ export default function PageHeader({
   breadcrumb?: Crumb[];
   actions?: ReactNode;
 }) {
+  // عنوان تب مرورگر با صفحه هماهنگ می‌شود (ناوبری و تاریخچه‌ی مرورگر خوانا)
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `${title} · موتوشاب`;
+    return () => {
+      document.title = prev;
+    };
+  }, [title]);
+
   return (
     <div className="mb-6">
       {breadcrumb && breadcrumb.length > 0 && (

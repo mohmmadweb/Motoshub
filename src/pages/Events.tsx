@@ -7,6 +7,7 @@ import Tabs from "../components/ui/Tabs";
 import StatCard from "../components/ui/StatCard";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
+import JalaliDatePicker from "../components/ui/JalaliDatePicker";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -14,9 +15,10 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTabParam } from "../lib/useTabParam";
 
 export default function Events() {
-  const [tab, setTab] = useState<"events" | "award">("events");
+  const [tab, setTab] = useTabParam<"events" | "award">("events", ["events", "award"]);
   return (
     <div>
       <PageHeader
@@ -306,7 +308,7 @@ function EventsListTab() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-ink-600 block mb-1.5">تاریخ (شمسی) <span className="text-rose-500">*</span></label>
-              <input value={jalaliDate} onChange={(e) => { setJalaliDate(e.target.value); setErrors((p) => ({ ...p, date: false })); }} placeholder="۱۴۰۵/۰۵/۱۰" className={`input-field ${errors.date ? "input-error" : ""}`} />
+              <JalaliDatePicker value={jalaliDate} onChange={(v) => { setJalaliDate(v); setErrors((p) => ({ ...p, date: false })); }} error={errors.date} />
               {errors.date && <p className="field-error">تاریخ الزامی است.</p>}
             </div>
             <div>

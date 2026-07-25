@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import Tabs from "../components/ui/Tabs";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTabParam } from "../lib/useTabParam";
 
 // نظرسنجی (iisquestions/Poll) + آزمون و داوری (iispors/Quiz)
 type Poll = {
@@ -63,7 +64,7 @@ const quizzes: Quiz[] = [
 const quizTone: Record<Quiz["status"], BadgeTone> = { باز: "success", "در حال داوری": "warning", "پایان‌یافته": "neutral" };
 
 export default function Polls() {
-  const [tab, setTab] = useState<"polls" | "quiz">("polls");
+  const [tab, setTab] = useTabParam<"polls" | "quiz">("polls", ["polls", "quiz"]);
   const [polls, setPolls] = useState<Poll[]>(initialPolls);
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");

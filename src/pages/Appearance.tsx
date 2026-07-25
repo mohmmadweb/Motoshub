@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Palette, Sun, Moon, MonitorSmartphone, Type, Check, Sparkles, Building2 } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -6,6 +5,7 @@ import Tabs from "../components/ui/Tabs";
 import BrandingPanel from "../components/BrandingPanel";
 import { useTheme, accentPresets, type ThemeMode, type FontScale } from "../context/ThemeContext";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTabParam } from "../lib/useTabParam";
 
 const modeOptions: { id: ThemeMode; label: string; desc: string; icon: typeof Sun }[] = [
   { id: "light", label: "روشن", desc: "پس‌زمینه روشن — مناسب محیط‌های پرنور", icon: Sun },
@@ -19,7 +19,7 @@ const fontOptions: { id: FontScale; label: string; desc: string }[] = [
 ];
 
 export default function Appearance() {
-  const [tab, setTab] = useState<"me" | "org">("me");
+  const [tab, setTab] = useTabParam<"me" | "org">("me", ["me", "org"]);
   return (
     <div>
       <PageHeader

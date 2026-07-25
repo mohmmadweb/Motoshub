@@ -12,6 +12,7 @@ import DataTable, { type Column } from "../components/ui/DataTable";
 import Modal from "../components/ui/Modal";
 import Drawer from "../components/ui/Drawer";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTabParam } from "../lib/useTabParam";
 
 const stageTone: Record<ResearchOpportunity["stage"], BadgeTone> = {
   "فراخوان باز": "success",
@@ -30,7 +31,7 @@ const applicantTone: Record<ResearchApplicant["status"], BadgeTone> = {
 const stages: ResearchOpportunity["stage"][] = ["فراخوان باز", "بررسی درخواست‌ها", "داوری", "در حال اجرا", "پایان‌یافته"];
 
 export default function Research() {
-  const [tab, setTab] = useState<"opps" | "rfp" | "sabbatical">("opps");
+  const [tab, setTab] = useTabParam<"opps" | "rfp" | "sabbatical">("opps", ["opps", "rfp", "sabbatical"]);
   return (
     <div>
       <PageHeader
