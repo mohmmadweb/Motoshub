@@ -49,7 +49,10 @@ function greetingFor(hour: number) {
 function LiveDateTime() {
   const now = useNow();
   const time = now.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const date = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
+  // ساخت دستی تاریخ شمسی تا ترتیب اجزا در RTL به‌هم نریزد: «شنبه ۳ مرداد ۱۴۰۵»
+  const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const date = `${get("weekday")} ${get("day")} ${get("month")} ${get("year")}`;
   const g = greetingFor(now.getHours());
 
   return (
@@ -63,7 +66,7 @@ function LiveDateTime() {
           <Clock3 size={13} className="text-brand-500" />
           <span className="font-bold text-ink-800 tabular-nums min-w-[64px] text-center">{time}</span>
         </span>
-        <span className="bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5 font-medium">{date}</span>
+        <span dir="rtl" className="bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5 font-medium whitespace-nowrap">{date}</span>
       </span>
     </div>
   );
