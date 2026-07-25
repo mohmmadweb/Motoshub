@@ -36,6 +36,10 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Help = lazy(() => import("./pages/Help"));
 const Appearance = lazy(() => import("./pages/Appearance"));
+const Friends = lazy(() => import("./pages/Friends"));
+const Polls = lazy(() => import("./pages/Polls"));
+const Competitions = lazy(() => import("./pages/Competitions"));
+const Tickets = lazy(() => import("./pages/Tickets"));
 const PublicItemDetail = lazy(() => import("./pages/PublicItemDetail"));
 const NewsItemDetail = lazy(() => import("./pages/NewsItemDetail"));
 const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
@@ -88,6 +92,10 @@ export default function App() {
           <Route path="media" element={<Media />} />
           <Route path="media/:id" element={<MediaItemDetail />} />
           <Route path="chat" element={<Chat />} />
+          <Route path="friends" element={<Friends />} />
+          <Route path="polls" element={<Polls />} />
+          <Route path="competitions" element={<Competitions />} />
+          <Route path="tickets" element={<Tickets />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="profile/:id" element={<Profile />} />
           <Route path="knowledge" element={<Knowledge />} />

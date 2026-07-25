@@ -19,6 +19,10 @@ import {
   GraduationCap,
   Bot,
   Palette,
+  UserPlus,
+  ListChecks,
+  Trophy,
+  LifeBuoy,
 } from "lucide-react";
 import { currentTenant } from "../data/mock";
 
@@ -42,6 +46,9 @@ export const navSections: { title: string; items: Item[] }[] = [
       { to: "/dashboard/blog", label: "بلاگ", icon: NotebookPen },
       { to: "/dashboard/media", label: "تصاویر و ویدیو", icon: Image },
       { to: "/dashboard/chat", label: "گفتگو", icon: MessageCircle },
+      { to: "/dashboard/friends", label: "دوستان و دنبال‌کردن", icon: UserPlus },
+      { to: "/dashboard/polls", label: "نظرسنجی و آزمون", icon: ListChecks },
+      { to: "/dashboard/competitions", label: "مسابقات و چالش‌ها", icon: Trophy },
     ],
   },
   {
@@ -61,6 +68,7 @@ export const navSections: { title: string; items: Item[] }[] = [
     items: [
       { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings },
       { to: "/dashboard/appearance", label: "ظاهر و برندسازی", icon: Palette },
+      { to: "/dashboard/tickets", label: "تیکت پشتیبانی", icon: LifeBuoy },
       { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
     ],
   },
