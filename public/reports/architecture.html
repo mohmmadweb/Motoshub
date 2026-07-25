@@ -175,7 +175,7 @@
 </div>
     <div class="card">
       <h3 style="margin-top:0">motoshub-prototype — نمای محصول</h3>
-      <p style="font-size:14.5px">React 19 + Vite 8، روی <code>cheedafar.ir</code> دیپلوی می‌شود.
+      <p style="font-size:14.5px">React 19 + Vite 8، روی <code>demo.shub.ir</code> دیپلوی می‌شود.
       همه‌ی داده‌ها <strong>mock</strong> است؛ تنها نقطه‌ی اتصال واقعی، فایل
       <code>src/lib/api.ts</code> است که هنوز پیاده نشده. ماژول‌های سازمانی
       (پروژه/قرارداد/صندوق) فقط اینجا وجود دارند.</p>
@@ -298,7 +298,7 @@ flowchart TB
   <div class="diagram"><pre class="mermaid">
 flowchart LR
   subgraph SRC["Source control"]
-    GH["GitHub<br/>frontend + docs<br/> cheedafar.ir"]:::git
+    GH["GitHub<br/>frontend + docs<br/> demo.shub.ir"]:::git
     GL["GitLab (internal)<br/>motoshub-web<br/>+ Django (new repo)"]:::git
   end
   GH -->|"GitHub Actions"| FEBUILD["Frontend build<br/>(static SPA)"]
