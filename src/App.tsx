@@ -40,6 +40,7 @@ const Friends = lazy(() => import("./pages/Friends"));
 const Polls = lazy(() => import("./pages/Polls"));
 const Competitions = lazy(() => import("./pages/Competitions"));
 const Tickets = lazy(() => import("./pages/Tickets"));
+const Award = lazy(() => import("./pages/Award"));
 const PublicItemDetail = lazy(() => import("./pages/PublicItemDetail"));
 const NewsItemDetail = lazy(() => import("./pages/NewsItemDetail"));
 const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
@@ -104,6 +105,7 @@ export default function App() {
           <Route path="contracts" element={<Contracts />} />
           <Route path="funds" element={<Funds />} />
           <Route path="research" element={<Research />} />
+          <Route path="award" element={<Award />} />
           <Route path="training" element={<Training />} />
           <Route path="assistant" element={<Assistant />} />
           <Route path="reports" element={<Reports />} />

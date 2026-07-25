@@ -23,6 +23,7 @@ import {
   ListChecks,
   Trophy,
   LifeBuoy,
+  Award,
 } from "lucide-react";
 import { currentTenant } from "../data/mock";
 
@@ -59,6 +60,7 @@ export const navSections: { title: string; items: Item[] }[] = [
       { to: "/dashboard/contracts", label: "قراردادهای فناورانه", icon: FileSignature },
       { to: "/dashboard/funds", label: "صندوق نوآوری و شتاب‌دهی", icon: PiggyBank },
       { to: "/dashboard/research", label: "فرصت‌های پژوهشی", icon: FlaskConical },
+      { to: "/dashboard/award", label: "جایزه نوآوری و فناوری", icon: Award },
       { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap },
       { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3 },
     ],
