@@ -138,7 +138,7 @@ function TechTransferTab() {
     { key: "holding", label: "هلدینگ متقاضی" },
     { key: "company", label: "شرکت متقاضی" },
     { key: "mojri", label: "مجری" },
-    { key: "daneshmandRole", label: "نقش دانشمند", render: (c) => <Badge tone="navy">{c.daneshmandRole}</Badge> },
+    { key: "daneshmandRole", label: "نقش بنیاد", render: (c) => <Badge tone="navy">{c.daneshmandRole}</Badge> },
     { key: "amount", label: "مبلغ" },
     {
       key: "progress",
@@ -158,7 +158,7 @@ function TechTransferTab() {
       <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
         <ArrowLeftRight size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
-          قراردادهای سه‌جانبه‌ی تبادل فناوری: شرکت بنیادی (کارفرما/بهره‌بردار) + فناور (مجری) + دانشمند
+          قراردادهای سه‌جانبه‌ی تبادل فناوری: شرکت بنیادی (کارفرما/بهره‌بردار) + فناور (مجری) + بنیاد
           (ناظر/هماهنگ‌کننده با تعهد مالی معمولاً ۵۰٪). برای هر قرارداد سه درصد پیشرفت مجزا پایش می‌شود:
           فیزیکی، زمانی و مالی — اختلاف بین آن‌ها سیگنال هشدار است.
         </p>
@@ -194,14 +194,14 @@ function TechTransferTab() {
               <p className="text-sm font-bold text-ink-900 leading-6">{selected.title}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge tone="neutral">{selected.type}</Badge>
-                <Badge tone="navy">نقش دانشمند: {selected.daneshmandRole}</Badge>
+                <Badge tone="navy">نقش بنیاد: {selected.daneshmandRole}</Badge>
               </div>
             </div>
             <div className="text-xs text-ink-600 space-y-1.5">
               <p><span className="text-ink-400">هلدینگ متقاضی:</span> {selected.holding} · <span className="text-ink-400">شرکت:</span> {selected.company} ({selected.companyRole})</p>
               <p><span className="text-ink-400">مجری پروژه:</span> {selected.mojri}</p>
               <p><span className="text-ink-400">ناظر فنی:</span> {selected.nazer} · <span className="text-ink-400">محل اجرا:</span> {selected.city}</p>
-              <p><span className="text-ink-400">مبلغ قرارداد:</span> {selected.amount} · <span className="text-ink-400">تعهد دانشمند:</span> {selected.commitment}</p>
+              <p><span className="text-ink-400">مبلغ قرارداد:</span> {selected.amount} · <span className="text-ink-400">تعهد بنیاد:</span> {selected.commitment}</p>
               <p><span className="text-ink-400">نوع ضمانت:</span> {selected.guarantee}</p>
             </div>
             <div className="border-t border-ink-100 pt-4 space-y-3">
@@ -375,7 +375,7 @@ function TechContractsTab() {
       label: "اسناد",
       render: (c) => (
         <span className="flex items-center gap-1 text-ink-400">
-          <Paperclip size={13} /> {contractDetails[c.id] ? contractDetails[c.id].payments.length + contractDetails[c.id].obligations.length : 2} سند
+          <Paperclip size={13} /> {(contractDetails[c.id] ? contractDetails[c.id].payments.length + contractDetails[c.id].obligations.length : 2).toLocaleString("fa-IR")} سند
         </span>
       ),
     },
@@ -418,10 +418,10 @@ function TechContractsTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="کل قراردادها" value={contracts.length} tone="brand" icon={<FileSignature size={16} />} />
-        <StatCard label="در حال اجرا" value={active} tone="success" icon={<CircleDollarSign size={16} />} />
-        <StatCard label="در مذاکره / داوری" value={inReview} tone="warning" icon={<Hourglass size={16} />} />
-        <StatCard label="دارای ضمانت‌نامه معتبر" value={Object.values(contractDetails).filter((d) => d.guarantee !== "—").length} icon={<ShieldCheck size={16} />} />
+        <StatCard label="کل قراردادها" value={contracts.length.toLocaleString("fa-IR")} tone="brand" icon={<FileSignature size={16} />} />
+        <StatCard label="در حال اجرا" value={active.toLocaleString("fa-IR")} tone="success" icon={<CircleDollarSign size={16} />} />
+        <StatCard label="در مذاکره / داوری" value={inReview.toLocaleString("fa-IR")} tone="warning" icon={<Hourglass size={16} />} />
+        <StatCard label="دارای ضمانت‌نامه معتبر" value={Object.values(contractDetails).filter((d) => d.guarantee !== "—").length.toLocaleString("fa-IR")} icon={<ShieldCheck size={16} />} />
       </div>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">

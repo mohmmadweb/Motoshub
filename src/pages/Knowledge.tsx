@@ -118,7 +118,7 @@ function RndDocsTab() {
         <Lightbulb size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
           برای هر شرکت بنیادی، «سند فرصت‌های تحقیق و توسعه» تدوین می‌شود: بازدید و احصاء عناوین ← تدوین ←
-          اصلاحات تیم تا ثریا ← پیش‌نویس نهایی ← تایید و تحویل. خروجی این سندها ورودی فراخوان‌های
+          اصلاحات تیم راهبر ← پیش‌نویس نهایی ← تایید و تحویل. خروجی این سندها ورودی فراخوان‌های
           نیازهای فناورانه و RFPهاست ({delivered.toLocaleString("fa-IR")} سند از {rndOpportunityDocs.length.toLocaleString("fa-IR")} سند تحویل شده است).
         </p>
       </div>
@@ -304,6 +304,20 @@ function KnowledgeBankTab() {
             <div className="border-t border-ink-100 pt-3">
               <p className="text-xs font-semibold text-ink-600 mb-2">سطح دسترسی</p>
               <VisibilityToggle visibility={selected.visibility} onChange={() => toggleVisibility(selected.id)} />
+            </div>
+            <div className="border-t border-ink-100 pt-3">
+              <p className="text-xs font-semibold text-ink-600 mb-2">پیش‌نمایش سند</p>
+              <div className="rounded-lg border border-ink-200 bg-ink-50/60 p-3 space-y-1.5">
+                {["مقدمه و هدف", "دامنه کاربرد", "شرح گام‌به‌گام", "نقش‌ها و مسئولیت‌ها", "پیوست‌ها"].map((t, i) => (
+                  <p key={t} className="text-[12px] text-ink-600 flex items-center gap-2">
+                    <span className="w-4.5 h-4.5 w-5 h-5 rounded-full bg-brand-50 text-brand-700 text-[10.5px] font-bold flex items-center justify-center shrink-0">{(i + 1).toLocaleString("fa-IR")}</span>
+                    {t}
+                  </p>
+                ))}
+                <p className="text-[11.5px] text-ink-400 leading-6 pt-1.5 border-t border-ink-100">
+                  چکیده: این سند مرجع رسمی واحدهای سازمان در موضوع خود است و تغییرات آن از طریق نسخه‌گذاری همین صفحه منتشر می‌شود.
+                </p>
+              </div>
             </div>
             <Button variant="primary" className="w-full justify-center" icon={<Download size={14} />} onClick={() => handleDownload(selected)}>
               دانلود سند

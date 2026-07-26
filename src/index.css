@@ -112,17 +112,35 @@
 }
 
 /* -----------------------------------------------------------------------
-   اندازه متن «بزرگ» — بازتعریف سایزهای ریز پرتکرار برای خوانایی بیشتر
+   کف خوانایی سراسری: هیچ متن معناداری زیر ~۱۱.۵px نمایش داده نمی‌شود
+   (بازنگاشت سایزهای ریزِ پرتکرار در حالت پیش‌فرض)
    ----------------------------------------------------------------------- */
-:root[data-font="large"] body { font-size: 15.5px; }
+.text-\[9px\], .text-\[10px\], .text-\[10\.5px\] { font-size: 11.5px; }
+.text-\[11px\], .text-\[11\.5px\] { font-size: 12px; }
+.text-\[12px\] { font-size: 12.5px; }
+.text-\[12\.5px\] { font-size: 13px; }
+
+/* حالت «متن بزرگ» — یک پله درشت‌تر از کف جدید */
+:root[data-font="large"] body { font-size: 16px; }
+:root[data-font="large"] .text-\[9px\],
 :root[data-font="large"] .text-\[10px\],
-:root[data-font="large"] .text-\[10\.5px\] { font-size: 12px; }
+:root[data-font="large"] .text-\[10\.5px\] { font-size: 12.5px; }
 :root[data-font="large"] .text-\[11px\],
-:root[data-font="large"] .text-\[11\.5px\] { font-size: 12.5px; }
+:root[data-font="large"] .text-\[11\.5px\] { font-size: 13px; }
 :root[data-font="large"] .text-\[12px\],
-:root[data-font="large"] .text-\[12\.5px\] { font-size: 13.5px; }
-:root[data-font="large"] .text-\[13px\] { font-size: 14.5px; }
-:root[data-font="large"] .text-xs { font-size: 13px; }
+:root[data-font="large"] .text-\[12\.5px\] { font-size: 14px; }
+:root[data-font="large"] .text-\[13px\] { font-size: 15px; }
+:root[data-font="large"] .text-xs { font-size: 13.5px; }
+
+/* کنتراست نشان‌ها و متن‌های رنگی در حالت تیره */
+:root[data-theme="dark"] .text-emerald-600 { color: #34d399; }
+:root[data-theme="dark"] .text-amber-600 { color: #fbbf24; }
+:root[data-theme="dark"] .text-rose-500 { color: #fb7185; }
+:root[data-theme="dark"] .text-sky-700, :root[data-theme="dark"] .text-sky-600 { color: #7dd3fc; }
+:root[data-theme="dark"] .text-brand-600 { color: var(--color-brand-300); }
+:root[data-theme="dark"] .bg-navy-50 { background-color: #1f2a3d; }
+:root[data-theme="dark"] .text-navy-700 { color: #b6c6de; }
+:root[data-theme="dark"] .border-brand-300 { border-color: color-mix(in srgb, var(--color-brand-400) 55%, #273044); }
 
 html,
 body,

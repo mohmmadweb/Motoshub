@@ -17,6 +17,7 @@ import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 import { VisibilityPicker, VisibilityToggle } from "../components/ui/VisibilityControl";
 import RowActions from "../components/ui/RowActions";
+import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
@@ -151,58 +152,40 @@ export default function News() {
         })}
       </div>
 
-      <div className="card divide-y divide-ink-100">
-        {/* table header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
-          <span>عنوان خبر</span>
-          <span className="text-center">تاریخ</span>
-          <span className="text-center">وضعیت</span>
-          <span className="text-center">نظرات</span>
-          <span className="text-center">دسترسی</span>
-          <span />
-        </div>
-
-        {shownNews.map((n) => (
-          <div
-            key={n.id}
-            className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
-          >
-            {/* Title — clickable */}
-            <div className="min-w-0">
-              <Link
-                to={`/dashboard/news/${n.id}`}
-                className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors truncate block"
-              >
-                {n.title}
-              </Link>
-              <p className="text-xs text-ink-400 mt-0.5 line-clamp-1">{n.summary}</p>
-            </div>
-            {/* Date */}
-            <span className="text-xs text-ink-400 whitespace-nowrap">{n.date}</span>
-            {/* Pinned badge */}
-            <span>
-              {n.pinned
-                ? <Badge tone="brand" icon={<Pin size={10} />}>مهم</Badge>
-                : <span className="text-xs text-ink-300">—</span>}
-            </span>
-            {/* Comments */}
-            <span className="flex items-center gap-1 text-xs text-ink-400">
-              <MessageCircle size={12} /> {n.comments}
-            </span>
-            {/* Visibility toggle */}
-            <VisibilityToggle
-              visibility={n.visibility}
-              onChange={() => toggleVisibility(n.id)}
-              size="xs"
-            />
-            <RowActions onEdit={() => startEdit(n)} onDelete={() => remove(n)} />
-          </div>
-        ))}
-
-        {newsItems.length === 0 && (
-          <div className="p-8 text-center text-sm text-ink-400">هنوز خبری ثبت نشده</div>
-        )}
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: "title",
+            label: "عنوان خبر",
+            render: (n) => (
+              <span className="min-w-0 block">
+                <Link to={`/dashboard/news/${n.id}`} className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors block">
+                  {n.title}
+                </Link>
+                <span className="text-xs text-ink-400 mt-0.5 line-clamp-1 block">{n.summary}</span>
+              </span>
+            ),
+          },
+          { key: "date", label: "تاریخ", render: (n) => <span className="text-xs text-ink-400 whitespace-nowrap">{n.date}</span> },
+          {
+            key: "pinned",
+            label: "وضعیت",
+            render: (n) => (n.pinned ? <Badge tone="brand" icon={<Pin size={10} />}>مهم</Badge> : <span className="text-xs text-ink-300">—</span>),
+          },
+          { key: "views", label: "بازدید", render: (n) => <span className="flex items-center gap-1 text-xs text-ink-400"><Eye size={12} /> {n.views.toLocaleString("fa-IR")}</span> },
+          { key: "comments", label: "نظرات", render: (n) => <span className="flex items-center gap-1 text-xs text-ink-400"><MessageCircle size={12} /> {n.comments.toLocaleString("fa-IR")}</span> },
+          {
+            key: "visibility",
+            label: "دسترسی",
+            render: (n) => <VisibilityToggle visibility={n.visibility} onChange={() => toggleVisibility(n.id)} size="xs" />,
+          },
+          { key: "actions", label: "", render: (n) => <RowActions onEdit={() => startEdit(n)} onDelete={() => remove(n)} /> },
+        ]}
+        rows={shownNews}
+        searchKeys={["title", "summary"]}
+        searchPlaceholder="جستجو در عنوان یا متن خبر…"
+        emptyTitle="هنوز خبری ثبت نشده"
+      />
 
       <ScopedNewsSection />
 
@@ -242,7 +225,7 @@ const scopeTone = { سراسری: "brand", هلدینگ: "navy", شرکت: "warn
 
 function ScopedNewsSection() {
   const [items, setItems] = useState<ScopedNews[]>(initialScopedNews);
-  const [viewer, setViewer] = useState<string>("hq"); // hq = ستاد دانشمند
+  const [viewer, setViewer] = useState<string>("hq"); // hq = ستاد بنیاد
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -302,7 +285,7 @@ function ScopedNewsSection() {
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-ink-400 flex items-center gap-1"><Eye size={12} /> مشاهده به‌عنوان:</span>
           <select value={viewer} onChange={(e) => setViewer(e.target.value)} className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white">
-            <option value="hq">ستاد دانشمند (همه محتوا)</option>
+            <option value="hq">ستاد بنیاد (همه محتوا)</option>
             {holdings.map((h) => (
               <optgroup key={h.id} label={h.name}>
                 {h.companies.map((c) => (

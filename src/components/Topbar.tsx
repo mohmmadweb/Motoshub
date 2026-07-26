@@ -74,13 +74,22 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       )}
 
       <div className="flex-1 max-w-md flex items-center gap-2">
-        <button
-          onClick={() => navigate("/dashboard/search")}
-          className="flex-1 flex items-center gap-2 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-[13px] text-ink-400 hover:border-ink-300"
+        <form
+          className="flex-1 relative"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const value = new FormData(e.currentTarget).get("q")?.toString().trim() ?? "";
+            navigate(value ? `/dashboard/search?q=${encodeURIComponent(value)}` : "/dashboard/search");
+          }}
         >
-          <Search size={15} />
-          <span className="flex-1 text-right">جستجو در پست‌ها، گروه‌ها، اسناد و پروژه‌ها…</span>
-        </button>
+          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+          <input
+            name="q"
+            placeholder="جستجو در کل سامانه… (Enter)"
+            aria-label="جستجوی سراسری"
+            className="w-full bg-ink-50 border border-ink-200 rounded-lg pr-9 pl-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:bg-white transition-colors"
+          />
+        </form>
         <button
           onClick={onOpenPalette}
           title="رفتن به سریع (Ctrl+K)"

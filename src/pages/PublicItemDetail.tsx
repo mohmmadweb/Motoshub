@@ -29,6 +29,7 @@ import CreditFooter from "../components/CreditFooter";
 import Badge from "../components/ui/Badge";
 import Avatar from "../components/Avatar";
 import { users, posts } from "../data/mock";
+import { mediaImg, bgStyle } from "../data/images";
 import { Download, ExternalLink, Clock, History as HistoryIcon } from "lucide-react";
 
 type Section = "forum" | "blog" | "events" | "media" | "knowledge" | "news" | "groups";
@@ -215,12 +216,12 @@ function ForumDetail({ item }: { item: ForumTopic }) {
           اگر نمونه‌ی اجراشده یا مستندی دارید، ممنون می‌شویم به اشتراک بگذارید.
         </p>
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-ink-100 text-xs text-ink-400">
-          <span className="flex items-center gap-1"><MessageCircle size={13} /> {item.replies} پاسخ</span>
-          <span className="flex items-center gap-1"><Eye size={13} /> {item.views} بازدید</span>
+          <span className="flex items-center gap-1"><MessageCircle size={13} /> {item.replies.toLocaleString("fa-IR")} پاسخ</span>
+          <span className="flex items-center gap-1"><Eye size={13} /> {item.views.toLocaleString("fa-IR")} بازدید</span>
         </div>
       </div>
 
-      <p className="text-xs font-bold text-ink-500 mb-2">{item.replies} پاسخ</p>
+      <p className="text-xs font-bold text-ink-500 mb-2">{item.replies.toLocaleString("fa-IR")} پاسخ</p>
       <div className="space-y-3">
         {sampleReplies.map((r, i) => (
           <div key={i} className={`card p-4 ${r.accepted ? "border-emerald-300 bg-emerald-50/40" : ""}`}>
@@ -236,7 +237,7 @@ function ForumDetail({ item }: { item: ForumTopic }) {
           </div>
         ))}
         {item.replies > sampleReplies.length && (
-          <p className="text-[11.5px] text-ink-400 text-center">+ {item.replies - sampleReplies.length} پاسخ دیگر</p>
+          <p className="text-[11.5px] text-ink-400 text-center">+ {(item.replies - sampleReplies.length).toLocaleString("fa-IR")} پاسخ دیگر</p>
         )}
       </div>
     </div>
@@ -255,7 +256,7 @@ function BlogDetail({ item }: { item: BlogPost }) {
           <p className="text-xs text-ink-400">{item.date}</p>
         </div>
         <span className="flex items-center gap-1 text-amber-600 text-sm font-medium mr-auto">
-          <Star size={14} className="fill-amber-500 text-amber-500" /> {item.rating}
+          <Star size={14} className="fill-amber-500 text-amber-500" /> {item.rating.toLocaleString("fa-IR")}
         </span>
       </div>
       <div className="prose-sm max-w-none space-y-4 text-sm leading-8 text-ink-700 mb-6">
@@ -357,7 +358,8 @@ function EventDetail({ item }: { item: EventItem }) {
 function MediaDetail({ item }: { item: MediaItem }) {
   return (
     <div>
-      <div className="w-full h-56 rounded-xl flex items-center justify-center mb-5" style={{ backgroundColor: item.color }}>
+      <div className="w-full h-64 rounded-xl flex items-center justify-center mb-5 relative overflow-hidden" style={bgStyle(mediaImg(item.id), item.color)}>
+        <span className="absolute inset-0 bg-black/25" />
         {item.kind === "video" ? <PlayCircle size={48} className="text-white" /> : <ImageIcon size={48} className="text-white" />}
         <span className="absolute top-4 right-4">
           <Badge tone="navy" icon={item.kind === "video" ? <Video size={10} /> : <ImageIcon size={10} />}>

@@ -57,30 +57,55 @@ export default function DataTable<T extends { id: string }>({
           <EmptyState title={emptyTitle} />
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table-shell">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.key} className={c.className}>
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => (
-                <tr key={row.id} onClick={() => onRowClick?.(row)} className={onRowClick ? "cursor-pointer" : ""}>
+        <>
+          {/* دسکتاپ/تبلت: جدول کلاسیک */}
+          <div className="overflow-x-auto hidden sm:block">
+            <table className="table-shell">
+              <thead>
+                <tr>
                   {columns.map((c) => (
-                    <td key={c.key} className={c.className}>
-                      {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—")}
-                    </td>
+                    <th key={c.key} className={c.className}>
+                      {c.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((row) => (
+                  <tr key={row.id} onClick={() => onRowClick?.(row)} className={onRowClick ? "cursor-pointer" : ""}>
+                    {columns.map((c) => (
+                      <td key={c.key} className={c.className}>
+                        {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—")}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* موبایل: کارت به‌جای جدول عریض — هر ردیف یک کارت جفت برچسب/مقدار */}
+          <div className="sm:hidden divide-y divide-ink-100">
+            {filtered.map((row) => (
+              <div
+                key={row.id}
+                onClick={() => onRowClick?.(row)}
+                className={`p-3.5 space-y-2 ${onRowClick ? "cursor-pointer active:bg-ink-50" : ""}`}
+              >
+                {columns.map((c) => {
+                  const value = c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—");
+                  if (value === null || value === "" || value === "—") return null;
+                  return (
+                    <div key={c.key} className="flex items-start justify-between gap-3">
+                      {c.label && <span className="text-[11px] text-ink-400 shrink-0 pt-0.5">{c.label}</span>}
+                      <span className="text-[13px] text-ink-800 text-left min-w-0 [&_*]:justify-end">{value}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

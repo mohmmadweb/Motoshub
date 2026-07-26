@@ -74,7 +74,7 @@ function RfpTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-500 leading-6 max-w-2xl">
-          روند: احصاء فرصت از شرکت بنیادی ← تدوین RFP ← انتشار فراخوان (سامانه دانشمند، ساخت داخل، نان، جان) ←
+          روند: احصاء فرصت از شرکت بنیادی ← تدوین RFP ← انتشار فراخوان (سامانه بنیاد، ساخت داخل، نان، جان) ←
           ثبت‌نام و ارسال مستندات فناوران ← جلسه ارزیابی توانمندی کسب‌وکاری (ثبت نمره) ← ارزیابی فنی (ثبت نمره) ←
           دریافت پیشنهاد قیمت ← بازگشایی پاکات در کمیسیون معاملات ← انتخاب فناور برتر.
         </p>
@@ -273,9 +273,9 @@ function OpportunitiesTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="فراخوان‌های باز" value={openCalls} tone="success" icon={<FlaskConical size={16} />} />
-        <StatCard label="کل متقاضیان" value={totalApplicants} tone="brand" icon={<Users size={16} />} />
-        <StatCard label="پژوهش‌های در حال اجرا" value={running} icon={<GraduationCap size={16} />} />
+        <StatCard label="فراخوان‌های باز" value={openCalls.toLocaleString("fa-IR")} tone="success" icon={<FlaskConical size={16} />} />
+        <StatCard label="کل متقاضیان" value={totalApplicants.toLocaleString("fa-IR")} tone="brand" icon={<Users size={16} />} />
+        <StatCard label="پژوهش‌های در حال اجرا" value={running.toLocaleString("fa-IR")} icon={<GraduationCap size={16} />} />
         <StatCard label="بودجه پژوهشی فعال" value="۲٬۷۵۰٬۰۰۰٬۰۰۰ ریال" tone="warning" icon={<Wallet size={16} />} />
       </div>
 

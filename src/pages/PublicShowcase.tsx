@@ -15,6 +15,7 @@ import EmptyState from "../components/ui/EmptyState";
 import type {
   ForumTopic, BlogPost, EventItem, MediaItem, KnowledgeDoc, NewsItem, Group,
 } from "../data/mock";
+import { newsImg, blogImg, mediaImg, eventImg, bgStyle } from "../data/images";
 
 type Section = "forum" | "blog" | "events" | "media" | "knowledge" | "news" | "groups";
 const validSections: Section[] = ["forum", "blog", "events", "media", "knowledge", "news", "groups"];
@@ -103,7 +104,7 @@ function ForumSection({ items }: { items: ForumTopic[] }) {
         <div>
           <h1 className="text-2xl font-extrabold text-ink-900">سوالات عمومی انجمن</h1>
           <p className="text-sm text-ink-400 mt-1">
-            {items.length} سوال &nbsp;·&nbsp; {totalAnswers} پاسخ &nbsp;·&nbsp; {solvedCount} حل‌شده
+            {items.length.toLocaleString("fa-IR")} سوال &nbsp;·&nbsp; {totalAnswers.toLocaleString("fa-IR")} پاسخ &nbsp;·&nbsp; {solvedCount.toLocaleString("fa-IR")} حل‌شده
           </p>
         </div>
         <div className="relative">
@@ -139,7 +140,7 @@ function ForumSection({ items }: { items: ForumTopic[] }) {
             <Link key={t.id} to={`/public/forum/${t.id}`} className="group rounded-xl bg-gradient-to-l from-navy-800 to-navy-900 p-4 text-white shadow-sm hover:shadow-md transition-shadow">
               <span className="inline-block text-[10.5px] font-bold bg-rose-500/25 text-rose-300 rounded-full px-2.5 py-1 mb-2">🔥 داغ‌ترین گفتگو</span>
               <p className="text-[13px] font-bold leading-6 line-clamp-2 group-hover:underline">{t.title}</p>
-              <p className="text-[10.5px] text-navy-300 mt-2">{t.replies} پاسخ · {t.views} بازدید · {t.author}</p>
+              <p className="text-[10.5px] text-navy-300 mt-2">{t.replies.toLocaleString("fa-IR")} پاسخ · {t.views.toLocaleString("fa-IR")} بازدید · {t.author}</p>
             </Link>
           ))}
         </div>
@@ -158,7 +159,7 @@ function ForumSection({ items }: { items: ForumTopic[] }) {
               {/* Stats sidebar */}
               <div className="flex flex-col items-center gap-2 w-28 shrink-0 px-3 py-4 border-l border-ink-100 bg-ink-50/40 text-center">
                 <div>
-                  <p className="text-xl font-bold text-ink-800 leading-tight">{t.replies}</p>
+                  <p className="text-xl font-bold text-ink-800 leading-tight">{t.replies.toLocaleString("fa-IR")}</p>
                   <p className="text-[10px] text-ink-400 mt-0.5">پاسخ</p>
                 </div>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
@@ -169,7 +170,7 @@ function ForumSection({ items }: { items: ForumTopic[] }) {
                   {t.solved ? <span className="flex items-center gap-1"><CheckCircle2 size={10} />حل‌شده</span> : "باز"}
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-ink-500">{t.views}</p>
+                  <p className="text-sm font-semibold text-ink-500">{t.views.toLocaleString("fa-IR")}</p>
                   <p className="text-[10px] text-ink-400">بازدید</p>
                 </div>
               </div>
@@ -216,7 +217,7 @@ function MagazineLayout({ cards, emptyIcon, emptyTitle }: {
       <Link
         to={hero.to}
         className="relative flex items-end min-h-64 rounded-2xl overflow-hidden group shadow-md"
-        style={{ backgroundColor: hero.accent }}
+        style={bgStyle(blogImg(hero.id), hero.accent)}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         <div className="relative p-7 md:p-10 max-w-2xl">
@@ -240,8 +241,9 @@ function MagazineLayout({ cards, emptyIcon, emptyTitle }: {
               to={card.to}
               className="group bg-white rounded-xl border border-ink-200 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all"
             >
-              <div className="h-40 flex items-center justify-center relative" style={{ backgroundColor: card.accent }}>
-                <span className="text-white/20 font-black text-6xl select-none">{card.title.slice(0, 1)}</span>
+              <div className="h-40 flex items-center justify-center relative" style={bgStyle(blogImg(card.id), card.accent)}>
+                {!blogImg(card.id) && <span className="text-white/20 font-black text-6xl select-none">{card.title.slice(0, 1)}</span>}
+                <span className="absolute inset-0 bg-black/20" />
                 <span className="absolute top-3 right-3 text-[11px] font-semibold bg-white/90 text-ink-700 px-2.5 py-0.5 rounded-full">
                   {card.category}
                 </span>
@@ -268,7 +270,7 @@ function BlogSection({ items }: { items: BlogPost[] }) {
   const topRated = [...items].sort((a, b) => b.rating - a.rating).slice(0, 3);
   const cards: MagCard[] = items.map((b, i) => ({
     id: b.id, title: b.title, subtitle: b.excerpt,
-    meta: `${b.author} · ${b.date} · ★ ${b.rating}`,
+    meta: `${b.author} · ${b.date} · ★ ${b.rating.toLocaleString("fa-IR")}`,
     category: b.tags[0] ?? "مقاله",
     accent: accents[i % accents.length],
     to: `/public/blog/${b.id}`,
@@ -288,7 +290,7 @@ function BlogSection({ items }: { items: BlogPost[] }) {
                 </span>
                 <p className="text-[12.5px] font-bold text-ink-900 leading-6 line-clamp-2 group-hover:text-brand-700">{b.title}</p>
                 <p className="text-[11px] text-ink-400 mt-2 flex items-center gap-1.5">
-                  <Star size={11} className="fill-amber-400 text-amber-400" /> {b.rating} · {b.author}
+                  <Star size={11} className="fill-amber-400 text-amber-400" /> {b.rating.toLocaleString("fa-IR")} · {b.author}
                 </p>
               </Link>
             ))}
@@ -386,7 +388,7 @@ function NewsSection({ items }: { items: NewsItem[] }) {
             <Link
               to={`/public/news/${hero.id}`}
               className="relative flex items-end min-h-72 rounded-2xl overflow-hidden group shadow-md"
-              style={{ backgroundColor: accents[0] }}
+              style={bgStyle(newsImg(hero.id), accents[0])}
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
               <div className="relative p-7 md:p-10 max-w-3xl">
@@ -412,7 +414,7 @@ function NewsSection({ items }: { items: NewsItem[] }) {
                   key={n.id}
                   to={`/public/news/${n.id}`}
                   className="relative flex items-end min-h-40 rounded-xl overflow-hidden group shadow-sm"
-                  style={{ backgroundColor: accents[(i + 1) % accents.length] }}
+                  style={bgStyle(newsImg(n.id), accents[(i + 1) % accents.length])}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                   <div className="relative p-5">
@@ -495,7 +497,8 @@ function MediaSection({ items }: { items: MediaItem[] }) {
             <Link key={m.id} to={`/public/media/${m.id}`}
               className="group bg-white rounded-xl border border-ink-200 overflow-hidden hover:border-brand-300 hover:shadow-md transition-all"
             >
-              <div className="h-44 flex items-center justify-center relative" style={{ backgroundColor: m.color }}>
+              <div className="h-44 flex items-center justify-center relative" style={bgStyle(mediaImg(m.id), m.color)}>
+                <span className="absolute inset-0 bg-black/25" />
                 {m.kind === "video"
                   ? <PlayCircle size={44} className="text-white/80 group-hover:text-white transition-colors" />
                   : <ImageIcon  size={44} className="text-white/80 group-hover:text-white transition-colors" />}
@@ -503,7 +506,7 @@ function MediaSection({ items }: { items: MediaItem[] }) {
                   {m.kind === "video" ? "ویدیو" : "تصویر"}
                 </span>
                 <span className="absolute bottom-3 left-3 flex items-center gap-1 text-white text-[11px] font-semibold bg-black/30 px-2 py-0.5 rounded-md">
-                  <Star size={10} className="fill-amber-400 text-amber-400" /> {m.rating}
+                  <Star size={10} className="fill-amber-400 text-amber-400" /> {m.rating.toLocaleString("fa-IR")}
                 </span>
               </div>
               <div className="p-3">
@@ -538,13 +541,14 @@ function EventsSection({ items }: { items: EventItem[] }) {
               className="block group bg-white rounded-2xl border border-ink-200 overflow-hidden shadow-sm hover:shadow-md hover:border-brand-300 transition-all"
             >
               {/* Hero band */}
-              <div className="bg-gradient-to-l from-navy-800 to-navy-900 p-6 lg:p-8 flex items-start gap-5">
-                <div className="w-20 h-20 rounded-2xl bg-brand-500 text-white flex flex-col items-center justify-center shrink-0 shadow-lg">
+              <div className="relative p-6 lg:p-8 flex items-start gap-5" style={bgStyle(eventImg(featured.id), "#182536")}>
+                <span className="absolute inset-0 bg-navy-900/80" />
+                <div className="relative w-20 h-20 rounded-2xl bg-brand-500 text-white flex flex-col items-center justify-center shrink-0 shadow-lg">
                   <span className="text-xs text-brand-100 font-medium leading-none">{featured.jalaliDate.split("/")[1] ?? "—"}</span>
                   <span className="text-3xl font-black leading-tight">{featured.jalaliDate.split("/")[2] ?? "—"}</span>
                   <span className="text-[10px] text-brand-200 leading-none mt-0.5">{featured.jalaliDate.split("/")[0]}</span>
                 </div>
-                <div className="min-w-0">
+                <div className="relative min-w-0">
                   <span className="text-[11px] font-semibold text-brand-300 mb-1 block">رویداد ویژه</span>
                   <h2 className="text-xl font-extrabold text-white group-hover:text-brand-200 transition-colors leading-7 mb-3">
                     {featured.title}
@@ -552,7 +556,7 @@ function EventsSection({ items }: { items: EventItem[] }) {
                   <div className="flex items-center gap-4 text-sm text-navy-300 flex-wrap">
                     <span className="flex items-center gap-1.5"><Clock    size={13} /> {featured.time}</span>
                     <span className="flex items-center gap-1.5"><MapPin   size={13} /> {featured.location}</span>
-                    <span className="flex items-center gap-1.5"><Users    size={13} /> {featured.attendees} شرکت‌کننده</span>
+                    <span className="flex items-center gap-1.5"><Users    size={13} /> {featured.attendees.toLocaleString("fa-IR")} شرکت‌کننده</span>
                     <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${featured.mode === "آنلاین" ? "bg-brand-500/30 text-brand-200" : "bg-white/10 text-white"}`}>
                       {featured.mode === "آنلاین" ? "🖥 آنلاین" : "📍 حضوری"}
                     </span>
@@ -597,7 +601,7 @@ function EventsSection({ items }: { items: EventItem[] }) {
                       <span className={`font-bold px-2 py-0.5 rounded-full ${e.mode === "آنلاین" ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-600"}`}>{e.mode}</span>
                       <span className="flex items-center gap-1"><Clock  size={11} /> {e.time}</span>
                       <span className="flex items-center gap-1"><MapPin size={11} /> {e.location}</span>
-                      <span className="flex items-center gap-1"><Users  size={11} /> {e.attendees} نفر</span>
+                      <span className="flex items-center gap-1"><Users  size={11} /> {e.attendees.toLocaleString("fa-IR")} نفر</span>
                     </div>
                   </div>
                   <ArrowLeft size={14} className="text-ink-300 group-hover:text-brand-500 transition-colors shrink-0" />
@@ -665,7 +669,7 @@ function KnowledgeSection({ items }: { items: KnowledgeDoc[] }) {
             >
               <cat.icon size={20} className="mb-2 opacity-60" />
               <p className="text-sm font-semibold">{cat.label}</p>
-              <p className="text-xs mt-0.5 opacity-60">{count} سند</p>
+              <p className="text-xs mt-0.5 opacity-60">{count.toLocaleString("fa-IR")} سند</p>
             </button>
           );
         })}

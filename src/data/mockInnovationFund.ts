@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// صندوق نوآور — داده‌های نمونه بر اساس روندهای واقعی موسسه تحقیق و توسعه دانشمند
+// صندوق نوآور — داده‌های نمونه بر اساس روندهای واقعی موسسه تحقیق و توسعه بنیاد
 // (شناسنامه پروژه NF، ماشین وضعیت ۸ گامی، گام‌نما، گزارش‌ها با زنجیره تایید،
 //  پرداخت مرحله‌ای، تضامین، درخواست‌های خارج از قرارداد)
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ export type NfProject = {
   nazer: string; // ناظر (شخص حقیقی)
   fundManager: string;
   budget: string; // مبلغ کل (میلیون ریال)
-  shareDaneshmand: number; // سهم دانشمند ٪
+  shareDaneshmand: number; // سهم بنیاد ٪
   durationMonths: number;
   contractNo: string;
   stage: NfStage;
@@ -108,7 +108,7 @@ export const nfProjects: NfProject[] = [
     field: "کشاورزی و دامپروری",
     motherProject: "رویداد راهی شو ۱۴۰۳",
     team: { name: "اکال زیست پایدار", type: "شرکت", city: "زنجان", manager: "نماینده اکال زیست", members: 6 },
-    rahbar: "شرکت شتابدهی و فناوری تا ثریا",
+    rahbar: "شرکت شتابدهی و فناوری راهبر بنیاد",
     nazer: "مرضیه خاتمی‌فرد",
     fundManager: "مدیر صندوق نوآور",
     budget: "۲٬۵۰۰ میلیون ریال",
@@ -148,7 +148,7 @@ export const nfProjects: NfProject[] = [
         status: "تایید نهایی",
         chain: [
           { role: "مدیر صندوق", name: "مدیر صندوق نوآور", status: "تایید شده" },
-          { role: "راهبر", name: "تا ثریا", status: "تایید شده" },
+          { role: "راهبر", name: "راهبر بنیاد", status: "تایید شده" },
           { role: "ناظر", name: "مرضیه خاتمی‌فرد", status: "تایید شده" },
         ],
       },
@@ -162,7 +162,7 @@ export const nfProjects: NfProject[] = [
         status: "در حال بررسی",
         chain: [
           { role: "مدیر صندوق", name: "مدیر صندوق نوآور", status: "تایید شده" },
-          { role: "راهبر", name: "تا ثریا", status: "تایید شده" },
+          { role: "راهبر", name: "راهبر بنیاد", status: "تایید شده" },
           { role: "ناظر", name: "مرضیه خاتمی‌فرد", status: "در انتظار بررسی", late: true },
         ],
       },
@@ -204,7 +204,7 @@ export const nfProjects: NfProject[] = [
     field: "پتروشیمی",
     motherProject: "رویداد راهی شو ۱۴۰۳",
     team: { name: "رزوراه", type: "تیم فناور", city: "تهران", manager: "نماینده رزوراه", members: 4 },
-    rahbar: "شرکت شتابدهی و فناوری تا ثریا",
+    rahbar: "شرکت شتابدهی و فناوری راهبر بنیاد",
     nazer: "معصومه بیگ‌محمدی",
     fundManager: "مدیر صندوق نوآور",
     budget: "۳٬۲۰۰ میلیون ریال",
@@ -240,7 +240,7 @@ export const nfProjects: NfProject[] = [
         status: "تایید نهایی",
         chain: [
           { role: "مدیر صندوق", name: "مدیر صندوق نوآور", status: "تایید شده" },
-          { role: "راهبر", name: "تا ثریا", status: "تایید شده" },
+          { role: "راهبر", name: "راهبر بنیاد", status: "تایید شده" },
           { role: "ناظر", name: "معصومه بیگ‌محمدی", status: "تایید شده" },
         ],
       },
@@ -266,7 +266,7 @@ export const nfProjects: NfProject[] = [
     field: "هوش مصنوعی و فناوری‌های وابسته",
     motherProject: "رویداد راهی شو ۱۴۰۳",
     team: { name: "چکاوکی", type: "تیم فناور", city: "تهران", manager: "نماینده چکاوکی", members: 5 },
-    rahbar: "شرکت شتابدهی و فناوری تا ثریا",
+    rahbar: "شرکت شتابدهی و فناوری راهبر بنیاد",
     nazer: "وحید غلامرضایی",
     fundManager: "مدیر صندوق نوآور",
     budget: "۲٬۸۰۰ میلیون ریال",
@@ -302,7 +302,7 @@ export const nfProjects: NfProject[] = [
         status: "در حال بررسی",
         chain: [
           { role: "مدیر صندوق", name: "مدیر صندوق نوآور", status: "در انتظار بررسی" },
-          { role: "راهبر", name: "تا ثریا", status: "در انتظار بررسی" },
+          { role: "راهبر", name: "راهبر بنیاد", status: "در انتظار بررسی" },
           { role: "ناظر", name: "وحید غلامرضایی", status: "در انتظار بررسی" },
         ],
       },
@@ -328,7 +328,7 @@ export const nfProjects: NfProject[] = [
     field: "صنایع غذایی",
     motherProject: "رویداد راهی شو ۱۴۰۳",
     team: { name: "سیگنال امید", type: "شرکت", city: "تهران", manager: "نماینده سیگنال امید", members: 7 },
-    rahbar: "شرکت شتابدهی و فناوری تا ثریا",
+    rahbar: "شرکت شتابدهی و فناوری راهبر بنیاد",
     nazer: "ناظر فنی معاونت توسعه فناوری",
     fundManager: "مدیر صندوق نوآور",
     budget: "۵٬۰۰۰ میلیون ریال",
@@ -373,7 +373,7 @@ export const nfProjects: NfProject[] = [
     field: "حمل‌ونقل، لجستیک و بازرگانی",
     motherProject: "رویداد راهی شو ۱۴۰۳",
     team: { name: "کربنیکس", type: "تیم فناور", city: "اصفهان", manager: "نماینده کربنیکس", members: 4 },
-    rahbar: "شرکت شتابدهی و فناوری تا ثریا",
+    rahbar: "شرکت شتابدهی و فناوری راهبر بنیاد",
     nazer: "ناظر فنی معاونت توسعه فناوری",
     fundManager: "مدیر صندوق نوآور",
     budget: "۱٬۵۰۰ میلیون ریال",

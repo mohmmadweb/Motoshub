@@ -9,6 +9,7 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { mediaImg, bgStyle } from "../data/images";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 const palette = ["#82aee6", "#93a2b8", "#1f4f99", "#5e7191", "#0d9488"];
@@ -111,7 +112,8 @@ export default function Media() {
         {filtered.map((m) => (
           <div key={m.id} className="card overflow-hidden group">
             <Link to={`/dashboard/media/${m.id}`} className="block">
-              <div className="h-32 flex items-center justify-center relative shrink-0" style={{ backgroundColor: m.color }}>
+              <div className="h-32 flex items-center justify-center relative shrink-0" style={bgStyle(mediaImg(m.id), m.color)}>
+                <span className="absolute inset-0 bg-black/25" />
                 {m.kind === "video"
                   ? <PlayCircle size={32} className="text-white/80 group-hover:text-white transition-colors" />
                   : <Image size={32} className="text-white/80 group-hover:text-white transition-colors" />}

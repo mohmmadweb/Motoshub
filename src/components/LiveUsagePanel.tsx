@@ -60,7 +60,7 @@ export default function LiveUsagePanel() {
   const tiles = [
     { icon: UsersIcon, label: "کاربران آنلاین", value: m.onlineUsers.toLocaleString("fa-IR"), sub: `${m.activeSessions.toLocaleString("fa-IR")} نشست فعال` },
     { icon: Server, label: "درخواست در دقیقه", value: m.apiPerMin.toLocaleString("fa-IR"), sub: "همه‌ی ماژول‌ها" },
-    { icon: Wifi, label: "پهنای باند لحظه‌ای", value: `${m.bandwidthMbps.toLocaleString("fa-IR")} Mbps`, sub: "ورودی + خروجی" },
+    { icon: Wifi, label: "پهنای باند لحظه‌ای", value: `${m.bandwidthMbps.toLocaleString("fa-IR")} مگابیت/ثانیه`, sub: "ورودی + خروجی" },
     { icon: Cpu, label: "بار پردازشی", value: `${m.cpuPercent.toLocaleString("fa-IR")}٪`, sub: m.cpuPercent > 75 ? "زیر فشار" : "عادی" },
   ];
 
@@ -103,7 +103,7 @@ export default function LiveUsagePanel() {
         <div>
           <div className="flex items-center justify-between text-[11px] mb-1">
             <span className="text-ink-500 flex items-center gap-1"><HardDrive size={12} /> فضای ذخیره‌سازی</span>
-            <span className="text-ink-700 font-medium" dir="ltr">{m.storageUsedGB.toFixed(1)} / {STORAGE_TOTAL_GB} GB</span>
+            <span className="text-ink-700 font-medium">{m.storageUsedGB.toLocaleString("fa-IR", { maximumFractionDigits: 1 })} از {STORAGE_TOTAL_GB.toLocaleString("fa-IR")} گیگابایت</span>
           </div>
           <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
             <div

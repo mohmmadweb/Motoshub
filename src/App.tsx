@@ -43,6 +43,7 @@ const Tickets = lazy(() => import("./pages/Tickets"));
 const Award = lazy(() => import("./pages/Award"));
 const PublicItemDetail = lazy(() => import("./pages/PublicItemDetail"));
 const NewsItemDetail = lazy(() => import("./pages/NewsItemDetail"));
+const NotFound404 = lazy(() => import("./pages/NotFound404"));
 const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
 const EventItemDetail = lazy(() => import("./pages/EventItemDetail"));
 const MediaItemDetail = lazy(() => import("./pages/MediaItemDetail"));
@@ -113,9 +114,10 @@ export default function App() {
           <Route path="appearance" element={<Appearance />} />
           <Route path="admin" element={<Admin />} />
           <Route path="help" element={<Help />} />
+          <Route path="*" element={<NotFound404 />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound404 />} />
       </Routes>
       </Suspense>
     </HashRouter>

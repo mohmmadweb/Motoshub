@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// داده‌های نمونه بر اساس مستندات موسسه تحقیق و توسعه دانشمند:
+// داده‌های نمونه بر اساس مستندات موسسه تحقیق و توسعه بنیاد:
 // ساختار هلدینگ/شرکت و تفکیک محتوا، پورتفولیوی تبادل فناوری، سندهای فرصت R&D،
 // جایزه نوآوری، آموزش، گردش امضای الکترونیک، فرم‌های امتیازدهی داوری، دستیار هوشمند
 // ---------------------------------------------------------------------------
@@ -15,7 +15,7 @@ export const holdings: Holding[] = [
     color: "#0d9488",
     companies: [
       { id: "c-dashtnaz", name: "کشت و صنعت دشت ناز ساری" },
-      { id: "c-ferdows-agri", name: "موسسه تحقیقات کشاورزی دانشمند" },
+      { id: "c-ferdows-agri", name: "موسسه تحقیقات کشاورزی بنیاد" },
     ],
   },
   {
@@ -98,9 +98,9 @@ export type TechTransferContract = {
   company: string; // شرکت متقاضی
   mojri: string; // مجری پروژه
   companyRole: string; // نقش شرکت متقاضی
-  daneshmandRole: string; // نقش دانشمند
+  daneshmandRole: string; // نقش بنیاد
   amount: string; // مبلغ قرارداد
-  commitment: string; // تعهد دانشمند
+  commitment: string; // تعهد بنیاد
   physicalProgress: number; // درصد پیشرفت فیزیکی
   timeProgress: number; // درصد پیشرفت زمانی
   financialProgress: number; // درصد پیشرفت مالی
@@ -115,7 +115,7 @@ export const techTransferContracts: TechTransferContract[] = [
   { id: "tt4", type: "تبادل فناوری", title: "تشخیص خودکار حوادث آزادراه تهران - شمال", nazer: "رییس بخش حمل‌ونقل ترکیبی", city: "تهران", holding: "پایا ترابر سینا", company: "آزادراه تهران - شمال", mojri: "شرکت بینا رایان", companyRole: "بهره‌بردار و کارفرما", daneshmandRole: "ناظر و هماهنگ‌کننده", amount: "۲۵ میلیارد ریال", commitment: "۱۲.۵ میلیارد ریال (۵۰٪)", physicalProgress: 100, timeProgress: 100, financialProgress: 85, guarantee: "ضمانت‌نامه بانکی", note: "در انتظار آزادسازی حسن انجام کار" },
   { id: "tt5", type: "تبادل فناوری", title: "لیدار پایش واگن‌های باری", nazer: "رییس بخش حمل‌ونقل ترکیبی", city: "اصفهان", holding: "پایا ترابر سینا", company: "سینا ریل پارس", mojri: "شرکت فوتونیک آریا", companyRole: "خریدار", daneshmandRole: "پیمانکار", amount: "۹ میلیارد ریال", commitment: "۴.۵ میلیارد ریال (۵۰٪)", physicalProgress: 30, timeProgress: 45, financialProgress: 25, guarantee: "سفته", note: "تاخیر در واردات قطعات — درخواست الحاقیه زمانی" },
   { id: "tt6", type: "تبادل فناوری", title: "کیت تشخیص سریع آنتی‌بیوتیک در شیر خام", nazer: "کارشناس ارشد امنیت غذایی", city: "تهران", holding: "صنایع غذایی سینا", company: "لبنیات پاک", mojri: "شرکت زیست‌فناور کیمیا", companyRole: "بهره‌بردار", daneshmandRole: "ناظر و هماهنگ‌کننده", amount: "۷ میلیارد ریال", commitment: "۳.۵ میلیارد ریال (۵۰٪)", physicalProgress: 60, timeProgress: 55, financialProgress: 50, guarantee: "چک" },
-  { id: "tt7", type: "آموزشی-پژوهشی", title: "برنامه جامع آموزش هوش مصنوعی", nazer: "مجتبی سروش‌پور", city: "تهران", holding: "ستاد دانشمند", company: "ایرانسل لبز", mojri: "موسسه آموزشی و پژوهشی سینا", companyRole: "کارفرما", daneshmandRole: "طرف دوم", amount: "۹۹ میلیارد ریال", commitment: "—", physicalProgress: 40, timeProgress: 50, financialProgress: 35, guarantee: "—" },
+  { id: "tt7", type: "آموزشی-پژوهشی", title: "برنامه جامع آموزش هوش مصنوعی", nazer: "مجتبی سروش‌پور", city: "تهران", holding: "ستاد بنیاد", company: "ایرانسل لبز", mojri: "موسسه آموزشی و پژوهشی سینا", companyRole: "کارفرما", daneshmandRole: "طرف دوم", amount: "۹۹ میلیارد ریال", commitment: "—", physicalProgress: 40, timeProgress: 50, financialProgress: 35, guarantee: "—" },
   { id: "tt8", type: "تبادل فناوری", title: "کوره عملیات حرارتی قطعات نیروگاهی", nazer: "رییس بخش انرژی", city: "کرج", holding: "برق و انرژی صبا", company: "نیروگاه‌های صبا", mojri: "شرکت مهندسی حرارت گستر", companyRole: "کارفرما", daneshmandRole: "ناظر و هماهنگ‌کننده", amount: "۳۱ میلیارد ریال", commitment: "۱۵.۵ میلیارد ریال (۵۰٪)", physicalProgress: 15, timeProgress: 20, financialProgress: 20, guarantee: "ضمانت‌نامه بانکی", note: "نیازمند استعلام از واحد مالی" },
 ];
 
@@ -130,12 +130,12 @@ export type RndOpportunityDoc = {
 };
 
 // state machine تدوین سند: ۱۰=بازدید و احصاء عناوین، ۲۰=عناوین در بررسی،
-// ۴۵=ویرایش اول ارائه‌شده، ۶۵=اصلاحات تیم تا ثریا، ۸۵=پیش‌نویس نهایی، ۱۰۰=تحویل‌شده
+// ۴۵=ویرایش اول ارائه‌شده، ۶۵=اصلاحات تیم راهبر، ۸۵=پیش‌نویس نهایی، ۱۰۰=تحویل‌شده
 export const rndDocStates: { threshold: number; label: string }[] = [
   { threshold: 10, label: "بازدید و احصاء عناوین" },
   { threshold: 20, label: "عناوین احصاء شده — در بررسی" },
   { threshold: 45, label: "ویرایش اول ارائه شده" },
-  { threshold: 65, label: "اصلاحات توسط تیم تا ثریا" },
+  { threshold: 65, label: "اصلاحات توسط تیم راهبر" },
   { threshold: 85, label: "پیش‌نویس نهایی در بررسی" },
   { threshold: 100, label: "سند تدوین، تایید و تحویل شده" },
 ];
@@ -144,13 +144,13 @@ export const rndOpportunityDocs: RndOpportunityDoc[] = [
   { id: "rd1", company: "دشت ناز ساری", holding: "فردوس پارس", progress: 100, statusLabel: "سند تدوین، تایید و تحویل شده" },
   { id: "rd2", company: "بهنوش ایران", holding: "صنایع غذایی سینا", progress: 100, statusLabel: "سند تدوین، تایید و تحویل شده" },
   { id: "rd3", company: "زمزم ایران", holding: "صنایع غذایی سینا", progress: 85, statusLabel: "پیش‌نویس نهایی در بررسی" },
-  { id: "rd4", company: "لبنیات پاک", holding: "صنایع غذایی سینا", progress: 65, statusLabel: "اصلاحات توسط تیم تا ثریا" },
+  { id: "rd4", company: "لبنیات پاک", holding: "صنایع غذایی سینا", progress: 65, statusLabel: "اصلاحات توسط تیم راهبر" },
   { id: "rd5", company: "سینا ریل پارس", holding: "پایا ترابر سینا", progress: 45, statusLabel: "ویرایش اول ارائه شده" },
   { id: "rd6", company: "آزادراه تهران - شمال", holding: "پایا ترابر سینا", progress: 100, statusLabel: "سند تدوین، تایید و تحویل شده" },
   { id: "rd7", company: "بانک سینا", holding: "مالی و سرمایه‌گذاری سینا", progress: 20, statusLabel: "عناوین احصاء شده — در بررسی", obstacles: "در انتظار تعیین نماینده تحول دیجیتال" },
   { id: "rd8", company: "بیمه سینا", holding: "مالی و سرمایه‌گذاری سینا", progress: 10, statusLabel: "بازدید و احصاء عناوین" },
   { id: "rd9", company: "نیروگاه‌های صبا", holding: "برق و انرژی صبا", progress: 45, statusLabel: "ویرایش اول ارائه شده" },
-  { id: "rd10", company: "انرژی گستر سینا", holding: "برق و انرژی صبا", progress: 65, statusLabel: "اصلاحات توسط تیم تا ثریا", obstacles: "نیاز به جلسه تکمیلی با معاونت بهره‌برداری" },
+  { id: "rd10", company: "انرژی گستر سینا", holding: "برق و انرژی صبا", progress: 65, statusLabel: "اصلاحات توسط تیم راهبر", obstacles: "نیاز به جلسه تکمیلی با معاونت بهره‌برداری" },
   { id: "rd11", company: "کاوه پارس (فولاد)", holding: "کاوه پارس", progress: 20, statusLabel: "عناوین احصاء شده — در بررسی" },
   { id: "rd12", company: "هتل‌های پارسیان", holding: "سیاحتی پارسیان", progress: 10, statusLabel: "بازدید و احصاء عناوین" },
 ];
@@ -206,7 +206,7 @@ export type TrainingCourse = {
 
 export const trainingCourses: TrainingCourse[] = [
   { id: "tc1", title: "مدیریت پروژه‌های تحقیق و توسعه (ویژه مدیران پروژه)", instructor: "موسسه آموزشی و پژوهشی سینا", date: "۱۴۰۵/۰۲/۱۰", hours: 16, capacity: 30, enrolled: 28, status: "برگزار شده", attendanceRate: 92, satisfaction: 4.4, effectiveness: "اثربخش", certificates: 26 },
-  { id: "tc2", title: "ارزیابی و ارزش‌گذاری طرح‌های فناورانه", instructor: "کانون ارزیابی و شایستگی دانشمند", date: "۱۴۰۵/۰۳/۰۵", hours: 12, capacity: 25, enrolled: 25, status: "برگزار شده", attendanceRate: 88, satisfaction: 4.1, effectiveness: "نیازمند دوره تکمیلی", certificates: 22 },
+  { id: "tc2", title: "ارزیابی و ارزش‌گذاری طرح‌های فناورانه", instructor: "کانون ارزیابی و شایستگی بنیاد", date: "۱۴۰۵/۰۳/۰۵", hours: 12, capacity: 25, enrolled: 25, status: "برگزار شده", attendanceRate: 88, satisfaction: 4.1, effectiveness: "نیازمند دوره تکمیلی", certificates: 22 },
   { id: "tc3", title: "آشنایی با فرآیندهای صندوق نوآور (ویژه راهبران و ناظران)", instructor: "صندوق نوآور", date: "۱۴۰۵/۰۴/۲۵", hours: 8, capacity: 40, enrolled: 31, status: "در حال برگزاری", attendanceRate: 95 },
   { id: "tc4", title: "هوش مصنوعی کاربردی در صنعت (مقدماتی)", instructor: "ایرانسل لبز — برنامه جامع AI", date: "۱۴۰۵/۰۵/۱۰", hours: 24, capacity: 60, enrolled: 44, status: "ثبت‌نام باز" },
   { id: "tc5", title: "مستندسازی و مدیریت دانش پروژه‌ها", instructor: "مدیریت آموزش‌های تخصصی", date: "۱۴۰۵/۰۵/۲۰", hours: 8, capacity: 35, enrolled: 12, status: "ثبت‌نام باز" },
@@ -428,7 +428,7 @@ export const assistantSamples: AssistantExchange[] = [
   },
   {
     q: "خلاصه وضعیت مالی صندوق نوآور را بده",
-    a: "۵ پروژه فعال با مجموع مبلغ ۱۴٬۰۰۰ میلیون ریال (سهم دانشمند ۵۰٪). پرداختی تاکنون ۱٬۹۲۰ میلیون ریال، در انتظار پرداخت ۹۶۴ میلیون ریال، حسن انجام کار نزد مجریان ۱۹۲ میلیون ریال. نزدیک‌ترین اقدام مالی: دستور پرداخت مرحله ۱ پروژه ۱۰۰۱ که صادر شده و نزد واحد مالی است.",
+    a: "۵ پروژه فعال با مجموع مبلغ ۱۴٬۰۰۰ میلیون ریال (سهم بنیاد ۵۰٪). پرداختی تاکنون ۱٬۹۲۰ میلیون ریال، در انتظار پرداخت ۹۶۴ میلیون ریال، حسن انجام کار نزد مجریان ۱۹۲ میلیون ریال. نزدیک‌ترین اقدام مالی: دستور پرداخت مرحله ۱ پروژه ۱۰۰۱ که صادر شده و نزد واحد مالی است.",
   },
   {
     q: "آیا پروژه خوابیده‌ای داریم؟",
@@ -436,7 +436,7 @@ export const assistantSamples: AssistantExchange[] = [
   },
 ];
 
-// ------------------- کاتالوگ صندوق‌های سرمایه‌گذاری دانشمند -------------------
+// ------------------- کاتالوگ صندوق‌های سرمایه‌گذاری بنیاد -------------------
 export type FundEntity = {
   id: string;
   name: string;
@@ -452,7 +452,7 @@ export const fundCatalog: FundEntity[] = [
   { id: "f-bavar", name: "صندوق باور", focus: "بذرمایه و شتابدهی — تملک سهام", trlRange: "TRL 4-7", manager: "مدیر مرکز شتابدهی", activeProjects: 3, capital: "۲۰٬۰۰۰ میلیون ریال" },
   { id: "f-forsat", name: "صندوق فرصت", focus: "فرصت مطالعاتی صنعتی اعضای هیئت علمی", trlRange: "TRL 2-5", manager: "مدیر صندوق فرصت", activeProjects: 4, capital: "۶٬۰۰۰ میلیون ریال" },
   { id: "f-cvc", name: "سینا وی‌سی (CVC)", focus: "سرمایه‌گذاری خطرپذیر شرکتی", trlRange: "TRL 6-9", manager: "شرکت توسعه دانش‌بنیان سینا", activeProjects: 2, capital: "۱۲۰٬۰۰۰ میلیون ریال" },
-  { id: "f-rnd", name: "صندوق سرمایه‌گذاری تحقیق و توسعه دانشمند", focus: "پوشش کامل زنجیره", trlRange: "TRL 1-9", manager: "هیئت مدیره موسسه", activeProjects: 0, capital: "در حال تاسیس" },
+  { id: "f-rnd", name: "صندوق سرمایه‌گذاری تحقیق و توسعه بنیاد", focus: "پوشش کامل زنجیره", trlRange: "TRL 1-9", manager: "هیئت مدیره موسسه", activeProjects: 0, capital: "در حال تاسیس" },
   { id: "f-pf", name: "صندوق پژوهش و فناوری", focus: "ضمانت‌نامه و تسهیلات فناوران", trlRange: "—", manager: "صندوق پژوهش و فناوری", activeProjects: 6, capital: "۴۵٬۰۰۰ میلیون ریال" },
   { id: "f-niko", name: "صندوق نیکوکاری", focus: "حمایت از نوآوری‌های اجتماعی", trlRange: "—", manager: "معاونت ترویج نوآوری", activeProjects: 1, capital: "۳٬۰۰۰ میلیون ریال" },
 ];
@@ -507,7 +507,7 @@ export const rfpCalls: RfpCall[] = [
     holding: "صنایع غذایی سینا",
     stage: "فناور برتر انتخاب شد",
     deadline: "۱۴۰۵/۰۲/۳۰",
-    channels: ["سامانه دانشمند", "سامانه ساخت داخل", "سامانه نان"],
+    channels: ["سامانه بنیاد", "سامانه ساخت داخل", "سامانه نان"],
     vendors: [
       { id: "v1", name: "زیست‌فناور کیمیا", bizScore: 82, techScore: 88, priceOpened: true, price: "۹٬۸۰۰ میلیون ریال", winner: true },
       { id: "v2", name: "پایش‌گستر آزما", bizScore: 74, techScore: 79, priceOpened: true, price: "۱۱٬۲۰۰ میلیون ریال" },
@@ -521,7 +521,7 @@ export const rfpCalls: RfpCall[] = [
     holding: "پایا ترابر سینا",
     stage: "ارزیابی فنی",
     deadline: "۱۴۰۵/۰۵/۱۵",
-    channels: ["سامانه دانشمند", "سامانه جان"],
+    channels: ["سامانه بنیاد", "سامانه جان"],
     vendors: [
       { id: "v1", name: "فوتونیک آریا", bizScore: 78, techScore: undefined },
       { id: "v2", name: "رهاورد سنجش", bizScore: 71 },
@@ -535,7 +535,7 @@ export const rfpCalls: RfpCall[] = [
     holding: "برق و انرژی صبا",
     stage: "دریافت مستندات",
     deadline: "۱۴۰۵/۰۶/۰۱",
-    channels: ["سامانه دانشمند", "سامانه ساخت داخل"],
+    channels: ["سامانه بنیاد", "سامانه ساخت داخل"],
     vendors: [
       { id: "v1", name: "حرارت گستر" },
       { id: "v2", name: "ترمودینا" },
@@ -630,13 +630,13 @@ export const tenders: TenderRecord[] = [
   { id: "tn1", title: "تجهیز آزمایشگاه مرکز نوآوری پارک پیامبر اعظم", method: "مناقصه عمومی", stage: "کمیسیون معاملات", participants: 6, sessionDate: "۱۴۰۵/۰۴/۲۵", note: "بازگشایی پاکات الف و ب انجام شد؛ پاکت ج در جلسه کمیسیون" },
   { id: "tn2", title: "واگذاری فضای کار اشتراکی خانه خلاقیت علوی", method: "مزایده", stage: "دریافت پاکات", participants: 3 },
   { id: "tn3", title: "خرید سرویس رایانش ابری پروژه‌های هوش مصنوعی", method: "ترک تشریفات", stage: "عقد قرارداد", participants: 1, winner: "ابر آروان (نمونه)", note: "مصوبه ترک تشریفات هیئت مدیره پیوست است" },
-  { id: "tn4", title: "چاپ و توزیع شماره ۱۲ مجله دانشمند", method: "مناقصه محدود", stage: "ابلاغ برنده", participants: 4, winner: "چاپخانه اندیشه" },
+  { id: "tn4", title: "چاپ و توزیع شماره ۱۲ ماهنامه بنیاد", method: "مناقصه محدود", stage: "ابلاغ برنده", participants: 4, winner: "چاپخانه اندیشه" },
 ];
 
-// ------------------- نشریات: مجله دانشمند و بنیادتک -------------------
+// ------------------- نشریات: ماهنامه بنیاد و بنیادتک -------------------
 export type PublicationIssue = {
   id: string;
-  magazine: "مجله دانشمند" | "نشریه بنیادتک";
+  magazine: "ماهنامه بنیاد" | "نشریه بنیادتک";
   issueNo: number;
   title: string;
   season: string;
@@ -645,8 +645,8 @@ export type PublicationIssue = {
 };
 
 export const publicationIssues: PublicationIssue[] = [
-  { id: "pb1", magazine: "مجله دانشمند", issueNo: 12, title: "ویژه‌نامه هوش مصنوعی در صنایع بنیاد", season: "تابستان ۱۴۰۵", stage: "صفحه‌آرایی", articles: 14 },
-  { id: "pb2", magazine: "مجله دانشمند", issueNo: 11, title: "زنجیره ارزش فولاد و فناوری‌های سبز", season: "بهار ۱۴۰۵", stage: "منتشر شده", articles: 12 },
+  { id: "pb1", magazine: "ماهنامه بنیاد", issueNo: 12, title: "ویژه‌نامه هوش مصنوعی در صنایع بنیاد", season: "تابستان ۱۴۰۵", stage: "صفحه‌آرایی", articles: 14 },
+  { id: "pb2", magazine: "ماهنامه بنیاد", issueNo: 11, title: "زنجیره ارزش فولاد و فناوری‌های سبز", season: "بهار ۱۴۰۵", stage: "منتشر شده", articles: 12 },
   { id: "pb3", magazine: "نشریه بنیادتک", issueNo: 8, title: "گزارش رویداد راهی شو ۱۴۰۳ و تیم‌های برگزیده", season: "بهار ۱۴۰۵", stage: "منتشر شده", articles: 9 },
   { id: "pb4", magazine: "نشریه بنیادتک", issueNo: 9, title: "ویژه فراخوان‌های نیازهای فناورانه", season: "تابستان ۱۴۰۵", stage: "گردآوری محتوا", articles: 5 },
 ];
@@ -671,7 +671,7 @@ export const supportedVentures: SupportedVenture[] = [
 
 export type PartnerTechnologist = { id: string; name: string; expertise: string; projects: number; rating: number };
 export const partnerTechnologists: PartnerTechnologist[] = [
-  { id: "pt1", name: "شرکت شتابدهی و فناوری تا ثریا", expertise: "راهبری و شتابدهی تیم‌ها", projects: 5, rating: 4.6 },
+  { id: "pt1", name: "شرکت شتابدهی و فناوری راهبر بنیاد", expertise: "راهبری و شتابدهی تیم‌ها", projects: 5, rating: 4.6 },
   { id: "pt2", name: "زیست‌فناور کیمیا", expertise: "کیت‌های تشخیصی", projects: 2, rating: 4.4 },
   { id: "pt3", name: "فوتونیک آریا", expertise: "لیدار و سنجش نوری", projects: 1, rating: 4.0 },
   { id: "pt4", name: "پرواز سبز", expertise: "پهپاد کشاورزی", projects: 1, rating: 4.5 },
@@ -770,7 +770,7 @@ export const screeningCriteriaCatalog: { title: string; max: number }[] = [
   { title: "مالکیت فکری و ثبت اختراع", max: 7 },
   { title: "نیازمندی سرمایه و برنامه هزینه‌کرد", max: 7 },
   { title: "قابلیت مقیاس‌پذیری", max: 7 },
-  { title: "هم‌افزایی با سایر پروژه‌های دانشمند", max: 6 },
+  { title: "هم‌افزایی با سایر پروژه‌های بنیاد", max: 6 },
   { title: "امکان بومی‌سازی و ساخت داخل", max: 6 },
   { title: "جذابیت برای سرمایه‌گذار بعدی", max: 6 },
   { title: "الزامات مجوز و رگولاتوری", max: 6 },

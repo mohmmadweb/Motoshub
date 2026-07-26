@@ -5,6 +5,7 @@ import { currentUser, type BlogPost, type Visibility } from "../data/mock";
 import { publicationIssues, type PublicationIssue } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
+import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
@@ -27,7 +28,7 @@ const pubStageTone = {
 
 function PublicationsTab() {
   const { notify } = useToast();
-  const grouped: PublicationIssue["magazine"][] = ["مجله دانشمند", "نشریه بنیادتک"];
+  const grouped: PublicationIssue["magazine"][] = ["ماهنامه بنیاد", "نشریه بنیادتک"];
   return (
     <div className="space-y-5">
       <p className="text-xs text-ink-500 leading-6">
@@ -146,7 +147,7 @@ export default function Blog() {
       <Tabs
         tabs={[
           { id: "blog", label: "یادداشت‌های بلاگ", count: posts.length },
-          { id: "pubs", label: "نشریات (دانشمند / بنیادتک)", count: publicationIssues.length },
+          { id: "pubs", label: "نشریات (بنیاد / بنیادتک)", count: publicationIssues.length },
         ]}
         active={tab}
         onChange={setTab}
@@ -155,58 +156,49 @@ export default function Blog() {
       {tab === "pubs" && <PublicationsTab />}
 
       {tab === "blog" && (
-      <div className="card divide-y divide-ink-100">
-        {/* header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide">
-          <span>عنوان یادداشت</span>
-          <span className="text-center">برچسب‌ها</span>
-          <span className="text-center">نویسنده</span>
-          <span className="text-center">امتیاز</span>
-          <span className="text-center">دسترسی</span>
-          <span />
-        </div>
-
-        {posts.map((b) => (
-          <div
-            key={b.id}
-            className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
-          >
-            {/* Title + excerpt */}
-            <div className="min-w-0">
-              <Link
-                to={`/dashboard/blog/${b.id}`}
-                className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors truncate block"
-              >
-                {b.title}
-              </Link>
-              <p className="text-xs text-ink-400 mt-0.5 line-clamp-1">{b.excerpt}</p>
-            </div>
-            {/* Tags */}
-            <div className="flex items-center gap-1 flex-wrap justify-end">
-              {b.tags.slice(0, 2).map((t) => (
-                <Badge key={t} tone="neutral" icon={<Hash size={9} />}>{t}</Badge>
-              ))}
-            </div>
-            {/* Author + date */}
-            <span className="text-xs text-ink-400 whitespace-nowrap">{b.author}</span>
-            {/* Rating */}
-            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium whitespace-nowrap">
-              <Star size={12} className="fill-amber-500 text-amber-500" /> {b.rating}
-            </span>
-            {/* Visibility toggle */}
-            <VisibilityToggle
-              visibility={b.visibility}
-              onChange={() => toggleVisibility(b.id)}
-              size="xs"
-            />
-            <RowActions onEdit={() => startEdit(b)} onDelete={() => remove(b)} />
-          </div>
-        ))}
-
-        {posts.length === 0 && (
-          <div className="p-8 text-center text-sm text-ink-400">هنوز یادداشتی ثبت نشده</div>
-        )}
-      </div>
+      <DataTable
+        columns={[
+          {
+            key: "title",
+            label: "عنوان یادداشت",
+            render: (b) => (
+              <span className="min-w-0 block">
+                <Link to={`/dashboard/blog/${b.id}`} className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors block">
+                  {b.title}
+                </Link>
+                <span className="text-xs text-ink-400 mt-0.5 line-clamp-1 block">{b.excerpt}</span>
+              </span>
+            ),
+          },
+          {
+            key: "tags",
+            label: "برچسب‌ها",
+            render: (b) => (
+              <span className="flex items-center gap-1 flex-wrap">
+                {b.tags.slice(0, 2).map((t) => (
+                  <Badge key={t} tone="neutral" icon={<Hash size={9} />}>{t}</Badge>
+                ))}
+              </span>
+            ),
+          },
+          { key: "author", label: "نویسنده", render: (b) => <span className="text-xs text-ink-400 whitespace-nowrap">{b.author}</span> },
+          {
+            key: "rating",
+            label: "امتیاز",
+            render: (b) => (
+              <span className="flex items-center gap-1 text-xs text-amber-600 font-medium whitespace-nowrap">
+                <Star size={12} className="fill-amber-500 text-amber-500" /> {b.rating.toLocaleString("fa-IR")}
+              </span>
+            ),
+          },
+          { key: "visibility", label: "دسترسی", render: (b) => <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> },
+          { key: "actions", label: "", render: (b) => <RowActions onEdit={() => startEdit(b)} onDelete={() => remove(b)} /> },
+        ]}
+        rows={posts}
+        searchKeys={["title", "excerpt", "author"]}
+        searchPlaceholder="جستجو در عنوان، متن یا نویسنده…"
+        emptyTitle="هنوز یادداشتی ثبت نشده"
+      />
       )}
 
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش یادداشت" : "انتشار یادداشت جدید در بلاگ"}>

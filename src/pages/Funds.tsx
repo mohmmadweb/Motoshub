@@ -94,7 +94,7 @@ export default function Funds() {
     <div>
       <PageHeader
         title="صندوق نوآوری و شتاب‌دهی"
-        description="روند کامل صندوق نوآور، شبکه‌ی صندوق‌های دانشمند (باور، فرصت، CVC و…) و طرح‌های اشتغال‌زایی"
+        description="روند کامل صندوق نوآور، شبکه‌ی صندوق‌های بنیاد (باور، فرصت، CVC و…) و طرح‌های اشتغال‌زایی"
         icon={<PiggyBank size={18} />}
       />
       <Tabs
@@ -114,7 +114,7 @@ export default function Funds() {
 }
 
 // ---------------------------------------------------------------------------
-// شبکه صندوق‌های دانشمند + خط لوله بذرمایه صندوق باور (تملک سهام و خروج)
+// شبکه صندوق‌های بنیاد + خط لوله بذرمایه صندوق باور (تملک سهام و خروج)
 // ---------------------------------------------------------------------------
 const seedStageTone: Record<SeedInvestment["stage"], BadgeTone> = {
   غربالگری: "neutral",
@@ -193,7 +193,7 @@ function AllFundsTab() {
 }
 
 // ---------------------------------------------------------------------------
-// صندوق نوآور — روند کامل مطابق فرآیندهای موسسه دانشمند
+// صندوق نوآور — روند کامل مطابق فرآیندهای موسسه تحقیق و توسعه بنیاد
 // ---------------------------------------------------------------------------
 function nfRules(s: WorkflowSettings) {
   return [
@@ -218,7 +218,7 @@ function InnovationFundTab() {
   const [teamName, setTeamName] = useState("");
   const [macroField, setMacroField] = useState("اقتصاد دیجیتال و هوش مصنوعی");
   const [budget, setBudget] = useState("");
-  const [rahbar, setRahbar] = useState("شرکت شتابدهی و فناوری تا ثریا");
+  const [rahbar, setRahbar] = useState("شرکت شتابدهی و فناوری راهبر بنیاد");
   const [nazer, setNazer] = useState("");
   const [projectManager, setProjectManager] = useState("");
   const [formErrors, setFormErrors] = useState<{ title?: boolean; team?: boolean }>({});
@@ -540,7 +540,7 @@ function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject;
           <p><span className="text-ink-400">راهبر:</span> {p.rahbar}</p>
           <p><span className="text-ink-400">ناظر:</span> {p.nazer} · <span className="text-ink-400">مدیر صندوق:</span> {p.fundManager}</p>
           <p>
-            <span className="text-ink-400">مبلغ:</span> {p.budget} · <span className="text-ink-400">سهم دانشمند:</span> {p.shareDaneshmand.toLocaleString("fa-IR")}٪
+            <span className="text-ink-400">مبلغ:</span> {p.budget} · <span className="text-ink-400">سهم بنیاد:</span> {p.shareDaneshmand.toLocaleString("fa-IR")}٪
           </p>
           <p>
             <span className="text-ink-400">مدت:</span> {p.durationMonths > 0 ? `${p.durationMonths.toLocaleString("fa-IR")} ماه` : "—"} · <span className="text-ink-400">شماره قرارداد:</span> <span dir="ltr">{p.contractNo}</span>
@@ -813,7 +813,7 @@ function EmploymentFundTab() {
       label: "امتیاز داوری",
       render: (f) => {
         const d = fundDetails[f.id];
-        return d ? <span className="font-medium text-ink-800">{d.score} / ۱۰۰</span> : <span className="text-ink-400">—</span>;
+        return d ? <span className="font-medium text-ink-800">{d.score.toLocaleString("fa-IR")} / ۱۰۰</span> : <span className="text-ink-400">—</span>;
       },
     },
     { key: "roi", label: "بازگشت سرمایه", render: (f) => <span className="flex items-center gap-1 text-emerald-600 font-medium"><TrendingUp size={12} /> {f.roi}</span> },
@@ -830,9 +830,9 @@ function EmploymentFundTab() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="سرمایه صندوق" value={fundOverview.totalCapital} tone="brand" icon={<Landmark size={16} />} />
         <StatCard label="تخصیص‌یافته" value={fundOverview.allocated} tone="success" icon={<PiggyBank size={16} />} />
-        <StatCard label="طرح‌های فعال" value={funds.length} icon={<Target size={16} />} />
+        <StatCard label="طرح‌های فعال" value={funds.length.toLocaleString("fa-IR")} icon={<Target size={16} />} />
         <StatCard label="نرخ موفقیت طرح‌ها" value={fundOverview.successRate} tone="success" icon={<Gauge size={16} />} />
-        <StatCard label="میانگین زمان داوری" value={`${fundOverview.avgReviewDays} روز`} tone="warning" icon={<CalendarClock size={16} />} />
+        <StatCard label="میانگین زمان داوری" value={`${fundOverview.avgReviewDays.toLocaleString("fa-IR")} روز`} tone="warning" icon={<CalendarClock size={16} />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
@@ -845,7 +845,7 @@ function EmploymentFundTab() {
                 stageFilter === "همه" ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
               }`}
             >
-              همه ({funds.length})
+              همه ({funds.length.toLocaleString("fa-IR")})
             </button>
             {stages.map((s) => (
               <button
@@ -855,7 +855,7 @@ function EmploymentFundTab() {
                   stageFilter === s ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
                 }`}
               >
-                {s} ({funds.filter((f) => f.stage === s).length})
+                {s} ({funds.filter((f) => f.stage === s).length.toLocaleString("fa-IR")})
               </button>
             ))}
           </div>
@@ -877,7 +877,7 @@ function EmploymentFundTab() {
               <p className="text-sm font-medium text-ink-900 leading-6">{rv.title}</p>
               <p className="text-xs text-ink-400 mt-1">{rv.committee}</p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-xs">
-                <Badge tone="brand">{rv.items} طرح در دستور</Badge>
+                <Badge tone="brand">{rv.items.toLocaleString("fa-IR")} طرح در دستور</Badge>
                 <span className="text-ink-400">{rv.date}</span>
               </div>
             </div>
@@ -943,7 +943,7 @@ function EmploymentFundTab() {
                 <div className="border-t border-ink-100 pt-4">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-bold text-ink-900">امتیاز داوری</span>
-                    <span className="text-ink-500">{selectedDetail.score} از ۱۰۰</span>
+                    <span className="text-ink-500">{selectedDetail.score.toLocaleString("fa-IR")} از ۱۰۰</span>
                   </div>
                   <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
                     <div

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CalendarDays, MapPin, Users, Hash, Plus, Calendar, Send } from "lucide-react";
+import { CalendarDays, MapPin, Users, Plus, Calendar, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { type EventItem, type Visibility } from "../data/mock";
 import RowActions from "../components/ui/RowActions";
+import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import JalaliDatePicker from "../components/ui/JalaliDatePicker";
 import PageHeader from "../components/ui/PageHeader";
@@ -132,78 +133,49 @@ function EventsListTab() {
           </>
       </div>
 
-      <div className="card divide-y divide-ink-100">
-        {/* header */}
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 px-4 py-2 bg-ink-50 text-[11px] font-semibold text-ink-400 uppercase tracking-wide items-center">
-          <span>تاریخ</span>
-          <span>رویداد</span>
-          <span className="text-center">مکان</span>
-          <span className="text-center">شرکت‌کنندگان</span>
-          <span className="text-center">دسترسی</span>
-          <span />
-        </div>
-
-        {events.map((e) => {
-          const dateStr = calendar === "jalali" ? e.jalaliDate : e.date;
-          return (
-            <div
-              key={e.id}
-              className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-ink-50/60 transition-colors"
-            >
-              {/* Date block */}
-              <div className="w-12 h-12 rounded-lg bg-navy-900 text-white flex flex-col items-center justify-center shrink-0">
-                <span className="text-[9px] text-navy-400">{dateStr.split("/")[1] ?? "—"}</span>
-                <span className="text-sm font-bold leading-tight">{dateStr.split("/")[2] ?? "—"}</span>
-              </div>
-
-              {/* Title + meta */}
-              <div className="min-w-0">
-                <Link
-                  to={`/dashboard/events/${e.id}`}
-                  className="font-semibold text-sm text-ink-900 hover:text-brand-700 transition-colors truncate block"
-                >
-                  {e.title}
-                </Link>
-                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-ink-400 flex-wrap">
-                  <span>{dateStr} · {e.time}</span>
-                  {e.hashtags.slice(0, 2).map((h) => (
-                    <Badge key={h} tone="neutral" icon={<Hash size={9} />}>{h}</Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Location */}
-              <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap max-w-[140px] truncate">
-                <MapPin size={12} className="shrink-0" /> {e.location}
-              </span>
-
-              {/* Attendees */}
-              <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap">
-                <Users size={12} /> {e.attendees}
-              </span>
-
-              {/* Visibility */}
-              <VisibilityToggle
-                visibility={e.visibility}
-                onChange={() => toggleVisibility(e.id)}
-                size="xs"
-              />
-
-              {/* Invite + actions */}
+      <DataTable
+        columns={[
+          {
+            key: "title",
+            label: "رویداد",
+            render: (e) => {
+              const dateStr = calendar === "jalali" ? e.jalaliDate : e.date;
+              return (
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="w-11 h-11 rounded-lg bg-navy-900 text-white flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[9px] text-navy-400">{dateStr.split("/")[1] ?? "—"}</span>
+                    <span className="text-sm font-bold leading-tight">{dateStr.split("/")[2] ?? "—"}</span>
+                  </span>
+                  <span className="min-w-0">
+                    <Link to={`/dashboard/events/${e.id}`} className="font-semibold text-sm text-ink-900 hover:text-brand-700 transition-colors block">
+                      {e.title}
+                    </Link>
+                    <span className="text-xs text-ink-400 block mt-0.5">{dateStr} · {e.time}</span>
+                  </span>
+                </span>
+              );
+            },
+          },
+          { key: "mode", label: "حالت", render: (e) => <Badge tone={e.mode === "آنلاین" ? "brand" : "navy"}>{e.mode}</Badge> },
+          { key: "location", label: "مکان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><MapPin size={12} className="shrink-0" /> <span className="truncate max-w-[160px]">{e.location}</span></span> },
+          { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}</span> },
+          { key: "visibility", label: "دسترسی", render: (e) => <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> },
+          {
+            key: "actions",
+            label: "",
+            render: (e) => (
               <span className="flex items-center gap-0.5">
-                <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>
-                  دعوت
-                </Button>
+                <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>دعوت</Button>
                 <RowActions onEdit={() => startEdit(e)} onDelete={() => remove(e)} />
               </span>
-            </div>
-          );
-        })}
-
-        {events.length === 0 && (
-          <div className="p-8 text-center text-sm text-ink-400">هنوز رویدادی ثبت نشده</div>
-        )}
-      </div>
+            ),
+          },
+        ]}
+        rows={events}
+        searchKeys={["title", "location"]}
+        searchPlaceholder="جستجو در عنوان یا مکان رویداد…"
+        emptyTitle="هنوز رویدادی ثبت نشده"
+      />
 
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش رویداد" : "ایجاد رویداد جدید"}>
         <div className="space-y-3">
