@@ -61,6 +61,12 @@ export type UserProfile = {
   avatarColor: string;
   skills: string[];
   online: boolean;
+  /**
+   * شرکت‌هایی که کاربر عضوشان است. کاربر خودش این را انتخاب نمی‌کند —
+   * مدیر شرکت او را اضافه می‌کند. اگر بیش از یکی باشد، سوییچرِ دامنه
+   * در هدر ظاهر می‌شود؛ اگر یکی باشد دامنه ثابت و نامرئی است.
+   */
+  companyIds?: string[];
 };
 
 export const currentUser: UserProfile = {
@@ -92,6 +98,7 @@ export const users: UserProfile[] = [
     avatarColor: "#b45309",
     skills: ["عمران و آبادانی", "نظارت راهبردی"],
     online: false,
+    companyIds: ["c-behnoush"],
   },
   {
     id: "u4",
@@ -101,6 +108,7 @@ export const users: UserProfile[] = [
     avatarColor: "#1f4f99",
     skills: ["محرومیت‌زدایی", "توسعه منطقه‌ای"],
     online: false,
+    companyIds: ["c-dashtnaz", "c-ferdows-agri"],
   },
   {
     id: "u5",
@@ -110,16 +118,17 @@ export const users: UserProfile[] = [
     avatarColor: "#7c3aed",
     skills: ["اشتغال‌زایی", "طرح‌های خرد و متوسط"],
     online: true,
+    companyIds: ["c-saba-niru"],
   },
   // --- نخبگان و فناوران شبکه (شخصیت‌های نمایشی) ---
-  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], online: true },
-  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], online: true },
-  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], online: false },
-  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], online: true },
-  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], online: true },
-  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], online: false },
-  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], online: true },
-  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], online: true },
+  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], online: true, companyIds: ["c-behnoush"] },
+  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], online: true, companyIds: ["c-ferdows-agri"] },
+  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], online: false, companyIds: ["c-sina-rail"] },
+  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], online: true, companyIds: ["c-energy-sina", "c-saba-niru"] },
+  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], online: true, companyIds: ["c-dashtnaz"] },
+  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], online: false, companyIds: ["c-zamzam"] },
+  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], online: true, companyIds: ["c-pak", "c-behnoush", "c-zamzam"] },
+  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], online: true, companyIds: ["c-bank-sina"] },
 ];
 
 export type Group = {

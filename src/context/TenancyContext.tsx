@@ -3,14 +3,19 @@ import {
   systemIdentity as initialIdentity,
   holdings as initialHoldings,
   companies as initialCompanies,
-  isVisibleInScope,
+  buildSessionScope,
+  isVisibleForSession,
+  publishableScopes,
   scopeOwnerLabel,
   type Company,
   type ContentScope,
   type Holding,
   type Scoped,
+  type ScopeLevel,
+  type SessionScope,
   type SystemIdentity,
 } from "../data/tenancy";
+import { currentUser, users as allUsers, initialRoleAssignments, type UserProfile } from "../data/mock";
 
 type TenancyValue = {
   // --- هویت این نصب ---
@@ -29,7 +34,13 @@ type TenancyValue = {
   updateCompany: (id: string, patch: Partial<Company>) => void;
   removeCompany: (id: string) => void;
 
-  // --- دامنه‌ی فعال (سوییچر هدر) ---
+  // --- نشستِ کاربر (دامنه از روی کاربر محاسبه می‌شود، نه انتخاب او) ---
+  /** کاربری که وارد شده — در پروتوتایپ قابل تعویض است تا سناریوها دیده شوند */
+  actingUser: UserProfile;
+  setActingUser: (userId: string) => void;
+  session: SessionScope;
+
+  // --- دامنه‌ی فعال ---
   activeHoldingId?: string;
   activeCompanyId?: string;
   setScope: (holdingId?: string, companyId?: string) => void;
@@ -37,6 +48,16 @@ type TenancyValue = {
   activeScopeLabel: string;
   /** آیا راهبر در حال «مشاهده به‌عنوان» یک دامنه‌ی دیگر است */
   isViewingAs: boolean;
+  /** دامنه‌هایی که این کاربر مجاز است در آن‌ها منتشر کند */
+  allowedPublishScopes: ContentScope[];
+
+  // --- زنجیره‌ی واگذاری اختیار ---
+  /** آیا این کاربر می‌تواند هلدینگ بسازد/حذف کند */
+  canManageHoldings: boolean;
+  /** هلدینگ‌هایی که این کاربر اختیار مدیریتشان را دارد */
+  managedHoldingIds: string[];
+  /** شرکت‌هایی که این کاربر اختیار مدیریتشان را دارد */
+  managedCompanyIds: string[];
 
   // --- کمک‌تابع‌ها برای ماژول‌ها ---
   /** آیا این آیتم در دامنه‌ی فعال دیده می‌شود؟ */
@@ -55,8 +76,46 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
   const [identity, setIdentity] = useState<SystemIdentity>(initialIdentity);
   const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
   const [companies, setCompanies] = useState<Company[]>(initialCompanies);
+  // کاربرِ واردشده. در محصول واقعی از توکن می‌آید؛ اینجا برای نمایشِ سناریوها قابل تعویض است.
+  const [actingUserId, setActingUserId] = useState<string>(currentUser.id);
   const [activeHoldingId, setActiveHoldingId] = useState<string | undefined>(undefined);
   const [activeCompanyId, setActiveCompanyId] = useState<string | undefined>(undefined);
+
+  const actingUser = allUsers.find((u) => u.id === actingUserId) ?? currentUser;
+  const grant = initialRoleAssignments[actingUserId];
+  const level: ScopeLevel = grant?.level ?? (actingUser.companyIds?.length ? "شرکت" : "سیستم");
+
+  const session = useMemo(
+    () => buildSessionScope(actingUser.companyIds ?? [], level, grant?.holdingId, holdings, companies),
+    [actingUser, level, grant?.holdingId, holdings, companies]
+  );
+
+  // با عوض‌شدنِ کاربر، دامنه‌ی فعال از روی نشستِ او بازنشانی می‌شود — نه از انتخاب قبلی
+  const resetScopeFor = (s: typeof session) => {
+    if (s.level === "سیستم") {
+      setActiveHoldingId(undefined);
+      setActiveCompanyId(undefined);
+      return;
+    }
+    if (s.level === "هلدینگ") {
+      setActiveHoldingId(s.memberHoldingIds[0]);
+      setActiveCompanyId(undefined);
+      return;
+    }
+    // سطح شرکت: اگر یک عضویت دارد همان، اگر چند تا دارد اولی به‌عنوان پیش‌فرض
+    const first = companies.find((c) => c.id === s.memberCompanyIds[0]);
+    setActiveHoldingId(first?.holdingId);
+    setActiveCompanyId(first?.id);
+  };
+
+  const setActingUser = (userId: string) => {
+    const u = allUsers.find((x) => x.id === userId) ?? currentUser;
+    const g = initialRoleAssignments[userId];
+    const lv: ScopeLevel = g?.level ?? (u.companyIds?.length ? "شرکت" : "سیستم");
+    const s = buildSessionScope(u.companyIds ?? [], lv, g?.holdingId, holdings, companies);
+    setActingUserId(userId);
+    resetScopeFor(s);
+  };
 
   const value = useMemo<TenancyValue>(() => {
     const companiesOf = (holdingId: string) => companies.filter((c) => c.holdingId === holdingId);
@@ -73,7 +132,17 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         ? activeHolding.name
         : `کل ${identity.shortName}`;
 
-    const visible = (item: Scoped) => isVisibleInScope(item, activeHoldingId, activeCompanyId);
+    const visible = (item: Scoped) => isVisibleForSession(item, session, activeHoldingId, activeCompanyId);
+
+    // زنجیره‌ی واگذاری: هر سطح فقط زیرمجموعه‌ی خودش را می‌تواند اداره کند
+    const managedHoldingIds =
+      session.level === "سیستم" ? holdings.map((h) => h.id) : session.level === "هلدینگ" ? session.memberHoldingIds : [];
+    const managedCompanyIds =
+      session.level === "سیستم"
+        ? companies.map((c) => c.id)
+        : session.level === "هلدینگ"
+          ? companies.filter((c) => session.memberHoldingIds.includes(c.holdingId)).map((c) => c.id)
+          : session.memberCompanyIds;
 
     return {
       identity,
@@ -108,6 +177,10 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         setActiveCompanyId((prev) => (prev === id ? undefined : prev));
       },
 
+      actingUser,
+      setActingUser,
+      session,
+
       activeHoldingId,
       activeCompanyId,
       setScope: (holdingId, companyId) => {
@@ -115,21 +188,34 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         setActiveCompanyId(companyId);
       },
       activeScopeLabel,
-      isViewingAs: !!activeHoldingId,
+      // «مشاهده به‌عنوان» فقط وقتی معنا دارد که راهبرِ سیستم از دامنه‌ی پیش‌فرضش بیرون رفته باشد
+      isViewingAs: session.level === "سیستم" && !!activeHoldingId,
+      allowedPublishScopes: publishableScopes(session),
+
+      canManageHoldings: session.level === "سیستم",
+      managedHoldingIds,
+      managedCompanyIds,
 
       visible,
       filterScoped: <T extends Scoped>(items: T[]) => items.filter(visible),
       ownerLabel: (item) => scopeOwnerLabel(item, holdings, companies),
       defaultScopeForNew: () => {
-        if (activeCompanyId) {
+        const allowed = publishableScopes(session);
+        if (activeCompanyId && allowed.includes("شرکت")) {
           const c = companies.find((x) => x.id === activeCompanyId);
           return { scope: "شرکت" as ContentScope, holdingId: c?.holdingId, companyId: activeCompanyId };
         }
-        if (activeHoldingId) return { scope: "هلدینگ" as ContentScope, holdingId: activeHoldingId };
-        return { scope: "سراسری" as ContentScope };
+        if (activeHoldingId && allowed.includes("هلدینگ")) {
+          return { scope: "هلدینگ" as ContentScope, holdingId: activeHoldingId };
+        }
+        if (allowed.includes("سراسری")) return { scope: "سراسری" as ContentScope };
+        // کاربرِ سطحِ شرکت که هنوز دامنه‌ی فعالی ندارد → اولین عضویتش
+        const c = companies.find((x) => x.id === session.memberCompanyIds[0]);
+        return { scope: "شرکت" as ContentScope, holdingId: c?.holdingId, companyId: c?.id };
       },
     };
-  }, [identity, holdings, companies, activeHoldingId, activeCompanyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity, holdings, companies, activeHoldingId, activeCompanyId, session, actingUser]);
 
   return <TenancyContext.Provider value={value}>{children}</TenancyContext.Provider>;
 }

@@ -6,6 +6,8 @@ import { currentUser, notifications, userPresence, currentTenant, type PresenceS
 import { navSections } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
+import { useTenancy } from "../context/TenancyContext";
+import { users as allUsers } from "../data/mock";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -21,6 +23,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   const [status, setStatus] = useState<PresenceStatus>(userPresence[currentUser.id] ?? "online");
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
+  const { actingUser, setActingUser, session } = useTenancy();
 
   const toggleDark = () => setMode(resolved === "dark" ? "light" : "dark");
 
@@ -149,6 +152,27 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                       {s.label}
                     </button>
                   ))}
+                </div>
+                <div className="h-px bg-ink-100 my-1" />
+                <p className="px-3.5 py-1 text-[11px] text-ink-400">
+                  ورود به‌عنوان <span className="text-ink-300">(نمایشی)</span>
+                </p>
+                <div className="px-2 pb-1.5">
+                  <select
+                    value={actingUser.id}
+                    onChange={(e) => setActingUser(e.target.value)}
+                    aria-label="تعویض کاربر واردشده"
+                    className="w-full text-[12px] border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
+                  >
+                    {allUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} — {(u.companyIds?.length ?? 0) === 0 ? "سطح سیستم" : `${u.companyIds!.length.toLocaleString("fa-IR")} شرکت`}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-ink-400 mt-1 leading-4">
+                    دامنه‌ی دید از روی عضویت همین کاربر محاسبه می‌شود — سطح فعلی: <b>{session.level}</b>
+                  </p>
                 </div>
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to={`/dashboard/profile/${currentUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">

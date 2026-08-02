@@ -375,8 +375,13 @@ function HoldingsSection({ notify }: { notify: Notify }) {
     identity, holdings, companiesOf, companies,
     addHolding, updateHolding, removeHolding,
     addCompany, updateCompany, removeCompany,
+    session, canManageHoldings, managedHoldingIds,
   } = useTenancy();
   const confirm = useConfirm();
+
+  // زنجیره‌ی واگذاری: هر سطح فقط زیرمجموعه‌ی خودش را می‌بیند و اداره می‌کند
+  const visibleHoldings = holdings.filter((h) => managedHoldingIds.includes(h.id));
+  const canManageCompaniesOf = (holdingId: string) => managedHoldingIds.includes(holdingId);
 
   const [hOpen, setHOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<string | null>(null);
@@ -429,7 +434,7 @@ function HoldingsSection({ notify }: { notify: Notify }) {
     setCForm(
       c
         ? { name: c.name, holdingId: c.holdingId, field: c.field ?? "", users: String(c.users) }
-        : { name: "", holdingId: holdingId ?? holdings[0]?.id ?? "", field: "", users: "" }
+        : { name: "", holdingId: holdingId ?? visibleHoldings[0]?.id ?? "", field: "", users: "" }
     );
     setCOpen(true);
   };
@@ -467,25 +472,29 @@ function HoldingsSection({ notify }: { notify: Notify }) {
       },
     });
 
-  const totalUsers = companies.reduce((s, c) => s + c.users, 0);
+  const totalUsers = companies.filter((c) => managedHoldingIds.includes(c.holdingId)).reduce((s, c) => s + c.users, 0);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="text-sm font-bold text-ink-900">ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه</h3>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => openHolding()}>
-            هلدینگ جدید
-          </Button>
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => openCompany()}>
-            افزودن شرکت
-          </Button>
+          {canManageHoldings && (
+            <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => openHolding()}>
+              هلدینگ جدید
+            </Button>
+          )}
+          {visibleHoldings.length > 0 && (
+            <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => openCompany()}>
+              افزودن شرکت
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <StatCard label="هلدینگ‌ها" value={holdings.length.toLocaleString("fa-IR")} tone="brand" icon={<Network size={16} />} />
-        <StatCard label="شرکت‌ها" value={companies.length.toLocaleString("fa-IR")} icon={<Building2 size={16} />} />
+        <StatCard label="هلدینگ‌ها" value={visibleHoldings.length.toLocaleString("fa-IR")} tone="brand" icon={<Network size={16} />} />
+        <StatCard label="شرکت‌ها" value={companies.filter((c) => managedHoldingIds.includes(c.holdingId)).length.toLocaleString("fa-IR")} icon={<Building2 size={16} />} />
         <StatCard label="کاربران سازمانی" value={totalUsers.toLocaleString("fa-IR")} tone="success" icon={<Users size={16} />} />
         <StatCard label="سیستم" value={identity.shortName} />
       </div>
@@ -493,14 +502,25 @@ function HoldingsSection({ notify }: { notify: Notify }) {
       <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
         <Network size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
-          سلسله‌مراتب: <b>سیستم ← هلدینگ ← شرکت ← کاربر</b>. هر محتوا (خبر، سند، رویداد، پروژه و…) به یک مالک
-          متصل است و دامنه‌ی انتشار دارد: «فقط شرکت خودم»، «کل هلدینگ» یا «سراسری». با سوییچر دامنه در بالای
-          صفحه می‌توانید سامانه را از دید هر هلدینگ یا شرکت ببینید.
+          <b>زنجیره‌ی واگذاری اختیار:</b> مدیر سیستم هلدینگ‌ها را می‌سازد و مدیر هر هلدینگ را منصوب می‌کند؛
+          مدیر هلدینگ شرکت‌های هلدینگ خودش را می‌سازد و مدیر شرکت را تعیین می‌کند؛ مدیر شرکت کاربران همان
+          شرکت را اضافه می‌کند. هیچ سطحی نمی‌تواند بیرون از دامنه‌ی خودش چیزی بدهد.
+          <br />
+          کاربر عضویتش را انتخاب نمی‌کند — دامنه‌ی دیدش خودکار از روی عضویتش محاسبه می‌شود؛ فقط اگر عضو
+          بیش از یک شرکت باشد، سوییچر بالای صفحه برایش ظاهر می‌شود.
+          <br />
+          <b>سطح دسترسی شما در این نشست:</b> {session.level}
+          {session.level !== "سیستم" && " — فقط زیرمجموعه‌ی خودتان را می‌بینید."}
         </p>
       </div>
 
       <div className="space-y-3">
-        {holdings.map((h) => {
+        {visibleHoldings.length === 0 && (
+          <div className="card p-6 text-center text-sm text-ink-400">
+            در دامنه‌ی شما هلدینگی برای مدیریت وجود ندارد.
+          </div>
+        )}
+        {visibleHoldings.map((h) => {
           const hCompanies = companiesOf(h.id);
           return (
             <div key={h.id} className="card p-4">
@@ -517,8 +537,13 @@ function HoldingsSection({ notify }: { notify: Notify }) {
                     notify(`هلدینگ «${h.name}» ${h.active ? "غیرفعال" : "فعال"} شد.`, h.active ? "info" : "success");
                   }}
                 />
-                <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => openCompany(undefined, h.id)}>شرکت</Button>
-                <RowActions onEdit={() => openHolding(h.id)} onDelete={() => deleteHolding(h.id, h.name)} />
+                {canManageCompaniesOf(h.id) && (
+                  <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => openCompany(undefined, h.id)}>شرکت</Button>
+                )}
+                <RowActions
+                  onEdit={() => openHolding(h.id)}
+                  onDelete={canManageHoldings ? () => deleteHolding(h.id, h.name) : undefined}
+                />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {hCompanies.length === 0 && <span className="text-xs text-ink-400">شرکتی تعریف نشده است.</span>}
@@ -568,7 +593,7 @@ function HoldingsSection({ notify }: { notify: Notify }) {
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">هلدینگ مادر <span className="text-rose-500">*</span></label>
             <select value={cForm.holdingId} onChange={(e) => setCForm((f) => ({ ...f, holdingId: e.target.value }))} className="input-field">
-              {holdings.map((h) => (
+              {visibleHoldings.map((h) => (
                 <option key={h.id} value={h.id}>{h.name}</option>
               ))}
             </select>
@@ -978,8 +1003,15 @@ function PagesSection({
 }
 
 function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDef[]; notify: Notify }) {
-  const { holdings, companies, companiesOf } = useTenancy();
+  const { holdings, companies, companiesOf, session, managedCompanyIds } = useTenancy();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // مدیر شرکت فقط کاربران شرکت خودش را می‌بیند؛ مدیر هلدینگ کاربران هلدینگش را
+  const visibleUsers = orgUsers.filter(
+    (u) => session.level === "سیستم" || (u.companyIds ?? []).some((cid) => managedCompanyIds.includes(cid))
+  );
+  const manageableHoldings = holdings.filter(
+    (h) => session.level === "سیستم" || companiesOf(h.id).some((c) => managedCompanyIds.includes(c.id))
+  );
   const [assignments, setAssignments] = useState<RoleAssignment>(initialRoleAssignments);
 
   const assignRole = (userId: string, roleId: string) => {
@@ -1059,9 +1091,15 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
         </div>
         <p className="text-xs text-ink-400 mb-3">
           هر کاربر دقیقاً به اندازه‌ی دسترسی‌های تیک‌خورده‌ی نقشِ تخصیص‌یافته، به بخش‌های سامانه دسترسی خواهد داشت.
+          {session.level !== "سیستم" && " شما فقط کاربران زیرمجموعه‌ی خودتان را می‌بینید."}
         </p>
+        {visibleUsers.length === 0 && (
+          <p className="p-6 text-center text-sm text-ink-400 border border-ink-100 rounded-lg">
+            در دامنه‌ی شما کاربری ثبت نشده است.
+          </p>
+        )}
         <div className="divide-y divide-ink-100 border border-ink-100 rounded-lg">
-          {orgUsers.map((u) => {
+          {visibleUsers.map((u) => {
             const grant = assignments[u.id];
             const assigned = roles.find((r) => r.id === grant?.roleId) ?? roles.find((r) => r.id === "r4");
             return (
@@ -1072,7 +1110,11 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-ink-900 truncate">{u.name}</p>
-                    <p className="text-[11px] text-ink-400 truncate">{u.role} · {u.org}</p>
+                    <p className="text-[11px] text-ink-400 truncate">
+                      {u.role} · {(u.companyIds ?? []).length > 0
+                        ? (u.companyIds ?? []).map((cid) => companies.find((c) => c.id === cid)?.name ?? cid).join(" + ")
+                        : "سطح سیستم"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -1099,13 +1141,15 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
                     aria-label={`دامنه‌ی دسترسی ${u.name}`}
                     className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white max-w-[170px]"
                   >
-                    <option value="system">کل سیستم</option>
-                    {holdings.map((h) => (
+                    {session.level === "سیستم" && <option value="system">کل سیستم</option>}
+                    {manageableHoldings.map((h) => (
                       <optgroup key={h.id} label={h.name}>
-                        <option value={`h:${h.id}`}>کل {h.name}</option>
-                        {companiesOf(h.id).map((c) => (
-                          <option key={c.id} value={`c:${c.id}`}>{c.name}</option>
-                        ))}
+                        {session.level !== "شرکت" && <option value={`h:${h.id}`}>کل {h.name}</option>}
+                        {companiesOf(h.id)
+                          .filter((c) => managedCompanyIds.includes(c.id))
+                          .map((c) => (
+                            <option key={c.id} value={`c:${c.id}`}>{c.name}</option>
+                          ))}
                       </optgroup>
                     ))}
                   </select>

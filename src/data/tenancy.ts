@@ -157,3 +157,108 @@ export function demoScopeFor(index: number, salt = 0): Scoped {
 export function withDemoScopes<T extends Scoped>(items: T[], salt = 0): T[] {
   return items.map((item, i) => (item.scope ? item : { ...item, ...demoScopeFor(i, salt) }));
 }
+
+// ---------------------------------------------------------------------------
+// نشستِ کاربر — دامنه از روی «کاربر» محاسبه می‌شود، نه از روی انتخابِ او
+// ---------------------------------------------------------------------------
+
+/** آنچه در لحظه‌ی ورود درباره‌ی دامنه‌ی کاربر می‌دانیم */
+export type SessionScope = {
+  /** سطحی که نقشِ کاربر به او می‌دهد */
+  level: ScopeLevel;
+  /** شرکت‌هایی که عضوشان است (از مدیر شرکت گرفته، نه انتخاب خودش) */
+  memberCompanyIds: string[];
+  /** هلدینگ‌هایی که از راه عضویت یا نقش به آن‌ها تعلق دارد */
+  memberHoldingIds: string[];
+  /** آیا اصلاً حق دیدنِ سوییچر را دارد */
+  canSwitch: boolean;
+  /** دامنه‌هایی که مجاز است بینشان جابه‌جا شود */
+  switchable: { holdingId?: string; companyId?: string; label: string }[];
+};
+
+/**
+ * دامنه‌ی نشست را می‌سازد.
+ * - سطح سیستم: همه‌چیز؛ سوییچر نقشِ «مشاهده به‌عنوان» دارد.
+ * - سطح هلدینگ: کلِ هلدینگِ خودش؛ می‌تواند بین شرکت‌های همان هلدینگ برود.
+ * - سطح شرکت: اگر عضو یک شرکت باشد سوییچری نیست؛ اگر عضو چند شرکت باشد،
+ *   سوییچر فقط همان شرکت‌ها را نشان می‌دهد.
+ */
+export function buildSessionScope(
+  memberCompanyIds: string[],
+  level: ScopeLevel,
+  roleHoldingId: string | undefined,
+  hs: Holding[] = holdings,
+  cs: Company[] = companies
+): SessionScope {
+  const memberCompanies = cs.filter((c) => memberCompanyIds.includes(c.id));
+  const memberHoldingIds = Array.from(new Set(memberCompanies.map((c) => c.holdingId)));
+
+  if (level === "سیستم") {
+    const switchable = [
+      { label: "کل سیستم" },
+      ...hs.flatMap((h) => [
+        { holdingId: h.id, label: h.name },
+        ...cs.filter((c) => c.holdingId === h.id).map((c) => ({ holdingId: h.id, companyId: c.id, label: c.name })),
+      ]),
+    ];
+    return { level, memberCompanyIds, memberHoldingIds, canSwitch: true, switchable };
+  }
+
+  if (level === "هلدینگ") {
+    const hid = roleHoldingId ?? memberHoldingIds[0];
+    const h = hs.find((x) => x.id === hid);
+    const own = cs.filter((c) => c.holdingId === hid);
+    return {
+      level,
+      memberCompanyIds,
+      memberHoldingIds: hid ? [hid] : memberHoldingIds,
+      canSwitch: own.length > 1,
+      switchable: [
+        { holdingId: hid, label: h ? `کل ${h.name}` : "کل هلدینگ" },
+        ...own.map((c) => ({ holdingId: hid, companyId: c.id, label: c.name })),
+      ],
+    };
+  }
+
+  // سطح شرکت (و گروه) — فقط شرکت‌هایی که واقعاً عضوشان است
+  return {
+    level,
+    memberCompanyIds,
+    memberHoldingIds,
+    canSwitch: memberCompanies.length > 1,
+    switchable: memberCompanies.map((c) => ({ holdingId: c.holdingId, companyId: c.id, label: c.name })),
+  };
+}
+
+/**
+ * آیا آیتم برای این نشست دیده می‌شود؟ (نسخه‌ی چند-عضویتی)
+ * سراسری همیشه؛ هلدینگ اگر یکی از هلدینگ‌های کاربر باشد؛ شرکت اگر یکی از شرکت‌های او.
+ * وقتی کاربر روی یک دامنه‌ی مشخص ایستاده (activeCompanyId/activeHoldingId)، همان تنگ‌تر عمل می‌کند.
+ */
+export function isVisibleForSession(
+  item: Scoped,
+  session: SessionScope,
+  activeHoldingId?: string,
+  activeCompanyId?: string
+): boolean {
+  if (session.level === "سیستم" && !activeHoldingId) return true;
+  if (!item.scope || item.scope === "سراسری") return true;
+
+  if (activeCompanyId) {
+    return item.scope === "شرکت"
+      ? item.companyId === activeCompanyId
+      : item.holdingId === (activeHoldingId ?? companies.find((c) => c.id === activeCompanyId)?.holdingId);
+  }
+  if (activeHoldingId) {
+    return item.holdingId === activeHoldingId;
+  }
+  if (item.scope === "هلدینگ") return session.memberHoldingIds.includes(item.holdingId ?? "");
+  return session.memberCompanyIds.includes(item.companyId ?? "");
+}
+
+/** دامنه‌هایی که این نشست حق دارد محتوا را در آن‌ها منتشر کند */
+export function publishableScopes(session: SessionScope): ContentScope[] {
+  if (session.level === "سیستم") return ["سراسری", "هلدینگ", "شرکت"];
+  if (session.level === "هلدینگ") return ["هلدینگ", "شرکت"];
+  return ["شرکت"];
+}
