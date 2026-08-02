@@ -1,3 +1,7 @@
+// دامنه‌ی انتشار (سیستم → هلدینگ → شرکت) روی همه‌ی موجودیت‌های محتوایی/کاری
+import type { Scoped, ScopeLevel } from "./tenancy";
+export type { Scoped, ScopeLevel };
+
 export type Tenant = {
   id: string;
   name: string;
@@ -130,7 +134,7 @@ export type Group = {
   createdAt: string; // تاریخ ساخت (شمسی)
   lastActivityAt: string; // آخرین فعالیت (شمسی)
   lastActivityRel: string; // نمایش نسبی
-};
+} & Scoped;
 
 export const groups: Group[] = [
   {
@@ -386,7 +390,7 @@ export type ForumTopic = {
   category: string;
   solved?: boolean;
   visibility: Visibility;
-};
+} & Scoped;
 
 export const forumTopics: ForumTopic[] = [
   {
@@ -530,7 +534,7 @@ export type KnowledgeDoc = {
   owner: string;
   size: string;
   visibility: Visibility;
-};
+} & Scoped;
 
 export const knowledgeDocs: KnowledgeDoc[] = [
   {
@@ -654,7 +658,7 @@ export type Project = {
   budgetUsed: number;
   deadline: string;
   tasks: Task[];
-};
+} & Scoped;
 
 export const projects: Project[] = [
   {
@@ -811,7 +815,7 @@ export type EventItem = {
   mode: "حضوری" | "آنلاین";
   joinLink?: string;
   mapUrl?: string;
-};
+} & Scoped;
 
 export const events: EventItem[] = [
   {
@@ -926,7 +930,7 @@ export type BlogPost = {
   rating: number;
   tags: string[];
   visibility: Visibility;
-};
+} & Scoped;
 
 export const blogPosts: BlogPost[] = [
   {
@@ -1015,7 +1019,7 @@ export type MediaItem = {
   tags: string[];
   color: string;
   visibility: Visibility;
-};
+} & Scoped;
 
 export const mediaItems: MediaItem[] = [
   { id: "m1", kind: "photo", title: "افتتاح مدرسه نوساز در قلعه‌گنج", album: "رویدادهای رسمی", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۰۱", rating: 4.8, tags: ["افتتاحیه", "مدرسه‌سازی"], color: "#82aee6", visibility: "عمومی" },
@@ -1042,7 +1046,7 @@ export type NewsItem = {
   views: number;
   pinned?: boolean;
   visibility: Visibility;
-};
+} & Scoped;
 
 export const newsItems: NewsItem[] = [
   {
@@ -1481,7 +1485,7 @@ export const allPermissionIds: string[] = permissionCatalog.flatMap((g) => g.act
 export type RoleDef = {
   id: string;
   title: string;
-  scope: "پلتفرم" | "سازمان" | "گروه";
+  scope: ScopeLevel;
   members: number;
   description: string;
   permissions: string[];
@@ -1489,8 +1493,8 @@ export type RoleDef = {
 };
 
 export const roles: RoleDef[] = [
-  { id: "r1", title: "راهبر پلتفرم", scope: "پلتفرم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌ها و تنظیمات زیرساخت", permissions: [...allPermissionIds], system: true },
-  { id: "r2", title: "مدیر سازمان", scope: "سازمان", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی", permissions: allPermissionIds.filter((p) => !p.startsWith("settings.system") && !p.startsWith("settings.storage")), system: true },
+  { id: "r1", title: "راهبر پلتفرم", scope: "سیستم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌ها و تنظیمات زیرساخت", permissions: [...allPermissionIds], system: true },
+  { id: "r2", title: "مدیر سازمان", scope: "هلدینگ", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی", permissions: allPermissionIds.filter((p) => !p.startsWith("settings.system") && !p.startsWith("settings.storage")), system: true },
   { id: "r3", title: "ناظم گروه", scope: "گروه", members: 18, description: "مدیریت محتوا و اعضای یک گروه مشخص", permissions: ["groups.list", "groups.edit", "groups.members", "groups.post", "forum.list", "forum.create", "forum.reply", "forum.solve", "chat.view", "chat.pin", "media.list", "media.upload", "news.list", "blog.list", "events.list"], system: true },
   {
     id: "r4",
@@ -1504,20 +1508,28 @@ export const roles: RoleDef[] = [
   {
     id: "r5",
     title: "کارشناس داوری صندوق",
-    scope: "سازمان",
+    scope: "هلدینگ",
     members: 7,
     description: "نقش سفارشی: بررسی، امتیازدهی و پایش طرح‌های صندوق نوآوری",
     permissions: ["funds.list", "funds.refer", "funds.score", "funds.monitor", "reports.view", "knowledge.list", "events.list", "chat.view"],
   },
 ];
 
-export type RoleAssignment = Record<string, string>;
+/** تخصیص نقش = (کاربر، نقش، دامنه) — همان نقش در هلدینگ/شرکت‌های مختلف قابل استفاده است */
+export type RoleGrant = {
+  roleId: string;
+  /** سطحی که این تخصیص در آن اعتبار دارد */
+  level: ScopeLevel;
+  holdingId?: string;
+  companyId?: string;
+};
+export type RoleAssignment = Record<string, RoleGrant>;
 export const initialRoleAssignments: RoleAssignment = {
-  u1: "r1",
-  u2: "r2",
-  u3: "r4",
-  u4: "r2",
-  u5: "r5",
+  u1: { roleId: "r1", level: "سیستم" },
+  u2: { roleId: "r2", level: "هلدینگ", holdingId: "h-sina-food" },
+  u3: { roleId: "r4", level: "شرکت", holdingId: "h-sina-food", companyId: "c-behnoush" },
+  u4: { roleId: "r2", level: "هلدینگ", holdingId: "h-ferdows" },
+  u5: { roleId: "r5", level: "شرکت", holdingId: "h-saba", companyId: "c-saba-niru" },
 };
 
 export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];

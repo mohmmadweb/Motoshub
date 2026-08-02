@@ -33,11 +33,13 @@ import {
   Activity,
 } from "lucide-react";
 import { SystemSection, StorageSection } from "./AdminSections";
-import { holdings as daneshmandHoldings } from "../data/mockDaneshmand";
+import { useTenancy } from "../context/TenancyContext";
+import type { SsoProvider } from "../data/tenancy";
 import LiveUsagePanel from "../components/LiveUsagePanel";
 import BrandingPanel from "../components/BrandingPanel";
 import { useSettings, settingsMeta, defaultSettings, type WorkflowSettings } from "../context/SettingsContext";
 import { useConfirm } from "../components/ui/ConfirmProvider";
+import RowActions from "../components/ui/RowActions";
 import {
   tenants as initialTenants,
   moduleCatalog,
@@ -53,6 +55,7 @@ import {
   allPermissionIds,
   initialRoleAssignments,
   type RoleAssignment,
+  type RoleGrant,
   type ModuleDef,
   type Tenant,
   type RoleDef,
@@ -68,10 +71,10 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "tenants" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
+type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
-  { id: "tenants", label: "سازمان‌های مشتری", icon: Building2 },
+  { id: "system-identity", label: "سیستم و ورود یکپارچه", icon: KeyRound },
   { id: "holdings", label: "هلدینگ‌ها و شرکت‌ها", icon: Network },
   { id: "branding", label: "برندسازی سازمان", icon: Palette },
   { id: "roles", label: "نقش‌ها و دسترسی", icon: KeyRound },
@@ -90,10 +93,9 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
 const tenantPalette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
 
 export default function Admin() {
-  const [section, setSection] = useState<SectionId>("tenants");
-  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
-  const [activeTenant, setActiveTenant] = useState(initialTenants[0].id);
-  const tenant = tenants.find((t) => t.id === activeTenant) ?? tenants[0];
+  const [section, setSection] = useState<SectionId>("system-identity");
+  // یک نصب = یک مشتری؛ این رکورد فقط برای بخش‌هایی مثل «کاربران» نگه داشته می‌شود
+  const tenant = initialTenants[0];
   const [enabledModules, setEnabledModules] = useState<string[]>(["social", "knowledge", "projects", "reports"]);
   const [crossTenant, setCrossTenant] = useState(false);
   const [roles, setRoles] = useState<RoleDef[]>(initialRoles);
@@ -107,16 +109,12 @@ export default function Admin() {
     setEnabledModules((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const addTenant = (t: Tenant) => {
-    setTenants((prev) => [...prev, t]);
-    setActiveTenant(t.id);
-  };
 
   return (
     <div>
       <PageHeader
         title="پنل راهبری"
-        description={`مدیریت سازمان «${tenant.name}» — هر تغییر فقط روی این سازمان اعمال می‌شود`}
+        description={`مدیریت سامانه‌ی «${tenant.name}» — سیستم ← هلدینگ ← شرکت`}
         icon={<Settings size={18} />}
       />
 
@@ -137,9 +135,7 @@ export default function Admin() {
         </div>
 
         <div className="space-y-5">
-          {section === "tenants" && (
-            <TenantsSection tenants={tenants} activeTenant={activeTenant} setActiveTenant={setActiveTenant} onAdd={addTenant} notify={notify} />
-          )}
+          {section === "system-identity" && <SystemIdentitySection notify={notify} />}
 
           {section === "holdings" && <HoldingsSection notify={notify} />}
 
@@ -262,178 +258,334 @@ function WorkflowParamsSection({ notify }: { notify: Notify }) {
 // ---------------------------------------------------------------------------
 // ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه — مبنای تفکیک محتوا و دسترسی شرکتی
 // ---------------------------------------------------------------------------
-function HoldingsSection({ notify }: { notify: Notify }) {
-  const [holdingsList, setHoldingsList] = useState(daneshmandHoldings);
-  const [open, setOpen] = useState(false);
-  const [companyName, setCompanyName] = useState("");
-  const [holdingId, setHoldingId] = useState(daneshmandHoldings[0].id);
+function SystemIdentitySection({ notify }: { notify: Notify }) {
+  const { identity, updateIdentity, holdings, companies } = useTenancy();
+  const [draft, setDraft] = useState(identity);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(identity);
 
-  const addCompany = () => {
-    if (!companyName.trim()) {
-      notify("نام شرکت الزامی است.", "warning");
+  const providers: SsoProvider[] = ["بدون SSO", "LDAP / Active Directory", "SAML 2.0", "OpenID Connect", "ورود با موبایل (OTP)"];
+
+  const save = () => {
+    if (!draft.name.trim() || !draft.domain.trim()) {
+      notify("نام سیستم و دامنه الزامی است.", "warning");
       return;
     }
-    const clean = companyName.trim();
-    setHoldingsList((prev) =>
-      prev.map((h) => (h.id === holdingId ? { ...h, companies: [...h.companies, { id: `c-${Date.now()}`, name: clean }] } : h))
-    );
-    const holdingName = holdingsList.find((h) => h.id === holdingId)?.name ?? "";
-    notify(`شرکت «${clean}» به «${holdingName}» افزوده شد. از این پس محتوای اختصاصی و کاربران این شرکت قابل تعریف است.`);
-    setOpen(false);
-    setCompanyName("");
+    updateIdentity({ ...draft, name: draft.name.trim(), domain: draft.domain.trim() });
+    notify("هویت سیستم و پیکربندی ورود یکپارچه ذخیره شد.");
   };
+
+  const testSso = () =>
+    draft.ssoProvider === "بدون SSO"
+      ? notify("ابتدا یک روش ورود یکپارچه انتخاب کنید.", "warning")
+      : notify(`اتصال آزمایشی به «${draft.ssoProvider}» برقرار شد و ۳ کاربر نمونه بازیابی شد. (نمایشی)`, "success");
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-ink-900">ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
-          افزودن شرکت
-        </Button>
-      </div>
       <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
-        <Network size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <KeyRound size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
-          همه‌ی شرکت‌ها زیر یک سامانه‌ی واحد هستند، اما هر محتوا (خبر، سند، رویداد و…) به یک شرکت/هلدینگ مالک
-          متصل می‌شود و دامنه‌ی انتشار دارد: «فقط شرکت خودم»، «کل هلدینگ» یا «سراسری». کاربران هر شرکت فقط
-          محتوای دامنه‌ی خودشان را می‌بینند (نمونه‌ی زنده در صفحه‌ی «اخبار سازمان»).
+          این نصب از محصول متعلق به <b>یک مشتری</b> است. هویت، دامنه و روش ورود در همین صفحه تعیین می‌شود؛
+          تفکیک واقعی داده‌ها یک سطح پایین‌تر — در <b>هلدینگ‌ها و شرکت‌ها</b> — انجام می‌شود.
         </p>
       </div>
-      <div className="space-y-3">
-        {holdingsList.map((h) => (
-          <div key={h.id} className="card p-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-7 h-7 rounded-lg shrink-0" style={{ backgroundColor: h.color }} />
-              <p className="text-sm font-bold text-ink-900">{h.name}</p>
-              <span className="text-xs text-ink-400">{h.companies.length.toLocaleString("fa-IR")} شرکت</span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {h.companies.map((c) => (
-                <span key={c.id} className="text-xs text-ink-700 bg-ink-50 border border-ink-100 rounded-md px-2.5 py-1.5 flex items-center gap-1.5">
-                  <Building2 size={12} className="text-ink-400" /> {c.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard label="هلدینگ‌ها" value={holdings.length.toLocaleString("fa-IR")} tone="brand" icon={<Network size={16} />} />
+        <StatCard label="شرکت‌ها" value={companies.length.toLocaleString("fa-IR")} icon={<Building2 size={16} />} />
+        <StatCard label="روش ورود" value={identity.ssoProvider} tone={identity.ssoProvider === "بدون SSO" ? "warning" : "success"} />
+        <StatCard label="دامنه" value={identity.domain} />
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="افزودن شرکت زیرمجموعه" description="شرکت جدید زیر هلدینگ انتخابی قرار می‌گیرد و محتوای اختصاصی خودش را خواهد داشت.">
-        <div className="space-y-3">
+      <div className="card p-4 mb-4">
+        <h3 className="text-sm font-bold text-ink-900 mb-3">هویت سیستم</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام شرکت</label>
-            <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="مثلاً: شرکت کشت و صنعت جدید" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان مشتری <span className="text-rose-500">*</span></label>
+            <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className="input-field" />
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">هلدینگ مادر</label>
-            <select value={holdingId} onChange={(e) => setHoldingId(e.target.value)} className="input-field">
-              {holdingsList.map((h) => (
-                <option key={h.id} value={h.id}>{h.name}</option>
-              ))}
-            </select>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام کوتاه (در رابط کاربری)</label>
+            <input value={draft.shortName} onChange={(e) => setDraft((d) => ({ ...d, shortName: e.target.value }))} className="input-field" />
           </div>
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={addCompany}>افزودن شرکت</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه <span className="text-rose-500">*</span></label>
+            <input value={draft.domain} onChange={(e) => setDraft((d) => ({ ...d, domain: e.target.value }))} className="input-field" dir="ltr" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">رنگ برند</label>
+            <input type="color" value={draft.color} onChange={(e) => setDraft((d) => ({ ...d, color: e.target.value }))} className="input-field h-[38px] p-1" />
           </div>
         </div>
-      </Modal>
+      </div>
+
+      <div className="card p-4 mb-4">
+        <h3 className="text-sm font-bold text-ink-900 mb-1">ورود یکپارچه (SSO)</h3>
+        <p className="text-[11.5px] text-ink-400 leading-5 mb-3">
+          این بخش به ازای هر مشتری متفاوت است — منبع هویت سازمان (AD/LDAP یا IdP) این‌جا وصل می‌شود.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">روش ورود</label>
+            <select value={draft.ssoProvider} onChange={(e) => setDraft((d) => ({ ...d, ssoProvider: e.target.value as SsoProvider }))} className="input-field">
+              {providers.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نشانی سرویس هویت</label>
+            <input value={draft.ssoEndpoint} onChange={(e) => setDraft((d) => ({ ...d, ssoEndpoint: e.target.value }))} className="input-field" dir="ltr" placeholder="ldaps://ad.example.local:636" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی سازمانی کاربران</label>
+            <input value={draft.ssoDomainHint} onChange={(e) => setDraft((d) => ({ ...d, ssoDomainHint: e.target.value }))} className="input-field" dir="ltr" placeholder="example.local" />
+          </div>
+          <div className="flex items-end">
+            <Button variant="secondary" size="sm" icon={<Plug size={14} />} onClick={testSso}>تست اتصال</Button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-ink-800">ایجاد خودکار حساب کاربران</p>
+              <p className="text-[11px] text-ink-400 leading-5">کاربرِ تاییدشده در منبع هویت، بدون دخالت راهبر ساخته می‌شود.</p>
+            </div>
+            <Toggle on={draft.autoProvision} onChange={() => setDraft((d) => ({ ...d, autoProvision: !d.autoProvision }))} />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-ink-800">اجازه‌ی ورود محلی در کنار SSO</p>
+              <p className="text-[11px] text-ink-400 leading-5">برای پیمانکاران و مهمان‌هایی که در AD سازمان نیستند.</p>
+            </div>
+            <Toggle on={draft.allowLocalLogin} onChange={() => setDraft((d) => ({ ...d, allowLocalLogin: !d.allowLocalLogin }))} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="primary" onClick={save} disabled={!dirty}>ذخیره تغییرات</Button>
+        {dirty && <Button variant="secondary" onClick={() => setDraft(identity)}>بازگردانی</Button>}
+        {!dirty && <span className="text-[11.5px] text-ink-400">تغییری برای ذخیره وجود ندارد.</span>}
+      </div>
     </div>
   );
 }
 
-function TenantsSection({
-  tenants,
-  activeTenant,
-  setActiveTenant,
-  onAdd,
-  notify,
-}: {
-  tenants: Tenant[];
-  activeTenant: string;
-  setActiveTenant: (id: string) => void;
-  onAdd: (t: Tenant) => void;
-  notify: Notify;
-}) {
-  const planTone = { پایه: "neutral", "حرفه‌ای": "warning", سازمانی: "brand" } as const;
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [domain, setDomain] = useState("");
-  const [plan, setPlan] = useState<Tenant["plan"]>("پایه");
+function HoldingsSection({ notify }: { notify: Notify }) {
+  const {
+    identity, holdings, companiesOf, companies,
+    addHolding, updateHolding, removeHolding,
+    addCompany, updateCompany, removeCompany,
+  } = useTenancy();
+  const confirm = useConfirm();
 
-  const submit = () => {
-    if (!name.trim() || !domain.trim()) {
-      notify("نام سازمان و دامنه الزامی است.", "warning");
+  const [hOpen, setHOpen] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<string | null>(null);
+  const [hForm, setHForm] = useState({ name: "", lead: "", color: "#1f4f99" });
+
+  const [cOpen, setCOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<string | null>(null);
+  const [cForm, setCForm] = useState({ name: "", holdingId: "", field: "", users: "" });
+
+  const openHolding = (id?: string) => {
+    const h = holdings.find((x) => x.id === id);
+    setEditingHolding(h?.id ?? null);
+    setHForm(h ? { name: h.name, lead: h.lead ?? "", color: h.color } : { name: "", lead: "", color: tenantPalette[holdings.length % tenantPalette.length] });
+    setHOpen(true);
+  };
+
+  const submitHolding = () => {
+    if (!hForm.name.trim()) {
+      notify("نام هلدینگ الزامی است.", "warning");
       return;
     }
-    const newTenant: Tenant = {
-      id: `tn-${Date.now()}`,
-      name: name.trim(),
-      domain: domain.trim(),
-      plan,
-      users: 1,
-      logoColor: tenantPalette[tenants.length % tenantPalette.length],
-      modules: ["شبکه اجتماعی"],
-    };
-    onAdd(newTenant);
-    notify(`سازمان «${newTenant.name}» با موفقیت روی پلتفرم ایجاد شد.`);
-    setOpen(false);
-    setName("");
-    setDomain("");
-    setPlan("پایه");
+    if (editingHolding) {
+      updateHolding(editingHolding, { name: hForm.name.trim(), lead: hForm.lead.trim() || undefined, color: hForm.color });
+      notify(`هلدینگ «${hForm.name.trim()}» ویرایش شد.`);
+    } else {
+      addHolding({ name: hForm.name.trim(), lead: hForm.lead.trim() || undefined, color: hForm.color, active: true });
+      notify(`هلدینگ «${hForm.name.trim()}» ایجاد شد. حالا می‌توانید شرکت‌های زیرمجموعه‌اش را تعریف کنید.`);
+    }
+    setHOpen(false);
+    setEditingHolding(null);
   };
+
+  const deleteHolding = (id: string, name: string) => {
+    const count = companiesOf(id).length;
+    confirm({
+      title: `حذف هلدینگ «${name}»؟`,
+      message: count
+        ? `${count.toLocaleString("fa-IR")} شرکت زیرمجموعه و همه‌ی محتوای اختصاصی آن‌ها نیز حذف می‌شود.`
+        : "این هلدینگ شرکت زیرمجموعه‌ای ندارد.",
+      onConfirm: () => {
+        removeHolding(id);
+        notify(`هلدینگ «${name}» حذف شد.`, "info");
+      },
+    });
+  };
+
+  const openCompany = (id?: string, holdingId?: string) => {
+    const c = companies.find((x) => x.id === id);
+    setEditingCompany(c?.id ?? null);
+    setCForm(
+      c
+        ? { name: c.name, holdingId: c.holdingId, field: c.field ?? "", users: String(c.users) }
+        : { name: "", holdingId: holdingId ?? holdings[0]?.id ?? "", field: "", users: "" }
+    );
+    setCOpen(true);
+  };
+
+  const submitCompany = () => {
+    if (!cForm.name.trim() || !cForm.holdingId) {
+      notify("نام شرکت و هلدینگ مادر الزامی است.", "warning");
+      return;
+    }
+    const payload = {
+      name: cForm.name.trim(),
+      holdingId: cForm.holdingId,
+      field: cForm.field.trim() || undefined,
+      users: Number(cForm.users) || 0,
+    };
+    if (editingCompany) {
+      updateCompany(editingCompany, payload);
+      notify(`شرکت «${payload.name}» ویرایش شد.`);
+    } else {
+      addCompany({ ...payload, active: true });
+      const holdingName = holdings.find((h) => h.id === cForm.holdingId)?.name ?? "";
+      notify(`شرکت «${payload.name}» به «${holdingName}» افزوده شد. از این پس محتوای اختصاصی و کاربران این شرکت قابل تعریف است.`);
+    }
+    setCOpen(false);
+    setEditingCompany(null);
+  };
+
+  const deleteCompany = (id: string, name: string) =>
+    confirm({
+      title: `حذف شرکت «${name}»؟`,
+      message: "کاربران و محتوای اختصاصی این شرکت دیگر در دسترس نخواهد بود.",
+      onConfirm: () => {
+        removeCompany(id);
+        notify(`شرکت «${name}» حذف شد.`, "info");
+      },
+    });
+
+  const totalUsers = companies.reduce((s, c) => s + c.users, 0);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-ink-900">سازمان‌های مستقل روی این پلتفرم</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
-          افزودن سازمان جدید
-        </Button>
-      </div>
-      <div className="card divide-y divide-ink-100">
-        {tenants.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTenant(t.id)}
-            className={`w-full flex items-center justify-between gap-3 p-3.5 text-right ${activeTenant === t.id ? "bg-brand-50" : "hover:bg-ink-50"}`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="w-8 h-8 rounded-lg" style={{ backgroundColor: t.logoColor }} />
-              <div>
-                <p className="text-sm font-medium text-ink-900">{t.name}</p>
-                <p className="text-xs text-ink-400">{t.domain}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-ink-400">{t.users.toLocaleString("fa-IR")} کاربر</span>
-              <Badge tone={planTone[t.plan]}>{t.plan}</Badge>
-            </div>
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <h3 className="text-sm font-bold text-ink-900">ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه</h3>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => openHolding()}>
+            هلدینگ جدید
+          </Button>
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => openCompany()}>
+            افزودن شرکت
+          </Button>
+        </div>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="افزودن سازمان مشتری جدید" description="هر سازمان جدید، نمونه‌ی کاملاً مستقلی از سامانه با اعضا و دامنه‌ی اختصاصی خودش دریافت می‌کند.">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard label="هلدینگ‌ها" value={holdings.length.toLocaleString("fa-IR")} tone="brand" icon={<Network size={16} />} />
+        <StatCard label="شرکت‌ها" value={companies.length.toLocaleString("fa-IR")} icon={<Building2 size={16} />} />
+        <StatCard label="کاربران سازمانی" value={totalUsers.toLocaleString("fa-IR")} tone="success" icon={<Users size={16} />} />
+        <StatCard label="سیستم" value={identity.shortName} />
+      </div>
+
+      <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
+        <Network size={18} className="text-brand-700 shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-800 leading-6">
+          سلسله‌مراتب: <b>سیستم ← هلدینگ ← شرکت ← کاربر</b>. هر محتوا (خبر، سند، رویداد، پروژه و…) به یک مالک
+          متصل است و دامنه‌ی انتشار دارد: «فقط شرکت خودم»، «کل هلدینگ» یا «سراسری». با سوییچر دامنه در بالای
+          صفحه می‌توانید سامانه را از دید هر هلدینگ یا شرکت ببینید.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {holdings.map((h) => {
+          const hCompanies = companiesOf(h.id);
+          return (
+            <div key={h.id} className="card p-4">
+              <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                <span className="w-7 h-7 rounded-lg shrink-0" style={{ backgroundColor: h.color }} />
+                <p className="text-sm font-bold text-ink-900">{h.name}</p>
+                {h.lead && <span className="text-xs text-ink-400">راهبر: {h.lead}</span>}
+                <span className="text-xs text-ink-400">{hCompanies.length.toLocaleString("fa-IR")} شرکت</span>
+                <span className="flex-1" />
+                <Toggle
+                  on={h.active}
+                  onChange={() => {
+                    updateHolding(h.id, { active: !h.active });
+                    notify(`هلدینگ «${h.name}» ${h.active ? "غیرفعال" : "فعال"} شد.`, h.active ? "info" : "success");
+                  }}
+                />
+                <Button variant="ghost" size="sm" icon={<Plus size={12} />} onClick={() => openCompany(undefined, h.id)}>شرکت</Button>
+                <RowActions onEdit={() => openHolding(h.id)} onDelete={() => deleteHolding(h.id, h.name)} />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {hCompanies.length === 0 && <span className="text-xs text-ink-400">شرکتی تعریف نشده است.</span>}
+                {hCompanies.map((c) => (
+                  <span key={c.id} className={`text-xs rounded-md px-2.5 py-1.5 flex items-center gap-1.5 border ${c.active ? "text-ink-700 bg-ink-50 border-ink-100" : "text-ink-400 bg-ink-50/50 border-dashed border-ink-200"}`}>
+                    <Building2 size={12} className="text-ink-400" />
+                    {c.name}
+                    <span className="text-[10px] text-ink-400">({c.users.toLocaleString("fa-IR")} کاربر)</span>
+                    <RowActions onEdit={() => openCompany(c.id)} onDelete={() => deleteCompany(c.id, c.name)} size={12} />
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Modal open={hOpen} onClose={() => setHOpen(false)} title={editingHolding ? "ویرایش هلدینگ" : "تعریف هلدینگ جدید"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: بنیاد علوی" className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام هلدینگ <span className="text-rose-500">*</span></label>
+            <input value={hForm.name} onChange={(e) => setHForm((f) => ({ ...f, name: e.target.value }))} placeholder="مثلاً: هلدینگ ساختمان و مسکن" className="input-field" />
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اختصاصی</label>
-            <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="alavi.bonyad.net" className="input-field" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">طرح اشتراک</label>
-            <select value={plan} onChange={(e) => setPlan(e.target.value as Tenant["plan"])} className="input-field">
-              <option value="پایه">پایه</option>
-              <option value="حرفه‌ای">حرفه‌ای</option>
-              <option value="سازمانی">سازمانی</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">راهبر / مدیرعامل</label>
+              <input value={hForm.lead} onChange={(e) => setHForm((f) => ({ ...f, lead: e.target.value }))} className="input-field" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">رنگ شناسه</label>
+              <input type="color" value={hForm.color} onChange={(e) => setHForm((f) => ({ ...f, color: e.target.value }))} className="input-field h-[38px] p-1" />
+            </div>
           </div>
           <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ایجاد سازمان</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+            <Button variant="primary" className="flex-1 justify-center" onClick={submitHolding}>{editingHolding ? "ذخیره تغییرات" : "ایجاد هلدینگ"}</Button>
+            <Button variant="secondary" onClick={() => setHOpen(false)}>انصراف</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={cOpen} onClose={() => setCOpen(false)} title={editingCompany ? "ویرایش شرکت" : "افزودن شرکت زیرمجموعه"} description={editingCompany ? undefined : "شرکت جدید زیر هلدینگ انتخابی قرار می‌گیرد و محتوای اختصاصی خودش را خواهد داشت."}>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام شرکت <span className="text-rose-500">*</span></label>
+            <input value={cForm.name} onChange={(e) => setCForm((f) => ({ ...f, name: e.target.value }))} placeholder="مثلاً: شرکت کشت و صنعت جدید" className="input-field" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">هلدینگ مادر <span className="text-rose-500">*</span></label>
+            <select value={cForm.holdingId} onChange={(e) => setCForm((f) => ({ ...f, holdingId: e.target.value }))} className="input-field">
+              {holdings.map((h) => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">حوزه‌ی فعالیت</label>
+              <input value={cForm.field} onChange={(e) => setCForm((f) => ({ ...f, field: e.target.value }))} className="input-field" placeholder="صنایع غذایی" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">تعداد کاربر</label>
+              <input value={cForm.users} onChange={(e) => setCForm((f) => ({ ...f, users: e.target.value }))} className="input-field" placeholder="۰" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button variant="primary" className="flex-1 justify-center" onClick={submitCompany}>{editingCompany ? "ذخیره تغییرات" : "افزودن شرکت"}</Button>
+            <Button variant="secondary" onClick={() => setCOpen(false)}>انصراف</Button>
           </div>
         </div>
       </Modal>
@@ -536,7 +688,7 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
           <div key={r.id} className="p-3.5 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink-900 flex items-center gap-2 flex-wrap">
-                {r.title} <Badge tone={r.scope === "پلتفرم" ? "navy" : r.scope === "سازمان" ? "brand" : "neutral"}>{r.scope}</Badge>
+                {r.title} <Badge tone={r.scope === "سیستم" ? "navy" : r.scope === "هلدینگ" ? "brand" : r.scope === "شرکت" ? "warning" : "neutral"}>{r.scope}</Badge>
                 {!r.system && <Badge tone="warning">سفارشی</Badge>}
               </p>
               <p className="text-xs text-ink-400 mt-0.5">{r.description}</p>
@@ -562,7 +714,7 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
 
 function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: (r: RoleDef) => void; onCancel: () => void }) {
   const [title, setTitle] = useState(role?.title ?? "");
-  const [scope, setScope] = useState<RoleDef["scope"]>(role?.scope ?? "سازمان");
+  const [scope, setScope] = useState<RoleDef["scope"]>(role?.scope ?? "هلدینگ");
   const [description, setDescription] = useState(role?.description ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set(role?.permissions ?? []));
   const [error, setError] = useState<string | null>(null);
@@ -625,8 +777,9 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اعمال</label>
             <select value={scope} onChange={(e) => setScope(e.target.value as RoleDef["scope"])} className="input-field">
-              <option value="پلتفرم">پلتفرم</option>
-              <option value="سازمان">سازمان</option>
+              <option value="سیستم">سیستم (همه‌ی هلدینگ‌ها)</option>
+              <option value="هلدینگ">هلدینگ</option>
+              <option value="شرکت">شرکت</option>
               <option value="گروه">گروه</option>
             </select>
           </div>
@@ -825,17 +978,49 @@ function PagesSection({
 }
 
 function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDef[]; notify: Notify }) {
+  const { holdings, companies, companiesOf } = useTenancy();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [assignments, setAssignments] = useState<RoleAssignment>(initialRoleAssignments);
 
   const assignRole = (userId: string, roleId: string) => {
-    setAssignments((prev) => ({ ...prev, [userId]: roleId }));
-    const user = orgUsers.find((u) => u.id === userId);
     const role = roles.find((r) => r.id === roleId);
+    setAssignments((prev) => {
+      const current = prev[userId];
+      const level = role?.scope ?? "شرکت";
+      // اگر سطح نقش عوض شود، دامنه‌ی قبلی تا جای ممکن حفظ می‌شود
+      const grant: RoleGrant =
+        level === "سیستم"
+          ? { roleId, level }
+          : level === "هلدینگ"
+            ? { roleId, level, holdingId: current?.holdingId ?? holdings[0]?.id }
+            : { roleId, level, holdingId: current?.holdingId ?? companies[0]?.holdingId, companyId: current?.companyId ?? companies[0]?.id };
+      return { ...prev, [userId]: grant };
+    });
+    const user = orgUsers.find((u) => u.id === userId);
     if (user && role) {
       notify(`نقش «${role.title}» با ${role.permissions.length.toLocaleString("fa-IR")} دسترسی به «${user.name}» تخصیص یافت.`);
     }
   };
+
+  const assignScope = (userId: string, value: string) => {
+    setAssignments((prev) => {
+      const current = prev[userId];
+      if (!current) return prev;
+      if (value === "system") return { ...prev, [userId]: { ...current, level: "سیستم", holdingId: undefined, companyId: undefined } };
+      if (value.startsWith("h:")) {
+        const holdingId = value.slice(2);
+        return { ...prev, [userId]: { ...current, level: "هلدینگ", holdingId, companyId: undefined } };
+      }
+      const companyId = value.slice(2);
+      const c = companies.find((x) => x.id === companyId);
+      return { ...prev, [userId]: { ...current, level: "شرکت", holdingId: c?.holdingId, companyId } };
+    });
+    const user = orgUsers.find((u) => u.id === userId);
+    if (user) notify(`دامنه‌ی دسترسی «${user.name}» به‌روزرسانی شد.`, "info");
+  };
+
+  const scopeValue = (g?: RoleGrant) =>
+    !g || g.level === "سیستم" ? "system" : g.level === "هلدینگ" ? `h:${g.holdingId}` : `c:${g.companyId}`;
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -877,7 +1062,8 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
         </p>
         <div className="divide-y divide-ink-100 border border-ink-100 rounded-lg">
           {orgUsers.map((u) => {
-            const assigned = roles.find((r) => r.id === assignments[u.id]) ?? roles.find((r) => r.id === "r4");
+            const grant = assignments[u.id];
+            const assigned = roles.find((r) => r.id === grant?.roleId) ?? roles.find((r) => r.id === "r4");
             return (
               <div key={u.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 min-w-0">
@@ -896,14 +1082,31 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
                     </span>
                   )}
                   <select
-                    value={assignments[u.id] ?? "r4"}
+                    value={grant?.roleId ?? "r4"}
                     onChange={(e) => assignRole(u.id, e.target.value)}
+                    aria-label={`نقش ${u.name}`}
                     className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.title}{!r.system ? " (سفارشی)" : ""}
                       </option>
+                    ))}
+                  </select>
+                  <select
+                    value={scopeValue(grant)}
+                    onChange={(e) => assignScope(u.id, e.target.value)}
+                    aria-label={`دامنه‌ی دسترسی ${u.name}`}
+                    className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white max-w-[170px]"
+                  >
+                    <option value="system">کل سیستم</option>
+                    {holdings.map((h) => (
+                      <optgroup key={h.id} label={h.name}>
+                        <option value={`h:${h.id}`}>کل {h.name}</option>
+                        {companiesOf(h.id).map((c) => (
+                          <option key={c.id} value={`c:${c.id}`}>{c.name}</option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>

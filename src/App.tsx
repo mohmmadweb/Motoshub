@@ -4,6 +4,7 @@ import { ToastProvider } from "./components/ui/ToastProvider";
 import { ConfirmProvider } from "./components/ui/ConfirmProvider";
 import { ContentProvider } from "./context/ContentContext";
 import { SettingsProvider } from "./context/SettingsContext";
+import { TenancyProvider } from "./context/TenancyContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
 
@@ -68,6 +69,7 @@ export default function App() {
     <ToastProvider>
     <ConfirmProvider>
     <SettingsProvider>
+    <TenancyProvider>
     <ContentProvider>
     <HashRouter>
       <Suspense fallback={<PageFallback />}>
@@ -122,6 +124,7 @@ export default function App() {
       </Suspense>
     </HashRouter>
     </ContentProvider>
+    </TenancyProvider>
     </SettingsProvider>
     </ConfirmProvider>
     </ToastProvider>

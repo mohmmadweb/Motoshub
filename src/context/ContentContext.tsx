@@ -16,6 +16,7 @@ import {
   type NewsItem,
   type Group,
 } from "../data/mock";
+import { withDemoScopes } from "../data/tenancy";
 
 export type PublicFeedItem = {
   id: string;
@@ -48,13 +49,13 @@ type ContentValue = {
 const ContentContext = createContext<ContentValue | null>(null);
 
 export function ContentProvider({ children }: { children: ReactNode }) {
-  const [forumTopics, setForumTopics] = useState<ForumTopic[]>(initialForumTopics);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialBlogPosts);
-  const [events, setEvents] = useState<EventItem[]>(initialEvents);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>(initialMediaItems);
-  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(initialKnowledgeDocs);
-  const [newsItems, setNewsItems] = useState<NewsItem[]>(initialNewsItems);
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
+  const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => withDemoScopes(initialForumTopics, 0));
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => withDemoScopes(initialBlogPosts, 1));
+  const [events, setEvents] = useState<EventItem[]>(() => withDemoScopes(initialEvents, 2));
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => withDemoScopes(initialMediaItems, 3));
+  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDoc[]>(() => withDemoScopes(initialKnowledgeDocs, 4));
+  const [newsItems, setNewsItems] = useState<NewsItem[]>(() => withDemoScopes(initialNewsItems, 5));
+  const [groups, setGroups] = useState<Group[]>(() => withDemoScopes(initialGroups, 6));
 
   return (
     <ContentContext.Provider

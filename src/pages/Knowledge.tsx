@@ -14,6 +14,9 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityBadge, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 import { useTabParam } from "../lib/useTabParam";
 
 const typeTone: Record<string, BadgeTone> = {
@@ -161,6 +164,8 @@ function RndDocsTab() {
 
 function KnowledgeBankTab() {
   const { knowledgeDocs: docs, setKnowledgeDocs: setDocs } = useContent();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -170,7 +175,8 @@ function KnowledgeBankTab() {
   const confirm = useConfirm();
 
   const categories = ["همه", ...Array.from(new Set(allDocsForCategories.map((d) => d.category)))];
-  const filtered = active === "همه" ? docs : docs.filter((d) => d.category === active);
+  const scopedDocs = filterScoped(docs);
+  const filtered = active === "همه" ? scopedDocs : scopedDocs.filter((d) => d.category === active);
 
   const confirmUpload = () => {
     if (!pendingFile) {
@@ -186,6 +192,7 @@ function KnowledgeBankTab() {
       updatedAt: jalaliToday,
       size: `${(pendingFile.size / 1024).toFixed(0)} کیلوبایت`,
       visibility: uploadVisibility,
+      ...itemScope,
     };
     setDocs((prev) => [newDoc, ...prev]);
     notify(`سند «${pendingFile.name}» با موفقیت در بانک دانش بارگذاری شد (${uploadVisibility}).`);
@@ -226,6 +233,7 @@ function KnowledgeBankTab() {
     { key: "owner", label: "مالک" },
     { key: "updatedAt", label: "بروزرسانی" },
     { key: "size", label: "حجم" },
+    { key: "owner", label: "دامنه", render: (d) => <ScopeBadge item={d} /> },
     { key: "visibility", label: "دسترسی", render: (d) => <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> },
     {
       key: "actions",
@@ -251,7 +259,7 @@ function KnowledgeBankTab() {
   return (
     <div>
       <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Upload size={15} />} onClick={() => setUploadOpen(true)}>
+        <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setUploadOpen(true); }}>
           بارگذاری سند
         </Button>
       </div>
@@ -333,6 +341,7 @@ function KnowledgeBankTab() {
             <input type="file" onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)} className="input-field" />
           </div>
           <VisibilityPicker value={uploadVisibility} onChange={setUploadVisibility} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={confirmUpload}>بارگذاری</Button>
             <Button variant="secondary" onClick={() => setUploadOpen(false)}>انصراف</Button>

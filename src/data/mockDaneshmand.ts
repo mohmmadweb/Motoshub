@@ -5,63 +5,14 @@
 // ---------------------------------------------------------------------------
 
 // ------------------- ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه -------------------
-export type SubCompany = { id: string; name: string };
-export type Holding = { id: string; name: string; color: string; companies: SubCompany[] };
+// ساختار هلدینگ/شرکت به data/tenancy.ts منتقل شد (منبع واحد حقیقت)
+export type { SubCompany, Holding, ContentScope } from "./tenancy";
+import { holdingsNested, allCompanies as tenancyCompanies, type ContentScope } from "./tenancy";
 
-export const holdings: Holding[] = [
-  {
-    id: "h-ferdows",
-    name: "هلدینگ کشاورزی فردوس پارس",
-    color: "#0d9488",
-    companies: [
-      { id: "c-dashtnaz", name: "کشت و صنعت دشت ناز ساری" },
-      { id: "c-ferdows-agri", name: "موسسه تحقیقات کشاورزی بنیاد" },
-    ],
-  },
-  {
-    id: "h-sina-food",
-    name: "هلدینگ صنایع غذایی سینا",
-    color: "#b45309",
-    companies: [
-      { id: "c-behnoush", name: "بهنوش ایران" },
-      { id: "c-zamzam", name: "زمزم ایران" },
-      { id: "c-pak", name: "لبنیات پاک" },
-    ],
-  },
-  {
-    id: "h-saba",
-    name: "هلدینگ برق و انرژی صبا",
-    color: "#0f172a",
-    companies: [
-      { id: "c-saba-niru", name: "نیروگاه‌های صبا" },
-      { id: "c-energy-sina", name: "انرژی گستر سینا" },
-    ],
-  },
-  {
-    id: "h-paya",
-    name: "هلدینگ پایا ترابر سینا",
-    color: "#7c3aed",
-    companies: [
-      { id: "c-sina-rail", name: "سینا ریل پارس" },
-      { id: "c-azadrah", name: "آزادراه تهران - شمال" },
-    ],
-  },
-  {
-    id: "h-mali",
-    name: "هلدینگ مالی و سرمایه‌گذاری سینا",
-    color: "#1f4f99",
-    companies: [
-      { id: "c-bank-sina", name: "بانک سینا" },
-      { id: "c-bime-sina", name: "بیمه سینا" },
-    ],
-  },
-];
+export const holdings = holdingsNested;
 
-export const allCompanies: (SubCompany & { holdingId: string; holdingName: string })[] = holdings.flatMap((h) =>
-  h.companies.map((c) => ({ ...c, holdingId: h.id, holdingName: h.name }))
-);
+export const allCompanies = tenancyCompanies;
 
-export type ContentScope = "سراسری" | "هلدینگ" | "شرکت";
 
 // دامنه انتشار محتوای شرکتی: خبر با scope «شرکت» فقط برای اعضای همان شرکت،
 // «هلدینگ» برای همه شرکت‌های آن هلدینگ و «سراسری» برای کل مجموعه نمایش داده می‌شود.

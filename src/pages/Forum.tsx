@@ -12,6 +12,9 @@ import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityC
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 
 export default function Forum() {
   const { forumTopics: topics, setForumTopics: setTopics } = useContent();
@@ -20,6 +23,8 @@ export default function Forum() {
   const [category, setCategory] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const { notify } = useToast();
   const confirm = useConfirm();
 
@@ -28,6 +33,7 @@ export default function Forum() {
     setTitle(t.title);
     setCategory(t.category);
     setVisibility(t.visibility);
+    setItemScope({ scope: t.scope, holdingId: t.holdingId, companyId: t.companyId });
     setOpen(true);
   };
 
@@ -47,6 +53,7 @@ export default function Forum() {
     setTitle("");
     setCategory("");
     setVisibility("عمومی");
+    setItemScope(defaultScopeForNew());
   };
 
   const submit = () => {
@@ -57,7 +64,7 @@ export default function Forum() {
     if (editingId) {
       setTopics((prev) =>
         prev.map((t) =>
-          t.id === editingId ? { ...t, title: title.trim(), category: category.trim() || "عمومی", visibility } : t
+          t.id === editingId ? { ...t, title: title.trim(), category: category.trim() || "عمومی", visibility, ...itemScope } : t
         )
       );
       notify(`موضوع «${title.trim()}» ویرایش شد.`);
@@ -73,6 +80,8 @@ export default function Forum() {
       lastActivity: "اکنون",
       category: category.trim() || "عمومی",
       visibility,
+      ...(editingId ? {} : defaultScopeForNew()),
+      ...itemScope,
     };
     setTopics((prev) => [newTopic, ...prev]);
     notify(`موضوع «${newTopic.title}» در انجمن منتشر شد (${visibility}).`);
@@ -89,16 +98,16 @@ export default function Forum() {
         description="تبادل اطلاعات، پرسش‌و‌پاسخ و دسته‌بندی موضوعات در تالارهای گفتگو"
         icon={<MessagesSquare size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             موضوع جدید
           </Button>
         }
       />
 
-      {topics.length === 0 && <EmptyState icon={<MessagesSquare size={20} />} title="هنوز موضوعی در انجمن ثبت نشده" />}
+      {filterScoped(topics).length === 0 && <EmptyState icon={<MessagesSquare size={20} />} title="در این دامنه موضوعی وجود ندارد" />}
 
       <div className="card divide-y divide-ink-100">
-        {topics.map((t) => (
+        {filterScoped(topics).map((t) => (
           <Link key={t.id} to={`/dashboard/forum/${t.id}`} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -120,6 +129,7 @@ export default function Forum() {
               <span className="flex items-center gap-1">
                 <Eye size={13} /> {t.views}
               </span>
+              <ScopeBadge item={t} />
               <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
               <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                 <RowActions onEdit={() => startEdit(t)} onDelete={() => remove(t)} />
@@ -140,6 +150,7 @@ export default function Forum() {
             <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: امنیت" className="input-field" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
               {editingId ? "ذخیره تغییرات" : "انتشار موضوع"}

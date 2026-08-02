@@ -12,6 +12,9 @@ import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityC
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 import { mediaImg, bgStyle } from "../data/images";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
@@ -19,6 +22,8 @@ const palette = ["#82aee6", "#93a2b8", "#1f4f99", "#5e7191", "#0d9488"];
 
 export default function Media() {
   const { mediaItems: items, setMediaItems: setItems } = useContent();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [kind, setKind] = useState<"all" | "photo" | "video">("all");
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -30,8 +35,8 @@ export default function Media() {
   const confirm = useConfirm();
 
   const [topic, setTopic] = useState<string>("همه");
-  const topics = ["همه", ...Array.from(new Set(items.map((m) => m.album)))];
-  const filtered = items
+  const topics = ["همه", ...Array.from(new Set(filterScoped(items).map((m) => m.album)))];
+  const filtered = filterScoped(items)
     .filter((m) => (kind === "all" ? true : m.kind === kind))
     .filter((m) => (topic === "همه" ? true : m.album === topic));
 
@@ -40,6 +45,7 @@ export default function Media() {
     setTitle(m.title);
     setAlbum(m.album === "بدون آلبوم" ? "" : m.album);
     setVisibility(m.visibility);
+    setItemScope({ scope: m.scope, holdingId: m.holdingId, companyId: m.companyId });
     setFile(null);
     setOpen(true);
   };
@@ -68,7 +74,7 @@ export default function Media() {
       }
       setItems((prev) =>
         prev.map((m) =>
-          m.id === editingId ? { ...m, title: title.trim(), album: album.trim() || "بدون آلبوم", visibility } : m
+          m.id === editingId ? { ...m, title: title.trim(), album: album.trim() || "بدون آلبوم", visibility, ...itemScope } : m
         )
       );
       notify(`«${title.trim()}» ویرایش شد.`);
@@ -90,6 +96,7 @@ export default function Media() {
       tags: [],
       color: palette[items.length % palette.length],
       visibility,
+      ...itemScope,
     };
     setItems((prev) => [newItem, ...prev]);
     notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
@@ -111,7 +118,7 @@ export default function Media() {
         description="مدیریت آلبوم‌های کاربری، حریم خصوصی محتوا و اتصال به شبکه‌ی آپارات"
         icon={<Image size={18} />}
         actions={
-          <Button variant="primary" icon={<Upload size={15} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             بارگذاری محتوا
           </Button>
         }
@@ -191,6 +198,9 @@ export default function Media() {
                   <RowActions onEdit={() => startEdit(m)} onDelete={() => remove(m)} size={13} />
                 </div>
               </div>
+              <div className="mt-1.5">
+                <ScopeBadge item={m} />
+              </div>
             </div>
           </div>
         ))}
@@ -211,6 +221,7 @@ export default function Media() {
             <input value={album} onChange={(e) => setAlbum(e.target.value)} placeholder="رویدادهای رسمی" className="input-field" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "بارگذاری"}</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

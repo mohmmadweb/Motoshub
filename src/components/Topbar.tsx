@@ -5,6 +5,7 @@ import Avatar from "./Avatar";
 import { currentUser, notifications, userPresence, currentTenant, type PresenceStatus } from "../data/mock";
 import { navSections } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
+import ScopeSwitcher from "./ScopeSwitcher";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -101,6 +102,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       </div>
 
       <div className="flex items-center gap-2">
+        <ScopeSwitcher />
         <button
           onClick={toggleDark}
           title={resolved === "dark" ? "حالت روشن" : "حالت تیره"}

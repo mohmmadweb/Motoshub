@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { type Group } from "../data/mock";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 import GroupCard from "../components/GroupCard";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -14,6 +17,8 @@ const palette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309"];
 
 export default function Groups() {
   const { groups, setGroups } = useContent();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [active, setActive] = useState("همه");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -25,9 +30,10 @@ export default function Groups() {
   const confirm = useConfirm();
 
   const [sort, setSort] = useState<"members" | "created" | "activity">("activity");
-  const allCategories = Array.from(new Set(groups.map((g) => g.category)));
+  const allCategories = Array.from(new Set(filterScoped(groups).map((g) => g.category)));
   const categories = ["همه", ...allCategories];
-  const filtered = (active === "همه" ? groups : groups.filter((g) => g.category === active)).slice().sort((a, b) =>
+  const scoped = filterScoped(groups);
+  const filtered = (active === "همه" ? scoped : scoped.filter((g) => g.category === active)).slice().sort((a, b) =>
     sort === "members" ? b.members - a.members :
     sort === "created" ? (a.createdAt < b.createdAt ? 1 : -1) :
     (a.lastActivityAt < b.lastActivityAt ? 1 : -1)
@@ -52,6 +58,7 @@ export default function Groups() {
     setDescription(g.description === "بدون توضیحات" ? "" : g.description);
     setCategory(g.category);
     setPrivacy(g.privacy);
+    setItemScope({ scope: g.scope, holdingId: g.holdingId, companyId: g.companyId });
     setOpen(true);
   };
 
@@ -83,7 +90,7 @@ export default function Groups() {
       setGroups((prev) =>
         prev.map((g) =>
           g.id === editingId
-            ? { ...g, name: name.trim(), description: description.trim() || "بدون توضیحات", category: category.trim(), privacy }
+            ? { ...g, name: name.trim(), description: description.trim() || "بدون توضیحات", category: category.trim(), privacy, ...itemScope }
             : g
         )
       );
@@ -103,6 +110,7 @@ export default function Groups() {
       lastActivityAt: "۱۴۰۵/۰۴/۳۱",
       lastActivityRel: "هم‌اکنون",
       category: category.trim(),
+      ...itemScope,
     };
     setGroups((prev) => [newGroup, ...prev]);
     notify(`گروه «${newGroup.name}» با موفقیت ایجاد شد.`);
@@ -116,7 +124,7 @@ export default function Groups() {
         description="ایجاد، مدیریت و عضویت در گروه‌های خصوصی و عمومی سازمان"
         icon={<Users size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             گروه جدید
           </Button>
         }
@@ -181,6 +189,7 @@ export default function Groups() {
             <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: فنی" className="input-field" />
           </div>
           <VisibilityPicker value={privacy} onChange={setPrivacy} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
               {editingId ? "ذخیره تغییرات" : "ایجاد گروه"}

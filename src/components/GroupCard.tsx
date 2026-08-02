@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Users, Lock, Globe2 } from "lucide-react";
 import Badge from "./ui/Badge";
 import RowActions from "./ui/RowActions";
+import { ScopeBadge } from "./ui/ScopeControl";
 import { VisibilityToggle } from "./ui/VisibilityControl";
 import type { Group } from "../data/mock";
 
@@ -40,6 +41,7 @@ export default function GroupCard({
         <h3 className="font-semibold text-sm text-ink-900">{group.name}</h3>
         <p className="text-xs text-ink-500 mt-1 line-clamp-2">{group.description}</p>
       </div>
+      <div className="flex items-center gap-1.5"><ScopeBadge item={group} /></div>
       <div className="flex items-center justify-between text-xs text-ink-400 pt-2 border-t border-ink-100">
         <span className="flex items-center gap-1">
           <Users size={13} /> {group.members.toLocaleString("fa-IR")} عضو

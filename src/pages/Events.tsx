@@ -13,6 +13,9 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 
 export default function Events() {
   return (
@@ -29,6 +32,8 @@ export default function Events() {
 
 function EventsListTab() {
   const { events, setEvents } = useContent();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [calendar, setCalendar] = useState<"jalali" | "gregorian">("jalali");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -44,6 +49,7 @@ function EventsListTab() {
 
   const startEdit = (ev: EventItem) => {
     setEditingId(ev.id);
+    setItemScope({ scope: ev.scope, holdingId: ev.holdingId, companyId: ev.companyId });
     setTitle(ev.title);
     setJalaliDate(ev.jalaliDate);
     setTime(ev.time);
@@ -71,7 +77,7 @@ function EventsListTab() {
       setEvents((prev) =>
         prev.map((e) =>
           e.id === editingId
-            ? { ...e, title: title.trim(), jalaliDate: jalaliDate.trim(), time: time.trim() || "—", location: location.trim() || "نامشخص", description: description.trim() || e.description, visibility }
+            ? { ...e, title: title.trim(), jalaliDate: jalaliDate.trim(), time: time.trim() || "—", location: location.trim() || "نامشخص", description: description.trim() || e.description, visibility, ...itemScope }
             : e
         )
       );
@@ -89,6 +95,7 @@ function EventsListTab() {
         hashtags: [],
         description: description.trim() || "بدون توضیحات",
         visibility,
+        ...itemScope,
       };
       setEvents((prev) => [newEvent, ...prev]);
       notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
@@ -127,7 +134,7 @@ function EventsListTab() {
                 میلادی
               </button>
             </div>
-            <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
               رویداد جدید
             </Button>
           </>
@@ -159,6 +166,7 @@ function EventsListTab() {
           { key: "mode", label: "حالت", render: (e) => <Badge tone={e.mode === "آنلاین" ? "brand" : "navy"}>{e.mode}</Badge> },
           { key: "location", label: "مکان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><MapPin size={12} className="shrink-0" /> <span className="truncate max-w-[160px]">{e.location}</span></span> },
           { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}</span> },
+          { key: "owner", label: "دامنه", render: (e) => <ScopeBadge item={e} /> },
           { key: "visibility", label: "دسترسی", render: (e) => <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> },
           {
             key: "actions",
@@ -171,7 +179,7 @@ function EventsListTab() {
             ),
           },
         ]}
-        rows={events}
+        rows={filterScoped(events)}
         searchKeys={["title", "location"]}
         searchPlaceholder="جستجو در عنوان یا مکان رویداد…"
         emptyTitle="هنوز رویدادی ثبت نشده"
@@ -204,6 +212,7 @@ function EventsListTab() {
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-20" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار رویداد</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

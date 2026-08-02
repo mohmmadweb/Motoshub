@@ -14,6 +14,9 @@ import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import type { Scoped } from "../data/tenancy";
 import { useTabParam } from "../lib/useTabParam";
 
 const jalaliToday = "۱۴۰۵/۰۴/۰۷";
@@ -68,6 +71,8 @@ function PublicationsTab() {
 export default function Blog() {
   const [tab, setTab] = useTabParam<"blog" | "pubs">("blog", ["blog", "pubs"]);
   const { blogPosts: posts, setBlogPosts: setPosts } = useContent();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -78,6 +83,7 @@ export default function Blog() {
   const { notify } = useToast();
 
   const startEdit = (b: BlogPost) => {
+    setItemScope({ scope: b.scope, holdingId: b.holdingId, companyId: b.companyId });
     setEditingId(b.id);
     setTitle(b.title);
     setExcerpt(b.excerpt);
@@ -102,7 +108,7 @@ export default function Blog() {
     if (errs.title || errs.excerpt) return;
     const tagList = tags.split("،").map((t) => t.trim()).filter(Boolean);
     if (editingId) {
-      setPosts((prev) => prev.map((p) => (p.id === editingId ? { ...p, title: title.trim(), excerpt: excerpt.trim(), tags: tagList, visibility } : p)));
+      setPosts((prev) => prev.map((p) => (p.id === editingId ? { ...p, title: title.trim(), excerpt: excerpt.trim(), tags: tagList, visibility, ...itemScope } : p)));
       notify(`یادداشت «${title.trim()}» ویرایش شد.`);
     } else {
       const newPost: BlogPost = {
@@ -114,6 +120,7 @@ export default function Blog() {
         rating: 0,
         tags: tagList,
         visibility,
+        ...itemScope,
       };
       setPosts((prev) => [newPost, ...prev]);
       notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
@@ -138,7 +145,7 @@ export default function Blog() {
         description="یادداشت‌های منتشرشده توسط کاربران شبکه با امکان برچسب‌گذاری و امتیازدهی"
         icon={<NotebookPen size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             یادداشت جدید
           </Button>
         }
@@ -191,10 +198,11 @@ export default function Blog() {
               </span>
             ),
           },
+          { key: "owner", label: "دامنه", render: (b) => <ScopeBadge item={b} /> },
           { key: "visibility", label: "دسترسی", render: (b) => <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> },
           { key: "actions", label: "", render: (b) => <RowActions onEdit={() => startEdit(b)} onDelete={() => remove(b)} /> },
         ]}
-        rows={posts}
+        rows={filterScoped(posts)}
         searchKeys={["title", "excerpt", "author"]}
         searchPlaceholder="جستجو در عنوان، متن یا نویسنده…"
         emptyTitle="هنوز یادداشتی ثبت نشده"
@@ -218,6 +226,7 @@ export default function Blog() {
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="معماری، چندمستأجری" className="input-field" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
