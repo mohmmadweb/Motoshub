@@ -484,6 +484,8 @@ function ModulesSection({ enabledModules, toggleModule }: { enabledModules: stri
 
 function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles: (fn: (prev: RoleDef[]) => RoleDef[]) => void; notify: Notify }) {
   const [editing, setEditing] = useState<RoleDef | "new" | null>(null);
+  // هوک‌ها باید پیش از هر return شرطی صدا زده شوند (rules-of-hooks)
+  const confirm = useConfirm();
 
   if (editing !== null) {
     return (
@@ -504,7 +506,6 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
     );
   }
 
-  const confirm = useConfirm();
   const removeRole = (role: RoleDef) =>
     confirm({
       title: `حذف نقش «${role.title}»؟`,

@@ -6,8 +6,11 @@ import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
+import EmptyState from "../components/ui/EmptyState";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
 
 export default function Forum() {
@@ -16,11 +19,49 @@ export default function Forum() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
+
+  const startEdit = (t: ForumTopic) => {
+    setEditingId(t.id);
+    setTitle(t.title);
+    setCategory(t.category);
+    setVisibility(t.visibility);
+    setOpen(true);
+  };
+
+  const remove = (t: ForumTopic) =>
+    confirm({
+      title: `حذف موضوع «${t.title}»؟`,
+      message: `${t.replies.toLocaleString("fa-IR")} پاسخ ذیل این موضوع نیز حذف می‌شود.`,
+      onConfirm: () => {
+        setTopics((prev) => prev.filter((x) => x.id !== t.id));
+        notify(`موضوع «${t.title}» حذف شد.`, "info");
+      },
+    });
+
+  const closeModal = () => {
+    setOpen(false);
+    setEditingId(null);
+    setTitle("");
+    setCategory("");
+    setVisibility("عمومی");
+  };
 
   const submit = () => {
     if (!title.trim()) {
       notify("عنوان موضوع الزامی است.", "warning");
+      return;
+    }
+    if (editingId) {
+      setTopics((prev) =>
+        prev.map((t) =>
+          t.id === editingId ? { ...t, title: title.trim(), category: category.trim() || "عمومی", visibility } : t
+        )
+      );
+      notify(`موضوع «${title.trim()}» ویرایش شد.`);
+      closeModal();
       return;
     }
     const newTopic: ForumTopic = {
@@ -35,10 +76,7 @@ export default function Forum() {
     };
     setTopics((prev) => [newTopic, ...prev]);
     notify(`موضوع «${newTopic.title}» در انجمن منتشر شد (${visibility}).`);
-    setOpen(false);
-    setTitle("");
-    setCategory("");
-    setVisibility("عمومی");
+    closeModal();
   };
 
   const toggleVisibility = (id: string) =>
@@ -56,6 +94,8 @@ export default function Forum() {
           </Button>
         }
       />
+
+      {topics.length === 0 && <EmptyState icon={<MessagesSquare size={20} />} title="هنوز موضوعی در انجمن ثبت نشده" />}
 
       <div className="card divide-y divide-ink-100">
         {topics.map((t) => (
@@ -81,12 +121,15 @@ export default function Forum() {
                 <Eye size={13} /> {t.views}
               </span>
               <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
+              <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                <RowActions onEdit={() => startEdit(t)} onDelete={() => remove(t)} />
+              </span>
             </div>
           </Link>
         ))}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="ایجاد موضوع جدید در انجمن">
+      <Modal open={open} onClose={closeModal} title={editingId ? "ویرایش موضوع انجمن" : "ایجاد موضوع جدید در انجمن"}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان موضوع</label>
@@ -98,8 +141,10 @@ export default function Forum() {
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار موضوع</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
+              {editingId ? "ذخیره تغییرات" : "انتشار موضوع"}
+            </Button>
+            <Button variant="secondary" onClick={closeModal}>انصراف</Button>
           </div>
         </div>
       </Modal>

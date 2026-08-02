@@ -1,10 +1,25 @@
 import { Link } from "react-router-dom";
 import { Users, Lock, Globe2 } from "lucide-react";
 import Badge from "./ui/Badge";
+import RowActions from "./ui/RowActions";
 import { VisibilityToggle } from "./ui/VisibilityControl";
 import type { Group } from "../data/mock";
 
-export default function GroupCard({ group, onTogglePrivacy }: { group: Group; onTogglePrivacy?: () => void }) {
+export default function GroupCard({
+  group,
+  onTogglePrivacy,
+  onEdit,
+  onDelete,
+}: {
+  group: Group;
+  onTogglePrivacy?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
+  // کارت خودش یک لینک است؛ اکشن‌های ردیف نباید پیمایش را فعال کنند
+  const guard = (fn?: () => void) =>
+    fn ? () => fn() : undefined;
+
   return (
     <Link to={`/dashboard/groups/${group.id}`} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
       <div className="flex items-center justify-between">
@@ -14,7 +29,12 @@ export default function GroupCard({ group, onTogglePrivacy }: { group: Group; on
         >
           {group.name.slice(0, 1)}
         </span>
-        {group.unread > 0 && <Badge tone="brand">{group.unread} جدید</Badge>}
+        <span className="flex items-center gap-1">
+          {group.unread > 0 && <Badge tone="brand">{group.unread} جدید</Badge>}
+          <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <RowActions onEdit={guard(onEdit)} onDelete={guard(onDelete)} />
+          </span>
+        </span>
       </div>
       <div>
         <h3 className="font-semibold text-sm text-ink-900">{group.name}</h3>

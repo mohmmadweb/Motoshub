@@ -10,6 +10,8 @@ import Button from "../components/ui/Button";
 import StatCard from "../components/ui/StatCard";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTabParam } from "../lib/useTabParam";
@@ -202,13 +204,55 @@ function OpportunitiesTab() {
   const [stageFilter, setStageFilter] = useState<"همه" | ResearchOpportunity["stage"]>("همه");
   const [selected, setSelected] = useState<ResearchOpportunity | null>(null);
   const [applicantState, setApplicantState] = useState<Record<string, ResearchApplicant["status"]>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const selectedDetail = selected ? researchDetails[selected.id] : undefined;
+
+  const startEdit = (o: ResearchOpportunity) => {
+    setEditingId(o.id);
+    setTitle(o.title);
+    setField(o.field);
+    setDeadline(o.deadline === "نامشخص" ? "" : o.deadline);
+    setOpen(true);
+  };
+
+  const remove = (o: ResearchOpportunity) =>
+    confirm({
+      title: `حذف فراخوان «${o.title}»؟`,
+      message: `${o.applicants.toLocaleString("fa-IR")} درخواستِ ثبت‌شده روی این فراخوان نیز حذف می‌شود.`,
+      onConfirm: () => {
+        setOpportunities((prev) => prev.filter((x) => x.id !== o.id));
+        if (selected?.id === o.id) setSelected(null);
+        notify(`فراخوان «${o.title}» حذف شد.`, "info");
+      },
+    });
+
+  const closeModal = () => {
+    setOpen(false);
+    setEditingId(null);
+    setTitle("");
+    setField("");
+    setDeadline("");
+    setBudget("");
+    setSupervisor("");
+  };
 
   const submit = () => {
     if (!title.trim() || !field.trim()) {
       notify("عنوان و حوزه‌ی پژوهش الزامی است.", "warning");
+      return;
+    }
+    if (editingId) {
+      setOpportunities((prev) =>
+        prev.map((o) =>
+          o.id === editingId ? { ...o, title: title.trim(), field: field.trim(), deadline: deadline.trim() || "نامشخص" } : o
+        )
+      );
+      setSelected((s) => (s && s.id === editingId ? { ...s, title: title.trim(), field: field.trim() } : s));
+      notify(`فراخوان «${title.trim()}» ویرایش شد.`);
+      closeModal();
       return;
     }
     const newItem: ResearchOpportunity = {
@@ -221,12 +265,7 @@ function OpportunitiesTab() {
     };
     setOpportunities((prev) => [newItem, ...prev]);
     notify(`فراخوان پژوهشی «${newItem.title}» منتشر شد و در وضعیت «فراخوان باز» قرار گرفت.`);
-    setOpen(false);
-    setTitle("");
-    setField("");
-    setDeadline("");
-    setBudget("");
-    setSupervisor("");
+    closeModal();
   };
 
   const applicantStatus = (oppId: string, ap: ResearchApplicant): ResearchApplicant["status"] =>
@@ -262,6 +301,11 @@ function OpportunitiesTab() {
       render: (r) => <span className="text-ink-600">{researchDetails[r.id]?.budget ?? "—"}</span>,
     },
     { key: "deadline", label: "مهلت ثبت‌نام" },
+    {
+      key: "actions",
+      label: "",
+      render: (r) => <RowActions onEdit={() => startEdit(r)} onDelete={() => remove(r)} />,
+    },
   ];
 
   return (
@@ -310,7 +354,7 @@ function OpportunitiesTab() {
         onRowClick={(r) => setSelected(r)}
       />
 
-      <Modal open={open} onClose={() => setOpen(false)} title="انتشار فراخوان پژوهشی جدید" description="پس از انتشار، فراخوان در وضعیت «فراخوان باز» قابل مشاهده برای پژوهشگران خواهد بود.">
+      <Modal open={open} onClose={closeModal} title={editingId ? "ویرایش فراخوان پژوهشی" : "انتشار فراخوان پژوهشی جدید"} description={editingId ? undefined : "پس از انتشار، فراخوان در وضعیت «فراخوان باز» قابل مشاهده برای پژوهشگران خواهد بود."}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان فرصت پژوهشی</label>
@@ -338,7 +382,7 @@ function OpportunitiesTab() {
           </div>
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار فراخوان</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+            <Button variant="secondary" onClick={closeModal}>انصراف</Button>
           </div>
         </div>
       </Modal>

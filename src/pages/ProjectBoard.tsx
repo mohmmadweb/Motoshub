@@ -22,6 +22,8 @@ import StatCard from "../components/ui/StatCard";
 import EmptyState from "../components/ui/EmptyState";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
@@ -72,13 +74,57 @@ export default function ProjectBoard() {
   const [taskPriority, setTaskPriority] = useState<Task["priority"]>("متوسط");
   const [taskDue, setTaskDue] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   if (!project) return <p>پروژه پیدا نشد.</p>;
+
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskTitle(task.title);
+    setTaskAssignee(task.assignee === "بدون مسئول" ? "" : task.assignee);
+    setTaskPriority(task.priority);
+    setTaskDue(task.due === "نامشخص" ? "" : task.due);
+    setTaskOpen(true);
+  };
+
+  const removeTask = (task: Task) =>
+    confirm({
+      title: `حذف تسک «${task.title}»؟`,
+      message: "تسک از بورد و گانت پروژه حذف می‌شود.",
+      onConfirm: () => {
+        setTasks((prev) => prev.filter((x) => x.id !== task.id));
+        setSelectedTask((prev) => (prev && prev.id === task.id ? null : prev));
+        notify(`تسک «${task.title}» حذف شد.`, "info");
+      },
+    });
+
+  const closeTaskModal = () => {
+    setTaskOpen(false);
+    setEditingTaskId(null);
+    setTaskTitle("");
+    setTaskAssignee("");
+    setTaskPriority("متوسط");
+    setTaskDue("");
+  };
 
   const submitTask = () => {
     if (!taskTitle.trim()) {
       notify("عنوان تسک الزامی است.", "warning");
+      return;
+    }
+    if (editingTaskId) {
+      const patch = {
+        title: taskTitle.trim(),
+        assignee: taskAssignee.trim() || "بدون مسئول",
+        priority: taskPriority,
+        due: taskDue.trim() || "نامشخص",
+      };
+      setTasks((prev) => prev.map((x) => (x.id === editingTaskId ? { ...x, ...patch } : x)));
+      setSelectedTask((prev) => (prev && prev.id === editingTaskId ? { ...prev, ...patch } : prev));
+      notify(`تسک «${patch.title}» ویرایش شد.`);
+      closeTaskModal();
       return;
     }
     const newTask: Task = {
@@ -92,11 +138,7 @@ export default function ProjectBoard() {
     };
     setTasks((prev) => [newTask, ...prev]);
     notify(`تسک «${newTask.title}» به ستون «برنامه‌ریزی» اضافه شد.`);
-    setTaskOpen(false);
-    setTaskTitle("");
-    setTaskAssignee("");
-    setTaskPriority("متوسط");
-    setTaskDue("");
+    closeTaskModal();
   };
 
   const moveTask = (task: Task, status: Task["status"]) => {
@@ -170,14 +212,19 @@ export default function ProjectBoard() {
                 </div>
                 <div className="space-y-2">
                   {columnTasks.map((t) => (
-                    <button key={t.id} onClick={() => setSelectedTask(t)} className="card p-3 w-full text-right hover:border-brand-300 transition-colors">
-                      <p className="text-xs font-medium leading-5 text-ink-900">{t.title}</p>
+                    <div key={t.id} className="card p-3 hover:border-brand-300 transition-colors">
+                      <button onClick={() => setSelectedTask(t)} className="w-full text-right">
+                        <p className="text-xs font-medium leading-5 text-ink-900">{t.title}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge tone={priorityTone[t.priority]}>{t.priority}</Badge>
+                          <span className="text-[11px] text-ink-400">{t.due}</span>
+                        </div>
+                      </button>
                       <div className="flex items-center justify-between mt-2">
-                        <Badge tone={priorityTone[t.priority]}>{t.priority}</Badge>
-                        <span className="text-[11px] text-ink-400">{t.due}</span>
+                        <p className="text-[11px] text-ink-500">مسئول: {t.assignee}</p>
+                        <RowActions onEdit={() => startEditTask(t)} onDelete={() => removeTask(t)} size={12} />
                       </div>
-                      <p className="text-[11px] text-ink-500 mt-2">مسئول: {t.assignee}</p>
-                    </button>
+                    </div>
                   ))}
                   {columnTasks.length === 0 && <p className="text-[11px] text-ink-400 text-center py-3">خالی</p>}
                 </div>
@@ -341,7 +388,7 @@ export default function ProjectBoard() {
           <EmptyState icon={<FileText size={20} />} title="صورت‌جلسات این پروژه" description="آرشیو صورت‌جلسات از ماژول مدیریت دانش با دسته‌بندی این پروژه نمایش داده می‌شود." />
         ))}
 
-      <Modal open={taskOpen} onClose={() => setTaskOpen(false)} title="ایجاد تسک جدید" description="تسک جدید در ستون «برنامه‌ریزی» قرار می‌گیرد.">
+      <Modal open={taskOpen} onClose={closeTaskModal} title={editingTaskId ? "ویرایش تسک" : "ایجاد تسک جدید"} description={editingTaskId ? undefined : "تسک جدید در ستون «برنامه‌ریزی» قرار می‌گیرد."}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان تسک</label>
@@ -367,7 +414,7 @@ export default function ProjectBoard() {
           </div>
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitTask}>ایجاد تسک</Button>
-            <Button variant="secondary" onClick={() => setTaskOpen(false)}>انصراف</Button>
+            <Button variant="secondary" onClick={closeTaskModal}>انصراف</Button>
           </div>
         </div>
       </Modal>

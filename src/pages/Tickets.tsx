@@ -4,6 +4,8 @@ import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
@@ -78,13 +80,85 @@ export default function Tickets() {
   const [priority, setPriority] = useState<Ticket["priority"]>("متوسط");
   const [body, setBody] = useState("");
   const [reply, setReply] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const openCount = tickets.filter((t) => t.status === "باز" || t.status === "در حال بررسی").length;
+
+  const startEdit = (tk: Ticket) => {
+    setEditingId(tk.id);
+    setSubject(tk.subject);
+    setCategory(tk.category);
+    setPriority(tk.priority);
+    setBody(tk.messages[0]?.text ?? "");
+    setOpen(true);
+  };
+
+  const remove = (tk: Ticket) =>
+    confirm({
+      title: `حذف تیکت «${tk.no}»؟`,
+      message: "کل گفتگوی این تیکت حذف می‌شود و قابل بازیابی نیست.",
+      onConfirm: () => {
+        setTickets((prev) => prev.filter((x) => x.id !== tk.id));
+        if (selected?.id === tk.id) setSelected(null);
+        notify(`تیکت «${tk.no}» حذف شد.`, "info");
+      },
+    });
+
+  const removeMessage = (idx: number) => {
+    if (!selected) return;
+    confirm({
+      title: "حذف این پیام؟",
+      message: "پیام از گفتگوی تیکت حذف می‌شود.",
+      onConfirm: () => {
+        const updated: Ticket = { ...selected, messages: selected.messages.filter((_, i) => i !== idx) };
+        setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
+        setSelected(updated);
+        notify("پیام حذف شد.", "info");
+      },
+    });
+  };
+
+  const reopenTicket = () => {
+    if (!selected) return;
+    const updated: Ticket = { ...selected, status: "باز", updated: "هم‌اکنون" };
+    setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
+    setSelected(updated);
+    notify("تیکت دوباره باز شد.", "info");
+  };
+
+  const closeModal = () => {
+    setOpen(false);
+    setEditingId(null);
+    setSubject("");
+    setBody("");
+    setPriority("متوسط");
+  };
 
   const submit = () => {
     if (!subject.trim() || !body.trim()) {
       notify("موضوع و شرح تیکت الزامی است.", "warning");
+      return;
+    }
+    if (editingId) {
+      setTickets((prev) =>
+        prev.map((tk) =>
+          tk.id === editingId
+            ? {
+                ...tk,
+                subject: subject.trim(),
+                category,
+                priority,
+                updated: "هم‌اکنون",
+                messages: tk.messages.map((m, i) => (i === 0 ? { ...m, text: body.trim() } : m)),
+              }
+            : tk
+        )
+      );
+      setSelected((s) => (s && s.id === editingId ? { ...s, subject: subject.trim(), category, priority } : s));
+      notify("تیکت ویرایش شد.");
+      closeModal();
       return;
     }
     const t: Ticket = {
@@ -99,9 +173,7 @@ export default function Tickets() {
     };
     setTickets((prev) => [t, ...prev]);
     notify(`تیکت «${t.no}» ثبت شد؛ پاسخ از طریق اعلان به شما اطلاع داده می‌شود.`);
-    setOpen(false);
-    setSubject("");
-    setBody("");
+    closeModal();
   };
 
   const sendReply = () => {
@@ -133,6 +205,11 @@ export default function Tickets() {
     { key: "priority", label: "اولویت", render: (t) => <Badge tone={prioTone[t.priority]}>{t.priority}</Badge> },
     { key: "status", label: "وضعیت", render: (t) => <Badge tone={statusTone[t.status]}>{t.status}</Badge> },
     { key: "updated", label: "آخرین به‌روزرسانی" },
+    {
+      key: "actions",
+      label: "",
+      render: (t) => <RowActions onEdit={() => startEdit(t)} onDelete={() => remove(t)} />,
+    },
   ];
 
   return (
@@ -154,7 +231,7 @@ export default function Tickets() {
         onRowClick={(t) => setSelected(t)}
       />
 
-      <Modal open={open} onClose={() => setOpen(false)} title="ثبت تیکت پشتیبانی جدید">
+      <Modal open={open} onClose={closeModal} title={editingId ? "ویرایش تیکت" : "ثبت تیکت پشتیبانی جدید"}>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">موضوع <span className="text-rose-500">*</span></label>
@@ -179,8 +256,8 @@ export default function Tickets() {
             <textarea value={body} onChange={(e) => setBody(e.target.value)} className="input-field min-h-24" placeholder="جزئیات، مراحل بازتولید مشکل، اسکرین‌شات…" />
           </div>
           <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت تیکت</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "ثبت تیکت"}</Button>
+            <Button variant="secondary" onClick={closeModal}>انصراف</Button>
           </div>
         </div>
       </Modal>
@@ -198,12 +275,17 @@ export default function Tickets() {
             </div>
             <div className="flex-1 overflow-y-auto py-4 space-y-3">
               {selected.messages.map((m, i) => (
-                <div key={i} className={`flex ${m.from === "me" ? "justify-start" : "justify-end"}`}>
+                <div key={i} className={`flex items-center gap-1 group ${m.from === "me" ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12.5px] leading-6 ${m.from === "me" ? "bg-brand-600 text-white" : "bg-ink-50 border border-ink-100 text-ink-800"}`}>
                     {m.from === "support" && <p className="text-[10.5px] font-bold text-brand-600 mb-0.5 flex items-center gap-1"><MessageSquareText size={11} /> پشتیبانی</p>}
                     <p>{m.text}</p>
                     <p className={`text-[10px] mt-1 flex items-center gap-1 ${m.from === "me" ? "text-white/70" : "text-ink-400"}`}><Clock3 size={10} /> {m.time}</p>
                   </div>
+                  {m.from === "me" && selected.status !== "بسته" && (
+                    <span className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <RowActions onDelete={() => removeMessage(i)} size={12} />
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -224,7 +306,10 @@ export default function Tickets() {
                 </button>
               </div>
             ) : (
-              <p className="pt-3 border-t border-ink-100 text-[11.5px] text-ink-400">این تیکت بسته شده است.</p>
+              <div className="pt-3 border-t border-ink-100 flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-[11.5px] text-ink-400">این تیکت بسته شده است.</p>
+                <Button variant="secondary" size="sm" onClick={reopenTicket}>بازگشایی تیکت</Button>
+              </div>
             )}
           </div>
         )}

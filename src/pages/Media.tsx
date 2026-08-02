@@ -6,8 +6,11 @@ import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
+import RowActions from "../components/ui/RowActions";
+import EmptyState from "../components/ui/EmptyState";
 import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
 import { mediaImg, bgStyle } from "../data/images";
 
@@ -22,7 +25,9 @@ export default function Media() {
   const [title, setTitle] = useState("");
   const [album, setAlbum] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const confirm = useConfirm();
 
   const [topic, setTopic] = useState<string>("همه");
   const topics = ["همه", ...Array.from(new Set(items.map((m) => m.album)))];
@@ -30,7 +35,46 @@ export default function Media() {
     .filter((m) => (kind === "all" ? true : m.kind === kind))
     .filter((m) => (topic === "همه" ? true : m.album === topic));
 
+  const startEdit = (m: MediaItem) => {
+    setEditingId(m.id);
+    setTitle(m.title);
+    setAlbum(m.album === "بدون آلبوم" ? "" : m.album);
+    setVisibility(m.visibility);
+    setFile(null);
+    setOpen(true);
+  };
+
+  const remove = (m: MediaItem) =>
+    confirm({
+      title: `حذف «${m.title}»؟`,
+      message: m.kind === "video" ? "ویدیو و نسخه‌های فشرده‌شده‌ی آن حذف می‌شوند." : "تصویر و بندانگشتی‌های آن حذف می‌شوند.",
+      onConfirm: () => {
+        setItems((prev) => prev.filter((x) => x.id !== m.id));
+        notify(`«${m.title}» از گالری حذف شد.`, "info");
+      },
+    });
+
+  const closeModal = () => {
+    setOpen(false);
+    setEditingId(null);
+    setFile(null); setTitle(""); setAlbum(""); setVisibility("عمومی");
+  };
+
   const submit = () => {
+    if (editingId) {
+      if (!title.trim()) {
+        notify("عنوان الزامی است.", "warning");
+        return;
+      }
+      setItems((prev) =>
+        prev.map((m) =>
+          m.id === editingId ? { ...m, title: title.trim(), album: album.trim() || "بدون آلبوم", visibility } : m
+        )
+      );
+      notify(`«${title.trim()}» ویرایش شد.`);
+      closeModal();
+      return;
+    }
     if (!file || !title.trim()) {
       notify("انتخاب فایل و عنوان الزامی است.", "warning");
       return;
@@ -49,8 +93,7 @@ export default function Media() {
     };
     setItems((prev) => [newItem, ...prev]);
     notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
-    setOpen(false);
-    setFile(null); setTitle(""); setAlbum(""); setVisibility("عمومی");
+    closeModal();
   };
 
   const toggleVisibility = (id: string) => {
@@ -108,6 +151,8 @@ export default function Media() {
         })}
       </div>
 
+      {filtered.length === 0 && <EmptyState icon={<Image size={20} />} title="محتوایی با این فیلتر پیدا نشد" />}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filtered.map((m) => (
           <div key={m.id} className="card overflow-hidden group">
@@ -134,7 +179,7 @@ export default function Media() {
               <p className="text-[11px] text-ink-400 mt-1 truncate">{m.album} · {m.uploadedBy}</p>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[11px] text-ink-400">{m.date}</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <span className="flex items-center gap-1 text-amber-600 text-[11px] font-medium">
                     <Star size={11} className="fill-amber-500 text-amber-500" /> {m.rating}
                   </span>
@@ -143,6 +188,7 @@ export default function Media() {
                     onChange={() => toggleVisibility(m.id)}
                     size="xs"
                   />
+                  <RowActions onEdit={() => startEdit(m)} onDelete={() => remove(m)} size={13} />
                 </div>
               </div>
             </div>
@@ -150,11 +196,11 @@ export default function Media() {
         ))}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="بارگذاری محتوای جدید">
+      <Modal open={open} onClose={closeModal} title={editingId ? "ویرایش محتوای رسانه" : "بارگذاری محتوای جدید"}>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">فایل تصویر/ویدیو</label>
-            <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field" />
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">فایل تصویر/ویدیو{editingId && <span className="text-ink-400 font-normal"> (در حالت ویرایش قابل تغییر نیست)</span>}</label>
+            <input type="file" accept="image/*,video/*" disabled={!!editingId} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field disabled:opacity-50" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان</label>
@@ -166,8 +212,8 @@ export default function Media() {
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>بارگذاری</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
+            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "بارگذاری"}</Button>
+            <Button variant="secondary" onClick={closeModal}>انصراف</Button>
           </div>
         </div>
       </Modal>
