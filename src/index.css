@@ -1,7 +1,10 @@
 @import "tailwindcss";
+/* فونت به‌صورت محلی بسته‌بندی می‌شود — بدون وابستگی به Google Fonts که در ایران
+   قابل اتکا نیست و باعث می‌شود متن با فونت جایگزین رندر شود. */
+@import "@fontsource-variable/vazirmatn";
 
 @theme {
-  --font-sans: "Vazirmatn", system-ui, sans-serif;
+  --font-sans: "Vazirmatn Variable", "Vazirmatn", system-ui, sans-serif;
 
   /* Primary — corporate blue, used for actions/links/active states */
   --color-brand-50: #eef4fc;
