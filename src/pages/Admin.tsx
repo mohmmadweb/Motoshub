@@ -317,19 +317,19 @@ function SystemIdentitySection({ notify }: { notify: Notify }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان مشتری <span className="text-rose-500">*</span></label>
-            <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className="input-field" />
+            <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} aria-label="نام سازمان مشتری" className="input-field" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">نام کوتاه (در رابط کاربری)</label>
-            <input value={draft.shortName} onChange={(e) => setDraft((d) => ({ ...d, shortName: e.target.value }))} className="input-field" />
+            <input value={draft.shortName} onChange={(e) => setDraft((d) => ({ ...d, shortName: e.target.value }))} aria-label="نام کوتاه" className="input-field" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه <span className="text-rose-500">*</span></label>
-            <input value={draft.domain} onChange={(e) => setDraft((d) => ({ ...d, domain: e.target.value }))} className="input-field" dir="ltr" />
+            <input value={draft.domain} onChange={(e) => setDraft((d) => ({ ...d, domain: e.target.value }))} aria-label="دامنه" className="input-field" dir="ltr" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">رنگ برند</label>
-            <input type="color" value={draft.color} onChange={(e) => setDraft((d) => ({ ...d, color: e.target.value }))} className="input-field h-[38px] p-1" />
+            <input type="color" value={draft.color} onChange={(e) => setDraft((d) => ({ ...d, color: e.target.value }))} aria-label="رنگ برند" className="input-field h-[38px] p-1" />
           </div>
         </div>
       </div>
@@ -342,7 +342,7 @@ function SystemIdentitySection({ notify }: { notify: Notify }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">روش ورود</label>
-            <select value={draft.ssoProvider} onChange={(e) => setDraft((d) => ({ ...d, ssoProvider: e.target.value as SsoProvider }))} className="input-field">
+            <select aria-label="روش ورود یکپارچه" value={draft.ssoProvider} onChange={(e) => setDraft((d) => ({ ...d, ssoProvider: e.target.value as SsoProvider }))} className="input-field">
               {providers.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>

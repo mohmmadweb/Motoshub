@@ -17,7 +17,7 @@ const palette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309"];
 
 export default function Groups() {
   const { groups, setGroups } = useContent();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canModerateGroup } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [active, setActive] = useState("همه");
   const [open, setOpen] = useState(false);
@@ -162,9 +162,9 @@ export default function Groups() {
           <GroupCard
             key={g.id}
             group={g}
-            onTogglePrivacy={() => togglePrivacy(g.id)}
-            onEdit={() => startEdit(g)}
-            onDelete={() => remove(g)}
+            onTogglePrivacy={canModerateGroup(g) ? () => togglePrivacy(g.id) : undefined}
+            onEdit={canModerateGroup(g) ? () => startEdit(g) : undefined}
+            onDelete={canModerateGroup(g) ? () => remove(g) : undefined}
           />
         ))}
       </div>

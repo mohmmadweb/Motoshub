@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Building2, Users, BookOpen, KanbanSquare, ShieldCheck, ArrowLeft, CheckCircle2, Network } from "lucide-react";
+import { Building2, Users, BookOpen, KanbanSquare, ShieldCheck, ArrowLeft, CheckCircle2, Network, Quote } from "lucide-react";
 import SiteHeader from "../components/SiteHeader";
 import PublicFooter from "../components/PublicFooter";
 import { holdings, companies } from "../data/tenancy";
@@ -85,6 +85,40 @@ export default function Landing() {
                 <p className="text-xs text-ink-500 leading-6">{m.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* اعتماد — چه کسانی روی این بستر کار می‌کنند */}
+        <section className="bg-ink-50/60 border-y border-ink-100 px-6 lg:px-16 py-12">
+          <div className="max-w-6xl mx-auto">
+            <p className="text-center text-xs font-bold text-ink-400 tracking-wide mb-6">
+              هلدینگ‌های زیرمجموعه‌ی بنیاد روی همین بستر کار می‌کنند
+            </p>
+            <div className="flex items-center justify-center gap-x-8 gap-y-4 flex-wrap mb-10">
+              {holdings.map((h) => (
+                <span key={h.id} className="flex items-center gap-2.5 text-sm font-semibold text-ink-600">
+                  <span
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    style={{ backgroundColor: h.color }}
+                    aria-hidden
+                  >
+                    {h.name.replace("هلدینگ ", "").slice(0, 1)}
+                  </span>
+                  {h.name.replace("هلدینگ ", "")}
+                </span>
+              ))}
+            </div>
+            <figure className="max-w-2xl mx-auto text-center">
+              <Quote size={20} className="mx-auto text-brand-300 mb-3" aria-hidden />
+              <blockquote className="text-[15px] leading-8 text-ink-700 font-medium">
+                «پیش از این هر شرکت برای خبر، سند و پروژه ابزار جدا داشت؛ الان همه‌چیز یک‌جاست و
+                هر مجموعه فقط محتوای دامنه‌ی خودش را می‌بیند. برای مجموعه‌ای با این تنوع، همین
+                تفکیک ساده، بزرگ‌ترین تغییر بود.»
+              </blockquote>
+              <figcaption className="text-xs text-ink-400 mt-3">
+                دکتر نگار توکلی — راهبر هلدینگ مالی و سرمایه‌گذاری سینا
+              </figcaption>
+            </figure>
           </div>
         </section>
 

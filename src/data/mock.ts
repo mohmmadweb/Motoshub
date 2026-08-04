@@ -824,11 +824,20 @@ export type EventItem = {
   mode: "حضوری" | "آنلاین";
   joinLink?: string;
   mapUrl?: string;
+  /** دسته‌ی رویداد — مبنای فیلتر موضوعی */
+  category?: EventCategory;
+  /** ظرفیت کل ثبت‌نام (در کنار attendees = ثبت‌نام‌شده) */
+  capacity?: number;
 } & Scoped;
+
+export type EventCategory = "جلسه" | "کارگاه" | "وبینار" | "همایش" | "آموزش";
+export const eventCategories: EventCategory[] = ["جلسه", "کارگاه", "وبینار", "همایش", "آموزش"];
 
 export const events: EventItem[] = [
   {
     id: "e1",
+    category: "جلسه",
+    capacity: 20,
     mode: "حضوری",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Milad+Tower+Tehran",
     title: "جلسه هیات عامل — مرور برنامه محرومیت‌زدایی",
@@ -843,6 +852,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e2",
+    category: "کارگاه",
+    capacity: 98,
     mode: "حضوری",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Azadi+Tower",
     title: "کارگاه آموزشی راهبران سامانه ارتباطات سازمانی",
@@ -857,6 +868,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e3",
+    category: "همایش",
+    capacity: 60,
     mode: "آنلاین",
     joinLink: "https://meet.example.ir/davari-f2",
     title: "داوری طرح‌های اشتغال‌زایی — فراخوان دوم",
@@ -871,6 +884,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e4",
+    category: "وبینار",
+    capacity: 148,
     mode: "آنلاین",
     joinLink: "https://www.skyroom.online/ch/bonyad/kb-webinar",
     title: "وبینار معرفی بانک دانش بنیاد برای واحدهای سازمانی",
@@ -885,6 +900,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e5",
+    category: "همایش",
+    capacity: 117,
     mode: "حضوری",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Book+Garden",
     title: "گردهمایی مدیران هلدینگ‌های بنیاد",
@@ -899,6 +916,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e6",
+    category: "کارگاه",
+    capacity: 91,
     mode: "حضوری",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=University+of+Tehran",
     title: "کارگاه امنیت سایبری و آشنایی با استاندارد افتا",
@@ -913,6 +932,8 @@ export const events: EventItem[] = [
   },
   {
     id: "e7",
+    category: "جلسه",
+    capacity: 45,
     mode: "حضوری",
     mapUrl: "https://www.google.com/maps/search/?api=1&query=Tehran+Milad+Tower",
     title: "نشست فصلی پایش تفاهم‌نامه‌های مردمی‌سازی اقتصاد",
@@ -1028,18 +1049,20 @@ export type MediaItem = {
   tags: string[];
   color: string;
   visibility: Visibility;
+  /** مدت‌زمان ویدیو (mm:ss) — فقط برای kind="video" */
+  duration?: string;
 } & Scoped;
 
 export const mediaItems: MediaItem[] = [
   { id: "m1", kind: "photo", title: "افتتاح مدرسه نوساز در قلعه‌گنج", album: "رویدادهای رسمی", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۰۱", rating: 4.8, tags: ["افتتاحیه", "مدرسه‌سازی"], color: "#82aee6", visibility: "عمومی" },
   { id: "m2", kind: "photo", title: "کارگاه آموزشی تسهیل‌گران محلی", album: "آموزش", uploadedBy: "وحید خاوئی", date: "۱۴۰۵/۰۲/۱۰", rating: 4.5, tags: ["آموزش"], color: "#93a2b8", visibility: "عمومی" },
-  { id: "m3", kind: "video", title: "بازدید رئیس بنیاد از نمایشگاه آگروفود ۱۴۰۵", album: "رویدادهای رسمی", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۲۰", rating: 4.9, tags: ["آگروفود", "صنایع غذایی سینا"], color: "#1f4f99", visibility: "عمومی" },
-  { id: "m4", kind: "video", title: "ضبط جلسه‌ی داوری طرح‌های اشتغال‌زایی", album: "بنیاد علوی", uploadedBy: "محسن مردعلی", date: "۱۴۰۵/۰۳/۰۱", rating: 4.1, tags: ["داوری"], color: "#5e7191", visibility: "خصوصی" },
+  { id: "m3", duration: "04:12", kind: "video", title: "بازدید رئیس بنیاد از نمایشگاه آگروفود ۱۴۰۵", album: "رویدادهای رسمی", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۲۰", rating: 4.9, tags: ["آگروفود", "صنایع غذایی سینا"], color: "#1f4f99", visibility: "عمومی" },
+  { id: "m4", duration: "12:37", kind: "video", title: "ضبط جلسه‌ی داوری طرح‌های اشتغال‌زایی", album: "بنیاد علوی", uploadedBy: "محسن مردعلی", date: "۱۴۰۵/۰۳/۰۱", rating: 4.1, tags: ["داوری"], color: "#5e7191", visibility: "خصوصی" },
   { id: "m5", kind: "photo", title: "گردهمایی سالانه مدیران هلدینگ‌های بنیاد", album: "رویدادهای رسمی", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۱۵", rating: 4.7, tags: ["گردهمایی", "هلدینگ‌ها"], color: "#b45309", visibility: "عمومی" },
-  { id: "m6", kind: "video", title: "گفتگو درباره برنامه پنج‌برابر شدن خدمات محرومیت‌زدایی", album: "برنامه‌های بنیاد", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۲۵", rating: 4.6, tags: ["مصاحبه", "محرومیت‌زدایی"], color: "#0d9488", visibility: "عمومی" },
+  { id: "m6", duration: "07:55", kind: "video", title: "گفتگو درباره برنامه پنج‌برابر شدن خدمات محرومیت‌زدایی", album: "برنامه‌های بنیاد", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۲/۲۵", rating: 4.6, tags: ["مصاحبه", "محرومیت‌زدایی"], color: "#0d9488", visibility: "عمومی" },
   { id: "m7", kind: "photo", title: "بازدید هیات نظارتی از طرح‌های لنده", album: "رویدادهای رسمی", uploadedBy: "محسن مردعلی", date: "۱۴۰۵/۰۳/۰۵", rating: 4.3, tags: ["بازدید", "لنده"], color: "#7c3aed", visibility: "خصوصی" },
   { id: "m8", kind: "photo", title: "آیین توزیع کفش دانش‌آموزی در مناطق کم‌برخوردار", album: "برنامه‌های اجتماعی", uploadedBy: "وحید خاوئی", date: "۱۴۰۵/۰۲/۱۸", rating: 4.4, tags: ["دانش‌آموزان", "اجتماعی"], color: "#dc2626", visibility: "عمومی" },
-  { id: "m9", kind: "video", title: "معرفی بانک دانش بنیاد برای واحدهای سازمانی", album: "برنامه‌های بنیاد", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۳/۱۰", rating: 4.8, tags: ["دمو", "مدیریت-دانش"], color: "#0f172a", visibility: "عمومی" },
+  { id: "m9", duration: "03:45", kind: "video", title: "معرفی بانک دانش بنیاد برای واحدهای سازمانی", album: "برنامه‌های بنیاد", uploadedBy: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۳/۱۰", rating: 4.8, tags: ["دمو", "مدیریت-دانش"], color: "#0f172a", visibility: "عمومی" },
   { id: "m10", kind: "photo", title: "جشن پایان فاز نخست آبادانی چالدران", album: "رویدادهای رسمی", uploadedBy: "محسن مردعلی", date: "۱۴۰۵/۰۳/۱۵", rating: 4.9, tags: ["جشن", "چالدران"], color: "#1f4f99", visibility: "عمومی" },
 ];
 
@@ -1055,11 +1078,17 @@ export type NewsItem = {
   views: number;
   pinned?: boolean;
   visibility: Visibility;
+  /** برچسب موضوعی خبر */
+  topic?: NewsTopic;
 } & Scoped;
+
+export type NewsTopic = "اقتصادی" | "اجتماعی" | "فرهنگی" | "عمرانی" | "سازمانی";
+export const newsTopics: NewsTopic[] = ["اقتصادی", "اجتماعی", "فرهنگی", "عمرانی", "سازمانی"];
 
 export const newsItems: NewsItem[] = [
   {
     id: "nw1",
+    topic: "اجتماعی",
     views: 2140,
     title: "خدمات محرومیت‌زدایی بنیاد پنج برابر می‌شود",
     summary: "در چارچوب ماموریت‌های جدید بنیاد، دامنه خدمات محرومیت‌زدایی در مناطق هدف گسترش می‌یابد.",
@@ -1070,6 +1099,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw2",
+    topic: "اقتصادی",
     views: 3480,
     title: "آمادگی بنیاد برای واگذاری هتل‌ها به ارزش ۴۷ همت",
     summary: "برنامه عرضه عمومی هتل‌ها و اموال مازاد بنیاد در راستای مردمی‌سازی اقتصاد اعلام شد.",
@@ -1079,6 +1109,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw3",
+    topic: "سازمانی",
     views: 860,
     title: "به‌روزرسانی سیاست‌های دسترسی و نقش‌های سازمانی سامانه",
     summary: "از این پس راهبران واحدها می‌توانند نقش‌های سفارشی ایجاد کنند. مستندات جدید در بانک دانش منتشر شد.",
@@ -1088,6 +1119,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw4",
+    topic: "اقتصادی",
     views: 2960,
     title: "امضای هفت تفاهم‌نامه مردمی‌سازی اقتصاد میان بنیاد علوی و هلدینگ‌ها",
     summary: "هلدینگ‌های فردوس پارس، کوثر، پارسیان، کاوه پارس، صبا، پایا ترابر سینا و صنایع غذایی سینا برای حمایت از بیش از ۸ هزار طرح خرد و متوسط همکاری می‌کنند.",
@@ -1098,6 +1130,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw5",
+    topic: "اجتماعی",
     views: 1725,
     title: "توزیع ۳۰۰ هزار جفت کفش میان دانش‌آموزان مناطق کم‌برخوردار",
     summary: "برنامه تجهیز دانش‌آموزان مناطق هدف تا پایان شهریور تکمیل می‌شود؛ ۲۰ هزار جفت نخست توزیع شد.",
@@ -1107,6 +1140,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw6",
+    topic: "اقتصادی",
     views: 1210,
     title: "بازدید رئیس بنیاد از نمایشگاه آگروفود ۱۴۰۵ و رونمایی از محصولات جدید صنایع غذایی سینا",
     summary: "در حاشیه نمایشگاه، از محصولات جدید هلدینگ صنایع غذایی سینا رونمایی شد.",
@@ -1116,6 +1150,7 @@ export const newsItems: NewsItem[] = [
   },
   {
     id: "nw7",
+    topic: "عمرانی",
     views: 1490,
     title: "برنامه زمان‌بندی جمع‌آوری مدارس ناایمن تا مهرماه اعلام شد",
     summary: "بنیاد برنامه نوسازی و ایمن‌سازی مدارس مناطق هدف را پیش از آغاز سال تحصیلی اجرا می‌کند.",
@@ -1531,6 +1566,8 @@ export type RoleGrant = {
   level: ScopeLevel;
   holdingId?: string;
   companyId?: string;
+  /** برای نقش‌های سطح «گروه» (ناظم گروه) — گروهی که اختیارش را دارد */
+  groupId?: string;
 };
 export type RoleAssignment = Record<string, RoleGrant>;
 export const initialRoleAssignments: RoleAssignment = {
@@ -1539,6 +1576,8 @@ export const initialRoleAssignments: RoleAssignment = {
   u3: { roleId: "r4", level: "شرکت", holdingId: "h-sina-food", companyId: "c-behnoush" },
   u4: { roleId: "r2", level: "هلدینگ", holdingId: "h-ferdows" },
   u5: { roleId: "r5", level: "شرکت", holdingId: "h-saba", companyId: "c-saba-niru" },
+  // ناظم گروه: مهسا نیک‌اندیش فقط در «ستاد محرومیت‌زدایی» اختیار مدیریتی دارد
+  u7: { roleId: "r3", level: "گروه", groupId: "g1" },
 };
 
 export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];
@@ -1590,7 +1629,7 @@ export type Channel = {
   mentions: number;
   members: number;
   pinnedCount: number;
-};
+} & Scoped;
 
 export const channels: Channel[] = [
   { id: "ch1", name: "همگانی", topic: "اطلاعیه‌های عمومی و هماهنگی کلی واحدها", type: "public", category: "علاقه‌مندی‌ها", unread: 3, mentions: 1, members: 42, pinnedCount: 2 },

@@ -24,6 +24,9 @@ const workspaces: Workspace[] = [
   ),
 ];
 
+// در بیلد محصول (VITE_DEMO=false) ابزارهای نمایشی نمایش داده نمی‌شوند
+const IS_DEMO = import.meta.env.VITE_DEMO !== "false";
+
 export default function Login() {
   const navigate = useNavigate();
   const { setActingUser } = useTenancy();
@@ -192,6 +195,7 @@ export default function Login() {
             )}
 
             {/* حساب نمایشی — نشستِ واقعی از روی همین کاربر ساخته می‌شود */}
+            {IS_DEMO && (
             <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/60 p-2.5">
               <label className="text-[10.5px] font-bold text-ink-400 block mb-1">
                 حساب نمایشی (دموی سناریوها)
@@ -199,6 +203,7 @@ export default function Login() {
               <select
                 value={demoUserId}
                 onChange={(e) => setDemoUserId(e.target.value)}
+                aria-label="انتخاب حساب نمایشی"
                 className="w-full text-xs border border-ink-200 rounded-md px-2 py-1.5 bg-white outline-none focus:border-brand-400"
               >
                 {allUsers.map((u) => (
@@ -211,6 +216,7 @@ export default function Login() {
                 دامنه‌ی دید و دسترسی‌ها پس از ورود، از عضویت همین حساب محاسبه می‌شود.
               </p>
             </div>
+            )}
 
             <Button type="submit" variant="primary" className="w-full justify-center">
               ورود به سامانه بنیاد

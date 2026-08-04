@@ -1,7 +1,10 @@
-export default function Toggle({ on, onChange, disabled }: { on: boolean; onChange?: () => void; disabled?: boolean }) {
+export default function Toggle({ on, onChange, disabled, label }: { on: boolean; onChange?: () => void; disabled?: boolean; label?: string }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label ?? (on ? "غیرفعال‌سازی" : "فعال‌سازی")}
       disabled={disabled}
       onClick={onChange}
       className={`w-10 h-[22px] rounded-full flex items-center px-0.5 transition-colors shrink-0 ${

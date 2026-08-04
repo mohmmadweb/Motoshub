@@ -54,6 +54,9 @@ import {
   type ReactionIcon,
 } from "../data/mock";
 import Avatar from "../components/Avatar";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge } from "../components/ui/ScopeControl";
+import { withDemoScopes } from "../data/tenancy";
 import Badge from "../components/ui/Badge";
 import EmptyState from "../components/ui/EmptyState";
 import Drawer from "../components/ui/Drawer";
@@ -98,6 +101,9 @@ const nowFa = () => new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", mi
 // پس‌زمینه پترن‌دار گفتگو: کلاس chat-surface در index.css (با نسخه تیره)
 
 export default function Chat() {
+  const { filterScoped } = useTenancy();
+  // کانال‌های سازمانی دامنه‌دارند — هر کاربر فقط کانال‌های دامنه‌ی خودش را می‌بیند (DMها عضویت‌محورند)
+  const scopedChannels = useMemo(() => filterScoped(withDemoScopes(channels, 21)), [filterScoped]);
   const [selection, setSelection] = useState<Selection>({ kind: "dm", id: initialChatThreads[0].id });
   const [messages, setMessages] = useState<ChannelMessage[]>(initialChannelMessages);
   const [dmThreads, setDmThreads] = useState<DmThreadState[]>(
@@ -131,7 +137,7 @@ export default function Chat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { notify } = useToast();
 
-  const activeChannel = selection.kind === "channel" ? channels.find((c) => c.id === selection.id) : undefined;
+  const activeChannel = selection.kind === "channel" ? scopedChannels.find((c) => c.id === selection.id) : undefined;
   const activeDm = selection.kind === "dm" ? dmThreads.find((c) => c.id === selection.id) : undefined;
 
   const channelMsgs = useMemo(() => messages.filter((m) => m.channelId === selection.id), [messages, selection]);
@@ -281,7 +287,7 @@ export default function Chat() {
         notify(`پیام به «${t.with}» هدایت شد.`);
       }
     } else {
-      const ch = channels.find((c) => c.id === target.id);
+      const ch = scopedChannels.find((c) => c.id === target.id);
       setMessages((prev) => [...prev, { id: `cm-${Date.now()}`, channelId: target.id, authorId: currentUser.id, text: `↪️ هدایت‌شده از ${from}: ${forwarding.text}`, time: nowFa() }]);
       notify(`پیام به کانال «${ch?.name}» هدایت شد.`);
     }
@@ -321,9 +327,9 @@ export default function Chat() {
 
   const q = sidebarQuery.trim();
   const grouped = {
-    favorites: channels.filter((c) => favorites.includes(c.id) && c.name.includes(q)),
-    channels: channels.filter((c) => c.category === "کانال‌ها" && !favorites.includes(c.id) && c.name.includes(q)),
-    archived: channels.filter((c) => c.category === "بایگانی‌شده" && c.name.includes(q)),
+    favorites: scopedChannels.filter((c) => favorites.includes(c.id) && c.name.includes(q)),
+    channels: scopedChannels.filter((c) => c.category === "کانال‌ها" && !favorites.includes(c.id) && c.name.includes(q)),
+    archived: scopedChannels.filter((c) => c.category === "بایگانی‌شده" && c.name.includes(q)),
     dms: dmThreads.filter((t) => t.with.includes(q)),
   };
 
@@ -878,7 +884,7 @@ export default function Chat() {
                   <span className="text-[13px] font-medium text-ink-900">{t.with}</span>
                 </button>
               ))}
-              {channels.filter((c) => c.category !== "بایگانی‌شده").map((c) => (
+              {scopedChannels.filter((c) => c.category !== "بایگانی‌شده").map((c) => (
                 <button key={c.id} onClick={() => doForward({ kind: "channel", id: c.id })} className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-ink-50 text-right transition-colors">
                   <span className="w-8 h-8 rounded-full bg-navy-900 text-white flex items-center justify-center shrink-0">
                     {c.type === "private" ? <Lock size={13} /> : <Hash size={13} />}
@@ -1097,7 +1103,10 @@ function ChannelHeader({
         </button>
         {channel.type === "private" ? <Lock size={14} className="text-ink-400 shrink-0" /> : <Hash size={14} className="text-ink-400 shrink-0" />}
         <div className="min-w-0">
-          <p className="text-sm font-bold text-ink-900 leading-4">{channel.name}</p>
+          <p className="text-sm font-bold text-ink-900 leading-4 flex items-center gap-1.5">
+            {channel.name}
+            <ScopeBadge item={channel} />
+          </p>
           <p className="text-[11px] text-ink-400 truncate">{channel.topic}</p>
         </div>
       </div>

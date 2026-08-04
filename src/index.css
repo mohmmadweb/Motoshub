@@ -29,14 +29,15 @@
   --color-navy-700: #213044;
   --color-navy-800: #182536;
   --color-navy-900: #0f1828;
+  --color-navy-950: #0b1220; /* پس‌زمینه‌ی فوتر عمومی — قبلاً تعریف نشده بود و فوتر شفاف رندر می‌شد */
 
   /* Neutral slate scale used across surfaces/text */
   --color-ink-50: #f6f7f9;
   --color-ink-100: #eceef1;
   --color-ink-200: #dde1e6;
   --color-ink-300: #c1c7d0;
-  --color-ink-400: #97a0ad;
-  --color-ink-500: #707a89;
+  --color-ink-400: #5d6b81; /* ≥4.5:1 حتی روی پس‌زمینه‌ی خاکستری صفحه */
+  --color-ink-500: #5b6678; /* 5.8:1 روی سفید */
   --color-ink-600: #4f5867;
   --color-ink-700: #383f4c;
   --color-ink-800: #232831;

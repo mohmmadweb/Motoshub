@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Newspaper, Pin, MessageCircle, Plus, Building2, Eye, Globe2, Network } from "lucide-react";
 import { Link } from "react-router-dom";
-import { type NewsItem, type Visibility } from "../data/mock";
+import { type NewsItem, type Visibility, newsTopics, type NewsTopic } from "../data/mock";
 import {
   holdings,
   allCompanies,
@@ -28,6 +28,7 @@ export default function News() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [topic, setTopic] = useState<NewsTopic>("سازمانی");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ title?: boolean; summary?: boolean }>({});
@@ -40,6 +41,7 @@ export default function News() {
     setTitle(n.title);
     setSummary(n.summary);
     setPinned(Boolean(n.pinned));
+    setTopic(n.topic ?? "سازمانی");
     setVisibility(n.visibility);
     setOpen(true);
   };
@@ -59,7 +61,7 @@ export default function News() {
     setErrors(errs);
     if (errs.title || errs.summary) return;
     if (editingId) {
-      setNewsItems((prev) => prev.map((n) => (n.id === editingId ? { ...n, title: title.trim(), summary: summary.trim(), pinned, visibility } : n)));
+      setNewsItems((prev) => prev.map((n) => (n.id === editingId ? { ...n, title: title.trim(), summary: summary.trim(), pinned, visibility, topic } : n)));
       notify(`خبر «${title.trim()}» ویرایش شد.`);
     } else {
       const newItem: NewsItem = {
@@ -71,13 +73,14 @@ export default function News() {
         views: 0,
         pinned,
         visibility,
+        topic,
       };
       setNewsItems((prev) => [newItem, ...prev]);
       notify(`اطلاعیه «${newItem.title}» ${visibility === "عمومی" ? "برای همه‌ی اعضا" : "به‌صورت خصوصی"} منتشر شد.`);
     }
     setOpen(false);
     setEditingId(null);
-    setTitle(""); setSummary(""); setPinned(false); setVisibility("خصوصی");
+    setTitle(""); setSummary(""); setPinned(false); setVisibility("خصوصی"); setTopic("سازمانی");
   };
 
   const toggleVisibility = (id: string) => {
@@ -128,7 +131,7 @@ export default function News() {
                 month === i + 1 ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
               }`}
             >
-              {m} <span className="text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>
+              {m} <span className="text-[10px]">({count.toLocaleString("fa-IR")})</span>
             </button>
           );
         })}
@@ -145,6 +148,9 @@ export default function News() {
                   <Link to={`/dashboard/news/${n.id}`} className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors">
                     {n.title}
                   </Link>
+                  {n.topic && (
+                    <span className="text-[9.5px] font-medium bg-ink-100 text-ink-600 border border-ink-200 rounded-full px-1.5 py-px">{n.topic}</span>
+                  )}
                   {n.id === mostViewed?.id && (
                     <span className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-1.5 py-px">پربازدیدترین</span>
                   )}
@@ -195,6 +201,12 @@ export default function News() {
             <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} className="accent-brand-600" />
             سنجاق‌کردن به‌عنوان خبر مهم
           </label>
+          <div>
+            <label className="text-xs font-medium text-ink-600 block mb-1.5">موضوع خبر</label>
+            <select value={topic} onChange={(e) => setTopic(e.target.value as NewsTopic)} className="input-field">
+              {newsTopics.map((tp) => <option key={tp}>{tp}</option>)}
+            </select>
+          </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار</Button>
@@ -274,7 +286,7 @@ function ScopedNewsSection() {
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] text-ink-400 flex items-center gap-1"><Eye size={12} /> مشاهده به‌عنوان:</span>
-          <select value={viewer} onChange={(e) => setViewer(e.target.value)} className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white">
+          <select value={viewer} onChange={(e) => setViewer(e.target.value)} aria-label="مشاهده به‌عنوان" className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white">
             <option value="hq">ستاد بنیاد (همه محتوا)</option>
             {holdings.map((h) => (
               <optgroup key={h.id} label={h.name}>

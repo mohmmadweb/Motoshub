@@ -28,7 +28,7 @@ export default function PublicFooter() {
             </span>
             <span className="font-bold text-white text-sm">بنیاد مستضعفان انقلاب اسلامی</span>
           </div>
-          <p className="text-xs leading-6 text-navy-400 max-w-xs">
+          <p className="text-xs leading-6 text-navy-300 max-w-xs">
             شبکه اجتماعی و فضای کاری سازمانی بنیاد — بستر یکپارچه‌ی ارتباط، دانش و همکاری
             هلدینگ‌ها و شرکت‌های زیرمجموعه.
           </p>
@@ -71,7 +71,7 @@ export default function PublicFooter() {
         </nav>
       </div>
 
-      <div className="border-t border-white/10 py-4 text-center text-[11px] text-navy-500">
+      <div className="border-t border-white/10 py-4 text-center text-[11px] text-navy-300">
         <p className="flex items-center justify-center gap-2">
           <Layers size={12} /> پروتوتایپ داخلی — داده‌های این نسخه نمایشی است.
         </p>

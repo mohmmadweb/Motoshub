@@ -16,6 +16,8 @@ const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "offline", label: "نامرئی", dot: "bg-ink-300" },
 ];
 
+const IS_DEMO = import.meta.env.VITE_DEMO !== "false";
+
 export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const unread = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -158,9 +160,12 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                   ))}
                 </div>
                 <div className="h-px bg-ink-100 my-1" />
+                {IS_DEMO && (
                 <p className="px-3.5 py-1 text-[11px] text-ink-400">
                   ورود به‌عنوان <span className="text-ink-300">(نمایشی)</span>
                 </p>
+                )}
+                {IS_DEMO && (
                 <div className="px-2 pb-1.5">
                   <select
                     value={actingUser.id}
@@ -178,6 +183,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                     دامنه‌ی دید از روی عضویت همین کاربر محاسبه می‌شود — سطح فعلی: <b>{session.level}</b>
                   </p>
                 </div>
+                )}
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to={`/dashboard/profile/${displayUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <UserCircle size={15} className="text-ink-400" /> پروفایل من

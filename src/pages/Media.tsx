@@ -152,7 +152,7 @@ export default function Media() {
                 topic === t ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
               }`}
             >
-              {t} <span className="text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>
+              {t} <span className="text-[10px]">({count.toLocaleString("fa-IR")})</span>
             </button>
           );
         })}
@@ -174,6 +174,11 @@ export default function Media() {
                     {m.kind === "video" ? "ویدیو" : "تصویر"}
                   </Badge>
                 </span>
+                {m.kind === "video" && m.duration && (
+                  <span className="absolute bottom-2 right-2 text-[10px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded" dir="ltr">
+                    {m.duration}
+                  </span>
+                )}
               </div>
             </Link>
             <div className="p-3">

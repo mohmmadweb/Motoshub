@@ -58,6 +58,8 @@ type TenancyValue = {
   hasPermission: (id: string) => boolean;
   /** آیا این کاربر می‌تواند هلدینگ بسازد/حذف کند */
   canManageHoldings: boolean;
+  /** اختیار مدیریتِ یک گروه مشخص — نقش «ناظم گروه» فقط در گروه خودش */
+  canModerateGroup: (group: { id: string; scope?: string; holdingId?: string; companyId?: string }) => boolean;
   /** هلدینگ‌هایی که این کاربر اختیار مدیریتشان را دارد */
   managedHoldingIds: string[];
   /** شرکت‌هایی که این کاربر اختیار مدیریتشان را دارد */
@@ -208,6 +210,15 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
 
       canAccessAdmin,
       hasPermission,
+      canModerateGroup: (g) => {
+        if (session.level === "سیستم") return true;
+        if (grant?.level === "گروه") return grant.groupId === g.id;
+        if (session.level === "هلدینگ")
+          return !g.scope || g.scope === "سراسری" || session.memberHoldingIds.includes(g.holdingId ?? "");
+        // مدیر شرکت (نقش مدیریتی سطح شرکت): فقط گروه‌های شرکت خودش
+        if (canAccessAdmin) return managedCompanyIds.includes(g.companyId ?? "");
+        return false;
+      },
       canManageHoldings: session.level === "سیستم",
       managedHoldingIds,
       managedCompanyIds,

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Flag, UserPlus, FileText, MessagesSquare, Pencil, Trash2, UserMinus } from "lucide-react";
 import { posts, users } from "../data/mock";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
 import PostCard from "../components/PostCard";
 import Badge from "../components/ui/Badge";
 import Avatar from "../components/Avatar";
@@ -23,6 +24,8 @@ export default function GroupDetail() {
   const { notify } = useToast();
   const confirm = useConfirm();
   const group = groups.find((g) => g.id === id);
+  const { canModerateGroup } = useTenancy();
+  const canModerate = group ? canModerateGroup(group) : false;
   const [tab, setTab] = useState<TabId>("posts");
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", category: "", privacy: "خصوصی" as "عمومی" | "خصوصی" });
@@ -101,13 +104,17 @@ export default function GroupDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <VisibilityToggle visibility={group.privacy} onChange={togglePrivacy} size="sm" />
-          <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openEdit}>
-            ویرایش گروه
-          </Button>
-          <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeGroup}>
-            حذف گروه
-          </Button>
+          {canModerate && <VisibilityToggle visibility={group.privacy} onChange={togglePrivacy} size="sm" />}
+          {canModerate && (
+            <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openEdit}>
+              ویرایش گروه
+            </Button>
+          )}
+          {canModerate && (
+            <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeGroup}>
+              حذف گروه
+            </Button>
+          )}
           <Button variant="secondary" size="sm" icon={<Flag size={13} />}>
             گزارش تخلف
           </Button>
@@ -156,7 +163,7 @@ export default function GroupDetail() {
                 </div>
                 {i === 0 ? (
                   <Badge tone="navy">ناظم گروه</Badge>
-                ) : (
+                ) : canModerate ? (
                   <button
                     onClick={() => removeMember(m.id, m.name)}
                     className="p-1.5 rounded-md text-ink-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
@@ -164,7 +171,7 @@ export default function GroupDetail() {
                   >
                     <UserMinus size={14} />
                   </button>
-                )}
+                ) : null}
               </div>
             ))}
           </div>

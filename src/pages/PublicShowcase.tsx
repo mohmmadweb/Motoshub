@@ -374,11 +374,15 @@ const monthOf = (date: string) => faToNum(date.split("/")[1] ?? "0");
 
 function NewsSection({ items }: { items: NewsItem[] }) {
   const [month, setMonth] = useState<number | null>(null);
+  const [topic, setTopic] = useState<string>("همه");
   const [q, setQ] = useState("");
+
+  const topics = ["همه", ...Array.from(new Set(items.map((n) => n.topic).filter(Boolean)))] as string[];
 
   const sorted = [...items].sort((a, b) => (a.date < b.date ? 1 : -1)); // جدیدترین اول
   const filtered = sorted
     .filter((n) => month === null || monthOf(n.date) === month)
+    .filter((n) => topic === "همه" || n.topic === topic)
     .filter((n) => !q || n.title.includes(q) || n.summary.includes(q));
 
   // فقط شناسه‌ها — برای تگ‌های کوچکِ ارجاعی روی کارت‌های استاندارد (نه کارت رنگی هم‌وزن هیرو)
@@ -436,14 +440,31 @@ function NewsSection({ items }: { items: NewsItem[] }) {
                 month === i + 1 ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
               }`}
             >
-              {m}{count > 0 && <span className="mr-1 text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>}
+              {m}{count > 0 && <span className="mr-1 text-[10px]">({count.toLocaleString("fa-IR")})</span>}
             </button>
           );
         })}
       </div>
 
+      {topics.length > 2 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-ink-500">موضوع:</span>
+          {topics.map((tp) => (
+            <button
+              key={tp}
+              onClick={() => setTopic(tp)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                topic === tp ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
+              }`}
+            >
+              {tp}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <EmptyState icon={<Newspaper size={20} />} title={q ? "خبری با این مشخصات پیدا نشد" : "در این ماه خبری منتشر نشده"} />
+        <EmptyState icon={<Newspaper size={20} />} title={q || topic !== "همه" ? "خبری با این مشخصات پیدا نشد" : "در این ماه خبری منتشر نشده"} />
       ) : (
         <>
           {/* تنها یک خبر شاخص — بدون رقابت بصری با کارت‌های هم‌وزن */}
@@ -455,8 +476,13 @@ function NewsSection({ items }: { items: NewsItem[] }) {
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
               <div className="relative p-6 md:p-9 max-w-3xl">
-                <span className="inline-block text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full mb-3 backdrop-blur-sm">
-                  {heroPick.pinned ? "اطلاعیه مهم" : "خبر شاخص"}
+                <span className="inline-flex items-center gap-2 mb-3">
+                  <span className="text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full backdrop-blur-sm">
+                    {heroPick.pinned ? "اطلاعیه مهم" : "خبر شاخص"}
+                  </span>
+                  {heroPick.topic && (
+                    <span className="text-xs font-semibold bg-white/90 text-ink-700 px-3 py-1 rounded-full">{heroPick.topic}</span>
+                  )}
                 </span>
                 <h2 className="text-2xl md:text-3xl font-black text-white leading-10 mb-2 group-hover:text-brand-200 transition-colors">
                   {heroPick.title}
@@ -504,9 +530,10 @@ function NewsSection({ items }: { items: NewsItem[] }) {
                 const tag = refTag(n);
                 return (
                   <Link key={n.id} to={`/public/news/${n.id}`} className="group bg-white rounded-xl border border-ink-200 p-4 hover:border-brand-300 hover:shadow-sm transition-all">
-                    {tag && (
-                      <span className={`inline-block text-[10px] font-bold border px-2 py-0.5 rounded-full mb-2 ${tag.cls}`}>{tag.label}</span>
-                    )}
+                    <span className="flex items-center gap-1.5 flex-wrap mb-2">
+                      {n.topic && <span className="inline-block text-[10px] font-bold border border-ink-200 bg-ink-50 text-ink-600 px-2 py-0.5 rounded-full">{n.topic}</span>}
+                      {tag && <span className={`inline-block text-[10px] font-bold border px-2 py-0.5 rounded-full ${tag.cls}`}>{tag.label}</span>}
+                    </span>
                     <p className="text-[13px] font-bold text-ink-900 leading-6 line-clamp-2 group-hover:text-brand-700 transition-colors">{n.title}</p>
                     <p className="text-xs text-ink-500 mt-2.5 pt-2.5 border-t border-ink-50 flex items-center gap-2">
                       {n.date} <span>· {n.views.toLocaleString("fa-IR")} بازدید</span>
@@ -523,13 +550,12 @@ function NewsSection({ items }: { items: NewsItem[] }) {
 }
 
 // ─── MEDIA — Gallery ──────────────────────────────────────────────────────────
-// مدت‌زمان نمایشی ویدیو — قطعی از روی شناسه تا هر بار یکسان بماند
-const mockDuration = (id: string) => {
+// مدت ویدیو: فیلد واقعی؛ برای آیتم‌های بدون فیلد، برآورد قطعی از شناسه
+const videoDuration = (m: MediaItem) => {
+  if (m.duration) return m.duration;
   let h = 0;
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 9973;
-  const mins = 1 + (h % 12);
-  const secs = h % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  for (const ch of m.id) h = (h * 31 + ch.charCodeAt(0)) % 9973;
+  return `${String(1 + (h % 12)).padStart(2, "0")}:${String(h % 60).padStart(2, "0")}`;
 };
 
 function MediaSection({ items }: { items: MediaItem[] }) {
@@ -606,7 +632,7 @@ function MediaSection({ items }: { items: MediaItem[] }) {
                 topic === t ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
               }`}
             >
-              {t} <span className="text-[10px] opacity-70">({count.toLocaleString("fa-IR")})</span>
+              {t} <span className="text-[10px]">({count.toLocaleString("fa-IR")})</span>
             </button>
           );
         })}
@@ -630,7 +656,7 @@ function MediaSection({ items }: { items: MediaItem[] }) {
                 </span>
                 {m.kind === "video" && (
                   <span className="absolute bottom-3 right-3 text-[11px] font-bold bg-black/60 text-white px-2 py-0.5 rounded-md" dir="ltr">
-                    {mockDuration(m.id)}
+                    {videoDuration(m)}
                   </span>
                 )}
                 <span className="absolute bottom-3 left-3 flex items-center gap-1 text-white text-[11px] font-semibold bg-black/30 px-2 py-0.5 rounded-md">
@@ -661,10 +687,11 @@ const eventStatus = (e: EventItem): { label: string; cls: string; upcoming: bool
   const k = dateKey(e.jalaliDate);
   if (k > TODAY_KEY) return { label: "در حال ثبت‌نام", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", upcoming: true };
   if (k === TODAY_KEY) return { label: "امروز برگزار می‌شود", cls: "bg-brand-50 text-brand-700 border-brand-200", upcoming: true };
-  return { label: "برگزار شده", cls: "bg-ink-100 text-ink-500 border-ink-200", upcoming: false };
+  return { label: "برگزار شده", cls: "bg-ink-100 text-ink-700 border-ink-200", upcoming: false };
 };
-// ظرفیت نمایشی — قطعی از روی شناسه
-const mockCapacity = (e: EventItem) => {
+// ظرفیت: فیلد واقعی؛ برای آیتم‌های تازه‌ساخته‌ی بدون فیلد، برآورد قطعی
+const eventCapacity = (e: EventItem) => {
+  if (e.capacity) return e.capacity;
   let h = 0;
   for (const ch of e.id) h = (h * 31 + ch.charCodeAt(0)) % 997;
   return e.attendees + 20 + (h % 80);
@@ -674,11 +701,15 @@ function EventsSection({ items }: { items: EventItem[] }) {
   const { notify } = useToast();
   const [time, setTime] = useState<"all" | "upcoming" | "past">("all");
   const [mode, setMode] = useState<"all" | "حضوری" | "آنلاین">("all");
+  const [cat, setCat] = useState<string>("همه");
   const [q, setQ] = useState("");
+
+  const cats = ["همه", ...Array.from(new Set(items.map((e) => e.category).filter(Boolean)))] as string[];
 
   const filtered = items
     .filter((e) => (time === "all" ? true : time === "upcoming" ? eventStatus(e).upcoming : !eventStatus(e).upcoming))
     .filter((e) => (mode === "all" ? true : e.mode === mode))
+    .filter((e) => (cat === "همه" ? true : e.category === cat))
     .filter((e) => !q || e.title.includes(q) || e.location.includes(q));
 
   // هیرو = نزدیک‌ترین رویدادِ پیشِ رو؛ اگر نبود، آخرین برگزارشده
@@ -702,10 +733,10 @@ function EventsSection({ items }: { items: EventItem[] }) {
     return (
       <Link
         to={`/public/events/${e.id}`}
-        className={`group bg-white rounded-xl border border-ink-200 p-4 flex items-center gap-4 hover:border-brand-300 hover:shadow-sm transition-all ${dimmed ? "opacity-75" : ""}`}
+        className={`group bg-white rounded-xl border border-ink-200 p-4 flex items-center gap-4 hover:border-brand-300 hover:shadow-sm transition-all`}
       >
-        <div className={`w-14 h-14 rounded-xl text-white flex flex-col items-center justify-center shrink-0 ${dimmed ? "bg-ink-300" : "bg-navy-900"}`}>
-          <span className={`text-[9px] leading-none ${dimmed ? "text-white/70" : "text-navy-400"}`}>{e.jalaliDate.split("/")[1] ?? "—"}</span>
+        <div className={`w-14 h-14 rounded-xl text-white flex flex-col items-center justify-center shrink-0 ${dimmed ? "bg-ink-500" : "bg-navy-900"}`}>
+          <span className={`text-[9px] leading-none ${dimmed ? "text-white" : "text-navy-300"}`}>{e.jalaliDate.split("/")[1] ?? "—"}</span>
           <span className="text-base font-bold leading-tight">{e.jalaliDate.split("/")[2] ?? "—"}</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -714,10 +745,11 @@ function EventsSection({ items }: { items: EventItem[] }) {
           </h3>
           <div className="flex items-center gap-3 mt-1 text-[11px] text-ink-400 flex-wrap">
             <span className={`font-bold px-2 py-0.5 rounded-full border ${st.cls}`}>{st.label}</span>
+            {e.category && <span className="font-medium px-2 py-0.5 rounded-full bg-ink-100 text-ink-700">{e.category}</span>}
             <span className={`font-bold px-2 py-0.5 rounded-full ${e.mode === "آنلاین" ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-600"}`}>{e.mode}</span>
             <span className="flex items-center gap-1"><Clock  size={11} /> {e.time}</span>
             <span className="flex items-center gap-1"><MapPin size={11} /> {e.location}</span>
-            <span className="flex items-center gap-1"><Users  size={11} /> {e.attendees.toLocaleString("fa-IR")} از {mockCapacity(e).toLocaleString("fa-IR")} ظرفیت</span>
+            <span className="flex items-center gap-1"><Users  size={11} /> {e.attendees.toLocaleString("fa-IR")} از {eventCapacity(e).toLocaleString("fa-IR")} ظرفیت</span>
           </div>
         </div>
         <ArrowLeft size={14} className="text-ink-300 group-hover:text-brand-500 transition-colors shrink-0" />
@@ -772,8 +804,25 @@ function EventsSection({ items }: { items: EventItem[] }) {
         </label>
       </div>
 
+      {cats.length > 2 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-ink-500">دسته:</span>
+          {cats.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                cat === c ? "bg-brand-600 text-white border-brand-600" : "bg-white text-ink-600 border-ink-200 hover:border-brand-300"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <EmptyState icon={<CalendarDays size={20} />} title={q ? "رویدادی با این مشخصات پیدا نشد" : "هنوز رویداد عمومی‌ای منتشر نشده"} />
+        <EmptyState icon={<CalendarDays size={20} />} title={q || cat !== "همه" ? "رویدادی با این مشخصات پیدا نشد" : "هنوز رویداد عمومی‌ای منتشر نشده"} />
       ) : (
         <>
           {/* رویداد شاخص = نزدیک‌ترین رویداد پیشِ رو */}
@@ -783,9 +832,9 @@ function EventsSection({ items }: { items: EventItem[] }) {
                 <div className="relative p-6 lg:p-8 flex items-start gap-5" style={bgStyle(eventImg(featured.id), "#182536")}>
                   <span className="absolute inset-0 bg-navy-900/80" />
                   <div className="relative w-20 h-20 rounded-2xl bg-brand-500 text-white flex flex-col items-center justify-center shrink-0 shadow-lg">
-                    <span className="text-xs text-brand-100 font-medium leading-none">{featured.jalaliDate.split("/")[1] ?? "—"}</span>
+                    <span className="text-xs text-white/95 font-medium leading-none">{featured.jalaliDate.split("/")[1] ?? "—"}</span>
                     <span className="text-3xl font-black leading-tight">{featured.jalaliDate.split("/")[2] ?? "—"}</span>
-                    <span className="text-[10px] text-brand-200 leading-none mt-0.5">{featured.jalaliDate.split("/")[0]}</span>
+                    <span className="text-[10px] text-brand-50 leading-none mt-0.5">{featured.jalaliDate.split("/")[0]}</span>
                   </div>
                   <div className="relative min-w-0">
                     <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-full border mb-2 bg-white/95 ${eventStatus(featured).upcoming ? "text-emerald-700 border-emerald-200" : "text-ink-500 border-ink-200"}`}>
@@ -797,7 +846,7 @@ function EventsSection({ items }: { items: EventItem[] }) {
                     <div className="flex items-center gap-4 text-sm text-navy-300 flex-wrap">
                       <span className="flex items-center gap-1.5"><Clock    size={13} /> {featured.time}</span>
                       <span className="flex items-center gap-1.5"><MapPin   size={13} /> {featured.location}</span>
-                      <span className="flex items-center gap-1.5"><Users    size={13} /> {featured.attendees.toLocaleString("fa-IR")} از {mockCapacity(featured).toLocaleString("fa-IR")} ظرفیت</span>
+                      <span className="flex items-center gap-1.5"><Users    size={13} /> {featured.attendees.toLocaleString("fa-IR")} از {eventCapacity(featured).toLocaleString("fa-IR")} ظرفیت</span>
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${featured.mode === "آنلاین" ? "bg-brand-500/30 text-brand-200" : "bg-white/10 text-white"}`}>
                         {featured.mode}
                       </span>

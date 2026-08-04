@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, MapPin, Users, Plus, Calendar, Send } from "lucide-react";
 import { Link } from "react-router-dom";
-import { type EventItem, type Visibility } from "../data/mock";
+import { eventCategories, type EventCategory, type EventItem, type Visibility } from "../data/mock";
 import RowActions from "../components/ui/RowActions";
 import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
@@ -42,6 +42,8 @@ function EventsListTab() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
+  const [category, setCategory] = useState<EventCategory>("جلسه");
+  const [capacity, setCapacity] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ title?: boolean; date?: boolean }>({});
   const { notify } = useToast();
@@ -77,7 +79,7 @@ function EventsListTab() {
       setEvents((prev) =>
         prev.map((e) =>
           e.id === editingId
-            ? { ...e, title: title.trim(), jalaliDate: jalaliDate.trim(), time: time.trim() || "—", location: location.trim() || "نامشخص", description: description.trim() || e.description, visibility, ...itemScope }
+            ? { ...e, title: title.trim(), jalaliDate: jalaliDate.trim(), time: time.trim() || "—", location: location.trim() || "نامشخص", description: description.trim() || e.description, visibility, category, capacity: Number(capacity) || e.capacity, ...itemScope }
             : e
         )
       );
@@ -95,6 +97,8 @@ function EventsListTab() {
         hashtags: [],
         description: description.trim() || "بدون توضیحات",
         visibility,
+        category,
+        capacity: Number(capacity) || undefined,
         ...itemScope,
       };
       setEvents((prev) => [newEvent, ...prev]);
@@ -164,8 +168,9 @@ function EventsListTab() {
             },
           },
           { key: "mode", label: "حالت", render: (e) => <Badge tone={e.mode === "آنلاین" ? "brand" : "navy"}>{e.mode}</Badge> },
+          { key: "category", label: "دسته", render: (e) => e.category ? <Badge tone="neutral">{e.category}</Badge> : <span className="text-xs text-ink-300">—</span> },
           { key: "location", label: "مکان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><MapPin size={12} className="shrink-0" /> <span className="truncate max-w-[160px]">{e.location}</span></span> },
-          { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}</span> },
+          { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}{e.capacity ? ` از ${e.capacity.toLocaleString("fa-IR")}` : ""}</span> },
           { key: "owner", label: "دامنه", render: (e) => <ScopeBadge item={e} /> },
           { key: "visibility", label: "دسترسی", render: (e) => <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> },
           {
@@ -201,6 +206,18 @@ function EventsListTab() {
             <div>
               <label className="text-xs font-medium text-ink-600 block mb-1.5">ساعت</label>
               <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="۱۰:۰۰" className="input-field" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">دسته‌ی رویداد</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory)} className="input-field">
+                {eventCategories.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-600 block mb-1.5">ظرفیت ثبت‌نام</label>
+              <input value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="مثلاً ۱۰۰" className="input-field" inputMode="numeric" />
             </div>
           </div>
           <div>
