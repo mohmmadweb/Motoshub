@@ -2,7 +2,6 @@ import { Link, useParams } from "react-router-dom";
 import {
   Lock,
   LogIn,
-  Layers,
   ArrowRight,
   MessagesSquare,
   NotebookPen,
@@ -25,7 +24,7 @@ import {
 } from "lucide-react";
 import { useContent } from "../context/ContentContext";
 import SiteHeader from "../components/SiteHeader";
-import CreditFooter from "../components/CreditFooter";
+import PublicFooter from "../components/PublicFooter";
 import Badge from "../components/ui/Badge";
 import Avatar from "../components/Avatar";
 import { users, posts } from "../data/mock";
@@ -112,12 +111,7 @@ export default function PublicItemDetail() {
         </div>
       </main>
 
-      <footer className="px-6 lg:px-16 py-5 text-center text-xs text-ink-400 border-t border-ink-100">
-        <p className="flex items-center justify-center gap-2">
-          <Layers size={14} /> پروتوتایپ داخلی — داده‌های این نسخه نمایشی است.
-        </p>
-        <CreditFooter />
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
@@ -236,8 +230,31 @@ function ForumDetail({ item }: { item: ForumTopic }) {
             <p className="text-sm leading-7 text-ink-700">{r.text}</p>
           </div>
         ))}
+      </div>
+
+      {/* فرم پاسخ همیشه در همین‌جا است — بدون ورود فقط غیرفعال می‌شود */}
+      <div className="card p-4 mt-4">
+        <p className="text-xs font-bold text-ink-600 mb-2">پاسخ شما</p>
+        <textarea
+          disabled
+          aria-disabled="true"
+          placeholder="برای نوشتن پاسخ، ابتدا وارد حساب سازمانی خود شوید…"
+          className="w-full min-h-24 text-sm border border-ink-200 rounded-lg p-3 bg-ink-50/60 text-ink-400 resize-none cursor-not-allowed"
+        />
+        <div className="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
+          <p className="text-[11.5px] text-ink-400">پس از ورود، پاسخ شما در همین محل ثبت می‌شود.</p>
+          <Link to="/login" className="btn bg-navy-900 text-white hover:bg-navy-800 text-xs px-4 py-2">
+            <LogIn size={13} /> ورود و ارسال پاسخ
+          </Link>
+        </div>
         {item.replies > sampleReplies.length && (
-          <p className="text-[11.5px] text-ink-400 text-center">+ {(item.replies - sampleReplies.length).toLocaleString("fa-IR")} پاسخ دیگر</p>
+          <Link
+            to="/login"
+            title="مشاهده‌ی همه‌ی پاسخ‌ها نیاز به ورود دارد"
+            className="block text-center text-[12px] font-medium text-brand-600 hover:text-brand-700 hover:underline py-2 rounded-lg border border-dashed border-ink-200 hover:border-brand-300 transition-colors"
+          >
+            مشاهده‌ی {(item.replies - sampleReplies.length).toLocaleString("fa-IR")} پاسخ دیگر
+          </Link>
         )}
       </div>
     </div>
