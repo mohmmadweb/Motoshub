@@ -25,9 +25,9 @@ import {
   LifeBuoy,
   Award,
 } from "lucide-react";
-import { currentTenant } from "../data/mock";
+import { useTenancy } from "../context/TenancyContext";
 
-type Item = { to: string; label: string; icon: typeof Users; end?: boolean };
+type Item = { to: string; label: string; icon: typeof Users; end?: boolean; adminOnly?: boolean };
 
 export const navSections: { title: string; items: Item[] }[] = [
   {
@@ -68,7 +68,7 @@ export const navSections: { title: string; items: Item[] }[] = [
   {
     title: "مدیریت",
     items: [
-      { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings },
+      { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings, adminOnly: true },
       { to: "/dashboard/appearance", label: "ظاهر و برندسازی", icon: Palette },
       { to: "/dashboard/tickets", label: "تیکت پشتیبانی", icon: LifeBuoy },
       { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
@@ -79,6 +79,11 @@ export const navSections: { title: string; items: Item[] }[] = [
 const sections = navSections;
 
 export default function Sidebar() {
+  const { identity, canAccessAdmin, session, activeScopeLabel } = useTenancy();
+  // ناوبری نقش‌محور: آیتم‌های مدیریتی فقط برای نقش‌های دارای اختیار
+  const visibleSections = sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.adminOnly || canAccessAdmin) }))
+    .filter((s) => s.items.length > 0);
   return (
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-l border-ink-200 bg-navy-900 h-screen sticky top-0">
       <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10">
@@ -86,13 +91,15 @@ export default function Sidebar() {
           <img src="/bonyad-logo.png" alt="بنیاد مستضعفان انقلاب اسلامی" className="h-7 w-auto" />
         </span>
         <div className="min-w-0">
-          <p className="font-bold text-sm leading-4 text-white truncate">بنیاد مستضعفان</p>
-          <p className="text-[11px] text-navy-300 leading-4 truncate">{currentTenant.name}</p>
+          <p className="font-bold text-[12.5px] leading-[1.35] text-white line-clamp-2">{identity.name}</p>
+          <p className="text-[10.5px] text-navy-300 leading-4 truncate mt-0.5">
+            {session.level === "سیستم" ? "فضای کاری سازمانی" : activeScopeLabel}
+          </p>
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {sections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.title}>
             <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>
             <div className="space-y-0.5">
@@ -118,8 +125,8 @@ export default function Sidebar() {
 
       <div className="m-3 rounded-lg bg-white/5 p-3 text-[11px] text-navy-200">
         <div className="flex items-center justify-between mb-1">
-          <span className="font-semibold text-white">پلن {currentTenant.plan}</span>
-          <span>{currentTenant.users.toLocaleString("fa-IR")} کاربر</span>
+          <span className="font-semibold text-white">پلن سازمانی</span>
+          <span>{session.memberCompanyIds.length > 0 ? `${session.memberCompanyIds.length.toLocaleString("fa-IR")} عضویت` : "دسترسی کامل"}</span>
         </div>
         <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
           <div className="h-full bg-brand-400" style={{ width: "62%" }} />

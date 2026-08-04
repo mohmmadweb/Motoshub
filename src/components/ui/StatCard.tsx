@@ -22,9 +22,10 @@ export default function StatCard({
   };
   return (
     <div className="card p-4 flex items-start justify-between gap-3">
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-ink-500">{label}</p>
-        <p className="text-xl font-bold text-ink-900 mt-1">{value}</p>
+        {/* اعداد بلند (مثل مبالغ ریالی) نباید کارت را از صفحه بیرون بزنند */}
+        <p className="text-xl font-bold text-ink-900 mt-1 break-words leading-snug">{value}</p>
         {hint && <p className="text-[11px] text-ink-400 mt-1">{hint}</p>}
       </div>
       {icon && <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${toneMap[tone]}`}>{icon}</span>}

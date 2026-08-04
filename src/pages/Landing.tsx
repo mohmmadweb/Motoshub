@@ -31,11 +31,12 @@ export default function Landing() {
           className="relative flex items-center min-h-[26rem] lg:min-h-[30rem]"
           style={{ backgroundImage: "url(/img/meeting.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
         >
-          <div className="absolute inset-0 bg-gradient-to-l from-navy-950/95 via-navy-900/85 to-navy-900/60" />
+          <div className="absolute inset-0 bg-gradient-to-l from-navy-950/95 via-navy-950/85 to-navy-900/55" />
+          <div className="absolute inset-y-0 right-0 w-full max-w-3xl bg-gradient-to-l from-navy-950/80 to-transparent" aria-hidden />
           <div className="relative px-6 lg:px-16 max-w-7xl mx-auto w-full py-14">
             <div className="max-w-2xl">
               {/* برچسب معرفی — متن ساده، نه چیزی شبیه دکمه */}
-              <p className="text-[12px] font-semibold text-brand-300 tracking-wide mb-4">
+              <p className="text-[12px] font-bold text-brand-200 tracking-wide mb-4">
                 پلتفرم شبکه اجتماعی و فضای کاری سازمانی
               </p>
               <h1 className="text-3xl lg:text-[2.6rem] font-extrabold leading-[1.35] text-white">
@@ -55,12 +56,12 @@ export default function Landing() {
                 </Link>
               </div>
 
-              <dl className="flex items-center gap-8 mt-10">
+              <dl className="flex items-center gap-8 mt-10 flex-wrap">
                 {stats.map((s) => (
                   <div key={s.label}>
                     <dt className="sr-only">{s.label}</dt>
                     <dd className="text-2xl font-extrabold text-white">{s.value}</dd>
-                    <dd className="text-[11.5px] text-navy-300 mt-0.5">{s.label}</dd>
+                    <dd className="text-[11.5px] text-navy-200 mt-0.5 whitespace-nowrap">{s.label}</dd>
                   </div>
                 ))}
               </dl>
@@ -110,7 +111,7 @@ export default function Landing() {
                   ))}
                 </ul>
               </div>
-              <div className="card p-5 bg-white/5 border-white/10">
+              <div className="rounded-xl border p-5 bg-white/5 border-white/15">
                 <div className="flex items-center gap-2 mb-3 text-white">
                   <ShieldCheck size={18} className="text-brand-400" />
                   <span className="font-semibold text-sm">آماده‌ی ارزیابی نهادهای نظارتی</span>

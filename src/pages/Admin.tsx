@@ -93,6 +93,7 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
 const tenantPalette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
 
 export default function Admin() {
+  const { canAccessAdmin } = useTenancy();
   const [section, setSection] = useState<SectionId>("system-identity");
   // یک نصب = یک مشتری؛ این رکورد فقط برای بخش‌هایی مثل «کاربران» نگه داشته می‌شود
   const tenant = initialTenants[0];
@@ -109,6 +110,21 @@ export default function Admin() {
     setEnabledModules((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+
+  if (!canAccessAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-24 px-6">
+        <span className="w-14 h-14 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+          <ShieldCheck size={24} />
+        </span>
+        <h1 className="text-lg font-bold text-ink-900 mb-2">دسترسی به پنل راهبری ندارید</h1>
+        <p className="text-sm text-ink-500 max-w-sm leading-7">
+          این بخش مخصوص نقش‌های مدیریتی (مدیر سیستم، مدیر هلدینگ یا مدیر شرکت) است. در صورت نیاز،
+          از مدیر مجموعه‌ی خود درخواست دسترسی کنید.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

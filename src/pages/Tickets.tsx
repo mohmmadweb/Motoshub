@@ -9,6 +9,9 @@ import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // تیکت پشتیبانی — معادل iisticketing (تیکت + دسته + پاسخ‌گویی)
 type TicketMsg = { from: "me" | "support"; text: string; time: string };
@@ -21,7 +24,7 @@ type Ticket = {
   status: "باز" | "در حال بررسی" | "پاسخ داده شد" | "بسته";
   updated: string;
   messages: TicketMsg[];
-};
+} & Scoped;
 
 const categories = ["فنی و سامانه", "دسترسی و نقش‌ها", "مالی و پرداخت", "پیشنهاد و انتقاد"];
 
@@ -72,7 +75,7 @@ const statusTone: Record<Ticket["status"], BadgeTone> = { باز: "brand", "در
 const prioTone: Record<Ticket["priority"], BadgeTone> = { کم: "neutral", متوسط: "warning", فوری: "danger" };
 
 export default function Tickets() {
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+  const [tickets, setTickets] = useState<Ticket[]>(() => withDemoScopes(initialTickets, 10));
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
@@ -83,6 +86,8 @@ export default function Tickets() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const openCount = tickets.filter((t) => t.status === "باز" || t.status === "در حال بررسی").length;
 
@@ -91,6 +96,7 @@ export default function Tickets() {
     setSubject(tk.subject);
     setCategory(tk.category);
     setPriority(tk.priority);
+    setItemScope({ scope: tk.scope, holdingId: tk.holdingId, companyId: tk.companyId });
     setBody(tk.messages[0]?.text ?? "");
     setOpen(true);
   };
@@ -152,6 +158,7 @@ export default function Tickets() {
                 priority,
                 updated: "هم‌اکنون",
                 messages: tk.messages.map((m, i) => (i === 0 ? { ...m, text: body.trim() } : m)),
+                ...itemScope,
               }
             : tk
         )
@@ -170,6 +177,7 @@ export default function Tickets() {
       status: "باز",
       updated: "هم‌اکنون",
       messages: [{ from: "me", text: body.trim(), time: "هم‌اکنون" }],
+      ...itemScope,
     };
     setTickets((prev) => [t, ...prev]);
     notify(`تیکت «${t.no}» ثبت شد؛ پاسخ از طریق اعلان به شما اطلاع داده می‌شود.`);
@@ -205,6 +213,7 @@ export default function Tickets() {
     { key: "priority", label: "اولویت", render: (t) => <Badge tone={prioTone[t.priority]}>{t.priority}</Badge> },
     { key: "status", label: "وضعیت", render: (t) => <Badge tone={statusTone[t.status]}>{t.status}</Badge> },
     { key: "updated", label: "آخرین به‌روزرسانی" },
+    { key: "owner", label: "دامنه", render: (t) => <ScopeBadge item={t} /> },
     {
       key: "actions",
       label: "",
@@ -219,13 +228,13 @@ export default function Tickets() {
         description={`ثبت و پیگیری درخواست‌های پشتیبانی — ${openCount.toLocaleString("fa-IR")} تیکت باز`}
         icon={<LifeBuoy size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>تیکت جدید</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>تیکت جدید</Button>
         }
       />
 
       <DataTable
         columns={columns}
-        rows={tickets}
+        rows={filterScoped(tickets)}
         searchKeys={["subject", "no"]}
         searchPlaceholder="جستجو در موضوع یا شماره تیکت…"
         onRowClick={(t) => setSelected(t)}
@@ -255,6 +264,7 @@ export default function Tickets() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">شرح کامل <span className="text-rose-500">*</span></label>
             <textarea value={body} onChange={(e) => setBody(e.target.value)} className="input-field min-h-24" placeholder="جزئیات، مراحل بازتولید مشکل، اسکرین‌شات…" />
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "ثبت تیکت"}</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

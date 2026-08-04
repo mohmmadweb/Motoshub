@@ -59,14 +59,14 @@ export default function ScopeSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
         title={isMultiMember ? "شما عضو چند شرکت هستید — انتخاب کنید محتوای کدام را ببینید" : "مشاهده‌ی سامانه از دید یک دامنه‌ی دیگر"}
-        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[12.5px] font-medium max-w-[210px] transition-colors ${
+        className={`flex items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 py-2 text-[12.5px] font-medium max-w-[210px] transition-colors ${
           isViewingAs
             ? "border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400"
             : "border-ink-200 bg-ink-50 text-ink-700 hover:border-ink-300"
         }`}
       >
         {isViewingAs ? <Eye size={14} className="shrink-0" /> : isMultiMember ? <Building2 size={14} className="shrink-0" /> : <Globe2 size={14} className="shrink-0" />}
-        <span className="truncate">{activeScopeLabel}</span>
+        <span className="truncate hidden sm:inline">{activeScopeLabel}</span>
         <ChevronDown size={13} className="shrink-0 opacity-70" />
       </button>
 
@@ -74,7 +74,7 @@ export default function ScopeSwitcher() {
         <div
           role="listbox"
           aria-label="انتخاب دامنه"
-          className="absolute top-full mt-1.5 left-0 w-72 max-h-[70vh] overflow-y-auto bg-white border border-ink-200 rounded-xl shadow-lg py-1.5 z-40"
+          className="absolute top-full mt-1.5 left-0 w-72 max-w-[85vw] max-h-[70vh] overflow-y-auto bg-white border border-ink-200 rounded-xl shadow-lg py-1.5 z-40"
         >
           <p className="px-3 py-1 text-[10px] font-semibold text-ink-400 uppercase tracking-wide">
             {isMultiMember ? "شرکت‌هایی که عضو آن‌ها هستید" : "مشاهده به‌عنوان"}

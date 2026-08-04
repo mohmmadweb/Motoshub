@@ -108,7 +108,7 @@ export default function Forum() {
 
       <div className="card divide-y divide-ink-100">
         {filterScoped(topics).map((t) => (
-          <Link key={t.id} to={`/dashboard/forum/${t.id}`} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
+          <Link key={t.id} to={`/dashboard/forum/${t.id}`} className="p-4 flex items-center justify-between gap-3 hover:bg-ink-50/60 flex-wrap">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm truncate text-ink-900">{t.title}</h3>
@@ -122,7 +122,7 @@ export default function Forum() {
                 توسط {t.author} · دسته: {t.category} · آخرین فعالیت {t.lastActivity}
               </p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-ink-500 shrink-0">
+            <div className="flex items-center gap-2.5 text-xs text-ink-500 flex-wrap">
               <span className="flex items-center gap-1">
                 <MessageCircle size={13} /> {t.replies}
               </span>

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { GraduationCap, CalendarDays, Users, Award, Gauge, CheckCircle2, Plus } from "lucide-react";
 import { trainingCourses as initialCourses, type TrainingCourse } from "../data/mockDaneshmand";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -19,7 +22,7 @@ const statusTone: Record<TrainingCourse["status"], BadgeTone> = {
 };
 
 export default function Training() {
-  const [courses, setCourses] = useState<TrainingCourse[]>(initialCourses);
+  const [courses, setCourses] = useState<TrainingCourse[]>(() => withDemoScopes(initialCourses, 15));
   const [selected, setSelected] = useState<TrainingCourse | null>(null);
   const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -32,7 +35,9 @@ export default function Training() {
   const [titleError, setTitleError] = useState(false);
   const { notify } = useToast();
 
-  const trainingCourses = courses;
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
+  const trainingCourses = filterScoped(courses);
   const totalCerts = trainingCourses.reduce((s, c) => s + (c.certificates ?? 0), 0);
   const openCourses = trainingCourses.filter((c) => c.status === "ثبت‌نام باز").length;
 
@@ -48,6 +53,7 @@ export default function Training() {
   const toNum = (s: string) => Number(s.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))) || 0;
 
   const startEdit = (c: TrainingCourse) => {
+    setItemScope({ scope: c.scope, holdingId: c.holdingId, companyId: c.companyId });
     setEditingId(c.id);
     setTitle(c.title);
     setInstructor(c.instructor);
@@ -76,7 +82,7 @@ export default function Training() {
     setTitleError(false);
     if (editingId) {
       setCourses((prev) =>
-        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), instructor: instructor.trim() || c.instructor, date: date.trim() || c.date, hours: toNum(hours) || c.hours, capacity: toNum(capacity) || c.capacity } : c))
+        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), instructor: instructor.trim() || c.instructor, date: date.trim() || c.date, hours: toNum(hours) || c.hours, capacity: toNum(capacity) || c.capacity, ...itemScope } : c))
       );
       notify(`دوره «${title.trim()}» ویرایش شد.`);
     } else {
@@ -90,6 +96,7 @@ export default function Training() {
           capacity: toNum(capacity) || 30,
           enrolled: 0,
           status: "ثبت‌نام باز",
+          ...itemScope,
         },
         ...prev,
       ]);
@@ -107,7 +114,7 @@ export default function Training() {
         description="دوره‌های تخصصی، تقویم آموزشی، حضور و غیاب، ارزشیابی، سنجش اثربخشی و صدور گواهینامه"
         icon={<GraduationCap size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             تعریف دوره جدید
           </Button>
         }
@@ -138,6 +145,7 @@ export default function Training() {
             <span className="text-xs text-ink-500 whitespace-nowrap">{c.enrolled.toLocaleString("fa-IR")} / {c.capacity.toLocaleString("fa-IR")}</span>
             <Badge tone={statusTone[c.status]}>{c.status}</Badge>
             <span className="hidden sm:flex items-center gap-1">
+              <ScopeBadge item={c} />
               {c.status === "ثبت‌نام باز" && (
                 <Button variant={enrolledIds.includes(c.id) ? "secondary" : "primary"} size="sm" onClick={() => enroll(c)}>
                   {enrolledIds.includes(c.id) ? "ثبت‌نام شد" : "ثبت‌نام"}
@@ -174,6 +182,7 @@ export default function Training() {
               <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="input-field" />
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "تعریف دوره"}</Button>
             <Button variant="secondary" onClick={() => { setOpen(false); setEditingId(null); }}>انصراف</Button>

@@ -7,7 +7,7 @@
 // ------------------- ساختار هلدینگ‌ها و شرکت‌های زیرمجموعه -------------------
 // ساختار هلدینگ/شرکت به data/tenancy.ts منتقل شد (منبع واحد حقیقت)
 export type { SubCompany, Holding, ContentScope } from "./tenancy";
-import { holdingsNested, allCompanies as tenancyCompanies, type ContentScope } from "./tenancy";
+import { holdingsNested, allCompanies as tenancyCompanies, type ContentScope, type Scoped } from "./tenancy";
 
 export const holdings = holdingsNested;
 
@@ -153,7 +153,7 @@ export type TrainingCourse = {
   satisfaction?: number; // ارزشیابی از ۵
   effectiveness?: "در انتظار سنجش" | "اثربخش" | "نیازمند دوره تکمیلی";
   certificates?: number; // گواهینامه صادرشده
-};
+} & Scoped;
 
 export const trainingCourses: TrainingCourse[] = [
   { id: "tc1", title: "مدیریت پروژه‌های تحقیق و توسعه (ویژه مدیران پروژه)", instructor: "موسسه آموزشی و پژوهشی سینا", date: "۱۴۰۵/۰۲/۱۰", hours: 16, capacity: 30, enrolled: 28, status: "برگزار شده", attendanceRate: 92, satisfaction: 4.4, effectiveness: "اثربخش", certificates: 26 },

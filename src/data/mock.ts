@@ -1154,7 +1154,7 @@ export type ContractRecord = {
   value: string;
   deadline: string;
   owner: string;
-};
+} & Scoped;
 
 export const contracts: ContractRecord[] = [
   { id: "ct1", title: "توسعه زیرساخت برق‌رسانی روستاهای مناطق هدف", vendor: "هلدینگ برق و انرژی صبا", stage: "در حال اجرا", value: "۴٬۲۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۶/۱۵", owner: "وحید خاوئی" },
@@ -1170,7 +1170,7 @@ export type FundRecord = {
   stage: "ثبت‌شده" | "انتخاب اولیه" | "داوری" | "تخصیص‌یافته" | "در حال پایش";
   amount: string;
   roi: string;
-};
+} & Scoped;
 
 export const funds: FundRecord[] = [
   { id: "fn1", title: "پرورش دام سبک — روستاهای قلعه‌گنج", applicant: "تعاونی دامداران محلی", stage: "در حال پایش", amount: "۸۰۰٬۰۰۰٬۰۰۰ ریال", roi: "۱۸٪" },
@@ -1185,7 +1185,7 @@ export type ResearchOpportunity = {
   stage: "فراخوان باز" | "بررسی درخواست‌ها" | "داوری" | "در حال اجرا" | "پایان‌یافته";
   applicants: number;
   deadline: string;
-};
+} & Scoped;
 
 export const researchOpportunities: ResearchOpportunity[] = [
   { id: "rs1", title: "سنجش اثر اجتماعی طرح‌های محرومیت‌زدایی در مناطق هدف", field: "مطالعات اجتماعی", stage: "بررسی درخواست‌ها", applicants: 9, deadline: "۱۴۰۵/۰۵/۱۰" },

@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3 } from "lucide-react";
 import { contracts as initialContracts, currentUser, type ContractRecord } from "../data/mock";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 import { contractDetails, type ContractDetail } from "../data/mockDetails";
 import { techTransferContracts, eSignDocuments, tenders, pendingReviewItems, type TechTransferContract, type TenderRecord } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
@@ -299,7 +302,7 @@ function ESignTab() {
 }
 
 function TechContractsTab() {
-  const [contracts, setContracts] = useState<ContractRecord[]>(initialContracts);
+  const [contracts, setContracts] = useState<ContractRecord[]>(() => withDemoScopes(initialContracts, 17));
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [vendor, setVendor] = useState("");
@@ -314,6 +317,8 @@ function TechContractsTab() {
   const [errors, setErrors] = useState<{ title?: boolean; vendor?: boolean }>({});
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
 
@@ -323,7 +328,7 @@ function TechContractsTab() {
     if (errs.title || errs.vendor) return;
     if (editingId) {
       setContracts((prev) =>
-        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), vendor: vendor.trim(), value: value.trim() || "—", deadline: deadline.trim() || "نامشخص" } : c))
+        prev.map((c) => (c.id === editingId ? { ...c, title: title.trim(), vendor: vendor.trim(), value: value.trim() || "—", deadline: deadline.trim() || "نامشخص", ...itemScope } : c))
       );
       notify(`قرارداد «${title.trim()}» ویرایش شد.`);
     } else {
@@ -335,6 +340,7 @@ function TechContractsTab() {
         value: value.trim() || "—",
         deadline: deadline.trim() || "نامشخص",
         owner: currentUser.name,
+        ...itemScope,
       };
       setContracts((prev) => [newItem, ...prev]);
       notify(`قرارداد «${newItem.title}» (${contractType} — ${method}) ثبت شد و در وضعیت «${newItem.stage}» قرار گرفت.`);
@@ -347,9 +353,10 @@ function TechContractsTab() {
     setDeadline("");
   };
 
+  const scoped = filterScoped(contracts);
   const filtered = useMemo(
-    () => (stageFilter === "همه" ? contracts : contracts.filter((c) => c.stage === stageFilter)),
-    [contracts, stageFilter]
+    () => (stageFilter === "همه" ? scoped : scoped.filter((c) => c.stage === stageFilter)),
+    [scoped, stageFilter]
   );
 
   const active = contracts.filter((c) => c.stage === "در حال اجرا").length;
@@ -398,10 +405,12 @@ function TechContractsTab() {
         />
       ),
     },
+    { key: "scopeOwner", label: "دامنه", render: (c) => <ScopeBadge item={c} /> },
   ];
 
   const startEdit = (c: ContractRecord) => {
     setEditingId(c.id);
+    setItemScope({ scope: c.scope, holdingId: c.holdingId, companyId: c.companyId });
     setTitle(c.title);
     setVendor(c.vendor);
     setValue(c.value);
@@ -412,7 +421,7 @@ function TechContractsTab() {
   return (
     <div>
       <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
           ثبت قرارداد جدید
         </Button>
       </div>
@@ -504,6 +513,7 @@ function TechContractsTab() {
               <input value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="۱۴۰۵/۰۹/۰۱" className="input-field" />
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت قرارداد</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

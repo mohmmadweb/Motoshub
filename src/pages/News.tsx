@@ -91,8 +91,6 @@ export default function News() {
   const jMonths = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
   const faToNum = (s: string) => Number(s.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))));
   const monthOf = (d: string) => faToNum(d.split("/")[1] ?? "0");
-  const sortedNews = [...newsItems].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const latest = sortedNews[0];
   const mostViewed = [...newsItems].sort((a, b) => b.views - a.views)[0];
   const mostDiscussed = [...newsItems].sort((a, b) => b.comments - a.comments)[0];
   const shownNews = month === null ? newsItems : newsItems.filter((n) => monthOf(n.date) === month);
@@ -110,22 +108,6 @@ export default function News() {
         }
       />
 
-      {/* برجسته‌ها */}
-      {latest && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          {[
-            { tag: "تازه‌ترین", n: latest, cls: "from-brand-600 to-brand-800" },
-            { tag: "پربازدیدترین", n: mostViewed, cls: "from-emerald-600 to-emerald-800" },
-            { tag: "داغ‌ترین گفتگو", n: mostDiscussed, cls: "from-amber-500 to-orange-700" },
-          ].map(({ tag, n, cls }) => (
-            <Link key={tag} to={`/dashboard/news/${n.id}`} className={`group rounded-xl bg-gradient-to-l ${cls} p-3.5 text-white shadow-sm hover:shadow-md transition-shadow`}>
-              <span className="inline-block text-[10px] font-bold bg-white/20 rounded-full px-2 py-0.5 mb-1.5">{tag}</span>
-              <p className="text-[12.5px] font-bold leading-6 line-clamp-2 group-hover:underline">{n.title}</p>
-              <p className="text-[10px] text-white/70 mt-1.5">{n.date} · {n.views.toLocaleString("fa-IR")} بازدید · {n.comments.toLocaleString("fa-IR")} نظر</p>
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* آرشیو ماهانه */}
       <div className="flex items-center gap-1.5 flex-wrap mb-4">
@@ -159,9 +141,17 @@ export default function News() {
             label: "عنوان خبر",
             render: (n) => (
               <span className="min-w-0 block">
-                <Link to={`/dashboard/news/${n.id}`} className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors block">
-                  {n.title}
-                </Link>
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  <Link to={`/dashboard/news/${n.id}`} className="font-medium text-sm text-ink-900 hover:text-brand-700 transition-colors">
+                    {n.title}
+                  </Link>
+                  {n.id === mostViewed?.id && (
+                    <span className="text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-1.5 py-px">پربازدیدترین</span>
+                  )}
+                  {n.id === mostDiscussed?.id && (
+                    <span className="text-[9.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-1.5 py-px">داغ‌ترین گفتگو</span>
+                  )}
+                </span>
                 <span className="text-xs text-ink-400 mt-0.5 line-clamp-1 block">{n.summary}</span>
               </span>
             ),
@@ -282,7 +272,7 @@ function ScopedNewsSection() {
         <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
           <Network size={15} className="text-brand-600" /> اخبار هلدینگ‌ها و شرکت‌های زیرمجموعه
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] text-ink-400 flex items-center gap-1"><Eye size={12} /> مشاهده به‌عنوان:</span>
           <select value={viewer} onChange={(e) => setViewer(e.target.value)} className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white">
             <option value="hq">ستاد بنیاد (همه محتوا)</option>

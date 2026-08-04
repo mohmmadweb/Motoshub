@@ -12,6 +12,9 @@ import DataTable, { type Column } from "../components/ui/DataTable";
 import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 import Drawer from "../components/ui/Drawer";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTabParam } from "../lib/useTabParam";
@@ -194,7 +197,7 @@ function SabbaticalTab() {
 }
 
 function OpportunitiesTab() {
-  const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>(initialOpportunities);
+  const [opportunities, setOpportunities] = useState<ResearchOpportunity[]>(() => withDemoScopes(initialOpportunities, 16));
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [field, setField] = useState("");
@@ -207,11 +210,14 @@ function OpportunitiesTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? researchDetails[selected.id] : undefined;
 
   const startEdit = (o: ResearchOpportunity) => {
     setEditingId(o.id);
+    setItemScope({ scope: o.scope, holdingId: o.holdingId, companyId: o.companyId });
     setTitle(o.title);
     setField(o.field);
     setDeadline(o.deadline === "نامشخص" ? "" : o.deadline);
@@ -247,7 +253,7 @@ function OpportunitiesTab() {
     if (editingId) {
       setOpportunities((prev) =>
         prev.map((o) =>
-          o.id === editingId ? { ...o, title: title.trim(), field: field.trim(), deadline: deadline.trim() || "نامشخص" } : o
+          o.id === editingId ? { ...o, title: title.trim(), field: field.trim(), deadline: deadline.trim() || "نامشخص", ...itemScope } : o
         )
       );
       setSelected((s) => (s && s.id === editingId ? { ...s, title: title.trim(), field: field.trim() } : s));
@@ -262,6 +268,7 @@ function OpportunitiesTab() {
       stage: "فراخوان باز",
       applicants: 0,
       deadline: deadline.trim() || "نامشخص",
+      ...itemScope,
     };
     setOpportunities((prev) => [newItem, ...prev]);
     notify(`فراخوان پژوهشی «${newItem.title}» منتشر شد و در وضعیت «فراخوان باز» قرار گرفت.`);
@@ -281,9 +288,10 @@ function OpportunitiesTab() {
     );
   };
 
+  const scoped = filterScoped(opportunities);
   const filtered = useMemo(
-    () => (stageFilter === "همه" ? opportunities : opportunities.filter((o) => o.stage === stageFilter)),
-    [opportunities, stageFilter]
+    () => (stageFilter === "همه" ? scoped : scoped.filter((o) => o.stage === stageFilter)),
+    [scoped, stageFilter]
   );
 
   const totalApplicants = opportunities.reduce((s, o) => s + o.applicants, 0);
@@ -301,6 +309,7 @@ function OpportunitiesTab() {
       render: (r) => <span className="text-ink-600">{researchDetails[r.id]?.budget ?? "—"}</span>,
     },
     { key: "deadline", label: "مهلت ثبت‌نام" },
+    { key: "owner", label: "دامنه", render: (r) => <ScopeBadge item={r} /> },
     {
       key: "actions",
       label: "",
@@ -311,7 +320,7 @@ function OpportunitiesTab() {
   return (
     <div>
       <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
           فراخوان جدید
         </Button>
       </div>
@@ -380,6 +389,7 @@ function OpportunitiesTab() {
               <input value={supervisor} onChange={(e) => setSupervisor(e.target.value)} placeholder="دفتر مطالعات راهبردی" className="input-field" />
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار فراخوان</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

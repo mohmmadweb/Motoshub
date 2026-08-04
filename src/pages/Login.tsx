@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Lock, Smartphone, ShieldCheck, ChevronDown, Network } from "lucide-react";
-import { tenants } from "../data/mock";
+import { tenants, users as allUsers } from "../data/mock";
 import { holdings } from "../data/mockDaneshmand";
+import { systemIdentity } from "../data/tenancy";
+import { useTenancy } from "../context/TenancyContext";
 import Button from "../components/ui/Button";
 
 // فضای کاری = سازمان مشتری (tenant) یا یکی از شرکت‌های زیرمجموعه‌ی آن —
@@ -10,12 +12,12 @@ import Button from "../components/ui/Button";
 type Workspace = { id: string; name: string; domain: string; color: string; parent?: string };
 
 const workspaces: Workspace[] = [
-  ...tenants.map((t) => ({ id: t.id, name: t.name, domain: t.domain, color: t.logoColor })),
+  { id: tenants[0].id, name: systemIdentity.name, domain: systemIdentity.domain, color: systemIdentity.color },
   ...holdings.flatMap((h) =>
     h.companies.map((c) => ({
       id: c.id,
       name: c.name,
-      domain: `${c.id.replace("c-", "")}.${tenants[0].domain}`,
+      domain: `${c.id.replace("c-", "")}.${systemIdentity.domain}`,
       color: h.color,
       parent: h.name,
     }))
@@ -24,10 +26,35 @@ const workspaces: Workspace[] = [
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setActingUser } = useTenancy();
   const [tenantId, setTenantId] = useState(workspaces[0].id);
   const [orgPickerOpen, setOrgPickerOpen] = useState(false);
   const [mode, setMode] = useState<"password" | "otp">("password");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [demoUserId, setDemoUserId] = useState(allUsers[0].id);
+  const [errors, setErrors] = useState<{ u?: string; p?: string; ph?: string }>({});
   const tenant = workspaces.find((t) => t.id === tenantId)!;
+
+  const submit = () => {
+    // اعتبارسنجی — ورودِ خالی پذیرفته نمی‌شود
+    if (mode === "password") {
+      const errs = {
+        u: username.trim() ? undefined : "نام کاربری الزامی است.",
+        p: password.trim() ? undefined : "گذرواژه الزامی است.",
+      };
+      setErrors(errs);
+      if (errs.u || errs.p) return;
+    } else {
+      const ok = /^09\d{9}$/.test(phone.trim());
+      setErrors({ ph: ok ? undefined : "شماره موبایل معتبر وارد کنید (مثلاً 09121234567)." });
+      if (!ok) return;
+    }
+    // نشستِ کاربر از همین‌جا ساخته می‌شود — دامنه‌ی دید از عضویتِ او محاسبه خواهد شد
+    setActingUser(demoUserId);
+    navigate("/dashboard");
+  };
 
   return (
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-navy-900 px-4">
@@ -123,17 +150,68 @@ export default function Login() {
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
-              navigate("/dashboard");
+              submit();
             }}
           >
             {mode === "password" ? (
               <>
-                <input className="input-field" placeholder="نام کاربری یا ایمیل سازمانی" />
-                <input type="password" className="input-field" placeholder="گذرواژه" />
+                <div>
+                  <input
+                    value={username}
+                    onChange={(e) => { setUsername(e.target.value); setErrors((p) => ({ ...p, u: undefined })); }}
+                    className={`input-field ${errors.u ? "input-error" : ""}`}
+                    placeholder="نام کاربری یا ایمیل سازمانی"
+                    autoComplete="username"
+                  />
+                  {errors.u && <p className="field-error">{errors.u}</p>}
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, p: undefined })); }}
+                    className={`input-field ${errors.p ? "input-error" : ""}`}
+                    placeholder="گذرواژه"
+                    autoComplete="current-password"
+                  />
+                  {errors.p && <p className="field-error">{errors.p}</p>}
+                </div>
               </>
             ) : (
-              <input className="input-field" placeholder="شماره موبایل (مثلاً 0912xxxxxxx)" />
+              <div>
+                <input
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, ph: undefined })); }}
+                  className={`input-field ${errors.ph ? "input-error" : ""}`}
+                  placeholder="شماره موبایل (مثلاً 0912xxxxxxx)"
+                  inputMode="tel"
+                  dir="ltr"
+                />
+                {errors.ph && <p className="field-error">{errors.ph}</p>}
+              </div>
             )}
+
+            {/* حساب نمایشی — نشستِ واقعی از روی همین کاربر ساخته می‌شود */}
+            <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/60 p-2.5">
+              <label className="text-[10.5px] font-bold text-ink-400 block mb-1">
+                حساب نمایشی (دموی سناریوها)
+              </label>
+              <select
+                value={demoUserId}
+                onChange={(e) => setDemoUserId(e.target.value)}
+                className="w-full text-xs border border-ink-200 rounded-md px-2 py-1.5 bg-white outline-none focus:border-brand-400"
+              >
+                {allUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} — {(u.companyIds?.length ?? 0) === 0 ? "سطح سیستم" : `عضو ${u.companyIds!.length.toLocaleString("fa-IR")} شرکت`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-ink-400 mt-1 leading-4">
+                دامنه‌ی دید و دسترسی‌ها پس از ورود، از عضویت همین حساب محاسبه می‌شود.
+              </p>
+            </div>
+
             <Button type="submit" variant="primary" className="w-full justify-center">
               ورود به سامانه بنیاد
             </Button>

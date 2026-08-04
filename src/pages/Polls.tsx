@@ -10,6 +10,9 @@ import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTabParam } from "../lib/useTabParam";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // نظرسنجی (iisquestions/Poll) + آزمون و داوری (iispors/Quiz)
 type Poll = {
@@ -19,7 +22,7 @@ type Poll = {
   ends: string;
   options: { id: string; label: string; votes: number }[];
   myVote?: string;
-};
+} & Scoped;
 
 const initialPolls: Poll[] = [
   {
@@ -56,7 +59,7 @@ type Quiz = {
   status: "باز" | "در حال داوری" | "پایان‌یافته";
   myScore?: number;
   passing: number;
-};
+} & Scoped;
 
 const initialQuizzes: Quiz[] = [
   { id: "qz1", title: "آزمون آشنایی با فرآیندهای صندوق نوآور (ویژه راهبران)", questions: 20, minutes: 30, deadline: "۱۴۰۵/۰۵/۱۰", status: "باز", passing: 70 },
@@ -68,8 +71,8 @@ const quizTone: Record<Quiz["status"], BadgeTone> = { باز: "success", "در �
 
 export default function Polls() {
   const [tab, setTab] = useTabParam<"polls" | "quiz">("polls", ["polls", "quiz"]);
-  const [polls, setPolls] = useState<Poll[]>(initialPolls);
-  const [quizzes, setQuizzes] = useState<Quiz[]>(initialQuizzes);
+  const [polls, setPolls] = useState<Poll[]>(() => withDemoScopes(initialPolls, 11));
+  const [quizzes, setQuizzes] = useState<Quiz[]>(() => withDemoScopes(initialQuizzes, 12));
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [optionsText, setOptionsText] = useState("");
@@ -79,6 +82,8 @@ export default function Polls() {
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const vote = (pollId: string, optId: string) => {
     setPolls((prev) =>
@@ -101,6 +106,7 @@ export default function Polls() {
   const startEditPoll = (p: Poll) => {
     setEditingId(p.id);
     setQuestion(p.question);
+    setItemScope({ scope: p.scope, holdingId: p.holdingId, companyId: p.companyId });
     setOptionsText(p.options.map((o) => o.label).join("، "));
     setOpen(true);
   };
@@ -138,7 +144,7 @@ export default function Polls() {
             return { id: old?.id ?? `o${i}-${Date.now()}`, label, votes: old?.votes ?? 0 };
           });
           const myVote = options.some((o) => o.id === p.myVote) ? p.myVote : undefined;
-          return { ...p, question: question.trim(), options, myVote };
+          return { ...p, question: question.trim(), options, myVote, ...itemScope };
         })
       );
       notify("نظرسنجی ویرایش شد.");
@@ -146,7 +152,7 @@ export default function Polls() {
       return;
     }
     setPolls((prev) => [
-      { id: `pl-${Date.now()}`, question: question.trim(), by: "شما", ends: "۱۴۰۵/۰۵/۳۰", options: opts.map((label, i) => ({ id: `o${i}`, label, votes: 0 })) },
+      { id: `pl-${Date.now()}`, question: question.trim(), by: "شما", ends: "۱۴۰۵/۰۵/۳۰", options: opts.map((label, i) => ({ id: `o${i}`, label, votes: 0 })), ...itemScope },
       ...prev,
     ]);
     notify("نظرسنجی منتشر شد.");
@@ -156,9 +162,11 @@ export default function Polls() {
   const openQuizModal = (q?: Quiz) => {
     if (q) {
       setEditingQuizId(q.id);
+      setItemScope({ scope: q.scope, holdingId: q.holdingId, companyId: q.companyId });
       setQuizForm({ title: q.title, questions: String(q.questions), minutes: String(q.minutes), deadline: q.deadline, passing: String(q.passing) });
     } else {
       setEditingQuizId(null);
+      setItemScope(defaultScopeForNew());
       setQuizForm({ title: "", questions: "", minutes: "", deadline: "", passing: "" });
     }
     setQuizOpen(true);
@@ -177,10 +185,10 @@ export default function Polls() {
       passing: Number(quizForm.passing) || 0,
     };
     if (editingQuizId) {
-      setQuizzes((prev) => prev.map((q) => (q.id === editingQuizId ? { ...q, ...payload } : q)));
+      setQuizzes((prev) => prev.map((q) => (q.id === editingQuizId ? { ...q, ...payload, ...itemScope } : q)));
       notify("آزمون ویرایش شد.");
     } else {
-      setQuizzes((prev) => [{ id: `qz-${Date.now()}`, status: "باز", ...payload }, ...prev]);
+      setQuizzes((prev) => [{ id: `qz-${Date.now()}`, status: "باز", ...payload, ...itemScope }, ...prev]);
       notify("آزمون ایجاد شد.");
     }
     setQuizOpen(false);
@@ -205,7 +213,7 @@ export default function Polls() {
         icon={<ListChecks size={18} />}
         actions={
           tab === "polls" ? (
-            <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>نظرسنجی جدید</Button>
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>نظرسنجی جدید</Button>
           ) : (
             <Button variant="primary" icon={<Plus size={15} />} onClick={() => openQuizModal()}>آزمون جدید</Button>
           )
@@ -213,26 +221,26 @@ export default function Polls() {
       />
       <Tabs
         tabs={[
-          { id: "polls", label: "نظرسنجی‌ها", count: polls.length },
-          { id: "quiz", label: "آزمون‌ها و داوری", count: quizzes.length },
+          { id: "polls", label: "نظرسنجی‌ها", count: filterScoped(polls).length },
+          { id: "quiz", label: "آزمون‌ها و داوری", count: filterScoped(quizzes).length },
         ]}
         active={tab}
         onChange={setTab}
       />
 
-      {tab === "polls" && polls.length === 0 && (
+      {tab === "polls" && filterScoped(polls).length === 0 && (
         <EmptyState icon={<ListChecks size={20} />} title="هنوز نظرسنجی‌ای ایجاد نشده" />
       )}
 
       {tab === "polls" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {polls.map((p) => {
+          {filterScoped(polls).map((p) => {
             const total = p.options.reduce((s, o) => s + o.votes, 0);
             return (
               <div key={p.id} className="card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-bold text-ink-900 leading-6">{p.question}</p>
-                  <RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} />
+                  <span className="flex items-center gap-1"><ScopeBadge item={p} /><RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} /></span>
                 </div>
                 <p className="text-[11px] text-ink-400 mt-0.5 mb-3">توسط {p.by} · مهلت رأی: {p.ends} · {total.toLocaleString("fa-IR")} رأی</p>
                 <div className="space-y-2">
@@ -266,8 +274,8 @@ export default function Polls() {
 
       {tab === "quiz" && (
         <div className="card divide-y divide-ink-100">
-          {quizzes.length === 0 && <p className="p-6 text-center text-sm text-ink-400">هنوز آزمونی تعریف نشده است.</p>}
-          {quizzes.map((q) => (
+          {filterScoped(quizzes).length === 0 && <p className="p-6 text-center text-sm text-ink-400">هنوز آزمونی تعریف نشده است.</p>}
+          {filterScoped(quizzes).map((q) => (
             <div key={q.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
@@ -283,6 +291,7 @@ export default function Polls() {
                 {q.myScore !== undefined && (
                   <Badge tone={q.myScore >= q.passing ? "success" : "danger"}>نمره شما: {q.myScore.toLocaleString("fa-IR")}</Badge>
                 )}
+                <ScopeBadge item={q} />
                 <Badge tone={quizTone[q.status]}>{q.status}</Badge>
                 {q.status === "باز" && (
                   <Button variant="primary" size="sm" onClick={() => notify(`آزمون «${q.title}» آغاز شد — ${q.minutes.toLocaleString("fa-IR")} دقیقه فرصت دارید. (نمایشی)`, "info")}>
@@ -309,6 +318,7 @@ export default function Polls() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">گزینه‌ها (با «،» جدا کنید) <span className="text-rose-500">*</span></label>
             <textarea value={optionsText} onChange={(e) => setOptionsText(e.target.value)} placeholder="گزینه یک، گزینه دو، گزینه سه" className="input-field min-h-16" />
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={createPoll}>
               {editingId ? "ذخیره تغییرات" : "انتشار نظرسنجی"}
@@ -344,6 +354,7 @@ export default function Polls() {
               <input value={quizForm.passing} onChange={(e) => setQuizForm((f) => ({ ...f, passing: e.target.value }))} className="input-field" placeholder="۷۰" />
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitQuiz}>
               {editingQuizId ? "ذخیره تغییرات" : "ایجاد آزمون"}

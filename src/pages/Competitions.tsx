@@ -10,6 +10,9 @@ import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTabParam } from "../lib/useTabParam";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // مسابقات (iiscompetition) + چالش‌ها (iischallenge)
 type Competition = {
@@ -21,7 +24,7 @@ type Competition = {
   status: "ثبت‌نام باز" | "در حال داوری" | "اعلام نتایج";
   prize: string;
   entries: { id: string; by: string; title: string; votes: number; color: string; myVote?: boolean }[];
-};
+} & Scoped;
 
 const initialCompetitions: Competition[] = [
   {
@@ -58,7 +61,7 @@ type Challenge = {
   joined: number;
   progress?: number;
   status: "فعال" | "پایان‌یافته";
-};
+} & Scoped;
 
 const initialChallenges: Challenge[] = [
   { id: "ch1", title: "چالش ۳۰ روز مستندسازی — هر روز یک درس‌آموخته در بانک دانش", kind: "همگانی", category: "مدیریت دانش", joined: 84, progress: 40, status: "فعال" },
@@ -70,11 +73,13 @@ const compTone: Record<Competition["status"], BadgeTone> = { "ثبت‌نام ب
 
 export default function Competitions() {
   const [tab, setTab] = useTabParam<"comp" | "challenge">("comp", ["comp", "challenge"]);
-  const [comps, setComps] = useState(initialCompetitions);
-  const [challenges, setChallenges] = useState<Challenge[]>(initialChallenges);
+  const [comps, setComps] = useState<Competition[]>(() => withDemoScopes(initialCompetitions, 13));
+  const [challenges, setChallenges] = useState<Challenge[]>(() => withDemoScopes(initialChallenges, 14));
   const [joined, setJoined] = useState<string[]>(["ch1"]);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const [compOpen, setCompOpen] = useState(false);
   const [editingCompId, setEditingCompId] = useState<string | null>(null);
@@ -93,9 +98,11 @@ export default function Competitions() {
   const openCompModal = (c?: Competition) => {
     if (c) {
       setEditingCompId(c.id);
+      setItemScope({ scope: c.scope, holdingId: c.holdingId, companyId: c.companyId });
       setCompForm({ title: c.title, category: c.category, deadline: c.deadline, prize: c.prize });
     } else {
       setEditingCompId(null);
+      setItemScope(defaultScopeForNew());
       setCompForm({ title: "", category: "", deadline: "", prize: "" });
     }
     setCompOpen(true);
@@ -113,10 +120,10 @@ export default function Competitions() {
       prize: compForm.prize.trim() || "—",
     };
     if (editingCompId) {
-      setComps((prev) => prev.map((c) => (c.id === editingCompId ? { ...c, ...payload } : c)));
+      setComps((prev) => prev.map((c) => (c.id === editingCompId ? { ...c, ...payload, ...itemScope } : c)));
       notify("مسابقه ویرایش شد.");
     } else {
-      setComps((prev) => [{ id: `cp-${Date.now()}`, participants: 0, status: "ثبت‌نام باز", entries: [], ...payload }, ...prev]);
+      setComps((prev) => [{ id: `cp-${Date.now()}`, participants: 0, status: "ثبت‌نام باز", entries: [], ...payload, ...itemScope }, ...prev]);
       notify("مسابقه ایجاد شد.");
     }
     setCompOpen(false);
@@ -179,9 +186,11 @@ export default function Competitions() {
   const openChModal = (c?: Challenge) => {
     if (c) {
       setEditingChId(c.id);
+      setItemScope({ scope: c.scope, holdingId: c.holdingId, companyId: c.companyId });
       setChForm({ title: c.title, category: c.category, kind: c.kind });
     } else {
       setEditingChId(null);
+      setItemScope(defaultScopeForNew());
       setChForm({ title: "", category: "", kind: "همگانی" });
     }
     setChOpen(true);
@@ -194,10 +203,10 @@ export default function Competitions() {
     }
     const payload = { title: chForm.title.trim(), category: chForm.category.trim() || "عمومی", kind: chForm.kind };
     if (editingChId) {
-      setChallenges((prev) => prev.map((c) => (c.id === editingChId ? { ...c, ...payload } : c)));
+      setChallenges((prev) => prev.map((c) => (c.id === editingChId ? { ...c, ...payload, ...itemScope } : c)));
       notify("چالش ویرایش شد.");
     } else {
-      setChallenges((prev) => [{ id: `ch-${Date.now()}`, joined: 0, progress: 0, status: "فعال", ...payload }, ...prev]);
+      setChallenges((prev) => [{ id: `ch-${Date.now()}`, joined: 0, progress: 0, status: "فعال", ...payload, ...itemScope }, ...prev]);
       notify("چالش ایجاد شد.");
     }
     setChOpen(false);
@@ -244,22 +253,23 @@ export default function Competitions() {
       />
       <Tabs
         tabs={[
-          { id: "comp", label: "مسابقات", count: comps.length },
-          { id: "challenge", label: "چالش‌ها", count: challenges.length },
+          { id: "comp", label: "مسابقات", count: filterScoped(comps).length },
+          { id: "challenge", label: "چالش‌ها", count: filterScoped(challenges).length },
         ]}
         active={tab}
         onChange={setTab}
       />
 
-      {tab === "comp" && comps.length === 0 && <EmptyState icon={<Trophy size={20} />} title="هنوز مسابقه‌ای تعریف نشده" />}
+      {tab === "comp" && filterScoped(comps).length === 0 && <EmptyState icon={<Trophy size={20} />} title="هنوز مسابقه‌ای تعریف نشده" />}
 
       {tab === "comp" && (
         <div className="space-y-4">
-          {comps.map((c) => (
+          {filterScoped(comps).map((c) => (
             <div key={c.id} className="card p-4">
               <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
                 <p className="text-sm font-bold text-ink-900">{c.title}</p>
                 <span className="flex items-center gap-1">
+                  <ScopeBadge item={c} />
                   <Badge tone={compTone[c.status]}>{c.status}</Badge>
                   <RowActions onEdit={() => openCompModal(c)} onDelete={() => removeComp(c)} />
                 </span>
@@ -312,8 +322,8 @@ export default function Competitions() {
 
       {tab === "challenge" && (
         <div className="card divide-y divide-ink-100">
-          {challenges.length === 0 && <p className="p-6 text-center text-sm text-ink-400">هنوز چالشی تعریف نشده است.</p>}
-          {challenges.map((c) => {
+          {filterScoped(challenges).length === 0 && <p className="p-6 text-center text-sm text-ink-400">هنوز چالشی تعریف نشده است.</p>}
+          {filterScoped(challenges).map((c) => {
             const isJoined = joined.includes(c.id);
             return (
               <div key={c.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
@@ -335,6 +345,7 @@ export default function Competitions() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <ScopeBadge item={c} />
                   <Badge tone={c.status === "فعال" ? "success" : "neutral"}>{c.status}</Badge>
                   {c.status === "فعال" && (
                     <Button
@@ -376,6 +387,7 @@ export default function Competitions() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">جایزه</label>
             <input value={compForm.prize} onChange={(e) => setCompForm((f) => ({ ...f, prize: e.target.value }))} className="input-field" />
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitComp}>{editingCompId ? "ذخیره تغییرات" : "ایجاد مسابقه"}</Button>
             <Button variant="secondary" onClick={() => setCompOpen(false)}>انصراف</Button>
@@ -402,6 +414,7 @@ export default function Competitions() {
               </select>
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitCh}>{editingChId ? "ذخیره تغییرات" : "ایجاد چالش"}</Button>
             <Button variant="secondary" onClick={() => setChOpen(false)}>انصراف</Button>

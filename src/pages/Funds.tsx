@@ -19,6 +19,9 @@ import {
   Send,
 } from "lucide-react";
 import { funds as initialFunds, type FundRecord } from "../data/mock";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 import { fundDetails, fundOverview, reviewSessions } from "../data/mockDetails";
 import {
   nfProjects as initialNfProjects,
@@ -210,7 +213,7 @@ function nfRules(s: WorkflowSettings) {
 }
 
 function InnovationFundTab() {
-  const [projects, setProjects] = useState<NfProject[]>(initialNfProjects);
+  const [projects, setProjects] = useState<NfProject[]>(() => withDemoScopes(initialNfProjects, 19));
   const [selected, setSelected] = useState<NfProject | null>(null);
   const [stageFilter, setStageFilter] = useState<"همه" | NfStage>("همه");
   const [open, setOpen] = useState(false);
@@ -224,6 +227,8 @@ function InnovationFundTab() {
   const [formErrors, setFormErrors] = useState<{ title?: boolean; team?: boolean }>({});
   const { notify } = useToast();
   const { settings } = useSettings();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const updateProject = (updated: NfProject) => {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -276,6 +281,7 @@ function InnovationFundTab() {
       payments: [],
       timeline: [{ date: "امروز", time: "هم‌اکنون", step: "دریافت پروپوزال", text: "دریافت طرح، تخصیص کد یکتا و ایجاد شناسنامه پروژه" }],
       requests: [],
+      ...itemScope,
     };
     setProjects((prev) => [newProject, ...prev]);
     notify(`پروپوزال با کد یکتا «${newProject.id}» ثبت شد و شناسنامه پروژه ایجاد گردید. پس از تایید شکلی، ارزیابی اولیه هوشمند اجرا می‌شود.`);
@@ -285,9 +291,10 @@ function InnovationFundTab() {
     setBudget("");
   };
 
+  const scopedProjects = filterScoped(projects);
   const filtered = useMemo(
-    () => (stageFilter === "همه" ? projects : projects.filter((p) => p.stage === stageFilter)),
-    [projects, stageFilter]
+    () => (stageFilter === "همه" ? scopedProjects : scopedProjects.filter((p) => p.stage === stageFilter)),
+    [scopedProjects, stageFilter]
   );
 
   const columns: Column<NfProject>[] = [
@@ -313,6 +320,7 @@ function InnovationFundTab() {
       label: "",
       render: (p) => <RowActions onEdit={() => setSelected(p)} onDelete={() => deleteProject(p)} />,
     },
+    { key: "scopeOwner", label: "دامنه", render: (p) => <ScopeBadge item={p} /> },
   ];
 
   return (
@@ -336,7 +344,7 @@ function InnovationFundTab() {
           <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
             <Workflow size={15} className="text-brand-600" /> گام‌های اصلی روند صندوق
           </h3>
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
             ثبت پروپوزال جدید
           </Button>
         </div>
@@ -446,6 +454,7 @@ function InnovationFundTab() {
               <input value={projectManager} onChange={(e) => setProjectManager(e.target.value)} placeholder="نماینده تیم" className="input-field" />
             </div>
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" icon={<Send size={14} />} onClick={submitProposal}>
               ثبت پروپوزال و تخصیص کد یکتا
@@ -756,7 +765,7 @@ function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject;
 // طرح‌های اشتغال‌زایی (محتوای قبلی صفحه — بدون تغییر)
 // ---------------------------------------------------------------------------
 function EmploymentFundTab() {
-  const [funds, setFunds] = useState<FundRecord[]>(initialFunds);
+  const [funds, setFunds] = useState<FundRecord[]>(() => withDemoScopes(initialFunds, 20));
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [applicant, setApplicant] = useState("");
@@ -766,6 +775,8 @@ function EmploymentFundTab() {
   const [stageFilter, setStageFilter] = useState<"همه" | FundRecord["stage"]>("همه");
   const [selected, setSelected] = useState<FundRecord | null>(null);
   const { notify } = useToast();
+  const { filterScoped: filterScopedF, defaultScopeForNew: defaultScopeF } = useTenancy();
+  const [fundScope, setFundScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? fundDetails[selected.id] : undefined;
 
@@ -781,6 +792,7 @@ function EmploymentFundTab() {
       stage: "ثبت‌شده",
       amount: amount.trim() || "در انتظار ارزیابی",
       roi: "—",
+      ...fundScope,
     };
     setFunds((prev) => [newItem, ...prev]);
     notify(`طرح «${newItem.title}»${region ? ` (${region})` : ""} ثبت شد و برای انتخاب اولیه به کارگروه ارجاع داده شد.`);
@@ -798,9 +810,10 @@ function EmploymentFundTab() {
     notify(`طرح «${fund.title}» به جلسه داوری کارگروه ارجاع شد.`, "info");
   };
 
+  const scopedFunds = filterScopedF(funds);
   const filtered = useMemo(
-    () => (stageFilter === "همه" ? funds : funds.filter((f) => f.stage === stageFilter)),
-    [funds, stageFilter]
+    () => (stageFilter === "همه" ? scopedFunds : scopedFunds.filter((f) => f.stage === stageFilter)),
+    [scopedFunds, stageFilter]
   );
 
   const columns: Column<FundRecord>[] = [
@@ -817,12 +830,13 @@ function EmploymentFundTab() {
       },
     },
     { key: "roi", label: "بازگشت سرمایه", render: (f) => <span className="flex items-center gap-1 text-emerald-600 font-medium"><TrendingUp size={12} /> {f.roi}</span> },
+    { key: "scopeOwner", label: "دامنه", render: (f) => <ScopeBadge item={f} /> },
   ];
 
   return (
     <div>
       <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFundScope(defaultScopeF()); setOpen(true); }}>
           ثبت طرح جدید
         </Button>
       </div>
@@ -909,6 +923,7 @@ function EmploymentFundTab() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">میزان درخواستی (ریال)</label>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="۲۵۰٬۰۰۰٬۰۰۰" className="input-field" />
           </div>
+          <ScopePicker value={fundScope} onChange={setFundScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت طرح</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

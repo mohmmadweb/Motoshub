@@ -186,7 +186,7 @@ export default function Award() {
                 <p className="text-sm font-medium text-ink-900">{e.title}</p>
                 <p className="text-xs text-ink-400 mt-0.5">{e.track} · {e.company}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {e.score !== undefined && <Badge tone="success">امتیاز {e.score.toLocaleString("fa-IR")}</Badge>}
                 <Badge tone={entryStatusTone[e.status]}>{e.status}</Badge>
                 {e.editUsed && <Badge tone="neutral">سهمیه ویرایش مصرف شد</Badge>}

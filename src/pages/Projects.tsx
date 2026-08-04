@@ -6,6 +6,9 @@ import { projectDetails } from "../data/mockDetails";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
+import { useTenancy } from "../context/TenancyContext";
+import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { withDemoScopes, type Scoped } from "../data/tenancy";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
@@ -21,7 +24,7 @@ const healthTone: Record<string, BadgeTone> = {
 const healthFilters = ["همه", "سبز", "زرد", "قرمز"] as const;
 
 export default function Projects() {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>(() => withDemoScopes(initialProjects, 18));
   const [playbooks, setPlaybooks] = useState<PlaybookTemplate[]>(initialPlaybooks);
   const [healthFilter, setHealthFilter] = useState<(typeof healthFilters)[number]>("همه");
   const [projectOpen, setProjectOpen] = useState(false);
@@ -36,9 +39,12 @@ export default function Projects() {
   const [editingPbId, setEditingPbId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const startEditProject = (p: Project) => {
     setEditingProjectId(p.id);
+    setItemScope({ scope: p.scope, holdingId: p.holdingId, companyId: p.companyId });
     setName(p.name);
     setClient(p.client);
     setDeadline(p.deadline === "نامشخص" ? "" : p.deadline);
@@ -97,7 +103,7 @@ export default function Projects() {
     if (editingProjectId) {
       setProjects((prev) =>
         prev.map((p) =>
-          p.id === editingProjectId ? { ...p, name: name.trim(), client: client.trim(), deadline: deadline.trim() || "نامشخص" } : p
+          p.id === editingProjectId ? { ...p, name: name.trim(), client: client.trim(), deadline: deadline.trim() || "نامشخص", ...itemScope } : p
         )
       );
       notify(`پروژه «${name.trim()}» ویرایش شد.`);
@@ -113,6 +119,7 @@ export default function Projects() {
       budgetUsed: 0,
       deadline: deadline.trim() || "نامشخص",
       tasks: [],
+      ...itemScope,
     };
     setProjects((prev) => [newProject, ...prev]);
     notify(`پروژه «${newProject.name}» ایجاد شد.`);
@@ -151,9 +158,10 @@ export default function Projects() {
     notify(`اجرای قالب «${pb.name}» آغاز شد — یک چک‌لیست ${pb.steps} مرحله‌ای برای تیم ایجاد شد.`, "info");
   };
 
+  const scopedProjects = filterScoped(projects);
   const filteredProjects = useMemo(
-    () => (healthFilter === "همه" ? projects : projects.filter((p) => p.health === healthFilter)),
-    [projects, healthFilter]
+    () => (healthFilter === "همه" ? scopedProjects : scopedProjects.filter((p) => p.health === healthFilter)),
+    [scopedProjects, healthFilter]
   );
 
   const atRisk = projects.filter((p) => p.health !== "سبز").length;
@@ -168,7 +176,7 @@ export default function Projects() {
         description="پروژه‌های پژوهشی، فناورانه و آموزشی با بودجه، تسک و گانت چارت"
         icon={<KanbanSquare size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setProjectOpen(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
             پروژه جدید
           </Button>
         }
@@ -203,6 +211,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <Badge tone={healthTone[p.health]}>وضعیت: {p.health}</Badge>
               <span className="flex items-center gap-1">
+                <ScopeBadge item={p} />
                 <span className="text-xs text-ink-400">مهلت {p.deadline}</span>
                 <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                   <RowActions onEdit={() => startEditProject(p)} onDelete={() => removeProject(p)} size={13} />
@@ -284,6 +293,7 @@ export default function Projects() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">مهلت تحویل</label>
             <input value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="۱۴۰۵/۰۸/۰۱" className="input-field" />
           </div>
+          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitProject}>{editingProjectId ? "ذخیره تغییرات" : "ایجاد پروژه"}</Button>
             <Button variant="secondary" onClick={closeProjectModal}>انصراف</Button>

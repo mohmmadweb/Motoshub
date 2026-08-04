@@ -1,3 +1,4 @@
+import type { Scoped } from "./tenancy";
 // ---------------------------------------------------------------------------
 // صندوق نوآور — داده‌های نمونه بر اساس روندهای واقعی موسسه تحقیق و توسعه بنیاد
 // (شناسنامه پروژه NF، ماشین وضعیت ۸ گامی، گام‌نما، گزارش‌ها با زنجیره تایید،
@@ -97,7 +98,7 @@ export type NfProject = {
   payments: NfPayment[];
   timeline: NfTimelineItem[];
   requests: NfRequest[];
-};
+} & Scoped;
 
 export const nfProjects: NfProject[] = [
   {
