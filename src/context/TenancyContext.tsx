@@ -15,7 +15,7 @@ import {
   type SessionScope,
   type SystemIdentity,
 } from "../data/tenancy";
-import { currentUser, users as allUsers, initialRoleAssignments, roles as allRoles, type UserProfile } from "../data/mock";
+import { currentUser, users as allUsers, initialRoleAssignments, roles as allRoles, type UserProfile, type RoleDef, type RoleGrant } from "../data/mock";
 
 type TenancyValue = {
   // --- هویت این نصب ---
@@ -39,6 +39,10 @@ type TenancyValue = {
   actingUser: UserProfile;
   setActingUser: (userId: string) => void;
   session: SessionScope;
+  /** نقشِ مؤثرِ کاربرِ واردشده (برای نمایش «نقش و دسترسی من») */
+  role: RoleDef;
+  /** تخصیصِ نقش به کاربر (سطح/هلدینگ/شرکت/گروه) — در نبودِ آن، عضو عادی */
+  grant?: RoleGrant;
 
   // --- دامنه‌ی فعال ---
   activeHoldingId?: string;
@@ -141,7 +145,7 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     const visible = (item: Scoped) => isVisibleForSession(item, session, activeHoldingId, activeCompanyId);
 
     // دسترسی مؤثر از نقشِ کاربر — کاربرِ بدون تخصیص = «عضو عادی» (r4)
-    const actingRole = allRoles.find((r) => r.id === (grant?.roleId ?? "r4")) ?? allRoles.find((r) => r.id === "r4");
+    const actingRole = allRoles.find((r) => r.id === (grant?.roleId ?? "r4")) ?? allRoles.find((r) => r.id === "r4")!;
     const permissionSet = new Set(actingRole?.permissions ?? []);
     const hasPermission = (id: string) => permissionSet.has(id);
     // پنل راهبری: سطح سیستم/هلدینگ همیشه؛ سطح شرکت فقط با نقشِ دارای مجوز مدیریتی
@@ -196,6 +200,8 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       actingUser,
       setActingUser,
       session,
+      role: actingRole,
+      grant,
 
       activeHoldingId,
       activeCompanyId,

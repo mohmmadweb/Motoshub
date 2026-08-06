@@ -82,7 +82,7 @@ export default function Polls() {
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canAccessAdmin } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const vote = (pollId: string, optId: string) => {
@@ -212,7 +212,7 @@ export default function Polls() {
         description="نظرسنجی‌های سازمانی با نتایج زنده، و آزمون‌های دوره‌ای با داوری و کارنامه"
         icon={<ListChecks size={18} />}
         actions={
-          tab === "polls" ? (
+          !canAccessAdmin ? null : tab === "polls" ? (
             <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>نظرسنجی جدید</Button>
           ) : (
             <Button variant="primary" icon={<Plus size={15} />} onClick={() => openQuizModal()}>آزمون جدید</Button>
@@ -240,7 +240,7 @@ export default function Polls() {
               <div key={p.id} className="card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-bold text-ink-900 leading-6">{p.question}</p>
-                  <span className="flex items-center gap-1"><ScopeBadge item={p} /><RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} /></span>
+                  <span className="flex items-center gap-1"><ScopeBadge item={p} />{canAccessAdmin && <RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} />}</span>
                 </div>
                 <p className="text-[11px] text-ink-400 mt-0.5 mb-3">توسط {p.by} · مهلت رأی: {p.ends} · {total.toLocaleString("fa-IR")} رأی</p>
                 <div className="space-y-2">
@@ -298,7 +298,7 @@ export default function Polls() {
                     شرکت در آزمون
                   </Button>
                 )}
-                <RowActions onEdit={() => openQuizModal(q)} onDelete={() => removeQuiz(q)} />
+                {canAccessAdmin && <RowActions onEdit={() => openQuizModal(q)} onDelete={() => removeQuiz(q)} />}
               </div>
             </div>
           ))}

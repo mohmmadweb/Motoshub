@@ -75,6 +75,7 @@ const rfpStageTone: Record<RfpCall["stage"], BadgeTone> = {
 
 function RfpTab() {
   const { notify } = useToast();
+  const { hasPermission } = useTenancy();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -83,9 +84,11 @@ function RfpTab() {
           ثبت‌نام و ارسال مستندات فناوران ← جلسه ارزیابی توانمندی کسب‌وکاری (ثبت نمره) ← ارزیابی فنی (ثبت نمره) ←
           دریافت پیشنهاد قیمت ← بازگشایی پاکات در کمیسیون معاملات ← انتخاب فناور برتر.
         </p>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم تدوین RFP جدید باز شد؛ پس از تصویب، فراخوان در سامانه‌های هدف منتشر می‌شود.", "info")}>
-          RFP جدید
-        </Button>
+        {hasPermission("research.create") && (
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم تدوین RFP جدید باز شد؛ پس از تصویب، فراخوان در سامانه‌های هدف منتشر می‌شود.", "info")}>
+            RFP جدید
+          </Button>
+        )}
       </div>
       {rfpCalls.map((call) => (
         <div key={call.id} className="card p-4">
@@ -152,6 +155,7 @@ const sabbReportTone: Record<string, BadgeTone> = {
 
 function SabbaticalTab() {
   const { notify } = useToast();
+  const { hasPermission } = useTenancy();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -160,9 +164,11 @@ function SabbaticalTab() {
           پیشنهادی) — هر گزارش پس از داوری صنعت و داور، تایید و دستور پرداخت آن صادر می‌شود ← کتابچه نهایی و جلسه
           ارائه ← نامه اتمام طرح.
         </p>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فراخوان جدید فرصت مطالعاتی برای انتشار در درگاه صندوق باور و سامانه نان آماده شد.", "info")}>
-          فراخوان فرصت مطالعاتی
-        </Button>
+        {hasPermission("research.create") && (
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فراخوان جدید فرصت مطالعاتی برای انتشار در درگاه صندوق باور و سامانه نان آماده شد.", "info")}>
+            فراخوان فرصت مطالعاتی
+          </Button>
+        )}
       </div>
       {sabbaticals.map((sb) => (
         <div key={sb.id} className="card p-4">
@@ -210,7 +216,7 @@ function OpportunitiesTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? researchDetails[selected.id] : undefined;
@@ -313,17 +319,19 @@ function OpportunitiesTab() {
     {
       key: "actions",
       label: "",
-      render: (r) => <RowActions onEdit={() => startEdit(r)} onDelete={() => remove(r)} />,
+      render: (r) => <RowActions onEdit={hasPermission("research.edit") ? () => startEdit(r) : undefined} onDelete={hasPermission("research.close") ? () => remove(r) : undefined} />,
     },
   ];
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-          فراخوان جدید
-        </Button>
-      </div>
+      {hasPermission("research.create") && (
+        <div className="flex items-center justify-end mb-4">
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+            فراخوان جدید
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="فراخوان‌های باز" value={openCalls.toLocaleString("fa-IR")} tone="success" icon={<FlaskConical size={16} />} />

@@ -164,7 +164,7 @@ function RndDocsTab() {
 
 function KnowledgeBankTab() {
   const { knowledgeDocs: docs, setKnowledgeDocs: setDocs } = useContent();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
@@ -223,9 +223,9 @@ function KnowledgeBankTab() {
       key: "title",
       label: "عنوان سند",
       render: (d) => (
-        <span className="flex items-center gap-2 font-medium text-ink-900">
+        <button onClick={() => setSelected(d)} className="flex items-center gap-2 font-medium text-ink-900 hover:text-brand-700 text-right">
           <FileText size={14} className="text-ink-400" /> {d.title}
-        </span>
+        </button>
       ),
     },
     { key: "category", label: "دسته‌بندی" },
@@ -234,14 +234,14 @@ function KnowledgeBankTab() {
     { key: "updatedAt", label: "بروزرسانی" },
     { key: "size", label: "حجم" },
     { key: "owner", label: "دامنه", render: (d) => <ScopeBadge item={d} /> },
-    { key: "visibility", label: "دسترسی", render: (d) => <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> },
+    { key: "visibility", label: "دسترسی", render: (d) => hasPermission("knowledge.visibility") ? <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> : <VisibilityBadge visibility={d.visibility} /> },
     {
       key: "actions",
       label: "",
       render: (d) => (
         <RowActions
-          onEdit={() => setSelected(d)}
-          onDelete={() =>
+          onEdit={hasPermission("knowledge.edit") ? () => setSelected(d) : undefined}
+          onDelete={!hasPermission("knowledge.delete") ? undefined : () =>
             confirm({
               title: `حذف سند «${d.title}»؟`,
               message: "سند حذف‌شده ۳۰ روز در سطل بازیافت نگه‌داری می‌شود.",
@@ -258,11 +258,13 @@ function KnowledgeBankTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setUploadOpen(true); }}>
-          بارگذاری سند
-        </Button>
-      </div>
+      {hasPermission("knowledge.upload") && (
+        <div className="flex items-center justify-end mb-4">
+          <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setUploadOpen(true); }}>
+            بارگذاری سند
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {categories.map((c) => (
@@ -311,7 +313,9 @@ function KnowledgeBankTab() {
             </div>
             <div className="border-t border-ink-100 pt-3">
               <p className="text-xs font-semibold text-ink-600 mb-2">سطح دسترسی</p>
-              <VisibilityToggle visibility={selected.visibility} onChange={() => toggleVisibility(selected.id)} />
+              {hasPermission("knowledge.visibility")
+                ? <VisibilityToggle visibility={selected.visibility} onChange={() => toggleVisibility(selected.id)} />
+                : <VisibilityBadge visibility={selected.visibility} />}
             </div>
             <div className="border-t border-ink-100 pt-3">
               <p className="text-xs font-semibold text-ink-600 mb-2">پیش‌نمایش سند</p>

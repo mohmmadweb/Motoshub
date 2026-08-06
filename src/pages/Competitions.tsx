@@ -78,7 +78,7 @@ export default function Competitions() {
   const [joined, setJoined] = useState<string[]>(["ch1"]);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canAccessAdmin } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const [compOpen, setCompOpen] = useState(false);
@@ -246,9 +246,11 @@ export default function Competitions() {
         description="مسابقات سازمانی با ارسال اثر و رأی‌گیری، و چالش‌های فردی/همگانی با پایش پیشرفت"
         icon={<Trophy size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => (tab === "comp" ? openCompModal() : openChModal())}>
-            {tab === "comp" ? "مسابقه جدید" : "چالش جدید"}
-          </Button>
+          canAccessAdmin ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => (tab === "comp" ? openCompModal() : openChModal())}>
+              {tab === "comp" ? "مسابقه جدید" : "چالش جدید"}
+            </Button>
+          ) : null
         }
       />
       <Tabs
@@ -271,7 +273,7 @@ export default function Competitions() {
                 <span className="flex items-center gap-1">
                   <ScopeBadge item={c} />
                   <Badge tone={compTone[c.status]}>{c.status}</Badge>
-                  <RowActions onEdit={() => openCompModal(c)} onDelete={() => removeComp(c)} />
+                  {canAccessAdmin && <RowActions onEdit={() => openCompModal(c)} onDelete={() => removeComp(c)} />}
                 </span>
               </div>
               <p className="text-[11.5px] text-ink-400 mb-3 flex items-center gap-2 flex-wrap">
@@ -283,15 +285,21 @@ export default function Competitions() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                   {c.entries.map((e) => (
                     <div key={e.id} className="rounded-lg border border-ink-100 overflow-hidden">
-                      <div className="h-24 flex items-center justify-center" style={{ backgroundColor: e.color }} role="img" aria-label={e.title}>
-                        <ImageIcon size={22} className="text-white/70" />
+                      <div
+                        className="h-24 flex items-center justify-center relative"
+                        style={{ backgroundImage: `linear-gradient(135deg, ${e.color}, ${e.color}cc)` }}
+                        role="img"
+                        aria-label={e.title}
+                      >
+                        <span className="text-white/90 text-lg font-black">{e.title.trim().charAt(0)}</span>
+                        <ImageIcon size={14} className="text-white/60 absolute bottom-1.5 left-1.5" />
                       </div>
                       <div className="p-2.5">
                         <p className="text-[12px] font-medium text-ink-900 truncate">{e.title}</p>
                         <div className="flex items-center justify-between mt-1.5">
                           <span className="text-[10.5px] text-ink-400 truncate flex items-center gap-0.5">
                             {e.by}
-                            <RowActions onDelete={() => removeEntry(c.id, e)} size={12} />
+                            {canAccessAdmin && <RowActions onDelete={() => removeEntry(c.id, e)} size={12} />}
                           </span>
                           <button
                             onClick={() => voteEntry(c.id, e.id)}
@@ -359,7 +367,7 @@ export default function Competitions() {
                       {isJoined ? "عضو هستید" : "پیوستن"}
                     </Button>
                   )}
-                  <RowActions onEdit={() => openChModal(c)} onDelete={() => removeCh(c)} />
+                  {canAccessAdmin && <RowActions onEdit={() => openChModal(c)} onDelete={() => removeCh(c)} />}
                 </div>
               </div>
             );

@@ -39,7 +39,7 @@ export default function Projects() {
   const [editingPbId, setEditingPbId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const startEditProject = (p: Project) => {
@@ -176,9 +176,11 @@ export default function Projects() {
         description="پروژه‌های پژوهشی، فناورانه و آموزشی با بودجه، تسک و گانت چارت"
         icon={<KanbanSquare size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
-            پروژه جدید
-          </Button>
+          hasPermission("projects.create") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
+              پروژه جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -214,7 +216,7 @@ export default function Projects() {
                 <ScopeBadge item={p} />
                 <span className="text-xs text-ink-400">مهلت {p.deadline}</span>
                 <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                  <RowActions onEdit={() => startEditProject(p)} onDelete={() => removeProject(p)} size={13} />
+                  <RowActions onEdit={hasPermission("projects.edit") ? () => startEditProject(p) : undefined} onDelete={hasPermission("projects.delete") ? () => removeProject(p) : undefined} size={13} />
                 </span>
               </span>
             </div>
@@ -263,7 +265,7 @@ export default function Projects() {
           </h2>
           <p className="text-xs text-ink-400 mt-0.5">رویه‌های تکرارشونده (مثل تحویل پروژه یا واکنش به حادثه) را به یک گردش‌کار چک‌لیستی تبدیل کنید.</p>
         </div>
-        <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setPlaybookOpen(true)}>قالب جدید</Button>
+        {hasPermission("projects.create") && <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setPlaybookOpen(true)}>قالب جدید</Button>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {playbooks.map((pb) => (
@@ -273,7 +275,7 @@ export default function Projects() {
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
               <span className="text-[11px] text-ink-400">{pb.usedCount} بار اجراشده</span>
               <Button variant="ghost" size="sm" icon={<PlayCircle size={13} />} onClick={() => runPlaybook(pb)}>اجرا</Button>
-              <RowActions onEdit={() => startEditPlaybook(pb)} onDelete={() => removePlaybook(pb)} />
+              <RowActions onEdit={hasPermission("projects.edit") ? () => startEditPlaybook(pb) : undefined} onDelete={hasPermission("projects.delete") ? () => removePlaybook(pb) : undefined} />
             </div>
           </div>
         ))}

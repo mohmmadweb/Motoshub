@@ -24,6 +24,7 @@ import { api } from "../lib/api";
 import { groups, users, currentUser, notifications, chatThreads, channels, type Post } from "../data/mock";
 import { nfProjects } from "../data/mockInnovationFund";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
 import PostCard from "../components/PostCard";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
@@ -252,6 +253,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const { events } = useContent();
+  const { canAccessAdmin } = useTenancy();
   const nextEvent = events[0];
 
   useEffect(() => {
@@ -268,7 +270,7 @@ export default function Dashboard() {
         description="هرچه امروز باید ببینید: اعلان‌ها، پیام‌ها، اقدامات در انتظار و فید گروه‌های شما"
       />
 
-      <QuickStart />
+      {canAccessAdmin && <QuickStart />}
 
       <PersonalToday />
 

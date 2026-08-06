@@ -81,6 +81,7 @@ const tenderStageTone: Record<TenderRecord["stage"], BadgeTone> = {
 
 function TenderTab() {
   const { notify } = useToast();
+  const { hasPermission } = useTenancy();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -88,9 +89,11 @@ function TenderTab() {
           تشریفات معاملات موسسه: انتشار آگهی ← دریافت پاکات (الف: تضمین، ب: فنی، ج: قیمت) ← بازگشایی در
           کمیسیون معاملات با صورت‌جلسه ← ابلاغ برنده ← عقد قرارداد. ترک تشریفات فقط با مصوبه هیئت مدیره.
         </p>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم آگهی مناقصه/مزایده جدید باز شد؛ پس از تایید، در روزنامه و سامانه منتشر می‌شود.", "info")}>
-          آگهی جدید
-        </Button>
+        {hasPermission("contracts.create") && (
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => notify("فرم آگهی مناقصه/مزایده جدید باز شد؛ پس از تایید، در روزنامه و سامانه منتشر می‌شود.", "info")}>
+            آگهی جدید
+          </Button>
+        )}
       </div>
       <div className="card divide-y divide-ink-100">
         {tenders.map((t) => (
@@ -317,7 +320,7 @@ function TechContractsTab() {
   const [errors, setErrors] = useState<{ title?: boolean; vendor?: boolean }>({});
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
@@ -391,8 +394,8 @@ function TechContractsTab() {
       label: "",
       render: (c) => (
         <RowActions
-          onEdit={() => startEdit(c)}
-          onDelete={() =>
+          onEdit={hasPermission("contracts.edit") ? () => startEdit(c) : undefined}
+          onDelete={!hasPermission("contracts.delete") ? undefined : () =>
             confirm({
               title: `حذف قرارداد «${c.title}»؟`,
               message: "پرونده قرارداد و تاریخچه‌ی آن بایگانی می‌شود.",
@@ -420,11 +423,13 @@ function TechContractsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-          ثبت قرارداد جدید
-        </Button>
-      </div>
+      {hasPermission("contracts.create") && (
+        <div className="flex items-center justify-end mb-4">
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+            ثبت قرارداد جدید
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="کل قراردادها" value={contracts.length.toLocaleString("fa-IR")} tone="brand" icon={<FileSignature size={16} />} />

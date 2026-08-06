@@ -10,12 +10,13 @@ import {
   type ContentScope,
 } from "../data/mockDaneshmand";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
-import { VisibilityPicker, VisibilityToggle } from "../components/ui/VisibilityControl";
+import { VisibilityPicker, VisibilityToggle, VisibilityBadge } from "../components/ui/VisibilityControl";
 import RowActions from "../components/ui/RowActions";
 import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
@@ -24,6 +25,7 @@ const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function News() {
   const { newsItems, setNewsItems } = useContent();
+  const { hasPermission, canAccessAdmin } = useTenancy();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -105,9 +107,11 @@ export default function News() {
         description="اطلاع‌رسانی عمومی شبکه و اطلاعیه‌های رسمی به همه‌ی کاربران"
         icon={<Newspaper size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
-            خبر جدید
-          </Button>
+          hasPermission("news.create") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>
+              خبر جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -173,9 +177,11 @@ export default function News() {
           {
             key: "visibility",
             label: "دسترسی",
-            render: (n) => <VisibilityToggle visibility={n.visibility} onChange={() => toggleVisibility(n.id)} size="xs" />,
+            render: (n) => hasPermission("news.edit")
+              ? <VisibilityToggle visibility={n.visibility} onChange={() => toggleVisibility(n.id)} size="xs" />
+              : <VisibilityBadge visibility={n.visibility} />,
           },
-          { key: "actions", label: "", render: (n) => <RowActions onEdit={() => startEdit(n)} onDelete={() => remove(n)} /> },
+          { key: "actions", label: "", render: (n) => <RowActions onEdit={hasPermission("news.edit") ? () => startEdit(n) : undefined} onDelete={hasPermission("news.delete") ? () => remove(n) : undefined} /> },
         ]}
         rows={shownNews}
         searchKeys={["title", "summary"]}
@@ -183,7 +189,7 @@ export default function News() {
         emptyTitle="هنوز خبری ثبت نشده"
       />
 
-      <ScopedNewsSection />
+      {canAccessAdmin && <ScopedNewsSection />}
 
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش خبر" : "انتشار اطلاعیه‌ی رسمی جدید"}>
         <div className="space-y-3">

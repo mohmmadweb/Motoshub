@@ -24,29 +24,37 @@ import {
   Trophy,
   LifeBuoy,
   Award,
+  KeyRound,
 } from "lucide-react";
 import { useTenancy } from "../context/TenancyContext";
 
-type Item = { to: string; label: string; icon: typeof Users; end?: boolean; adminOnly?: boolean };
+/**
+ * ناوبری نقش‌محور:
+ *  - adminOnly: فقط نقش‌های دارای پنل راهبری.
+ *  - viewPerm: آیتم فقط وقتی دیده می‌شود که نقش، مجوزِ دیدنِ آن ماژول را داشته باشد.
+ *    ماژول‌های اجتماعیِ باز (دوستان، نظرسنجی، مسابقات، جایزه) و صفحه‌های شخصی
+ *    (ظاهر، تیکت، راهنما، نقش و دسترسی) viewPerm ندارند و برای همه دیده می‌شوند.
+ */
+type Item = { to: string; label: string; icon: typeof Users; end?: boolean; adminOnly?: boolean; viewPerm?: string };
 
 export const navSections: { title: string; items: Item[] }[] = [
   {
     title: "نمای کلی",
     items: [
       { to: "/dashboard", label: "داشبورد فعالیت‌ها", icon: LayoutDashboard, end: true },
-      { to: "/dashboard/news", label: "اخبار سازمان", icon: Newspaper },
-      { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot },
+      { to: "/dashboard/news", label: "اخبار سازمان", icon: Newspaper, viewPerm: "news.list" },
+      { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot, viewPerm: "assistant.chat" },
     ],
   },
   {
     title: "شبکه اجتماعی",
     items: [
-      { to: "/dashboard/groups", label: "گروه‌های تعاملی", icon: Users },
-      { to: "/dashboard/forum", label: "انجمن", icon: MessagesSquare },
-      { to: "/dashboard/events", label: "رویدادها و جلسات", icon: CalendarDays },
-      { to: "/dashboard/blog", label: "بلاگ", icon: NotebookPen },
-      { to: "/dashboard/media", label: "تصاویر و ویدیو", icon: Image },
-      { to: "/dashboard/chat", label: "گفتگو", icon: MessageCircle },
+      { to: "/dashboard/groups", label: "گروه‌های تعاملی", icon: Users, viewPerm: "groups.list" },
+      { to: "/dashboard/forum", label: "انجمن", icon: MessagesSquare, viewPerm: "forum.list" },
+      { to: "/dashboard/events", label: "رویدادها و جلسات", icon: CalendarDays, viewPerm: "events.list" },
+      { to: "/dashboard/blog", label: "بلاگ", icon: NotebookPen, viewPerm: "blog.list" },
+      { to: "/dashboard/media", label: "تصاویر و ویدیو", icon: Image, viewPerm: "media.list" },
+      { to: "/dashboard/chat", label: "گفتگو", icon: MessageCircle, viewPerm: "chat.view" },
       { to: "/dashboard/friends", label: "دوستان و دنبال‌کردن", icon: UserPlus },
       { to: "/dashboard/polls", label: "نظرسنجی و آزمون", icon: ListChecks },
       { to: "/dashboard/competitions", label: "مسابقات و چالش‌ها", icon: Trophy },
@@ -55,20 +63,21 @@ export const navSections: { title: string; items: Item[] }[] = [
   {
     title: "دانش و پروژه",
     items: [
-      { to: "/dashboard/knowledge", label: "مدیریت دانش", icon: BookOpen },
-      { to: "/dashboard/projects", label: "مدیریت پروژه", icon: KanbanSquare },
-      { to: "/dashboard/contracts", label: "قراردادهای فناورانه", icon: FileSignature },
-      { to: "/dashboard/funds", label: "صندوق نوآوری و شتاب‌دهی", icon: PiggyBank },
-      { to: "/dashboard/research", label: "فرصت‌های پژوهشی", icon: FlaskConical },
+      { to: "/dashboard/knowledge", label: "مدیریت دانش", icon: BookOpen, viewPerm: "knowledge.list" },
+      { to: "/dashboard/projects", label: "مدیریت پروژه", icon: KanbanSquare, viewPerm: "projects.list" },
+      { to: "/dashboard/contracts", label: "قراردادهای فناورانه", icon: FileSignature, viewPerm: "contracts.list" },
+      { to: "/dashboard/funds", label: "صندوق نوآوری و شتاب‌دهی", icon: PiggyBank, viewPerm: "funds.list" },
+      { to: "/dashboard/research", label: "فرصت‌های پژوهشی", icon: FlaskConical, viewPerm: "research.list" },
       { to: "/dashboard/award", label: "جایزه نوآوری و فناوری", icon: Award },
-      { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap },
-      { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3 },
+      { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap, viewPerm: "training.list" },
+      { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3, viewPerm: "reports.view" },
     ],
   },
   {
     title: "مدیریت",
     items: [
       { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings, adminOnly: true },
+      { to: "/dashboard/access", label: "نقش و دسترسی من", icon: KeyRound },
       { to: "/dashboard/appearance", label: "ظاهر و برندسازی", icon: Palette },
       { to: "/dashboard/tickets", label: "تیکت پشتیبانی", icon: LifeBuoy },
       { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
@@ -76,14 +85,21 @@ export const navSections: { title: string; items: Item[] }[] = [
   },
 ];
 
-const sections = navSections;
+/** فیلترِ مشترکِ منو بر اساس دسترسی — هم Sidebar و هم Topbar از همین استفاده می‌کنند */
+export function filterNavSections(ctx: { canAccessAdmin: boolean; hasPermission: (id: string) => boolean }) {
+  return navSections
+    .map((s) => ({
+      ...s,
+      items: s.items.filter(
+        (i) => (!i.adminOnly || ctx.canAccessAdmin) && (!i.viewPerm || ctx.hasPermission(i.viewPerm))
+      ),
+    }))
+    .filter((s) => s.items.length > 0);
+}
 
 export default function Sidebar() {
-  const { identity, canAccessAdmin, session, activeScopeLabel } = useTenancy();
-  // ناوبری نقش‌محور: آیتم‌های مدیریتی فقط برای نقش‌های دارای اختیار
-  const visibleSections = sections
-    .map((s) => ({ ...s, items: s.items.filter((i) => !i.adminOnly || canAccessAdmin) }))
-    .filter((s) => s.items.length > 0);
+  const { identity, canAccessAdmin, hasPermission, session, activeScopeLabel } = useTenancy();
+  const visibleSections = filterNavSections({ canAccessAdmin, hasPermission });
   return (
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-l border-ink-200 bg-navy-900 h-screen sticky top-0">
       <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10">

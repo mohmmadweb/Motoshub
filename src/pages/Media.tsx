@@ -8,7 +8,7 @@ import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
 import EmptyState from "../components/ui/EmptyState";
-import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
+import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
@@ -22,7 +22,7 @@ const palette = ["#82aee6", "#93a2b8", "#1f4f99", "#5e7191", "#0d9488"];
 
 export default function Media() {
   const { mediaItems: items, setMediaItems: setItems } = useContent();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [kind, setKind] = useState<"all" | "photo" | "video">("all");
   const [open, setOpen] = useState(false);
@@ -118,9 +118,11 @@ export default function Media() {
         description="مدیریت آلبوم‌های کاربری، حریم خصوصی محتوا و اتصال به شبکه‌ی آپارات"
         icon={<Image size={18} />}
         actions={
-          <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-            بارگذاری محتوا
-          </Button>
+          hasPermission("media.upload") ? (
+            <Button variant="primary" icon={<Upload size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+              بارگذاری محتوا
+            </Button>
+          ) : null
         }
       />
 
@@ -195,12 +197,10 @@ export default function Media() {
                   <span className="flex items-center gap-1 text-amber-600 text-[11px] font-medium">
                     <Star size={11} className="fill-amber-500 text-amber-500" /> {m.rating}
                   </span>
-                  <VisibilityToggle
-                    visibility={m.visibility}
-                    onChange={() => toggleVisibility(m.id)}
-                    size="xs"
-                  />
-                  <RowActions onEdit={() => startEdit(m)} onDelete={() => remove(m)} size={13} />
+                  {hasPermission("media.edit")
+                    ? <VisibilityToggle visibility={m.visibility} onChange={() => toggleVisibility(m.id)} size="xs" />
+                    : <VisibilityBadge visibility={m.visibility} />}
+                  <RowActions onEdit={hasPermission("media.edit") ? () => startEdit(m) : undefined} onDelete={hasPermission("media.delete") ? () => remove(m) : undefined} size={13} />
                 </div>
               </div>
               <div className="mt-1.5">

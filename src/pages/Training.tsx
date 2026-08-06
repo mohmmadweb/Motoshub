@@ -35,7 +35,7 @@ export default function Training() {
   const [titleError, setTitleError] = useState(false);
   const { notify } = useToast();
 
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const trainingCourses = filterScoped(courses);
   const totalCerts = trainingCourses.reduce((s, c) => s + (c.certificates ?? 0), 0);
@@ -114,9 +114,11 @@ export default function Training() {
         description="دوره‌های تخصصی، تقویم آموزشی، حضور و غیاب، ارزشیابی، سنجش اثربخشی و صدور گواهینامه"
         icon={<GraduationCap size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-            تعریف دوره جدید
-          </Button>
+          hasPermission("training.create") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+              تعریف دوره جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -146,12 +148,12 @@ export default function Training() {
             <Badge tone={statusTone[c.status]}>{c.status}</Badge>
             <span className="hidden sm:flex items-center gap-1">
               <ScopeBadge item={c} />
-              {c.status === "ثبت‌نام باز" && (
+              {c.status === "ثبت‌نام باز" && hasPermission("training.enroll") && (
                 <Button variant={enrolledIds.includes(c.id) ? "secondary" : "primary"} size="sm" onClick={() => enroll(c)}>
                   {enrolledIds.includes(c.id) ? "ثبت‌نام شد" : "ثبت‌نام"}
                 </Button>
               )}
-              <RowActions onEdit={() => startEdit(c)} onDelete={() => removeCourse(c)} />
+              <RowActions onEdit={hasPermission("training.create") ? () => startEdit(c) : undefined} onDelete={hasPermission("training.create") ? () => removeCourse(c) : undefined} />
             </span>
           </div>
         ))}

@@ -3,11 +3,11 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import Avatar from "./Avatar";
 import { currentUser, notifications, userPresence, type PresenceStatus } from "../data/mock";
-import { navSections } from "./Sidebar";
+import { filterNavSections } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
 import { useTenancy } from "../context/TenancyContext";
-import { users as allUsers } from "../data/mock";
+import { users as allUsers, demoPersonas, roles, initialRoleAssignments } from "../data/mock";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -25,8 +25,9 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   const [status, setStatus] = useState<PresenceStatus>(userPresence[currentUser.id] ?? "online");
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
-  const { actingUser, setActingUser, session, identity, canAccessAdmin } = useTenancy();
+  const { actingUser, setActingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
   const displayUser = actingUser;
+  const roleOf = (uid: string) => roles.find((r) => r.id === (initialRoleAssignments[uid]?.roleId ?? "r4"));
 
   const toggleDark = () => setMode(resolved === "dark" ? "light" : "dark");
 
@@ -52,9 +53,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-              {navSections
-                .map((s) => ({ ...s, items: s.items.filter((i) => !i.adminOnly || canAccessAdmin) }))
-                .filter((s) => s.items.length > 0)
+              {filterNavSections({ canAccessAdmin, hasPermission })
                 .map((section) => (
                 <div key={section.title}>
                   <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>
@@ -143,6 +142,17 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
               <div className="absolute left-0 mt-2 w-60 bg-white border border-ink-200 rounded-lg shadow-lg z-20 py-1.5" dir="rtl">
+                <div className="px-3.5 pt-1 pb-2">
+                  <p className="text-[13px] font-bold text-ink-900 truncate">{displayUser.name}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[10.5px] font-bold bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2 py-px">{role.title}</span>
+                    <span className="text-[10px] text-ink-400">سطح {session.level}</span>
+                  </div>
+                </div>
+                <Link to="/dashboard/access" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                  <ShieldCheck size={15} className="text-ink-400" /> نقش و دسترسی من
+                </Link>
+                <div className="h-px bg-ink-100 my-1" />
                 <p className="px-3.5 py-1 text-[11px] text-ink-400">وضعیت حضور</p>
                 <div className="px-2 pb-1.5 flex items-center gap-1">
                   {statusOptions.map((s) => (
@@ -173,14 +183,18 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                     aria-label="تعویض کاربر واردشده"
                     className="w-full text-[12px] border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
                   >
-                    {allUsers.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} — {(u.companyIds?.length ?? 0) === 0 ? "سطح سیستم" : `${u.companyIds!.length.toLocaleString("fa-IR")} شرکت`}
-                      </option>
-                    ))}
+                    {demoPersonas.map((p) => {
+                      const u = allUsers.find((x) => x.id === p.id)!;
+                      const r = roleOf(p.id);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {u.name} — {r?.title}
+                        </option>
+                      );
+                    })}
                   </select>
                   <p className="text-[10px] text-ink-400 mt-1 leading-4">
-                    دامنه‌ی دید از روی عضویت همین کاربر محاسبه می‌شود — سطح فعلی: <b>{session.level}</b>
+                    نقش فعلی: <b>{role.title}</b> · سطح <b>{session.level}</b> — برای دیدن دسترسی‌ها به «نقش و دسترسی من» بروید.
                   </p>
                 </div>
                 )}

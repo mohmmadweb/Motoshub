@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Lock, Smartphone, ShieldCheck, ChevronDown, Network } from "lucide-react";
-import { tenants, users as allUsers } from "../data/mock";
+import { tenants, users as allUsers, roles, initialRoleAssignments, demoPersonas } from "../data/mock";
 import { holdings } from "../data/mockDaneshmand";
 import { systemIdentity } from "../data/tenancy";
 import { useTenancy } from "../context/TenancyContext";
@@ -36,7 +36,12 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
-  const [demoUserId, setDemoUserId] = useState(allUsers[0].id);
+  const [demoUserId, setDemoUserId] = useState(demoPersonas[0].id);
+  const roleOf = (uid: string) => {
+    const g = initialRoleAssignments[uid];
+    return roles.find((r) => r.id === (g?.roleId ?? "r4"));
+  };
+  const selectedPersona = demoPersonas.find((p) => p.id === demoUserId);
   const [errors, setErrors] = useState<{ u?: string; p?: string; ph?: string }>({});
   const tenant = workspaces.find((t) => t.id === tenantId)!;
 
@@ -198,7 +203,7 @@ export default function Login() {
             {IS_DEMO && (
             <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/60 p-2.5">
               <label className="text-[10.5px] font-bold text-ink-400 block mb-1">
-                حساب نمایشی (دموی سناریوها)
+                حساب نمایشی — نقش‌های مختلف را امتحان کنید
               </label>
               <select
                 value={demoUserId}
@@ -206,14 +211,23 @@ export default function Login() {
                 aria-label="انتخاب حساب نمایشی"
                 className="w-full text-xs border border-ink-200 rounded-md px-2 py-1.5 bg-white outline-none focus:border-brand-400"
               >
-                {allUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {(u.companyIds?.length ?? 0) === 0 ? "سطح سیستم" : `عضو ${u.companyIds!.length.toLocaleString("fa-IR")} شرکت`}
-                  </option>
-                ))}
+                {demoPersonas.map((p) => {
+                  const u = allUsers.find((x) => x.id === p.id)!;
+                  const r = roleOf(p.id);
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {u.name} — {r?.title} ({r?.scope})
+                    </option>
+                  );
+                })}
               </select>
+              {selectedPersona && (
+                <p className="text-[10.5px] text-ink-500 mt-1.5 leading-5 bg-white rounded-md border border-ink-100 px-2 py-1.5">
+                  {selectedPersona.summary}
+                </p>
+              )}
               <p className="text-[10px] text-ink-400 mt-1 leading-4">
-                دامنه‌ی دید و دسترسی‌ها پس از ورود، از عضویت همین حساب محاسبه می‌شود.
+                پس از ورود، منوها، دکمه‌ها و صفحه‌ی «نقش و دسترسی من» دقیقاً بر اساس همین نقش تغییر می‌کند.
               </p>
             </div>
             )}

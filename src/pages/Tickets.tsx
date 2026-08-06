@@ -86,7 +86,7 @@ export default function Tickets() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canAccessAdmin } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const openCount = tickets.filter((t) => t.status === "باز" || t.status === "در حال بررسی").length;
@@ -217,7 +217,7 @@ export default function Tickets() {
     {
       key: "actions",
       label: "",
-      render: (t) => <RowActions onEdit={() => startEdit(t)} onDelete={() => remove(t)} />,
+      render: (t) => <RowActions onEdit={canAccessAdmin ? () => startEdit(t) : undefined} onDelete={canAccessAdmin ? () => remove(t) : undefined} />,
     },
   ];
 

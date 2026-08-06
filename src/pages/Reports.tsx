@@ -29,6 +29,7 @@ import Badge, { type BadgeTone } from "../components/ui/Badge";
 import StatCard from "../components/ui/StatCard";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTenancy } from "../context/TenancyContext";
 
 const periods = ["این هفته", "این ماه", "سه‌ماهه", "سال جاری"];
 const builderModules = ["پروژه‌ها", "قراردادها", "صندوق", "فرصت‌های پژوهشی"] as const;
@@ -53,6 +54,7 @@ export default function Reports() {
   const [saved, setSaved] = useState<SavedReport[]>(initialSavedReports);
   const [exportOpen, setExportOpen] = useState(false);
   const { notify } = useToast();
+  const { hasPermission } = useTenancy();
 
   const maxMonthly = Math.max(...monthlyActivity.map((m) => m.value));
   const maxDept = Math.max(...reportByDepartment.map((d) => d.value));
@@ -150,6 +152,7 @@ export default function Reports() {
         description="گزارش تجمیعی بر اساس معاونت، نوع پروژه، وضعیت و بازه‌ی زمانی برای داشبورد مدیریتی"
         icon={<BarChart3 size={18} />}
         actions={
+          !hasPermission("reports.export") ? null : (
           <div className="relative">
             <Button variant="secondary" icon={<Download size={14} />} onClick={() => setExportOpen((v) => !v)}>
               خروجی Excel/PDF
@@ -164,6 +167,7 @@ export default function Reports() {
               </div>
             )}
           </div>
+          )
         }
       />
 

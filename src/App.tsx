@@ -7,6 +7,7 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { TenancyProvider } from "./context/TenancyContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
+import RequirePerm from "./components/RequirePerm";
 
 // مسیرها به‌صورت lazy بارگذاری می‌شوند تا باندل اولیه سبک بماند
 const Landing = lazy(() => import("./pages/Landing"));
@@ -48,6 +49,7 @@ const NotFound404 = lazy(() => import("./pages/NotFound404"));
 const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
 const EventItemDetail = lazy(() => import("./pages/EventItemDetail"));
 const MediaItemDetail = lazy(() => import("./pages/MediaItemDetail"));
+const MyAccess = lazy(() => import("./pages/MyAccess"));
 
 function PageFallback() {
   return (
@@ -83,35 +85,36 @@ export default function App() {
         <Route path="/dashboard" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/dashboard" replace />} />
-          <Route path="news" element={<News />} />
+          <Route path="news" element={<RequirePerm perm="news.list" module="اخبار سازمان"><News /></RequirePerm>} />
           <Route path="news/:id" element={<NewsItemDetail />} />
-          <Route path="groups" element={<Groups />} />
+          <Route path="groups" element={<RequirePerm perm="groups.list" module="گروه‌های تعاملی"><Groups /></RequirePerm>} />
           <Route path="groups/:id" element={<GroupDetail />} />
-          <Route path="forum" element={<Forum />} />
+          <Route path="forum" element={<RequirePerm perm="forum.list" module="انجمن"><Forum /></RequirePerm>} />
           <Route path="forum/:id" element={<ForumTopic />} />
-          <Route path="events" element={<Events />} />
+          <Route path="events" element={<RequirePerm perm="events.list" module="رویدادها و جلسات"><Events /></RequirePerm>} />
           <Route path="events/:id" element={<EventItemDetail />} />
-          <Route path="blog" element={<Blog />} />
+          <Route path="blog" element={<RequirePerm perm="blog.list" module="بلاگ"><Blog /></RequirePerm>} />
           <Route path="blog/:id" element={<BlogPostDetail />} />
-          <Route path="media" element={<Media />} />
+          <Route path="media" element={<RequirePerm perm="media.list" module="تصاویر و ویدیو"><Media /></RequirePerm>} />
           <Route path="media/:id" element={<MediaItemDetail />} />
-          <Route path="chat" element={<Chat />} />
+          <Route path="chat" element={<RequirePerm perm="chat.view" module="گفتگو"><Chat /></RequirePerm>} />
           <Route path="friends" element={<Friends />} />
           <Route path="polls" element={<Polls />} />
           <Route path="competitions" element={<Competitions />} />
           <Route path="tickets" element={<Tickets />} />
+          <Route path="access" element={<MyAccess />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="profile/:id" element={<Profile />} />
-          <Route path="knowledge" element={<Knowledge />} />
-          <Route path="projects" element={<Projects />} />
+          <Route path="knowledge" element={<RequirePerm perm="knowledge.list" module="مدیریت دانش"><Knowledge /></RequirePerm>} />
+          <Route path="projects" element={<RequirePerm perm="projects.list" module="مدیریت پروژه"><Projects /></RequirePerm>} />
           <Route path="projects/:id" element={<ProjectBoard />} />
-          <Route path="contracts" element={<Contracts />} />
-          <Route path="funds" element={<Funds />} />
-          <Route path="research" element={<Research />} />
+          <Route path="contracts" element={<RequirePerm perm="contracts.list" module="قراردادهای فناورانه"><Contracts /></RequirePerm>} />
+          <Route path="funds" element={<RequirePerm perm="funds.list" module="صندوق نوآوری و شتاب‌دهی"><Funds /></RequirePerm>} />
+          <Route path="research" element={<RequirePerm perm="research.list" module="فرصت‌های پژوهشی"><Research /></RequirePerm>} />
           <Route path="award" element={<Award />} />
-          <Route path="training" element={<Training />} />
-          <Route path="assistant" element={<Assistant />} />
-          <Route path="reports" element={<Reports />} />
+          <Route path="training" element={<RequirePerm perm="training.list" module="آموزش و توانمندسازی"><Training /></RequirePerm>} />
+          <Route path="assistant" element={<RequirePerm perm="assistant.chat" module="دستیار هوشمند"><Assistant /></RequirePerm>} />
+          <Route path="reports" element={<RequirePerm perm="reports.view" module="گزارش‌گیری پیشرفته"><Reports /></RequirePerm>} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="appearance" element={<Appearance />} />
           <Route path="admin" element={<Admin />} />

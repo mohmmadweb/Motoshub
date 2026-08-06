@@ -10,7 +10,7 @@ import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
-import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
+import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -32,7 +32,7 @@ export default function Events() {
 
 function EventsListTab() {
   const { events, setEvents } = useContent();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [calendar, setCalendar] = useState<"jalali" | "gregorian">("jalali");
   const [open, setOpen] = useState(false);
@@ -138,9 +138,11 @@ function EventsListTab() {
                 میلادی
               </button>
             </div>
-            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-              رویداد جدید
-            </Button>
+            {hasPermission("events.create") && (
+              <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+                رویداد جدید
+              </Button>
+            )}
           </>
       </div>
 
@@ -172,14 +174,14 @@ function EventsListTab() {
           { key: "location", label: "مکان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><MapPin size={12} className="shrink-0" /> <span className="truncate max-w-[160px]">{e.location}</span></span> },
           { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}{e.capacity ? ` از ${e.capacity.toLocaleString("fa-IR")}` : ""}</span> },
           { key: "owner", label: "دامنه", render: (e) => <ScopeBadge item={e} /> },
-          { key: "visibility", label: "دسترسی", render: (e) => <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> },
+          { key: "visibility", label: "دسترسی", render: (e) => hasPermission("events.edit") ? <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> : <VisibilityBadge visibility={e.visibility} /> },
           {
             key: "actions",
             label: "",
             render: (e) => (
               <span className="flex items-center gap-0.5">
-                <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>دعوت</Button>
-                <RowActions onEdit={() => startEdit(e)} onDelete={() => remove(e)} />
+                {hasPermission("events.invite") && <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>دعوت</Button>}
+                <RowActions onEdit={hasPermission("events.edit") ? () => startEdit(e) : undefined} onDelete={hasPermission("events.delete") ? () => remove(e) : undefined} />
               </span>
             ),
           },

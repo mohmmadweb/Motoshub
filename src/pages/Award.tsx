@@ -10,6 +10,7 @@ import EmptyState from "../components/ui/EmptyState";
 import StatCard from "../components/ui/StatCard";
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
+import { useTenancy } from "../context/TenancyContext";
 
 // ---------------------------------------------------------------------------
 // رویداد جایزه نوآوری و فناوری بنیاد — سه محور، ثبت‌نام سامانه‌ای، صحت‌سنجی
@@ -28,6 +29,7 @@ const entryStatuses: AwardEntry["status"][] = ["ثبت‌شده", "صحت‌سن
 export default function Award() {
   const { notify } = useToast();
   const confirm = useConfirm();
+  const { canAccessAdmin } = useTenancy();
   const [tracks, setTracks] = useState<AwardTrack[]>(initialTracks);
   const [entries, setEntries] = useState<AwardEntry[]>(initialEntries);
   const totalSubmissions = tracks.reduce((s, t) => s + t.submissions, 0);
@@ -141,7 +143,7 @@ export default function Award() {
         icon={<Trophy size={18} />}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => openTrackModal()}>محور جدید</Button>
+            {canAccessAdmin && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => openTrackModal()}>محور جدید</Button>}
             <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => openEntryModal()}>ثبت اثر</Button>
           </div>
         }
@@ -161,7 +163,7 @@ export default function Award() {
               <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
                 <Trophy size={14} className="text-amber-500" /> {t.title}
               </p>
-              <RowActions onEdit={() => openTrackModal(t)} onDelete={() => removeTrack(t)} size={13} />
+              {canAccessAdmin && <RowActions onEdit={() => openTrackModal(t)} onDelete={() => removeTrack(t)} size={13} />}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mb-3">
               {t.categories.map((c) => (
@@ -190,7 +192,7 @@ export default function Award() {
                 {e.score !== undefined && <Badge tone="success">امتیاز {e.score.toLocaleString("fa-IR")}</Badge>}
                 <Badge tone={entryStatusTone[e.status]}>{e.status}</Badge>
                 {e.editUsed && <Badge tone="neutral">سهمیه ویرایش مصرف شد</Badge>}
-                <RowActions onEdit={() => openEntryModal(e)} onDelete={() => removeEntry(e)} />
+                {canAccessAdmin && <RowActions onEdit={() => openEntryModal(e)} onDelete={() => removeEntry(e)} />}
               </div>
             </div>
           ))}

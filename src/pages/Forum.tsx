@@ -8,7 +8,7 @@ import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
 import EmptyState from "../components/ui/EmptyState";
-import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
+import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
@@ -23,7 +23,7 @@ export default function Forum() {
   const [category, setCategory] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -98,9 +98,11 @@ export default function Forum() {
         description="تبادل اطلاعات، پرسش‌و‌پاسخ و دسته‌بندی موضوعات در تالارهای گفتگو"
         icon={<MessagesSquare size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-            موضوع جدید
-          </Button>
+          hasPermission("forum.create") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+              موضوع جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -130,9 +132,11 @@ export default function Forum() {
                 <Eye size={13} /> {t.views}
               </span>
               <ScopeBadge item={t} />
-              <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
+              {hasPermission("forum.edit")
+                ? <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
+                : <VisibilityBadge visibility={t.visibility} />}
               <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                <RowActions onEdit={() => startEdit(t)} onDelete={() => remove(t)} />
+                <RowActions onEdit={hasPermission("forum.edit") ? () => startEdit(t) : undefined} onDelete={hasPermission("forum.delete") ? () => remove(t) : undefined} />
               </span>
             </div>
           </Link>

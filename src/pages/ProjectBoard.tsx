@@ -27,6 +27,7 @@ import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
+import { useTenancy } from "../context/TenancyContext";
 
 const statuses: Task["status"][] = ["برنامه‌ریزی", "در حال انجام", "بازبینی", "انجام‌شده"];
 const priorityTone: Record<Task["priority"], BadgeTone> = {
@@ -64,6 +65,7 @@ type ViewId = "board" | "gantt" | "milestones" | "budget" | "risks" | "team" | "
 
 export default function ProjectBoard() {
   const { id } = useParams();
+  const { hasPermission } = useTenancy();
   const project = projects.find((p) => p.id === id);
   const detail = id ? projectDetails[id] : undefined;
   const [view, setView] = useState<ViewId>("board");
@@ -167,9 +169,11 @@ export default function ProjectBoard() {
         icon={<GanttChartSquare size={18} />}
         breadcrumb={[{ label: "مدیریت پروژه", to: "/dashboard/projects" }, { label: project.name }]}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setTaskOpen(true)}>
-            تسک جدید
-          </Button>
+          hasPermission("projects.tasks") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => setTaskOpen(true)}>
+              تسک جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -222,7 +226,7 @@ export default function ProjectBoard() {
                       </button>
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-[11px] text-ink-500">مسئول: {t.assignee}</p>
-                        <RowActions onEdit={() => startEditTask(t)} onDelete={() => removeTask(t)} size={12} />
+                        <RowActions onEdit={hasPermission("projects.tasks") ? () => startEditTask(t) : undefined} onDelete={hasPermission("projects.tasks") ? () => removeTask(t) : undefined} size={12} />
                       </div>
                     </div>
                   ))}

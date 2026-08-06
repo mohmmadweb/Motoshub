@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, Bell, BellOff, Send, Pencil, Trash2, Check } from "lucide-react";
 import { users, currentUser } from "../data/mock";
 import { useContent } from "../context/ContentContext";
+import { useTenancy } from "../context/TenancyContext";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
@@ -21,15 +22,21 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const { forumTopics, setForumTopics } = useContent();
   const { notify } = useToast();
+  const { hasPermission } = useTenancy();
   const confirm = useConfirm();
   const topic = forumTopics.find((t) => t.id === id);
   const [following, setFollowing] = useState(false);
+  // پاسخ‌های نمونه‌ی واقع‌نما — دو دیدگاهِ متمایز و منسجم برای هر موضوع
+  const seedReplies = [
+    "در واحد ما دقیقاً همین رویه اجرا شد؛ کلیدی‌ترین نکته، تعیین «معیار پذیرش» پیش از شروع کار بود. صورت‌جلسه و چک‌لیست اجرایی را در «مدیریت دانش» بارگذاری کردم تا برای واحدهای دیگر هم قابل استناد باشد.",
+    "تجربه‌ی ما نشان داد اگر گزارش پیشرفت ماهانه ثبت نشود، جمع‌بندی نهایی و مقایسه‌ی نتایج سخت می‌شود. پیشنهادم این است که شاخص‌های کلیدی (KPI) از همان ابتدا در سامانه تعریف و به مسئول هر بخش تخصیص داده شود.",
+  ];
   const [replies, setReplies] = useState<Reply[]>(() =>
     users.slice(1, 3).map((u, i) => ({
       id: `r-${u.id}`,
       author: u.name,
       avatarColor: u.avatarColor,
-      body: "نمونه‌ی متن پاسخ برای نمایش ساختار رشته‌ی پرسش‌و‌پاسخ ذیل هر موضوع انجمن.",
+      body: seedReplies[i] ?? seedReplies[0],
       accepted: i === 0,
       when: "۲ روز پیش",
       mine: false,
@@ -136,15 +143,19 @@ export default function ForumTopic() {
         breadcrumb={[{ label: "انجمن", to: "/dashboard/forum" }, { label: topic.category }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <VisibilityToggle visibility={topic.visibility} onChange={toggleVisibility} size="sm" />
-            <Button variant={topic.solved ? "primary" : "secondary"} size="sm" icon={<CheckCircle2 size={13} />} onClick={toggleSolved}>
-              {topic.solved ? "حل‌شده" : "علامت حل‌شده"}
-            </Button>
+            {hasPermission("forum.edit")
+              ? <VisibilityToggle visibility={topic.visibility} onChange={toggleVisibility} size="sm" />
+              : <VisibilityBadge visibility={topic.visibility} />}
+            {hasPermission("forum.solve") && (
+              <Button variant={topic.solved ? "primary" : "secondary"} size="sm" icon={<CheckCircle2 size={13} />} onClick={toggleSolved}>
+                {topic.solved ? "حل‌شده" : "علامت حل‌شده"}
+              </Button>
+            )}
             <Button variant={following ? "primary" : "secondary"} size="sm" icon={following ? <Bell size={13} /> : <BellOff size={13} />} onClick={() => setFollowing((v) => !v)}>
               {following ? "دنبال‌می‌کنید" : "دنبال کردن موضوع"}
             </Button>
-            <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openTopicEdit}>ویرایش</Button>
-            <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeTopic}>حذف</Button>
+            {hasPermission("forum.edit") && <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openTopicEdit}>ویرایش</Button>}
+            {hasPermission("forum.delete") && <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeTopic}>حذف</Button>}
           </div>
         }
       />
@@ -164,8 +175,9 @@ export default function ForumTopic() {
           <VisibilityBadge visibility={topic.visibility} />
         </div>
         <p className="text-sm leading-7 text-ink-800">
-          متن کامل سوال/موضوع در این بخش نمایش داده می‌شود. این یک نمونه‌ی نمایشی برای ساختار صفحه‌ی موضوع انجمن است؛
-          در نسخه‌ی واقعی محتوای کامل از API انجمن خوانده می‌شود.
+          در موضوع «{topic.title}» به‌دنبال جمع‌بندی تجربه‌ها و رسیدن به یک رویه‌ی قابل‌تکرار هستیم.
+          اگر در حوزه‌ی «{topic.category}» تجربه‌ی مرتبط دارید، لطفاً نکات کلیدی، ریسک‌های احتمالی و اسناد مرجع
+          (صورت‌جلسه، چک‌لیست یا گزارش) را اضافه کنید تا برای واحدهای دیگرِ بنیاد هم قابل استفاده باشد.
         </p>
       </div>
 
@@ -182,16 +194,18 @@ export default function ForumTopic() {
                 <span className="text-[11px] text-ink-400">{r.when}</span>
                 {r.accepted && <Badge tone="success">پاسخ پذیرفته‌شده</Badge>}
                 <span className="flex-1" />
-                <button
-                  onClick={() => acceptReply(r)}
-                  className={`p-1.5 rounded-md hover:bg-emerald-50 ${r.accepted ? "text-emerald-600" : "text-ink-400 hover:text-emerald-600"}`}
-                  title={r.accepted ? "لغو پذیرش پاسخ" : "پذیرش به‌عنوان پاسخ"}
-                >
-                  <Check size={14} />
-                </button>
+                {hasPermission("forum.solve") && (
+                  <button
+                    onClick={() => acceptReply(r)}
+                    className={`p-1.5 rounded-md hover:bg-emerald-50 ${r.accepted ? "text-emerald-600" : "text-ink-400 hover:text-emerald-600"}`}
+                    title={r.accepted ? "لغو پذیرش پاسخ" : "پذیرش به‌عنوان پاسخ"}
+                  >
+                    <Check size={14} />
+                  </button>
+                )}
                 <RowActions
-                  onEdit={() => { setEditingReply(r); setReplyDraft(r.body); }}
-                  onDelete={() => removeReply(r)}
+                  onEdit={(r.mine || hasPermission("forum.edit")) ? () => { setEditingReply(r); setReplyDraft(r.body); } : undefined}
+                  onDelete={(r.mine || hasPermission("forum.delete")) ? () => removeReply(r) : undefined}
                 />
               </div>
               <p className="text-sm text-ink-700 leading-7 whitespace-pre-wrap">{r.body}</p>
@@ -200,18 +214,24 @@ export default function ForumTopic() {
         )}
       </div>
 
-      <div className="card p-3 flex items-center gap-2">
-        <input
-          className="input-field"
-          placeholder="پاسخ خود را بنویسید…"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") sendReply(); }}
-        />
-        <Button variant="primary" icon={<Send size={14} />} onClick={sendReply}>
-          ارسال
-        </Button>
-      </div>
+      {hasPermission("forum.reply") ? (
+        <div className="card p-3 flex items-center gap-2">
+          <input
+            className="input-field"
+            placeholder="پاسخ خود را بنویسید…"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") sendReply(); }}
+          />
+          <Button variant="primary" icon={<Send size={14} />} onClick={sendReply}>
+            ارسال
+          </Button>
+        </div>
+      ) : (
+        <div className="card p-3 text-center text-xs text-ink-400">
+          برای پاسخ‌دادن به این موضوع، دسترسی «پاسخ به مباحث» لازم است.
+        </div>
+      )}
 
       <Modal open={!!editingReply} onClose={() => setEditingReply(null)} title="ویرایش پاسخ">
         <div className="space-y-3">

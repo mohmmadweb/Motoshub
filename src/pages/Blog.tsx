@@ -11,7 +11,7 @@ import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
-import { VisibilityToggle, VisibilityPicker } from "../components/ui/VisibilityControl";
+import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -71,7 +71,7 @@ function PublicationsTab() {
 export default function Blog() {
   const [tab, setTab] = useTabParam<"blog" | "pubs">("blog", ["blog", "pubs"]);
   const { blogPosts: posts, setBlogPosts: setPosts } = useContent();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -145,9 +145,11 @@ export default function Blog() {
         description="یادداشت‌های منتشرشده توسط کاربران شبکه با امکان برچسب‌گذاری و امتیازدهی"
         icon={<NotebookPen size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-            یادداشت جدید
-          </Button>
+          hasPermission("blog.create") ? (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+              یادداشت جدید
+            </Button>
+          ) : null
         }
       />
 
@@ -199,8 +201,8 @@ export default function Blog() {
             ),
           },
           { key: "owner", label: "دامنه", render: (b) => <ScopeBadge item={b} /> },
-          { key: "visibility", label: "دسترسی", render: (b) => <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> },
-          { key: "actions", label: "", render: (b) => <RowActions onEdit={() => startEdit(b)} onDelete={() => remove(b)} /> },
+          { key: "visibility", label: "دسترسی", render: (b) => hasPermission("blog.edit") ? <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> : <VisibilityBadge visibility={b.visibility} /> },
+          { key: "actions", label: "", render: (b) => <RowActions onEdit={hasPermission("blog.edit") ? () => startEdit(b) : undefined} onDelete={hasPermission("blog.delete") ? () => remove(b) : undefined} /> },
         ]}
         rows={filterScoped(posts)}
         searchKeys={["title", "excerpt", "author"]}

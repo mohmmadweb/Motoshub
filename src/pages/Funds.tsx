@@ -227,7 +227,7 @@ function InnovationFundTab() {
   const [formErrors, setFormErrors] = useState<{ title?: boolean; team?: boolean }>({});
   const { notify } = useToast();
   const { settings } = useSettings();
-  const { filterScoped, defaultScopeForNew } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canAccessAdmin } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const updateProject = (updated: NfProject) => {
@@ -318,7 +318,7 @@ function InnovationFundTab() {
     {
       key: "actions",
       label: "",
-      render: (p) => <RowActions onEdit={() => setSelected(p)} onDelete={() => deleteProject(p)} />,
+      render: (p) => <RowActions onEdit={(hasPermission("funds.score") || hasPermission("funds.refer")) ? () => setSelected(p) : undefined} onDelete={(hasPermission("funds.submit") || canAccessAdmin) ? () => deleteProject(p) : undefined} />,
     },
     { key: "scopeOwner", label: "دامنه", render: (p) => <ScopeBadge item={p} /> },
   ];
@@ -344,9 +344,11 @@ function InnovationFundTab() {
           <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
             <Workflow size={15} className="text-brand-600" /> گام‌های اصلی روند صندوق
           </h3>
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-            ثبت پروپوزال جدید
-          </Button>
+          {hasPermission("funds.submit") && (
+            <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+              ثبت پروپوزال جدید
+            </Button>
+          )}
         </div>
         <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1">
           {nfStages.map((s, i) => {
@@ -473,6 +475,7 @@ function InnovationFundTab() {
 
 function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject; onUpdate: (p: NfProject) => void; onDelete: (p: NfProject) => void }) {
   const { notify } = useToast();
+  const { hasPermission, canAccessAdmin } = useTenancy();
   const { settings } = useSettings();
   const [showAllCriteria, setShowAllCriteria] = useState(false);
 
@@ -534,9 +537,11 @@ function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject;
               ))}
             </select>
           </div>
-          <button onClick={() => onDelete(p)} className="text-[11px] text-rose-500 hover:text-rose-700 flex items-center gap-1">
-            حذف این پروژه از صندوق
-          </button>
+          {(hasPermission("funds.submit") || canAccessAdmin) && (
+            <button onClick={() => onDelete(p)} className="text-[11px] text-rose-500 hover:text-rose-700 flex items-center gap-1">
+              حذف این پروژه از صندوق
+            </button>
+          )}
         </div>
       </div>
 
@@ -775,7 +780,7 @@ function EmploymentFundTab() {
   const [stageFilter, setStageFilter] = useState<"همه" | FundRecord["stage"]>("همه");
   const [selected, setSelected] = useState<FundRecord | null>(null);
   const { notify } = useToast();
-  const { filterScoped: filterScopedF, defaultScopeForNew: defaultScopeF } = useTenancy();
+  const { filterScoped: filterScopedF, defaultScopeForNew: defaultScopeF, hasPermission } = useTenancy();
   const [fundScope, setFundScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? fundDetails[selected.id] : undefined;
@@ -836,9 +841,11 @@ function EmploymentFundTab() {
   return (
     <div>
       <div className="flex items-center justify-end mb-4">
+        {hasPermission("funds.submit") && (
         <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFundScope(defaultScopeF()); setOpen(true); }}>
           ثبت طرح جدید
         </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
@@ -1008,7 +1015,7 @@ function EmploymentFundTab() {
               </>
             )}
 
-            {(selected.stage === "ثبت‌شده" || selected.stage === "انتخاب اولیه") && (
+            {(selected.stage === "ثبت‌شده" || selected.stage === "انتخاب اولیه") && hasPermission("funds.refer") && (
               <div className="border-t border-ink-100 pt-4">
                 <Button variant="primary" className="w-full justify-center" onClick={() => referToReview(selected)}>
                   ارجاع به جلسه داوری
