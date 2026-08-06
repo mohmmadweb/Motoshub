@@ -39,7 +39,7 @@ export default function Projects() {
   const [editingPbId, setEditingPbId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const startEditProject = (p: Project) => {
@@ -120,6 +120,7 @@ export default function Projects() {
       deadline: deadline.trim() || "نامشخص",
       tasks: [],
       ...itemScope,
+      authorId: actingUser.id,
     };
     setProjects((prev) => [newProject, ...prev]);
     notify(`پروژه «${newProject.name}» ایجاد شد.`);
@@ -216,7 +217,7 @@ export default function Projects() {
                 <ScopeBadge item={p} />
                 <span className="text-xs text-ink-400">مهلت {p.deadline}</span>
                 <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                  <RowActions onEdit={hasPermission("projects.edit") ? () => startEditProject(p) : undefined} onDelete={hasPermission("projects.delete") ? () => removeProject(p) : undefined} size={13} />
+                  <RowActions onEdit={canManageItem(p, "projects.edit") ? () => startEditProject(p) : undefined} onDelete={canManageItem(p, "projects.delete") ? () => removeProject(p) : undefined} size={13} />
                 </span>
               </span>
             </div>

@@ -22,7 +22,7 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const { forumTopics, setForumTopics } = useContent();
   const { notify } = useToast();
-  const { hasPermission } = useTenancy();
+  const { hasPermission, canManageItem } = useTenancy();
   const confirm = useConfirm();
   const topic = forumTopics.find((t) => t.id === id);
   const [following, setFollowing] = useState(false);
@@ -143,10 +143,10 @@ export default function ForumTopic() {
         breadcrumb={[{ label: "انجمن", to: "/dashboard/forum" }, { label: topic.category }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {hasPermission("forum.edit")
+            {canManageItem(topic, "forum.edit")
               ? <VisibilityToggle visibility={topic.visibility} onChange={toggleVisibility} size="sm" />
               : <VisibilityBadge visibility={topic.visibility} />}
-            {hasPermission("forum.solve") && (
+            {canManageItem(topic, "forum.solve") && (
               <Button variant={topic.solved ? "primary" : "secondary"} size="sm" icon={<CheckCircle2 size={13} />} onClick={toggleSolved}>
                 {topic.solved ? "حل‌شده" : "علامت حل‌شده"}
               </Button>
@@ -154,8 +154,8 @@ export default function ForumTopic() {
             <Button variant={following ? "primary" : "secondary"} size="sm" icon={following ? <Bell size={13} /> : <BellOff size={13} />} onClick={() => setFollowing((v) => !v)}>
               {following ? "دنبال‌می‌کنید" : "دنبال کردن موضوع"}
             </Button>
-            {hasPermission("forum.edit") && <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openTopicEdit}>ویرایش</Button>}
-            {hasPermission("forum.delete") && <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeTopic}>حذف</Button>}
+            {canManageItem(topic, "forum.edit") && <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={openTopicEdit}>ویرایش</Button>}
+            {canManageItem(topic, "forum.delete") && <Button variant="secondary" size="sm" icon={<Trash2 size={13} />} onClick={removeTopic}>حذف</Button>}
           </div>
         }
       />
@@ -194,7 +194,7 @@ export default function ForumTopic() {
                 <span className="text-[11px] text-ink-400">{r.when}</span>
                 {r.accepted && <Badge tone="success">پاسخ پذیرفته‌شده</Badge>}
                 <span className="flex-1" />
-                {hasPermission("forum.solve") && (
+                {canManageItem(topic, "forum.solve") && (
                   <button
                     onClick={() => acceptReply(r)}
                     className={`p-1.5 rounded-md hover:bg-emerald-50 ${r.accepted ? "text-emerald-600" : "text-ink-400 hover:text-emerald-600"}`}
@@ -204,8 +204,8 @@ export default function ForumTopic() {
                   </button>
                 )}
                 <RowActions
-                  onEdit={(r.mine || hasPermission("forum.edit")) ? () => { setEditingReply(r); setReplyDraft(r.body); } : undefined}
-                  onDelete={(r.mine || hasPermission("forum.delete")) ? () => removeReply(r) : undefined}
+                  onEdit={(r.mine || canManageItem(topic, "forum.edit")) ? () => { setEditingReply(r); setReplyDraft(r.body); } : undefined}
+                  onDelete={(r.mine || canManageItem(topic, "forum.delete")) ? () => removeReply(r) : undefined}
                 />
               </div>
               <p className="text-sm text-ink-700 leading-7 whitespace-pre-wrap">{r.body}</p>

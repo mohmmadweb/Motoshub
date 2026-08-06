@@ -78,7 +78,7 @@ export default function Competitions() {
   const [joined, setJoined] = useState<string[]>(["ch1"]);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, canAccessAdmin } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canAccessAdmin, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const [compOpen, setCompOpen] = useState(false);
@@ -123,7 +123,7 @@ export default function Competitions() {
       setComps((prev) => prev.map((c) => (c.id === editingCompId ? { ...c, ...payload, ...itemScope } : c)));
       notify("مسابقه ویرایش شد.");
     } else {
-      setComps((prev) => [{ id: `cp-${Date.now()}`, participants: 0, status: "ثبت‌نام باز", entries: [], ...payload, ...itemScope }, ...prev]);
+      setComps((prev) => [{ id: `cp-${Date.now()}`, participants: 0, status: "ثبت‌نام باز", entries: [], ...payload, ...itemScope, authorId: actingUser.id }, ...prev]);
       notify("مسابقه ایجاد شد.");
     }
     setCompOpen(false);
@@ -206,7 +206,7 @@ export default function Competitions() {
       setChallenges((prev) => prev.map((c) => (c.id === editingChId ? { ...c, ...payload, ...itemScope } : c)));
       notify("چالش ویرایش شد.");
     } else {
-      setChallenges((prev) => [{ id: `ch-${Date.now()}`, joined: 0, progress: 0, status: "فعال", ...payload, ...itemScope }, ...prev]);
+      setChallenges((prev) => [{ id: `ch-${Date.now()}`, joined: 0, progress: 0, status: "فعال", ...payload, ...itemScope, authorId: actingUser.id }, ...prev]);
       notify("چالش ایجاد شد.");
     }
     setChOpen(false);
@@ -273,7 +273,7 @@ export default function Competitions() {
                 <span className="flex items-center gap-1">
                   <ScopeBadge item={c} />
                   <Badge tone={compTone[c.status]}>{c.status}</Badge>
-                  {canAccessAdmin && <RowActions onEdit={() => openCompModal(c)} onDelete={() => removeComp(c)} />}
+                  {canManageItem(c) && <RowActions onEdit={() => openCompModal(c)} onDelete={() => removeComp(c)} />}
                 </span>
               </div>
               <p className="text-[11.5px] text-ink-400 mb-3 flex items-center gap-2 flex-wrap">
@@ -367,7 +367,7 @@ export default function Competitions() {
                       {isJoined ? "عضو هستید" : "پیوستن"}
                     </Button>
                   )}
-                  {canAccessAdmin && <RowActions onEdit={() => openChModal(c)} onDelete={() => removeCh(c)} />}
+                  {canManageItem(c) && <RowActions onEdit={() => openChModal(c)} onDelete={() => removeCh(c)} />}
                 </div>
               </div>
             );

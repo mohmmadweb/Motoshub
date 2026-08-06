@@ -22,7 +22,7 @@ const palette = ["#82aee6", "#93a2b8", "#1f4f99", "#5e7191", "#0d9488"];
 
 export default function Media() {
   const { mediaItems: items, setMediaItems: setItems } = useContent();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [kind, setKind] = useState<"all" | "photo" | "video">("all");
   const [open, setOpen] = useState(false);
@@ -97,6 +97,7 @@ export default function Media() {
       color: palette[items.length % palette.length],
       visibility,
       ...itemScope,
+      authorId: actingUser.id,
     };
     setItems((prev) => [newItem, ...prev]);
     notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
@@ -197,10 +198,10 @@ export default function Media() {
                   <span className="flex items-center gap-1 text-amber-600 text-[11px] font-medium">
                     <Star size={11} className="fill-amber-500 text-amber-500" /> {m.rating}
                   </span>
-                  {hasPermission("media.edit")
+                  {canManageItem(m, "media.edit")
                     ? <VisibilityToggle visibility={m.visibility} onChange={() => toggleVisibility(m.id)} size="xs" />
                     : <VisibilityBadge visibility={m.visibility} />}
-                  <RowActions onEdit={hasPermission("media.edit") ? () => startEdit(m) : undefined} onDelete={hasPermission("media.delete") ? () => remove(m) : undefined} size={13} />
+                  <RowActions onEdit={canManageItem(m, "media.edit") ? () => startEdit(m) : undefined} onDelete={canManageItem(m, "media.delete") ? () => remove(m) : undefined} size={13} />
                 </div>
               </div>
               <div className="mt-1.5">

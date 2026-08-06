@@ -40,6 +40,11 @@ export type Scoped = {
   scope?: ContentScope;
   holdingId?: string;
   companyId?: string;
+  /**
+   * سازنده‌ی آیتم — مبنای «مالکیت». هر کاربر آنچه خودش ساخته را کامل مدیریت می‌کند.
+   * نبودِ این فیلد یعنی آیتمِ قدیمی/سیستمی که مالکِ مشخصی ندارد (فقط مدیرِ همان دامنه اداره‌اش می‌کند).
+   */
+  authorId?: string;
 };
 
 export type SsoProvider = "بدون SSO" | "LDAP / Active Directory" | "SAML 2.0" | "OpenID Connect" | "ورود با موبایل (OTP)";

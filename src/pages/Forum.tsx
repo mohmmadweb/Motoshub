@@ -23,7 +23,7 @@ export default function Forum() {
   const [category, setCategory] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -82,6 +82,7 @@ export default function Forum() {
       visibility,
       ...(editingId ? {} : defaultScopeForNew()),
       ...itemScope,
+      authorId: actingUser.id,
     };
     setTopics((prev) => [newTopic, ...prev]);
     notify(`موضوع «${newTopic.title}» در انجمن منتشر شد (${visibility}).`);
@@ -132,11 +133,11 @@ export default function Forum() {
                 <Eye size={13} /> {t.views}
               </span>
               <ScopeBadge item={t} />
-              {hasPermission("forum.edit")
+              {canManageItem(t, "forum.edit")
                 ? <VisibilityToggle visibility={t.visibility} onChange={() => toggleVisibility(t.id)} size="xs" />
                 : <VisibilityBadge visibility={t.visibility} />}
               <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                <RowActions onEdit={hasPermission("forum.edit") ? () => startEdit(t) : undefined} onDelete={hasPermission("forum.delete") ? () => remove(t) : undefined} />
+                <RowActions onEdit={canManageItem(t, "forum.edit") ? () => startEdit(t) : undefined} onDelete={canManageItem(t, "forum.delete") ? () => remove(t) : undefined} />
               </span>
             </div>
           </Link>

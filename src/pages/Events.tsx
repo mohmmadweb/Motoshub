@@ -32,7 +32,7 @@ export default function Events() {
 
 function EventsListTab() {
   const { events, setEvents } = useContent();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [calendar, setCalendar] = useState<"jalali" | "gregorian">("jalali");
   const [open, setOpen] = useState(false);
@@ -100,6 +100,7 @@ function EventsListTab() {
         category,
         capacity: Number(capacity) || undefined,
         ...itemScope,
+        authorId: actingUser.id,
       };
       setEvents((prev) => [newEvent, ...prev]);
       notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
@@ -174,14 +175,14 @@ function EventsListTab() {
           { key: "location", label: "مکان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1"><MapPin size={12} className="shrink-0" /> <span className="truncate max-w-[160px]">{e.location}</span></span> },
           { key: "attendees", label: "شرکت‌کنندگان", render: (e) => <span className="text-xs text-ink-400 flex items-center gap-1 whitespace-nowrap"><Users size={12} /> {e.attendees.toLocaleString("fa-IR")}{e.capacity ? ` از ${e.capacity.toLocaleString("fa-IR")}` : ""}</span> },
           { key: "owner", label: "دامنه", render: (e) => <ScopeBadge item={e} /> },
-          { key: "visibility", label: "دسترسی", render: (e) => hasPermission("events.edit") ? <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> : <VisibilityBadge visibility={e.visibility} /> },
+          { key: "visibility", label: "دسترسی", render: (e) => canManageItem(e, "events.edit") ? <VisibilityToggle visibility={e.visibility} onChange={() => toggleVisibility(e.id)} size="xs" /> : <VisibilityBadge visibility={e.visibility} /> },
           {
             key: "actions",
             label: "",
             render: (e) => (
               <span className="flex items-center gap-0.5">
                 {hasPermission("events.invite") && <Button variant="ghost" size="sm" icon={<Send size={12} />} onClick={() => sendInvite(e)}>دعوت</Button>}
-                <RowActions onEdit={hasPermission("events.edit") ? () => startEdit(e) : undefined} onDelete={hasPermission("events.delete") ? () => remove(e) : undefined} />
+                <RowActions onEdit={canManageItem(e, "events.edit") ? () => startEdit(e) : undefined} onDelete={canManageItem(e, "events.delete") ? () => remove(e) : undefined} />
               </span>
             ),
           },

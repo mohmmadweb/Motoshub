@@ -35,7 +35,7 @@ export default function Training() {
   const [titleError, setTitleError] = useState(false);
   const { notify } = useToast();
 
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const trainingCourses = filterScoped(courses);
   const totalCerts = trainingCourses.reduce((s, c) => s + (c.certificates ?? 0), 0);
@@ -97,6 +97,7 @@ export default function Training() {
           enrolled: 0,
           status: "ثبت‌نام باز",
           ...itemScope,
+          authorId: actingUser.id,
         },
         ...prev,
       ]);
@@ -153,7 +154,7 @@ export default function Training() {
                   {enrolledIds.includes(c.id) ? "ثبت‌نام شد" : "ثبت‌نام"}
                 </Button>
               )}
-              <RowActions onEdit={hasPermission("training.create") ? () => startEdit(c) : undefined} onDelete={hasPermission("training.create") ? () => removeCourse(c) : undefined} />
+              <RowActions onEdit={canManageItem(c, "training.create") ? () => startEdit(c) : undefined} onDelete={canManageItem(c, "training.create") ? () => removeCourse(c) : undefined} />
             </span>
           </div>
         ))}

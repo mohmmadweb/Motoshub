@@ -52,7 +52,6 @@ import {
   currentUser,
   users as orgUsers,
   permissionCatalog,
-  allPermissionIds,
   initialRoleAssignments,
   type RoleAssignment,
   type RoleGrant,
@@ -679,16 +678,53 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
   const [editing, setEditing] = useState<RoleDef | "new" | null>(null);
   // هوک‌ها باید پیش از هر return شرطی صدا زده شوند (rules-of-hooks)
   const confirm = useConfirm();
+  const { role: myRole, session, managedHoldingIds, managedCompanyIds, hasPermission, holdingOf } = useTenancy();
+
+  // دامنه‌ی زیرمجموعه‌ی مدیر — نقشِ سفارشیِ ساخته‌شده به همین‌جا برچسب می‌خورد
+  const myDomain: { holdingId?: string; companyId?: string } =
+    session.level === "شرکت"
+      ? { companyId: managedCompanyIds[0], holdingId: holdingOf(managedCompanyIds[0])?.id }
+      : session.level === "هلدینگ"
+        ? { holdingId: managedHoldingIds[0] }
+        : {};
+
+  // مدیر فقط نقش‌های زیرمجموعه‌ی خودش را می‌تواند اداره کند؛ نقش‌های پایه فقط برای مشاهده
+  const canManageRole = (r: RoleDef) => {
+    if (r.system) return false;
+    if (session.level === "سیستم") return true;
+    if (r.companyId && managedCompanyIds.includes(r.companyId)) return true;
+    if (r.holdingId && managedHoldingIds.includes(r.holdingId)) return true;
+    return false;
+  };
+  // نقش‌های دیده‌شده: پایه‌ها + نقش‌های سفارشیِ همین زیرمجموعه (نقش‌های سایر زیرمجموعه‌ها دیده نمی‌شوند)
+  const visibleRoles = roles.filter(
+    (r) => r.system || session.level === "سیستم" || canManageRole(r)
+  );
+  // مجوزهایی که این مدیر می‌تواند به دیگران بدهد = مجوزهای خودش
+  const grantablePerms = myRole.permissions;
+  const allowedScopes: RoleDef["scope"][] =
+    session.level === "سیستم" ? ["سیستم", "هلدینگ", "شرکت", "گروه"]
+      : session.level === "هلدینگ" ? ["هلدینگ", "شرکت", "گروه"]
+        : session.level === "شرکت" ? ["شرکت", "گروه"]
+          : ["گروه"];
+  const canCreate = hasPermission("roles.create");
+  const canDelete = hasPermission("roles.delete");
 
   if (editing !== null) {
+    const target = editing === "new" ? null : editing;
+    const readOnly = target ? !canManageRole(target) : false;
     return (
       <RoleEditor
-        role={editing === "new" ? null : editing}
+        role={target}
+        readOnly={readOnly}
+        grantablePerms={grantablePerms}
+        allowedScopes={allowedScopes}
+        domain={myDomain}
         onCancel={() => setEditing(null)}
         onSave={(saved) => {
           if (editing === "new") {
             setRoles((prev) => [...prev, saved]);
-            notify(`نقش سفارشی «${saved.title}» با ${saved.permissions.length.toLocaleString("fa-IR")} دسترسی ایجاد شد. اکنون می‌توانید آن را از بخش «کاربران» به اعضا تخصیص دهید.`);
+            notify(`نقش سفارشی «${saved.title}» با ${saved.permissions.length.toLocaleString("fa-IR")} دسترسی ایجاد شد. اکنون می‌توانید آن را از بخش «کاربران» به اعضای زیرمجموعه‌ی خود تخصیص دهید.`);
           } else {
             setRoles((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
             notify(`دسترسی‌های نقش «${saved.title}» به‌روزرسانی شد.`);
@@ -713,52 +749,82 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-ink-900">نقش‌ها و سطوح دسترسی</h3>
-        <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setEditing("new")}>
-          نقش جدید
-        </Button>
+        {canCreate && (
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setEditing("new")}>
+            نقش جدید
+          </Button>
+        )}
       </div>
       <div className="card p-4 mb-4 bg-brand-50 border-brand-200 flex items-start gap-3">
         <KeyRound size={18} className="text-brand-700 shrink-0 mt-0.5" />
         <p className="text-xs text-brand-800 leading-6">
-          علاوه بر نقش‌های پایه‌ی سامانه، می‌توانید نقش کاملاً سفارشی تعریف کنید و تک‌تک دسترسی‌های هر ماژول را
-          برای آن تیک بزنید. سپس از بخش «کاربران و واردسازی» این نقش را به هر کاربر تخصیص دهید.
+          {session.level === "سیستم"
+            ? "می‌توانید نقش کاملاً سفارشی تعریف کنید و تک‌تک دسترسی‌های هر ماژول را تیک بزنید، سپس از بخش «کاربران» آن را تخصیص دهید."
+            : "شما فقط برای زیرمجموعه‌ی خود نقش تعریف/ویرایش می‌کنید و تنها می‌توانید دسترسی‌هایی را بدهید که خودتان دارید. نقش‌های پایه‌ی سامانه فقط قابل مشاهده‌اند."}
         </p>
       </div>
       <div className="card divide-y divide-ink-100">
-        {roles.map((r) => (
-          <div key={r.id} className="p-3.5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink-900 flex items-center gap-2 flex-wrap">
-                {r.title} <Badge tone={r.scope === "سیستم" ? "navy" : r.scope === "هلدینگ" ? "brand" : r.scope === "شرکت" ? "warning" : "neutral"}>{r.scope}</Badge>
-                {!r.system && <Badge tone="warning">سفارشی</Badge>}
-              </p>
-              <p className="text-xs text-ink-400 mt-0.5">{r.description}</p>
+        {visibleRoles.map((r) => {
+          const manageable = canManageRole(r);
+          return (
+            <div key={r.id} className="p-3.5 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink-900 flex items-center gap-2 flex-wrap">
+                  {r.title} <Badge tone={r.scope === "سیستم" ? "navy" : r.scope === "هلدینگ" ? "brand" : r.scope === "شرکت" ? "warning" : "neutral"}>{r.scope}</Badge>
+                  {r.system ? <Badge tone="neutral">پایه‌ی سامانه</Badge> : <Badge tone="warning">سفارشی</Badge>}
+                </p>
+                <p className="text-xs text-ink-400 mt-0.5">{r.description}</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs text-ink-400 hidden sm:block">{r.permissions.length.toLocaleString("fa-IR")} دسترسی</span>
+                <span className="text-xs text-ink-400 hidden sm:block">{r.members.toLocaleString("fa-IR")} نفر</span>
+                <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(r)}>
+                  {manageable ? "ویرایش دسترسی‌ها" : "مشاهده"}
+                </Button>
+                {manageable && canDelete && (
+                  <button onClick={() => removeRole(r)} className="text-rose-500 hover:text-rose-700 p-1" title="حذف نقش">
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs text-ink-400 hidden sm:block">{r.permissions.length.toLocaleString("fa-IR")} دسترسی</span>
-              <span className="text-xs text-ink-400 hidden sm:block">{r.members.toLocaleString("fa-IR")} نفر</span>
-              <Button variant="secondary" size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(r)}>
-                ویرایش دسترسی‌ها
-              </Button>
-              {!r.system && (
-                <button onClick={() => removeRole(r)} className="text-rose-500 hover:text-rose-700 p-1" title="حذف نقش">
-                  <Trash2 size={15} />
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: (r: RoleDef) => void; onCancel: () => void }) {
+function RoleEditor({
+  role,
+  onSave,
+  onCancel,
+  readOnly = false,
+  grantablePerms,
+  allowedScopes,
+  domain,
+}: {
+  role: RoleDef | null;
+  onSave: (r: RoleDef) => void;
+  onCancel: () => void;
+  readOnly?: boolean;
+  grantablePerms: string[];
+  allowedScopes: RoleDef["scope"][];
+  domain: { holdingId?: string; companyId?: string };
+}) {
   const [title, setTitle] = useState(role?.title ?? "");
-  const [scope, setScope] = useState<RoleDef["scope"]>(role?.scope ?? "هلدینگ");
+  const [scope, setScope] = useState<RoleDef["scope"]>(role?.scope ?? allowedScopes[0] ?? "شرکت");
   const [description, setDescription] = useState(role?.description ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set(role?.permissions ?? []));
   const [error, setError] = useState<string | null>(null);
+
+  // فقط مجوزهایی که خودِ مدیر دارد قابل اعطا هستند (نمی‌توان بیشتر از خود داد)
+  const grantable = new Set(grantablePerms);
+  // در حالتِ مشاهده‌ی نقشِ پایه، همه‌ی مجوزها فقط برای نمایش‌اند
+  const visibleGroups = permissionCatalog
+    .map((g) => ({ ...g, actions: g.actions.filter((a) => readOnly || grantable.has(a.id)) }))
+    .filter((g) => g.actions.length > 0);
+  const grantableIds = visibleGroups.flatMap((g) => g.actions.map((a) => a.id));
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -787,14 +853,19 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
       setError("دست‌کم یک دسترسی برای این نقش انتخاب کنید.");
       return;
     }
+    // هرگز بیش از دسترسیِ خودِ مدیر ذخیره نشود
+    const safePerms = Array.from(selected).filter((p) => grantable.has(p));
     onSave({
       id: role?.id ?? `role-${Date.now()}`,
       title: title.trim(),
       scope,
       description: description.trim() || "بدون توضیحات",
       members: role?.members ?? 0,
-      permissions: Array.from(selected),
+      permissions: safePerms,
       system: role?.system,
+      // نقشِ سفارشیِ تازه به زیرمجموعه‌ی مدیر برچسب می‌خورد؛ نقشِ موجود دامنه‌اش حفظ می‌شود
+      holdingId: role?.holdingId ?? domain.holdingId,
+      companyId: role?.companyId ?? domain.companyId,
     });
   };
 
@@ -803,7 +874,7 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-ink-900 flex items-center gap-2">
           <KeyRound size={15} className="text-brand-600" />
-          {role ? `ویرایش نقش «${role.title}»` : "تعریف نقش سفارشی جدید"}
+          {role ? `${readOnly ? "مشاهده‌ی" : "ویرایش"} نقش «${role.title}»` : "تعریف نقش سفارشی جدید"}
         </h3>
         <Button variant="secondary" size="sm" onClick={onCancel}>بازگشت به فهرست نقش‌ها</Button>
       </div>
@@ -813,20 +884,19 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان نقش</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: ناظر مالی پروژه" className="input-field" />
+            <input value={title} disabled={readOnly} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: ناظر مالی پروژه" className="input-field disabled:opacity-60" />
           </div>
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی اعمال</label>
-            <select value={scope} onChange={(e) => setScope(e.target.value as RoleDef["scope"])} className="input-field">
-              <option value="سیستم">سیستم (همه‌ی هلدینگ‌ها)</option>
-              <option value="هلدینگ">هلدینگ</option>
-              <option value="شرکت">شرکت</option>
-              <option value="گروه">گروه</option>
+            <select value={scope} disabled={readOnly} onChange={(e) => setScope(e.target.value as RoleDef["scope"])} className="input-field disabled:opacity-60">
+              {(readOnly ? (["سیستم", "هلدینگ", "شرکت", "گروه"] as RoleDef["scope"][]) : allowedScopes).map((s) => (
+                <option key={s} value={s}>{s === "سیستم" ? "سیستم (همه‌ی هلدینگ‌ها)" : s}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs font-medium text-ink-600 block mb-1.5">توضیحات نقش</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="این نقش برای چه کسانی و با چه هدفی تعریف می‌شود؟" className="input-field min-h-16" />
+            <textarea value={description} disabled={readOnly} onChange={(e) => setDescription(e.target.value)} placeholder="این نقش برای چه کسانی و با چه هدفی تعریف می‌شود؟" className="input-field min-h-16 disabled:opacity-60" />
           </div>
         </div>
       </div>
@@ -836,19 +906,23 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
           <h4 className="text-xs font-bold text-ink-900">دسترسی‌ها</h4>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-ink-400">
-              {selected.size.toLocaleString("fa-IR")} از {allPermissionIds.length.toLocaleString("fa-IR")} دسترسی انتخاب شده
+              {selected.size.toLocaleString("fa-IR")} از {grantableIds.length.toLocaleString("fa-IR")} دسترسی انتخاب شده
             </span>
-            <button onClick={() => setSelected(new Set(allPermissionIds))} className="text-brand-600 font-medium hover:text-brand-700">
-              انتخاب همه
-            </button>
-            <button onClick={() => setSelected(new Set())} className="text-ink-500 font-medium hover:text-ink-700">
-              حذف همه
-            </button>
+            {!readOnly && (
+              <>
+                <button onClick={() => setSelected(new Set(grantableIds))} className="text-brand-600 font-medium hover:text-brand-700">
+                  انتخاب همه
+                </button>
+                <button onClick={() => setSelected(new Set())} className="text-ink-500 font-medium hover:text-ink-700">
+                  حذف همه
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {permissionCatalog.map((group) => {
+          {visibleGroups.map((group) => {
             const groupIds = group.actions.map((a) => a.id);
             const onCount = groupIds.filter((id) => selected.has(id)).length;
             const allOn = onCount === groupIds.length;
@@ -861,6 +935,7 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
                     <input
                       type="checkbox"
                       checked={allOn}
+                      disabled={readOnly}
                       ref={(el) => {
                         if (el) el.indeterminate = onCount > 0 && !allOn;
                       }}
@@ -875,6 +950,7 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
                       <input
                         type="checkbox"
                         checked={selected.has(a.id)}
+                        disabled={readOnly}
                         onChange={() => toggle(a.id)}
                         className="w-3.5 h-3.5 accent-brand-600 shrink-0"
                       />
@@ -894,12 +970,18 @@ function RoleEditor({ role, onSave, onCancel }: { role: RoleDef | null; onSave: 
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
-          {role ? "ذخیره‌ی تغییرات نقش" : "افزودن نقش"}
-        </Button>
-        <Button variant="secondary" onClick={onCancel}>انصراف</Button>
-      </div>
+      {readOnly ? (
+        <div className="p-3 rounded-lg bg-ink-50 border border-ink-200 text-xs text-ink-500 flex items-center gap-2">
+          <KeyRound size={14} className="shrink-0" /> این نقشِ پایه‌ی سامانه است و فقط برای مشاهده در دسترس شماست.
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
+            {role ? "ذخیره‌ی تغییرات نقش" : "افزودن نقش"}
+          </Button>
+          <Button variant="secondary" onClick={onCancel}>انصراف</Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1019,12 +1101,21 @@ function PagesSection({
 }
 
 function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDef[]; notify: Notify }) {
-  const { holdings, companies, companiesOf, session, managedCompanyIds } = useTenancy();
+  const { holdings, companies, companiesOf, session, managedCompanyIds, managedHoldingIds, role: myRole } = useTenancy();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // مدیر شرکت فقط کاربران شرکت خودش را می‌بیند؛ مدیر هلدینگ کاربران هلدینگش را
   const visibleUsers = orgUsers.filter(
     (u) => session.level === "سیستم" || (u.companyIds ?? []).some((cid) => managedCompanyIds.includes(cid))
   );
+  // مدیر فقط نقشی را می‌تواند تخصیص دهد که (۱) از دسترسیِ خودش بیشتر نباشد و (۲) در دامنه‌ی او باشد
+  const myPerms = new Set(myRole.permissions);
+  const assignableRoles = roles.filter((r) => {
+    if (session.level === "سیستم") return true;
+    if (!r.permissions.every((p) => myPerms.has(p))) return false; // نمی‌توان بیشتر از خود داد
+    if (r.scope === "سیستم") return false; // نقشِ سطح سیستم را مدیرِ زیرمجموعه واگذار نمی‌کند
+    if (!r.system) return Boolean((r.holdingId && managedHoldingIds.includes(r.holdingId)) || (r.companyId && managedCompanyIds.includes(r.companyId)));
+    return true; // نقش‌های پایه‌ی سطح هلدینگ/شرکت/گروه با دسترسیِ کمتر یا مساوی
+  });
   const manageableHoldings = holdings.filter(
     (h) => session.level === "سیستم" || companiesOf(h.id).some((c) => managedCompanyIds.includes(c.id))
   );
@@ -1145,7 +1236,11 @@ function UsersSection({ tenant, roles, notify }: { tenant: Tenant; roles: RoleDe
                     aria-label={`نقش ${u.name}`}
                     className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
                   >
-                    {roles.map((r) => (
+                    {/* اگر نقشِ فعلیِ کاربر خارج از دامنه‌ی مدیر باشد، برای نمایش (غیرفعال) می‌آید */}
+                    {assigned && !assignableRoles.some((r) => r.id === assigned.id) && (
+                      <option value={assigned.id} disabled>{assigned.title} (خارج از اختیار شما)</option>
+                    )}
+                    {assignableRoles.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.title}{!r.system ? " (سفارشی)" : ""}
                       </option>

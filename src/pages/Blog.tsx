@@ -71,7 +71,7 @@ function PublicationsTab() {
 export default function Blog() {
   const [tab, setTab] = useTabParam<"blog" | "pubs">("blog", ["blog", "pubs"]);
   const { blogPosts: posts, setBlogPosts: setPosts } = useContent();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -121,6 +121,7 @@ export default function Blog() {
         tags: tagList,
         visibility,
         ...itemScope,
+        authorId: actingUser.id,
       };
       setPosts((prev) => [newPost, ...prev]);
       notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
@@ -201,8 +202,8 @@ export default function Blog() {
             ),
           },
           { key: "owner", label: "دامنه", render: (b) => <ScopeBadge item={b} /> },
-          { key: "visibility", label: "دسترسی", render: (b) => hasPermission("blog.edit") ? <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> : <VisibilityBadge visibility={b.visibility} /> },
-          { key: "actions", label: "", render: (b) => <RowActions onEdit={hasPermission("blog.edit") ? () => startEdit(b) : undefined} onDelete={hasPermission("blog.delete") ? () => remove(b) : undefined} /> },
+          { key: "visibility", label: "دسترسی", render: (b) => canManageItem(b, "blog.edit") ? <VisibilityToggle visibility={b.visibility} onChange={() => toggleVisibility(b.id)} size="xs" /> : <VisibilityBadge visibility={b.visibility} /> },
+          { key: "actions", label: "", render: (b) => <RowActions onEdit={canManageItem(b, "blog.edit") ? () => startEdit(b) : undefined} onDelete={canManageItem(b, "blog.delete") ? () => remove(b) : undefined} /> },
         ]}
         rows={filterScoped(posts)}
         searchKeys={["title", "excerpt", "author"]}

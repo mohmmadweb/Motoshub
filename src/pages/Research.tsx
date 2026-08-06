@@ -216,7 +216,7 @@ function OpportunitiesTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? researchDetails[selected.id] : undefined;
@@ -275,6 +275,7 @@ function OpportunitiesTab() {
       applicants: 0,
       deadline: deadline.trim() || "نامشخص",
       ...itemScope,
+      authorId: actingUser.id,
     };
     setOpportunities((prev) => [newItem, ...prev]);
     notify(`فراخوان پژوهشی «${newItem.title}» منتشر شد و در وضعیت «فراخوان باز» قرار گرفت.`);
@@ -319,7 +320,7 @@ function OpportunitiesTab() {
     {
       key: "actions",
       label: "",
-      render: (r) => <RowActions onEdit={hasPermission("research.edit") ? () => startEdit(r) : undefined} onDelete={hasPermission("research.close") ? () => remove(r) : undefined} />,
+      render: (r) => <RowActions onEdit={canManageItem(r, "research.edit") ? () => startEdit(r) : undefined} onDelete={canManageItem(r, "research.close") ? () => remove(r) : undefined} />,
     },
   ];
 

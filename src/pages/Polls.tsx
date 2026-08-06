@@ -82,7 +82,7 @@ export default function Polls() {
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, canAccessAdmin } = useTenancy();
+  const { filterScoped, defaultScopeForNew, canAccessAdmin, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const vote = (pollId: string, optId: string) => {
@@ -152,7 +152,7 @@ export default function Polls() {
       return;
     }
     setPolls((prev) => [
-      { id: `pl-${Date.now()}`, question: question.trim(), by: "شما", ends: "۱۴۰۵/۰۵/۳۰", options: opts.map((label, i) => ({ id: `o${i}`, label, votes: 0 })), ...itemScope },
+      { id: `pl-${Date.now()}`, question: question.trim(), by: "شما", ends: "۱۴۰۵/۰۵/۳۰", options: opts.map((label, i) => ({ id: `o${i}`, label, votes: 0 })), ...itemScope, authorId: actingUser.id },
       ...prev,
     ]);
     notify("نظرسنجی منتشر شد.");
@@ -188,7 +188,7 @@ export default function Polls() {
       setQuizzes((prev) => prev.map((q) => (q.id === editingQuizId ? { ...q, ...payload, ...itemScope } : q)));
       notify("آزمون ویرایش شد.");
     } else {
-      setQuizzes((prev) => [{ id: `qz-${Date.now()}`, status: "باز", ...payload, ...itemScope }, ...prev]);
+      setQuizzes((prev) => [{ id: `qz-${Date.now()}`, status: "باز", ...payload, ...itemScope, authorId: actingUser.id }, ...prev]);
       notify("آزمون ایجاد شد.");
     }
     setQuizOpen(false);
@@ -240,7 +240,7 @@ export default function Polls() {
               <div key={p.id} className="card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-bold text-ink-900 leading-6">{p.question}</p>
-                  <span className="flex items-center gap-1"><ScopeBadge item={p} />{canAccessAdmin && <RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} />}</span>
+                  <span className="flex items-center gap-1"><ScopeBadge item={p} />{canManageItem(p) && <RowActions onEdit={() => startEditPoll(p)} onDelete={() => removePoll(p)} />}</span>
                 </div>
                 <p className="text-[11px] text-ink-400 mt-0.5 mb-3">توسط {p.by} · مهلت رأی: {p.ends} · {total.toLocaleString("fa-IR")} رأی</p>
                 <div className="space-y-2">
@@ -298,7 +298,7 @@ export default function Polls() {
                     شرکت در آزمون
                   </Button>
                 )}
-                {canAccessAdmin && <RowActions onEdit={() => openQuizModal(q)} onDelete={() => removeQuiz(q)} />}
+                {canManageItem(q) && <RowActions onEdit={() => openQuizModal(q)} onDelete={() => removeQuiz(q)} />}
               </div>
             </div>
           ))}

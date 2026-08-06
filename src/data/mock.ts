@@ -1534,6 +1534,9 @@ export type RoleDef = {
   description: string;
   permissions: string[];
   system?: boolean;
+  /** نقشِ سفارشی به کدام هلدینگ/شرکت تعلق دارد — تا فقط مدیرِ همان زیرمجموعه اداره‌اش کند */
+  holdingId?: string;
+  companyId?: string;
 };
 
 export const roles: RoleDef[] = [
@@ -1550,12 +1553,24 @@ export const roles: RoleDef[] = [
     system: true,
   },
   {
+    id: "r6",
+    title: "مدیر شرکت",
+    scope: "شرکت",
+    members: 11,
+    description: "مدیریت کاملِ یک شرکت: کاربران، نقش‌ها و محتوای همان شرکت (بدون تنظیمات زیرساخت یا انتشار هلدینگی/سراسری)",
+    permissions: allPermissionIds.filter(
+      (p) => !p.startsWith("settings.") && p !== "companies.manage" && p !== "companies.publish-global" && p !== "companies.publish-holding"
+    ),
+    system: true,
+  },
+  {
     id: "r5",
     title: "کارشناس داوری صندوق",
     scope: "هلدینگ",
     members: 7,
     description: "نقش سفارشی: بررسی، امتیازدهی و پایش طرح‌های صندوق نوآوری",
     permissions: ["funds.list", "funds.refer", "funds.score", "funds.monitor", "reports.view", "knowledge.list", "events.list", "chat.view"],
+    holdingId: "h-saba",
   },
 ];
 
@@ -1576,6 +1591,8 @@ export const initialRoleAssignments: RoleAssignment = {
   u3: { roleId: "r4", level: "شرکت", holdingId: "h-sina-food", companyId: "c-behnoush" },
   u4: { roleId: "r2", level: "هلدینگ", holdingId: "h-ferdows" },
   u5: { roleId: "r5", level: "شرکت", holdingId: "h-saba", companyId: "c-saba-niru" },
+  // مدیر شرکت: بردیا کوشا مدیرِ «بانک سینا» است — فقط همان شرکت را اداره می‌کند
+  u13: { roleId: "r6", level: "شرکت", holdingId: "h-mali", companyId: "c-bank-sina" },
   // ناظم گروه: مهسا نیک‌اندیش فقط در «ستاد محرومیت‌زدایی» اختیار مدیریتی دارد
   u7: { roleId: "r3", level: "گروه", groupId: "g1" },
 };
@@ -1589,6 +1606,7 @@ export const demoPersonas: { id: string; summary: string }[] = [
   { id: "u1", summary: "راهبر پلتفرم — دسترسی کامل به کل سامانه، همه‌ی هلدینگ‌ها، نقش‌ها و تنظیمات زیرساخت." },
   { id: "u2", summary: "مدیر سازمان — مدیریت کاملِ هلدینگ صنایع غذایی سینا و شرکت‌های زیرمجموعه‌ی آن." },
   { id: "u4", summary: "مدیر سازمان — مدیریت کاملِ هلدینگ کشاورزی فردوس پارس (عضو دو شرکت)." },
+  { id: "u13", summary: "مدیر شرکت — مدیریت کاملِ «بانک سینا»: کاربران، نقش‌ها و محتوای همین شرکت. خارج از آن دسترسی ندارد." },
   { id: "u5", summary: "کارشناس داوری صندوق — فقط صندوق نوآوری: بررسی، ارجاع، داوری و پایش طرح‌ها. اخبار/بلاگ/انجمن را نمی‌بیند." },
   { id: "u7", summary: "ناظم گروه — مدیریت محتوا و اعضای گروه «ستاد محرومیت‌زدایی»؛ در بقیه‌ی سامانه کاربر عادی." },
   { id: "u3", summary: "عضو عادی — مشاهده، نظر، پاسخ و مشارکت؛ روی محتوای سازمانی فقط‌خواندنی و بدون پنل راهبری." },

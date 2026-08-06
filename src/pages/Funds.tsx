@@ -227,7 +227,7 @@ function InnovationFundTab() {
   const [formErrors, setFormErrors] = useState<{ title?: boolean; team?: boolean }>({});
   const { notify } = useToast();
   const { settings } = useSettings();
-  const { filterScoped, defaultScopeForNew, hasPermission, canAccessAdmin } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const updateProject = (updated: NfProject) => {
@@ -282,6 +282,7 @@ function InnovationFundTab() {
       timeline: [{ date: "امروز", time: "هم‌اکنون", step: "دریافت پروپوزال", text: "دریافت طرح، تخصیص کد یکتا و ایجاد شناسنامه پروژه" }],
       requests: [],
       ...itemScope,
+      authorId: actingUser.id,
     };
     setProjects((prev) => [newProject, ...prev]);
     notify(`پروپوزال با کد یکتا «${newProject.id}» ثبت شد و شناسنامه پروژه ایجاد گردید. پس از تایید شکلی، ارزیابی اولیه هوشمند اجرا می‌شود.`);
@@ -318,7 +319,7 @@ function InnovationFundTab() {
     {
       key: "actions",
       label: "",
-      render: (p) => <RowActions onEdit={(hasPermission("funds.score") || hasPermission("funds.refer")) ? () => setSelected(p) : undefined} onDelete={(hasPermission("funds.submit") || canAccessAdmin) ? () => deleteProject(p) : undefined} />,
+      render: (p) => <RowActions onEdit={(hasPermission("funds.score") || hasPermission("funds.refer") || canManageItem(p, "funds.submit")) ? () => setSelected(p) : undefined} onDelete={canManageItem(p, "funds.submit") ? () => deleteProject(p) : undefined} />,
     },
     { key: "scopeOwner", label: "دامنه", render: (p) => <ScopeBadge item={p} /> },
   ];
@@ -475,7 +476,7 @@ function InnovationFundTab() {
 
 function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject; onUpdate: (p: NfProject) => void; onDelete: (p: NfProject) => void }) {
   const { notify } = useToast();
-  const { hasPermission, canAccessAdmin } = useTenancy();
+  const { canManageItem } = useTenancy();
   const { settings } = useSettings();
   const [showAllCriteria, setShowAllCriteria] = useState(false);
 
@@ -537,7 +538,7 @@ function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject;
               ))}
             </select>
           </div>
-          {(hasPermission("funds.submit") || canAccessAdmin) && (
+          {canManageItem(p, "funds.submit") && (
             <button onClick={() => onDelete(p)} className="text-[11px] text-rose-500 hover:text-rose-700 flex items-center gap-1">
               حذف این پروژه از صندوق
             </button>

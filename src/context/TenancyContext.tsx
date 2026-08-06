@@ -64,6 +64,13 @@ type TenancyValue = {
   canManageHoldings: boolean;
   /** اختیار مدیریتِ یک گروه مشخص — نقش «ناظم گروه» فقط در گروه خودش */
   canModerateGroup: (group: { id: string; scope?: string; holdingId?: string; companyId?: string }) => boolean;
+  /**
+   * آیا این کاربر می‌تواند این آیتم را ویرایش/حذف کند؟
+   * قاعده: مالکِ خودِ آیتم همیشه؛ در غیر این صورت فقط مدیرِ همان دامنه —
+   * مدیر سیستم همه‌جا، مدیر هلدینگ در هلدینگ خودش، مدیر شرکت در شرکت خودش.
+   * `editPerm` مجوزِ مدیریتیِ ماژول است (برای ماژول‌های بدون مجوز، `canAccessAdmin` ملاک است).
+   */
+  canManageItem: (item: Scoped, editPerm?: string) => boolean;
   /** هلدینگ‌هایی که این کاربر اختیار مدیریتشان را دارد */
   managedHoldingIds: string[];
   /** شرکت‌هایی که این کاربر اختیار مدیریتشان را دارد */
@@ -224,6 +231,18 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         // مدیر شرکت (نقش مدیریتی سطح شرکت): فقط گروه‌های شرکت خودش
         if (canAccessAdmin) return managedCompanyIds.includes(g.companyId ?? "");
         return false;
+      },
+      canManageItem: (item: Scoped, editPerm?: string) => {
+        // مالکِ آیتم همیشه اختیارِ کامل دارد
+        if (item.authorId && item.authorId === actingUser.id) return true;
+        // اختیارِ مدیریتی: نقش باید مجوزِ ویرایشِ این ماژول را داشته باشد (یا برای ماژول‌های بی‌مجوز، دسترسی راهبری)
+        const isManager = editPerm ? permissionSet.has(editPerm) : canAccessAdmin;
+        if (!isManager) return false;
+        if (session.level === "سیستم") return true; // مدیر سیستم: همه‌ی آیتم‌ها
+        // مدیر هلدینگ/شرکت: آیتم باید داخلِ دامنه‌ی تحتِ مدیریتِ او باشد
+        if (item.companyId && managedCompanyIds.includes(item.companyId)) return true;
+        if (item.holdingId && managedHoldingIds.includes(item.holdingId)) return true;
+        return false; // محتوای سراسری یا خارج از دامنه ⇒ فقط سطح سیستم
       },
       canManageHoldings: session.level === "سیستم",
       managedHoldingIds,

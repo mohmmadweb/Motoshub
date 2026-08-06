@@ -320,7 +320,7 @@ function TechContractsTab() {
   const [errors, setErrors] = useState<{ title?: boolean; vendor?: boolean }>({});
   const { notify } = useToast();
   const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const selectedDetail = selected ? contractDetails[selected.id] : undefined;
@@ -344,6 +344,7 @@ function TechContractsTab() {
         deadline: deadline.trim() || "نامشخص",
         owner: currentUser.name,
         ...itemScope,
+        authorId: actingUser.id,
       };
       setContracts((prev) => [newItem, ...prev]);
       notify(`قرارداد «${newItem.title}» (${contractType} — ${method}) ثبت شد و در وضعیت «${newItem.stage}» قرار گرفت.`);
@@ -394,8 +395,8 @@ function TechContractsTab() {
       label: "",
       render: (c) => (
         <RowActions
-          onEdit={hasPermission("contracts.edit") ? () => startEdit(c) : undefined}
-          onDelete={!hasPermission("contracts.delete") ? undefined : () =>
+          onEdit={canManageItem(c, "contracts.edit") ? () => startEdit(c) : undefined}
+          onDelete={!canManageItem(c, "contracts.delete") ? undefined : () =>
             confirm({
               title: `حذف قرارداد «${c.title}»؟`,
               message: "پرونده قرارداد و تاریخچه‌ی آن بایگانی می‌شود.",

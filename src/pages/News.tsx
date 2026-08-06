@@ -25,7 +25,7 @@ const jalaliToday = "۱۴۰۵/۰۴/۰۷";
 
 export default function News() {
   const { newsItems, setNewsItems } = useContent();
-  const { hasPermission, canAccessAdmin } = useTenancy();
+  const { hasPermission, canAccessAdmin, canManageItem, actingUser } = useTenancy();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -76,6 +76,7 @@ export default function News() {
         pinned,
         visibility,
         topic,
+        authorId: actingUser.id,
       };
       setNewsItems((prev) => [newItem, ...prev]);
       notify(`اطلاعیه «${newItem.title}» ${visibility === "عمومی" ? "برای همه‌ی اعضا" : "به‌صورت خصوصی"} منتشر شد.`);
@@ -177,11 +178,11 @@ export default function News() {
           {
             key: "visibility",
             label: "دسترسی",
-            render: (n) => hasPermission("news.edit")
+            render: (n) => canManageItem(n, "news.edit")
               ? <VisibilityToggle visibility={n.visibility} onChange={() => toggleVisibility(n.id)} size="xs" />
               : <VisibilityBadge visibility={n.visibility} />,
           },
-          { key: "actions", label: "", render: (n) => <RowActions onEdit={hasPermission("news.edit") ? () => startEdit(n) : undefined} onDelete={hasPermission("news.delete") ? () => remove(n) : undefined} /> },
+          { key: "actions", label: "", render: (n) => <RowActions onEdit={canManageItem(n, "news.edit") ? () => startEdit(n) : undefined} onDelete={canManageItem(n, "news.delete") ? () => remove(n) : undefined} /> },
         ]}
         rows={shownNews}
         searchKeys={["title", "summary"]}

@@ -164,7 +164,7 @@ function RndDocsTab() {
 
 function KnowledgeBankTab() {
   const { knowledgeDocs: docs, setKnowledgeDocs: setDocs } = useContent();
-  const { filterScoped, defaultScopeForNew, hasPermission } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [active, setActive] = useState("همه");
   const [selected, setSelected] = useState<KnowledgeDoc | null>(null);
@@ -193,6 +193,7 @@ function KnowledgeBankTab() {
       size: `${(pendingFile.size / 1024).toFixed(0)} کیلوبایت`,
       visibility: uploadVisibility,
       ...itemScope,
+      authorId: actingUser.id,
     };
     setDocs((prev) => [newDoc, ...prev]);
     notify(`سند «${pendingFile.name}» با موفقیت در بانک دانش بارگذاری شد (${uploadVisibility}).`);
@@ -234,14 +235,14 @@ function KnowledgeBankTab() {
     { key: "updatedAt", label: "بروزرسانی" },
     { key: "size", label: "حجم" },
     { key: "owner", label: "دامنه", render: (d) => <ScopeBadge item={d} /> },
-    { key: "visibility", label: "دسترسی", render: (d) => hasPermission("knowledge.visibility") ? <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> : <VisibilityBadge visibility={d.visibility} /> },
+    { key: "visibility", label: "دسترسی", render: (d) => canManageItem(d, "knowledge.visibility") ? <VisibilityToggle visibility={d.visibility} onChange={() => toggleVisibility(d.id)} size="xs" /> : <VisibilityBadge visibility={d.visibility} /> },
     {
       key: "actions",
       label: "",
       render: (d) => (
         <RowActions
-          onEdit={hasPermission("knowledge.edit") ? () => setSelected(d) : undefined}
-          onDelete={!hasPermission("knowledge.delete") ? undefined : () =>
+          onEdit={canManageItem(d, "knowledge.edit") ? () => setSelected(d) : undefined}
+          onDelete={!canManageItem(d, "knowledge.delete") ? undefined : () =>
             confirm({
               title: `حذف سند «${d.title}»؟`,
               message: "سند حذف‌شده ۳۰ روز در سطل بازیافت نگه‌داری می‌شود.",
@@ -313,7 +314,7 @@ function KnowledgeBankTab() {
             </div>
             <div className="border-t border-ink-100 pt-3">
               <p className="text-xs font-semibold text-ink-600 mb-2">سطح دسترسی</p>
-              {hasPermission("knowledge.visibility")
+              {canManageItem(selected, "knowledge.visibility")
                 ? <VisibilityToggle visibility={selected.visibility} onChange={() => toggleVisibility(selected.id)} />
                 : <VisibilityBadge visibility={selected.visibility} />}
             </div>
