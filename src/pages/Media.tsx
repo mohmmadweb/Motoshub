@@ -35,8 +35,10 @@ export default function Media() {
   const confirm = useConfirm();
 
   const [topic, setTopic] = useState<string>("همه");
-  const topics = ["همه", ...Array.from(new Set(filterScoped(items).map((m) => m.album)))];
-  const filtered = filterScoped(items)
+  // فقط رسانه‌های داخلِ دامنه‌ی کاربر — همین مبنای فهرست، آلبوم‌ها و شمارنده‌هاست تا عدد با محتوا بخواند
+  const scoped = filterScoped(items);
+  const topics = ["همه", ...Array.from(new Set(scoped.map((m) => m.album)))];
+  const filtered = scoped
     .filter((m) => (kind === "all" ? true : m.kind === kind))
     .filter((m) => (topic === "همه" ? true : m.album === topic));
 
@@ -146,7 +148,7 @@ export default function Media() {
       {/* موضوع‌ها (آلبوم‌ها) */}
       <div className="flex items-center gap-1.5 flex-wrap mb-4">
         {topics.map((t) => {
-          const count = t === "همه" ? items.length : items.filter((m) => m.album === t).length;
+          const count = t === "همه" ? scoped.length : scoped.filter((m) => m.album === t).length;
           return (
             <button
               key={t}

@@ -72,13 +72,15 @@ const initialChallenges: Challenge[] = [
 const compTone: Record<Competition["status"], BadgeTone> = { "ثبت‌نام باز": "success", "در حال داوری": "warning", "اعلام نتایج": "navy" };
 
 export default function Competitions() {
-  const [tab, setTab] = useTabParam<"comp" | "challenge">("comp", ["comp", "challenge"]);
   const [comps, setComps] = useState<Competition[]>(() => withDemoScopes(initialCompetitions, 13));
   const [challenges, setChallenges] = useState<Challenge[]>(() => withDemoScopes(initialChallenges, 14));
   const [joined, setJoined] = useState<string[]>(["ch1"]);
   const { notify } = useToast();
   const confirm = useConfirm();
   const { filterScoped, defaultScopeForNew, canAccessAdmin, canManageItem, actingUser } = useTenancy();
+  // پیش‌فرض روی تبِ غیرخالی: اگر در دامنه‌ی کاربر مسابقه‌ای نیست ولی چالش هست، از چالش‌ها شروع کن
+  const defaultTab = filterScoped(comps).length === 0 && filterScoped(challenges).length > 0 ? "challenge" : "comp";
+  const [tab, setTab] = useTabParam<"comp" | "challenge">(defaultTab, ["comp", "challenge"]);
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const [compOpen, setCompOpen] = useState(false);

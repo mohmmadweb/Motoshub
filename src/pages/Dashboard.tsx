@@ -21,7 +21,7 @@ import {
   MoonStar,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { groups, users, currentUser, notifications, chatThreads, channels, type Post } from "../data/mock";
+import { groups, users, notifications, chatThreads, channels, type Post } from "../data/mock";
 import { nfProjects } from "../data/mockInnovationFund";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -107,6 +107,7 @@ function greetingFor(hour: number) {
 
 function LiveDateTime() {
   const now = useNow();
+  const { actingUser } = useTenancy();
   const time = now.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   // ساخت دستی تاریخ شمسی تا ترتیب اجزا در RTL به‌هم نریزد: «شنبه ۳ مرداد ۱۴۰۵»
   const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).formatToParts(now);
@@ -118,7 +119,7 @@ function LiveDateTime() {
     <div className="flex items-center gap-3 flex-wrap justify-between">
       <span className="flex items-center gap-2 text-sm font-bold text-ink-900">
         <g.icon size={17} className={g.tone} />
-        {g.text}، {currentUser.name.split(" ")[0] === "پایگاه" ? "همکار گرامی" : currentUser.name}
+        {g.text}، {actingUser.name.split(" ")[0] === "پایگاه" ? "همکار گرامی" : actingUser.name}
       </span>
       <span className="flex items-center gap-2.5 text-[12px] text-ink-500">
         <span className="flex items-center gap-1.5 bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5">
@@ -253,7 +254,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const { events } = useContent();
-  const { canAccessAdmin } = useTenancy();
+  const { actingUser, session } = useTenancy();
   const nextEvent = events[0];
 
   useEffect(() => {
@@ -266,11 +267,11 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        title={`خوش آمدید، ${currentUser.name}`}
+        title={`خوش آمدید، ${actingUser.name}`}
         description="هرچه امروز باید ببینید: اعلان‌ها، پیام‌ها، اقدامات در انتظار و فید گروه‌های شما"
       />
 
-      {canAccessAdmin && <QuickStart />}
+      {session.level === "سیستم" && <QuickStart />}
 
       <PersonalToday />
 
@@ -278,7 +279,7 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="card p-4">
             <div className="flex items-center gap-3">
-              <Avatar name={currentUser.name} color={currentUser.avatarColor} />
+              <Avatar name={actingUser.name} color={actingUser.avatarColor} />
               <input
                 placeholder="چه چیزی در ذهن دارید؟ یک پست، نظرسنجی یا سند به اشتراک بگذارید…"
                 className="flex-1 input-field"

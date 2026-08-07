@@ -233,12 +233,20 @@ const scopeIcon: Record<ContentScope, typeof Globe2> = { سراسری: Globe2, �
 const scopeTone = { سراسری: "brand", هلدینگ: "navy", شرکت: "warning" } as const;
 
 function ScopedNewsSection() {
+  const { session, managedHoldingIds, managedCompanyIds, allowedPublishScopes } = useTenancy();
+  // ابزار «مشاهده به‌عنوان / خبر شرکتی» فقط دامنه‌ی تحتِ مدیریتِ همین کاربر را نشان می‌دهد
+  const scopedHoldings = holdings
+    .map((h) => ({ ...h, companies: h.companies.filter((c) => session.level === "سیستم" || managedCompanyIds.includes(c.id)) }))
+    .filter((h) => session.level === "سیستم" || managedHoldingIds.includes(h.id) || h.companies.length > 0);
+  const scopedCompanies = scopedHoldings.flatMap((h) => h.companies);
+  const canViewHq = session.level === "سیستم";
+
   const [items, setItems] = useState<ScopedNews[]>(initialScopedNews);
-  const [viewer, setViewer] = useState<string>("hq"); // hq = ستاد بنیاد
+  const [viewer, setViewer] = useState<string>(canViewHq ? "hq" : scopedCompanies[0]?.id ?? "hq");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [ownerCompany, setOwnerCompany] = useState(allCompanies[0].id);
+  const [ownerCompany, setOwnerCompany] = useState(scopedCompanies[0]?.id ?? allCompanies[0].id);
   const [scope, setScope] = useState<ContentScope>("شرکت");
   const { notify } = useToast();
   const confirmDialog = useConfirm();
@@ -294,8 +302,8 @@ function ScopedNewsSection() {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] text-ink-400 flex items-center gap-1"><Eye size={12} /> مشاهده به‌عنوان:</span>
           <select value={viewer} onChange={(e) => setViewer(e.target.value)} aria-label="مشاهده به‌عنوان" className="text-xs border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white">
-            <option value="hq">ستاد بنیاد (همه محتوا)</option>
-            {holdings.map((h) => (
+            {canViewHq && <option value="hq">ستاد بنیاد (همه محتوا)</option>}
+            {scopedHoldings.map((h) => (
               <optgroup key={h.id} label={h.name}>
                 {h.companies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -368,7 +376,7 @@ function ScopedNewsSection() {
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">شرکت مالک محتوا</label>
             <select value={ownerCompany} onChange={(e) => setOwnerCompany(e.target.value)} className="input-field">
-              {holdings.map((h) => (
+              {scopedHoldings.map((h) => (
                 <optgroup key={h.id} label={h.name}>
                   {h.companies.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -380,7 +388,7 @@ function ScopedNewsSection() {
           <div>
             <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی انتشار</label>
             <div className="grid grid-cols-3 gap-2">
-              {(["شرکت", "هلدینگ", "سراسری"] as ContentScope[]).map((s) => {
+              {(["شرکت", "هلدینگ", "سراسری"] as ContentScope[]).filter((s) => allowedPublishScopes.includes(s)).map((s) => {
                 const Icon = scopeIcon[s];
                 return (
                   <button

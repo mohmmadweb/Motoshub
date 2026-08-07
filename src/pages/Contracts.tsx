@@ -43,6 +43,9 @@ const stages: ContractRecord["stage"][] = ["فراخوان", "مذاکره", "د
 
 export default function Contracts() {
   const [tab, setTab] = useTabParam<"tech" | "transfer" | "esign" | "tender">("tech", ["tech", "transfer", "esign", "tender"]);
+  const { filterScoped } = useTenancy();
+  // شمارِ تبِ «قراردادهای فناورانه» با همان دامنه‌ای که فهرست داخلش فیلتر می‌شود (salt=17)
+  const techCount = filterScoped(withDemoScopes(initialContracts, 17)).length;
   return (
     <div>
       <PageHeader
@@ -52,7 +55,7 @@ export default function Contracts() {
       />
       <Tabs
         tabs={[
-          { id: "tech", label: "قراردادهای فناورانه", count: initialContracts.length },
+          { id: "tech", label: "قراردادهای فناورانه", count: techCount },
           { id: "transfer", label: "پورتفولیوی تبادل فناوری", count: techTransferContracts.length },
           { id: "esign", label: "گردش امضای الکترونیک", count: eSignDocuments.length },
           { id: "tender", label: "مناقصه و کمیسیون معاملات", count: tenders.length },
@@ -363,8 +366,8 @@ function TechContractsTab() {
     [scoped, stageFilter]
   );
 
-  const active = contracts.filter((c) => c.stage === "در حال اجرا").length;
-  const inReview = contracts.filter((c) => c.stage === "داوری" || c.stage === "مذاکره").length;
+  const active = scoped.filter((c) => c.stage === "در حال اجرا").length;
+  const inReview = scoped.filter((c) => c.stage === "داوری" || c.stage === "مذاکره").length;
 
   const isObligationDone = (id: string, fallback: boolean) => obligationState[id] ?? fallback;
 
@@ -433,7 +436,7 @@ function TechContractsTab() {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="کل قراردادها" value={contracts.length.toLocaleString("fa-IR")} tone="brand" icon={<FileSignature size={16} />} />
+        <StatCard label="کل قراردادها" value={scoped.length.toLocaleString("fa-IR")} tone="brand" icon={<FileSignature size={16} />} />
         <StatCard label="در حال اجرا" value={active.toLocaleString("fa-IR")} tone="success" icon={<CircleDollarSign size={16} />} />
         <StatCard label="در مذاکره / داوری" value={inReview.toLocaleString("fa-IR")} tone="warning" icon={<Hourglass size={16} />} />
         <StatCard label="دارای ضمانت‌نامه معتبر" value={Object.values(contractDetails).filter((d) => d.guarantee !== "—").length.toLocaleString("fa-IR")} icon={<ShieldCheck size={16} />} />
@@ -447,7 +450,7 @@ function TechContractsTab() {
             stageFilter === "همه" ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
           }`}
         >
-          همه ({contracts.length})
+          همه ({scoped.length})
         </button>
         {stages.map((s) => (
           <button
@@ -457,7 +460,7 @@ function TechContractsTab() {
               stageFilter === s ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
             }`}
           >
-            {s} ({contracts.filter((c) => c.stage === s).length})
+            {s} ({scoped.filter((c) => c.stage === s).length})
           </button>
         ))}
       </div>

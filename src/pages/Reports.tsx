@@ -13,6 +13,7 @@ import {
   PlayCircle,
   CalendarClock,
   Table2,
+  Network,
 } from "lucide-react";
 import { reportByDepartment, reportByStatus, monthlyActivity, projects, contracts, funds, researchOpportunities } from "../data/mock";
 import {
@@ -54,7 +55,7 @@ export default function Reports() {
   const [saved, setSaved] = useState<SavedReport[]>(initialSavedReports);
   const [exportOpen, setExportOpen] = useState(false);
   const { notify } = useToast();
-  const { hasPermission } = useTenancy();
+  const { hasPermission, session, activeScopeLabel } = useTenancy();
 
   const maxMonthly = Math.max(...monthlyActivity.map((m) => m.value));
   const maxDept = Math.max(...reportByDepartment.map((d) => d.value));
@@ -170,6 +171,13 @@ export default function Reports() {
           )
         }
       />
+
+      <div className="card p-3 mb-5 bg-brand-50 border-brand-200 flex items-center gap-2.5 text-xs text-brand-800">
+        <Network size={15} className="shrink-0" />
+        {session.level === "سیستم"
+          ? "این گزارش، نمای تجمیعیِ کل سازمان است (همه‌ی هلدینگ‌ها و شرکت‌ها)."
+          : <>این گزارش به دامنه‌ی <b>«{activeScopeLabel}»</b> محدود است؛ داده‌های خارج از این دامنه در آن دیده نمی‌شود.</>}
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {kpis.map((k) => (

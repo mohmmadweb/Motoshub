@@ -1548,8 +1548,15 @@ export const roles: RoleDef[] = [
     title: "عضو عادی",
     scope: "گروه",
     members: 1280,
-    description: "دسترسی استاندارد به محتوای عمومی و گروه‌های عضو",
-    permissions: ["news.list", "blog.list", "groups.list", "groups.post", "forum.list", "forum.reply", "events.list", "media.list", "chat.view", "knowledge.list", "reports.view"],
+    description: "دسترسی استاندارد: مشاهده‌ی محتوای عمومی، و ساختِ محتوای شخصیِ خود (یادداشت، رسانه، موضوع انجمن) که فقط خودش آن را مدیریت می‌کند",
+    permissions: [
+      "news.list", "knowledge.list", "reports.view", "chat.view",
+      "groups.list", "groups.post",
+      "forum.list", "forum.create", "forum.reply",
+      "blog.list", "blog.create",
+      "media.list", "media.upload",
+      "events.list",
+    ],
     system: true,
   },
   {

@@ -93,6 +93,10 @@ const paymentTone: Record<string, BadgeTone> = {
 
 export default function Funds() {
   const [tab, setTab] = useTabParam<"nf" | "allFunds" | "employment">("nf", ["nf", "allFunds", "employment"]);
+  const { filterScoped } = useTenancy();
+  // شمار تب‌ها با همان دامنه‌ای که فهرست داخل هر تب فیلتر می‌شود (salt nf=19، employment=?)
+  const nfCount = filterScoped(withDemoScopes(initialNfProjects, 19)).length;
+  const employmentCount = filterScoped(withDemoScopes(initialFunds, 20)).length;
   return (
     <div>
       <PageHeader
@@ -102,9 +106,9 @@ export default function Funds() {
       />
       <Tabs
         tabs={[
-          { id: "nf", label: "صندوق نوآور — روند کامل", count: initialNfProjects.length },
+          { id: "nf", label: "صندوق نوآور — روند کامل", count: nfCount },
           { id: "allFunds", label: "شبکه صندوق‌ها و بذرمایه باور", count: fundCatalog.length },
-          { id: "employment", label: "طرح‌های اشتغال‌زایی", count: initialFunds.length },
+          { id: "employment", label: "طرح‌های اشتغال‌زایی", count: employmentCount },
         ]}
         active={tab}
         onChange={setTab}
@@ -229,6 +233,8 @@ function InnovationFundTab() {
   const { settings } = useSettings();
   const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
+  // پروژه‌های داخلِ دامنه‌ی کاربر — مبنای فهرست، کارت‌های آمار، گام‌ها و اعلان‌ها
+  const scopedProjects = filterScoped(projects);
 
   const updateProject = (updated: NfProject) => {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -247,9 +253,9 @@ function InnovationFundTab() {
       },
     });
 
-  const pendingReports = projects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
+  const pendingReports = scopedProjects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
   const pendingPayments = projects.flatMap((p) => p.payments).filter((p) => p.status !== "اسناد به تیم مجری ارسال شد" && p.status !== "اسناد تحویل صندوق شد").length;
-  const lateReviews = projects.flatMap((p) => p.reports).flatMap((r) => r.chain).filter((c) => c.late).length;
+  const lateReviews = scopedProjects.flatMap((p) => p.reports).flatMap((r) => r.chain).filter((c) => c.late).length;
 
   const submitProposal = () => {
     const errs = { title: !title.trim(), team: !teamName.trim() };
@@ -292,7 +298,6 @@ function InnovationFundTab() {
     setBudget("");
   };
 
-  const scopedProjects = filterScoped(projects);
   const filtered = useMemo(
     () => (stageFilter === "همه" ? scopedProjects : scopedProjects.filter((p) => p.stage === stageFilter)),
     [scopedProjects, stageFilter]
@@ -327,8 +332,8 @@ function InnovationFundTab() {
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="پروژه‌های صندوق نوآور" value={projects.length.toLocaleString("fa-IR")} tone="brand" icon={<Target size={16} />} />
-        <StatCard label="در نظارت و راهبری" value={projects.filter((p) => p.stage === "نظارت و راهبری").length.toLocaleString("fa-IR")} tone="success" icon={<Gauge size={16} />} />
+        <StatCard label="پروژه‌های صندوق نوآور" value={scopedProjects.length.toLocaleString("fa-IR")} tone="brand" icon={<Target size={16} />} />
+        <StatCard label="در نظارت و راهبری" value={scopedProjects.filter((p) => p.stage === "نظارت و راهبری").length.toLocaleString("fa-IR")} tone="success" icon={<Gauge size={16} />} />
         <StatCard label="گزارش در انتظار بررسی" value={pendingReports.toLocaleString("fa-IR")} tone="warning" icon={<FileClock size={16} />} />
         <StatCard label="پرداخت در جریان" value={pendingPayments.toLocaleString("fa-IR")} tone="warning" icon={<Wallet size={16} />} />
       </div>
@@ -353,7 +358,7 @@ function InnovationFundTab() {
         </div>
         <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1">
           {nfStages.map((s, i) => {
-            const count = projects.filter((p) => p.stage === s).length;
+            const count = scopedProjects.filter((p) => p.stage === s).length;
             return (
               <button
                 key={s}
@@ -852,7 +857,7 @@ function EmploymentFundTab() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="سرمایه صندوق" value={fundOverview.totalCapital} tone="brand" icon={<Landmark size={16} />} />
         <StatCard label="تخصیص‌یافته" value={fundOverview.allocated} tone="success" icon={<PiggyBank size={16} />} />
-        <StatCard label="طرح‌های فعال" value={funds.length.toLocaleString("fa-IR")} icon={<Target size={16} />} />
+        <StatCard label="طرح‌های فعال" value={scopedFunds.length.toLocaleString("fa-IR")} icon={<Target size={16} />} />
         <StatCard label="نرخ موفقیت طرح‌ها" value={fundOverview.successRate} tone="success" icon={<Gauge size={16} />} />
         <StatCard label="میانگین زمان داوری" value={`${fundOverview.avgReviewDays.toLocaleString("fa-IR")} روز`} tone="warning" icon={<CalendarClock size={16} />} />
       </div>
@@ -867,7 +872,7 @@ function EmploymentFundTab() {
                 stageFilter === "همه" ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
               }`}
             >
-              همه ({funds.length.toLocaleString("fa-IR")})
+              همه ({scopedFunds.length.toLocaleString("fa-IR")})
             </button>
             {stages.map((s) => (
               <button
@@ -877,7 +882,7 @@ function EmploymentFundTab() {
                   stageFilter === s ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
                 }`}
               >
-                {s} ({funds.filter((f) => f.stage === s).length.toLocaleString("fa-IR")})
+                {s} ({scopedFunds.filter((f) => f.stage === s).length.toLocaleString("fa-IR")})
               </button>
             ))}
           </div>
