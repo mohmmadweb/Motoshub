@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NotebookPen, Star, Plus, Hash, BookMarked } from "lucide-react";
 import { Link } from "react-router-dom";
-import { currentUser, type BlogPost, type Visibility } from "../data/mock";
+import { type BlogPost, type Visibility } from "../data/mock";
 import { publicationIssues, type PublicationIssue } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
@@ -114,7 +114,7 @@ export default function Blog() {
       const newPost: BlogPost = {
         id: `b-${Date.now()}`,
         title: title.trim(),
-        author: currentUser.name,
+        author: actingUser.name,
         excerpt: excerpt.trim(),
         date: jalaliToday,
         rating: 0,

@@ -46,7 +46,6 @@ import {
   channelMessages as initialChannelMessages,
   chatThreads as initialChatThreads,
   users,
-  currentUser,
   userPresence,
   integrations,
   type Channel,
@@ -101,7 +100,7 @@ const nowFa = () => new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", mi
 // پس‌زمینه پترن‌دار گفتگو: کلاس chat-surface در index.css (با نسخه تیره)
 
 export default function Chat() {
-  const { filterScoped } = useTenancy();
+  const { filterScoped, actingUser } = useTenancy();
   // کانال‌های سازمانی دامنه‌دارند — هر کاربر فقط کانال‌های دامنه‌ی خودش را می‌بیند (DMها عضویت‌محورند)
   const scopedChannels = useMemo(() => filterScoped(withDemoScopes(channels, 21)), [filterScoped]);
   const [selection, setSelection] = useState<Selection>({ kind: "dm", id: initialChatThreads[0].id });
@@ -195,7 +194,7 @@ export default function Chat() {
     }
 
     if (selection.kind === "channel") {
-      const newMsg: ChannelMessage = { id: `cm-${Date.now()}`, channelId: selection.id, authorId: currentUser.id, text, time: nowFa() };
+      const newMsg: ChannelMessage = { id: `cm-${Date.now()}`, channelId: selection.id, authorId: actingUser.id, text, time: nowFa() };
       setMessages((prev) => [...prev, newMsg]);
     } else if (activeDm) {
       const id = `dm-${Date.now()}`;
@@ -288,7 +287,7 @@ export default function Chat() {
       }
     } else {
       const ch = scopedChannels.find((c) => c.id === target.id);
-      setMessages((prev) => [...prev, { id: `cm-${Date.now()}`, channelId: target.id, authorId: currentUser.id, text: `↪️ هدایت‌شده از ${from}: ${forwarding.text}`, time: nowFa() }]);
+      setMessages((prev) => [...prev, { id: `cm-${Date.now()}`, channelId: target.id, authorId: actingUser.id, text: `↪️ هدایت‌شده از ${from}: ${forwarding.text}`, time: nowFa() }]);
       notify(`پیام به کانال «${ch?.name}» هدایت شد.`);
     }
     setForwarding(null);
@@ -544,7 +543,7 @@ export default function Chat() {
                             <MsgIconBtn title="سنجاق" onClick={() => togglePin(m.id)}><Pin size={12} /></MsgIconBtn>
                             <MsgIconBtn title="ذخیره" onClick={() => toggleSave(m.id)}><Bookmark size={12} /></MsgIconBtn>
                             <MsgIconBtn title="کپی" onClick={() => copyText(m.text)}><Copy size={12} /></MsgIconBtn>
-                            {m.authorId === currentUser.id && (
+                            {m.authorId === actingUser.id && (
                               <MsgIconBtn title="حذف" onClick={() => setMessages((prev) => prev.filter((x) => x.id !== m.id))}><Trash2 size={12} /></MsgIconBtn>
                             )}
                           </div>

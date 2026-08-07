@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AtSign, Heart, MessageCircle, Settings, CheckSquare, Bell, CheckCheck, Circle, CheckCircle2, Trash2 } from "lucide-react";
-import { notifications as initialNotifications, type Notification } from "../data/mock";
+import { type Notification } from "../data/mock";
+import { personalFor } from "../data/personal";
+import { useTenancy } from "../context/TenancyContext";
 import PageHeader from "../components/ui/PageHeader";
 import Tabs from "../components/ui/Tabs";
 import Button from "../components/ui/Button";
@@ -21,7 +23,10 @@ type FilterId = "all" | "unread";
 
 export default function Notifications() {
   const [filter, setFilter] = useState<FilterId>("all");
-  const [items, setItems] = useState<Notification[]>(initialNotifications);
+  const { actingUser } = useTenancy();
+  const [items, setItems] = useState<Notification[]>(() => personalFor(actingUser.id).notifications);
+  // با تعویض حساب، اعلان‌های همان کاربر بارگذاری می‌شود
+  useEffect(() => setItems(personalFor(actingUser.id).notifications), [actingUser.id]);
   const { notify } = useToast();
   const confirm = useConfirm();
 

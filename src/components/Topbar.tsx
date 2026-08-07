@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import Avatar from "./Avatar";
-import { currentUser, notifications, userPresence, type PresenceStatus } from "../data/mock";
+import { userPresence, type PresenceStatus } from "../data/mock";
+import { personalFor } from "../data/personal";
 import { filterNavSections } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
@@ -19,14 +20,14 @@ const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
 const IS_DEMO = import.meta.env.VITE_DEMO !== "false";
 
 export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
-  const unread = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [status, setStatus] = useState<PresenceStatus>(userPresence[currentUser.id] ?? "online");
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
   const { actingUser, setActingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
   const displayUser = actingUser;
+  const unread = personalFor(actingUser.id).notifications.filter((n) => !n.read).length;
+  const [status, setStatus] = useState<PresenceStatus>(userPresence[actingUser.id] ?? "online");
   const roleOf = (uid: string) => roles.find((r) => r.id === (initialRoleAssignments[uid]?.roleId ?? "r4"));
 
   const toggleDark = () => setMode(resolved === "dark" ? "light" : "dark");

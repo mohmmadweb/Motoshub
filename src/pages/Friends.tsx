@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserPlus, UserCheck, UserX, Users, Rss, Clock3 } from "lucide-react";
 import { users, userPresence } from "../data/mock";
+import { personalFor } from "../data/personal";
+import { useTenancy } from "../context/TenancyContext";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -12,28 +14,30 @@ import { useToast } from "../components/ui/ToastProvider";
 // دوستان و دنبال‌کردن — معادل ماژول‌های friends و user-follow در motoshub-web
 type FriendState = "friend" | "incoming" | "outgoing" | "suggested";
 
-const initialStates: Record<string, FriendState> = {
-  u2: "friend",
-  u5: "friend",
-  u6: "friend",
-  u7: "incoming",
-  u9: "incoming",
-  u8: "outgoing",
-  u10: "suggested",
-  u11: "suggested",
-  u12: "suggested",
-  u13: "suggested",
-  u3: "suggested",
-  u4: "friend",
-};
+// شبکه‌ی ارتباطیِ همین کاربر را از داده‌ی شخصی می‌سازد
+function buildStates(uid: string): Record<string, FriendState> {
+  const me = personalFor(uid);
+  const s: Record<string, FriendState> = {};
+  me.friends.forEach((id) => (s[id] = "friend"));
+  me.incoming.forEach((id) => (s[id] = "incoming"));
+  me.outgoing.forEach((id) => (s[id] = "outgoing"));
+  me.suggested.forEach((id) => (s[id] = "suggested"));
+  return s;
+}
 
 export default function Friends() {
+  const { actingUser } = useTenancy();
   const [tab, setTab] = useState<"friends" | "requests" | "suggested" | "following">("friends");
-  const [states, setStates] = useState(initialStates);
-  const [following, setFollowing] = useState<string[]>(["u2", "u6", "u7", "u12"]);
+  const [states, setStates] = useState(() => buildStates(actingUser.id));
+  const [following, setFollowing] = useState<string[]>(() => personalFor(actingUser.id).following);
+  // با تعویض حساب، شبکه‌ی ارتباطیِ همان کاربر بارگذاری می‌شود
+  useEffect(() => {
+    setStates(buildStates(actingUser.id));
+    setFollowing(personalFor(actingUser.id).following);
+  }, [actingUser.id]);
   const { notify } = useToast();
 
-  const list = (s: FriendState) => users.filter((u) => states[u.id] === s);
+  const list = (s: FriendState) => users.filter((u) => u.id !== actingUser.id && states[u.id] === s);
   const set = (id: string, s: FriendState) => setStates((prev) => ({ ...prev, [id]: s }));
 
   const counts = {

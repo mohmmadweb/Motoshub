@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, Bell, BellOff, Send, Pencil, Trash2, Check } from "lucide-react";
-import { users, currentUser } from "../data/mock";
+import { users } from "../data/mock";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
 import Avatar from "../components/Avatar";
@@ -22,7 +22,7 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const { forumTopics, setForumTopics } = useContent();
   const { notify } = useToast();
-  const { hasPermission, canManageItem } = useTenancy();
+  const { hasPermission, canManageItem, actingUser } = useTenancy();
   const confirm = useConfirm();
   const topic = forumTopics.find((t) => t.id === id);
   const [following, setFollowing] = useState(false);
@@ -99,8 +99,8 @@ export default function ForumTopic() {
     }
     const r: Reply = {
       id: `r-${Date.now()}`,
-      author: currentUser.name,
-      avatarColor: currentUser.avatarColor,
+      author: actingUser.name,
+      avatarColor: actingUser.avatarColor,
       body: draft.trim(),
       accepted: false,
       when: "هم‌اکنون",

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, MessagesSquare, CheckCircle2, Eye, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { currentUser, type ForumTopic, type Visibility } from "../data/mock";
+import { type ForumTopic, type Visibility } from "../data/mock";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -74,7 +74,7 @@ export default function Forum() {
     const newTopic: ForumTopic = {
       id: `f-${Date.now()}`,
       title: title.trim(),
-      author: currentUser.name,
+      author: actingUser.name,
       replies: 0,
       views: 1,
       lastActivity: "اکنون",

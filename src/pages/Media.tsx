@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Image, Video, Star, Upload, PlayCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-import { currentUser, type MediaItem, type Visibility } from "../data/mock";
+import { type MediaItem, type Visibility } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -92,7 +92,7 @@ export default function Media() {
       kind: file.type.startsWith("video") ? "video" : "photo",
       title: title.trim(),
       album: album.trim() || "بدون آلبوم",
-      uploadedBy: currentUser.name,
+      uploadedBy: actingUser.name,
       date: jalaliToday,
       rating: 0,
       tags: [],

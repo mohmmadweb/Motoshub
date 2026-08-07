@@ -21,10 +21,10 @@ import {
   MoonStar,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { groups, users, notifications, chatThreads, channels, type Post } from "../data/mock";
-import { nfProjects } from "../data/mockInnovationFund";
+import { groups, users, type Post } from "../data/mock";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
+import { personalFor } from "../data/personal";
 import PostCard from "../components/PostCard";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
@@ -140,24 +140,16 @@ function PersonalToday() {
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const toggleDone = (id: string) => setDoneIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const { events } = useContent();
-  const unreadNotifs = notifications.filter((n) => !n.read);
-  const unreadChats = chatThreads.filter((c) => c.unread > 0);
-  const unreadMessages = chatThreads.reduce((s, c) => s + c.unread, 0);
-  const mentions = channels.reduce((s, c) => s + c.mentions, 0);
+  const { actingUser } = useTenancy();
+  // داده‌ی شخصیِ همین کاربر — با تعویض حساب کاملاً عوض می‌شود
+  const me = personalFor(actingUser.id);
+  const unreadNotifs = me.notifications.filter((n) => !n.read);
+  const unreadChats = me.chats.filter((c) => c.unread > 0);
+  const unreadMessages = me.chats.reduce((s, c) => s + c.unread, 0);
+  const mentions = me.mentions;
 
-  // اقدامات در انتظار این کاربر (نمونه: گزارش‌های صندوق که در صف بررسی‌اند)
-  const pendingActions = nfProjects
-    .flatMap((p) =>
-      p.reports
-        .filter((r) => r.status === "در حال بررسی" || r.status === "در انتظار بارگذاری")
-        .map((r) => ({
-          id: `${p.id}-${r.id}`,
-          text: r.status === "در حال بررسی" ? `گزارش «${r.title}» پروژه ${p.id} در صف تایید است` : `«${r.title}» پروژه ${p.id} هنوز بارگذاری نشده — سررسید ${r.due}`,
-          late: r.chain.some((c) => c.late),
-          to: "/dashboard/funds",
-        }))
-    )
-    .slice(0, 4);
+  // «کارهای امروز شما» — اقدامات در انتظارِ همین کاربر
+  const pendingActions = me.tasks;
 
   const todayEvent = events[0];
 
@@ -255,6 +247,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { events } = useContent();
   const { actingUser, session } = useTenancy();
+  // «گروه‌های من» — گروه‌هایی که همین کاربر عضوشان است
+  const myGroups = personalFor(actingUser.id).groupIds
+    .map((id) => groups.find((g) => g.id === id))
+    .filter((g): g is (typeof groups)[number] => Boolean(g))
+    .slice(0, 4);
   const nextEvent = events[0];
 
   useEffect(() => {
@@ -312,7 +309,7 @@ export default function Dashboard() {
           <div className="card p-4">
             <h3 className="font-bold text-sm mb-3 text-ink-900">گروه‌های من</h3>
             <div className="space-y-2.5">
-              {groups.slice(0, 4).map((g) => (
+              {myGroups.map((g) => (
                 <Link key={g.id} to={`/dashboard/groups/${g.id}`} className="flex items-center gap-2.5 hover:bg-ink-50 rounded-lg p-1.5 -m-1.5">
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: g.color }}>
                     {g.name.slice(0, 1)}

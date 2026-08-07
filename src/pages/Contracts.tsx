@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3 } from "lucide-react";
-import { contracts as initialContracts, currentUser, type ContractRecord } from "../data/mock";
+import { contracts as initialContracts, type ContractRecord } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
@@ -345,7 +345,7 @@ function TechContractsTab() {
         stage: method === "فراخوان عمومی" ? "فراخوان" : "مذاکره",
         value: value.trim() || "—",
         deadline: deadline.trim() || "نامشخص",
-        owner: currentUser.name,
+        owner: actingUser.name,
         ...itemScope,
         authorId: actingUser.id,
       };

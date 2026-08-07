@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookOpen, FileText, Upload, Clock, User, History, Download, Lightbulb } from "lucide-react";
-import { knowledgeDocs as allDocsForCategories, currentUser, type KnowledgeDoc, type Visibility } from "../data/mock";
+import { knowledgeDocs as allDocsForCategories, type KnowledgeDoc, type Visibility } from "../data/mock";
 import { rndOpportunityDocs, rndDocStates, supportedProducts, supportedVentures, partnerTechnologists } from "../data/mockDaneshmand";
 import Tabs from "../components/ui/Tabs";
 import RowActions from "../components/ui/RowActions";
@@ -188,7 +188,7 @@ function KnowledgeBankTab() {
       title: pendingFile.name,
       category: active === "همه" ? "صورت‌جلسه" : active,
       type: "گزارش",
-      owner: currentUser.name,
+      owner: actingUser.name,
       updatedAt: jalaliToday,
       size: `${(pendingFile.size / 1024).toFixed(0)} کیلوبایت`,
       visibility: uploadVisibility,
