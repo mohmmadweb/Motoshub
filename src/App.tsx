@@ -5,6 +5,7 @@ import { ConfirmProvider } from "./components/ui/ConfirmProvider";
 import { ContentProvider } from "./context/ContentContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import { TenancyProvider } from "./context/TenancyContext";
+import { ProjectsProvider } from "./context/ProjectsContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
 import RequirePerm from "./components/RequirePerm";
@@ -73,6 +74,7 @@ export default function App() {
     <SettingsProvider>
     <TenancyProvider>
     <ContentProvider>
+    <ProjectsProvider>
     <HashRouter>
       <Suspense fallback={<PageFallback />}>
       <Routes>
@@ -126,6 +128,7 @@ export default function App() {
       </Routes>
       </Suspense>
     </HashRouter>
+    </ProjectsProvider>
     </ContentProvider>
     </TenancyProvider>
     </SettingsProvider>
