@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, Clock, Flag, History, ListChecks, Lock, ShieldAlert, Users, Wallet, AlertTriangle, CircleDollarSign, Receipt, PiggyBank, Video } from "lucide-react";
+import { CalendarClock, CheckCircle2, Flag, History, ListChecks, Lock, ShieldAlert, Wallet, AlertTriangle, PiggyBank, Video } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import StatCard from "../../components/ui/StatCard";
 import { useProjectsPM } from "../../context/ProjectsContext";
@@ -37,35 +37,27 @@ export default function OverviewTab() {
 
   return (
     <div className="space-y-5">
-      <div className="card p-4">
-        <SectionTitle title="چرخه‌ی عمر پروژه" hint={canEdit ? "برای تغییر مرحله روی آن کلیک کنید — رویداد PROJECT_PHASE_CHANGED ثبت و به تیم و کارفرما اعلان می‌شود." : undefined} />
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-          {phases.map((ph, i) => (
-            <button
-              key={ph.id}
-              disabled={!canEdit}
-              onClick={() => pm.updateMeta(pid, { phase: ph.id })}
-              className={`text-right rounded-lg border p-2.5 transition-colors ${i === phaseIdx ? "border-brand-500 bg-brand-50" : i < phaseIdx ? "border-emerald-200 bg-emerald-50/60" : "border-ink-200 hover:bg-ink-50"}`}
-            >
-              <p className={`text-xs font-bold flex items-center gap-1 ${i === phaseIdx ? "text-brand-700" : i < phaseIdx ? "text-emerald-700" : "text-ink-600"}`}>
-                {i < phaseIdx && <CheckCircle2 size={12} />}
-                {fa(i + 1)}. {ph.id}
-              </p>
-              <p className="text-[10.5px] text-ink-400 mt-1 leading-4">{ph.hint}</p>
-            </button>
-          ))}
-        </div>
+      <div className="card p-3 flex items-center gap-1 overflow-x-auto" aria-label="چرخه‌ی عمر پروژه">
+        <span className="text-xs font-bold text-ink-600 ml-2 whitespace-nowrap">چرخه‌ی عمر:</span>
+        {phases.map((ph, i) => (
+          <button
+            key={ph.id}
+            disabled={!canEdit}
+            onClick={() => pm.updateMeta(pid, { phase: ph.id })}
+            title={canEdit ? `${ph.hint} — برای تغییر مرحله کلیک کنید` : ph.hint}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors ${i === phaseIdx ? "bg-brand-600 text-white font-medium" : i < phaseIdx ? "text-emerald-700 hover:bg-emerald-50" : "text-ink-400 hover:bg-ink-50"}`}
+          >
+            {i < phaseIdx && <CheckCircle2 size={12} />}
+            {ph.id}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="تسک‌ها (کل / انجام‌شده)" value={`${fa(ts.length)} / ${fa(done)}`} hint={`${fa(doing)} در حال انجام`} icon={<ListChecks size={16} />} tone="brand" />
+        <StatCard label="تسک‌ها (انجام‌شده از کل)" value={`${fa(done)} از ${fa(ts.length)}`} hint={`${fa(doing)} در حال انجام`} icon={<ListChecks size={16} />} tone="brand" />
         <StatCard label="تسک‌های عقب‌افتاده" value={fa(late.length)} hint={`${fa(waiting.length)} منتظر پیش‌نیاز · ${fa(blocked.length)} متوقف`} icon={<AlertTriangle size={16} />} tone={late.length ? "danger" : "success"} />
-        <StatCard label="اعضای تیم" value={fa(p.members.length)} hint={`مدیر: ${p.meta.manager}`} icon={<Users size={16} />} />
-        <StatCard label="جلسات پیش‌رو" value={fa(upcomingMeetings.length)} hint={upcomingMeetings[0] ? `${upcomingMeetings[0].date} · ${upcomingMeetings[0].title}` : "—"} icon={<Video size={16} />} />
-        <StatCard label="بودجه‌ی کل" value={fmtShort(p.budget.total)} hint="ریال" icon={<CircleDollarSign size={16} />} tone="brand" />
-        <StatCard label="هزینه‌ی انجام‌شده" value={fmtShort(paid)} hint={`${fa(budgetUsage(p))}٪ بودجه`} icon={<Receipt size={16} />} tone="warning" />
-        <StatCard label="بودجه‌ی باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint="ریال" icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />
-        <StatCard label="پیشرفت (محاسبه از تسک‌ها)" value={`${fa(projectProgress(p))}٪`} hint={`زمان سپری‌شده: ${fa(Math.max(0, Math.min(100, Math.round(((ref - (dayNum(p.meta.start) ?? ref)) / Math.max(1, (dayNum(p.meta.deadline) ?? ref) - (dayNum(p.meta.start) ?? ref))) * 100))))}٪`} icon={<Clock size={16} />} tone="success" />
+        <StatCard label="بودجه‌ی باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint={`از ${fmtShort(p.budget.total)} ریال`} icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />
+        <StatCard label="جلسه‌ی بعدی" value={upcomingMeetings[0] ? upcomingMeetings[0].date : "—"} hint={upcomingMeetings[0]?.title} icon={<Video size={16} />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

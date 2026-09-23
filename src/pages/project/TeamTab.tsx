@@ -52,7 +52,7 @@ export default function TeamTab() {
       <SectionTitle
         icon={<Users size={15} className="text-brand-600" />}
         title={`اعضای پروژه (${fa(p.members.length)})`}
-        hint="آمار هر عضو همان خروجی GET /projects/{id}/members/ است: task_count، closed_task_count، open_task_count، progress_percentage"
+        
         action={
           canEdit && (
             <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => setAddOpen(true)}>
@@ -215,7 +215,7 @@ function CrossProjects({ name, onClose }: { name: string | null; onClose: () => 
     .map((p) => ({ id: p.meta.id, name: p.meta.name, ...memberStats(p, name) }));
   const total = rows.reduce((s, r) => ({ t: s.t + r.task_count, c: s.c + r.closed_task_count }), { t: 0, c: 0 });
   return (
-    <Modal open onClose={onClose} title={`پیشرفت «${name}» در همه‌ی پروژه‌ها`} description="معادل member-all-projects-progress در API">
+    <Modal open onClose={onClose} title={`پیشرفت «${name}» در همه‌ی پروژه‌ها`} >
       <div className="space-y-3">
         {rows.map((r) => (
           <div key={r.id}>

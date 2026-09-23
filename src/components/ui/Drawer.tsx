@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export default function Drawer({
@@ -22,7 +23,8 @@ export default function Drawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // پورتال به body تا پوشش تیره کل صفحه (از جمله منوی کناری) را بگیرد
+  return createPortal(
     <div className="fixed inset-0 z-40 flex justify-end" dir="rtl">
       <div className="absolute inset-0 bg-ink-900/30" onClick={onClose} />
       <div className={`relative w-full ${width} bg-white h-full shadow-2xl flex flex-col animate-in`}>
@@ -35,5 +37,6 @@ export default function Drawer({
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
+    ,document.body
   );
 }

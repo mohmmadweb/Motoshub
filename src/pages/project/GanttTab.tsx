@@ -198,9 +198,7 @@ export default function GanttTab() {
           </div>
         </div>
       </div>
-      <p className="text-[11px] text-ink-400">
-        منبع داده در API: <span dir="ltr" className="font-mono">GET /projects/{"{id}"}/gantt/</span> — planned_start/planned_end، status_history و time_spent_ratio. نسبت زمان صرف‌شده با قرار دادن نشانگر روی هر نوار دیده می‌شود.
-      </p>
+      <p className="text-[11px] text-ink-400">برای دیدن نسبت زمان صرف‌شده، نشانگر را روی نوار هر تسک نگه دارید.</p>
     </div>
   );
 }

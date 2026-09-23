@@ -158,16 +158,16 @@ export default function RisksTab() {
         <SectionTitle
           icon={<Cpu size={15} className="text-brand-600" />}
           title="تحلیل خودکار ریسک"
-          hint="همان خروجی GET /projects/{id}/risk-analysis/ — از روی وضعیت تسک‌ها، وابستگی‌ها، هزینه‌ها و مایل‌ستون‌ها محاسبه و بر اساس امتیاز (۰ تا ۱۰۰) مرتب می‌شود."
+          hint="سامانه از روی تأخیر تسک‌ها، وابستگی‌ها، هزینه‌ها و مایل‌ستون‌ها امتیاز ریسک (۰ تا ۱۰۰) می‌دهد."
         />
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[760px]">
             <thead>
               <tr className="text-ink-400 border-b border-ink-100 text-right">
                 <th className="p-2 font-medium">امتیاز</th>
-                <th className="p-2 font-medium">نوع (risk_type)</th>
+                <th className="p-2 font-medium">نوع</th>
                 <th className="p-2 font-medium">موجودیت</th>
-                <th className="p-2 font-medium">عوامل (factors)</th>
+                <th className="p-2 font-medium">عوامل</th>
                 <th className="p-2 font-medium">توضیح</th>
                 <th className="p-2" />
               </tr>

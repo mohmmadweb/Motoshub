@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip } from "lucide-react";
-import Drawer from "../../components/ui/Drawer";
+import Modal from "../../components/ui/Modal";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -11,7 +11,7 @@ import { createsCycle, isDone, openPredecessors, predecessorsOf, successorsOf, t
 import { fa, fmtRial, diffDays } from "../../pm/jalali";
 import { defaultLabels } from "../../pm/seed";
 import type { PMTask } from "../../pm/types";
-import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindTone, numIn, priorities, priorityTone, useProjectPage } from "./shared";
+import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindColor, kindTone, numIn, priorities, priorityTone, useProjectPage } from "./shared";
 
 type Section = "details" | "checklist" | "deps" | "cost" | "comments" | "history";
 
@@ -37,7 +37,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
-  if (!t || !draft) return <Drawer open={false} onClose={onClose} title="">{null}</Drawer>;
+  if (!t || !draft) return null;
 
   const preds = predecessorsOf(p, t.id);
   const succs = successorsOf(p, t.id);
@@ -94,44 +94,37 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
 
   const docs = p.documents.filter((d) => d.taskId === t.id);
 
+  const statusSelect = (
+    <select
+      value={t.status}
+      disabled={!canEdit}
+      onChange={(e) => move(e.target.value)}
+      className="input-field !py-1.5 !text-xs !w-auto font-medium"
+      aria-label="وضعیت تسک"
+      style={{ borderInlineStartWidth: 4, borderInlineStartColor: kindColor[kindOf(p, t.status)] }}
+    >
+      {p.columns.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.label}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
-    <Drawer open onClose={onClose} title="جزئیات تسک" width="max-w-2xl">
+    <Modal open onClose={onClose} title={t.title} width="max-w-4xl">
       <div className="space-y-4">
-        <div>
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-bold text-ink-900 leading-6">{t.title}</p>
-            <TaskFlags p={p} t={t} refDate={refDate} />
+        <div className="flex items-center gap-2 flex-wrap">
+          {statusSelect}
+          <Badge tone={priorityTone[t.priority]}>اولویت {t.priority}</Badge>
+          <span className="text-xs text-ink-500">
+            {t.assignee} · {t.start} تا {t.due}
+          </span>
+          <TaskFlags p={p} t={t} refDate={refDate} />
+          <div className="flex items-center gap-2 mr-auto min-w-[140px]">
+            <Progress value={isDone(p, t) ? 100 : t.progress} className="flex-1" />
+            <span className="text-xs text-ink-500">{fa(isDone(p, t) ? 100 : t.progress)}٪</span>
           </div>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge tone={kindTone[kindOf(p, t.status)]}>{columnLabel(p, t.status)}</Badge>
-            <Badge tone={priorityTone[t.priority]}>اولویت: {t.priority}</Badge>
-            <Badge tone="neutral">
-              {t.start} ← {t.due}
-            </Badge>
-            {t.labels.map((l) => (
-              <Badge key={l} tone="brand">
-                {l}
-              </Badge>
-            ))}
-          </div>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs text-ink-500 mb-1">
-              <span>پیشرفت</span>
-              <span>{fa(isDone(p, t) ? 100 : t.progress)}٪</span>
-            </div>
-            <Progress value={isDone(p, t) ? 100 : t.progress} />
-          </div>
-          {canEdit && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {p.columns
-                .filter((c) => c.id !== t.status)
-                .map((c) => (
-                  <Button key={c.id} size="sm" variant="secondary" onClick={() => move(c.id)}>
-                    ← {c.label}
-                  </Button>
-                ))}
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-1 border-b border-ink-200 overflow-x-auto">
@@ -144,14 +137,40 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
         </div>
 
         {section === "details" && (
-          <div className="space-y-3">
-            <Field label="عنوان">
-              <input className="input-field" value={draft.title} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
-            </Field>
-            <Field label="توضیحات">
-              <textarea className="input-field min-h-[80px]" value={draft.description} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="شرح کار، معیار پذیرش، …" />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-5">
+            <div className="space-y-3 min-w-0">
+              <Field label="عنوان">
+                <input className="input-field" value={draft.title} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+              </Field>
+              <Field label="توضیحات">
+                <textarea className="input-field min-h-[120px]" value={draft.description} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="شرح کار، معیار پذیرش، …" />
+              </Field>
+              <Field label="برچسب‌ها">
+                <div className="flex flex-wrap gap-1.5">
+                  {[...new Set([...defaultLabels, ...draft.labels])].map((l) => {
+                    const on = draft.labels.includes(l);
+                    return (
+                      <button key={l} disabled={!canEdit} onClick={() => setDraft({ ...draft, labels: on ? draft.labels.filter((x) => x !== l) : [...draft.labels, l] })} className={`text-[11px] px-2 py-1 rounded-md border ${on ? "bg-brand-50 border-brand-300 text-brand-700" : "border-ink-200 text-ink-500 hover:bg-ink-50"}`}>
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              {docs.length > 0 && (
+                <Field label="فایل‌های پیوست">
+                  <div className="space-y-1">
+                    {docs.map((d) => (
+                      <button key={d.id} onClick={() => goTab("documents", d.id)} className="flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
+                        <Paperclip size={12} /> {d.name} <span className="text-ink-400">(نسخه‌ی {fa(d.version)})</span>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
+            </div>
+
+            <div className="space-y-3 md:border-r md:border-ink-100 md:pr-5">
               <Field label="مسئول">
                 <MemberSelect p={p} value={draft.assignee} onChange={(v) => setDraft({ ...draft, assignee: v })} />
               </Field>
@@ -165,11 +184,11 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               <Field label="تاریخ شروع">
                 <JalaliDatePicker value={draft.start} onChange={(v) => setDraft({ ...draft, start: v })} />
               </Field>
-              <Field label="سررسید (Deadline)">
+              <Field label="سررسید">
                 <JalaliDatePicker value={draft.due} onChange={(v) => setDraft({ ...draft, due: v })} />
               </Field>
               <Field label={`پیشرفت: ${fa(draft.progress)}٪`}>
-                <input type="range" min={0} max={100} step={5} value={draft.progress} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })} className="w-full accent-[var(--color-brand-600)]" />
+                <input type="range" min={0} max={100} step={5} value={draft.progress} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })} className="w-full accent-[var(--color-brand-600)]" dir="ltr" />
               </Field>
               <Field label="مایل‌ستون">
                 <select className="input-field" value={draft.milestoneId ?? p.milestones.find((m) => m.taskIds.includes(t.id))?.id ?? ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, milestoneId: e.target.value })}>
@@ -181,38 +200,18 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   ))}
                 </select>
               </Field>
-              <Field label="بودجه‌ی تخمینی (ریال)">
-                <input className="input-field" inputMode="numeric" value={draft.estBudget ? draft.estBudget.toLocaleString("fa-IR") : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, estBudget: numIn(e.target.value) })} placeholder="۰" />
-              </Field>
-              <Field label="برآورد ساعت کار">
-                <input className="input-field" inputMode="numeric" value={draft.estHours ? fa(draft.estHours) : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, estHours: numIn(e.target.value) })} placeholder="۰" />
-              </Field>
-            </div>
-            <Field label="برچسب‌ها">
-              <div className="flex flex-wrap gap-1.5">
-                {[...new Set([...defaultLabels, ...draft.labels])].map((l) => {
-                  const on = draft.labels.includes(l);
-                  return (
-                    <button key={l} disabled={!canEdit} onClick={() => setDraft({ ...draft, labels: on ? draft.labels.filter((x) => x !== l) : [...draft.labels, l] })} className={`text-[11px] px-2 py-1 rounded-md border ${on ? "bg-brand-50 border-brand-300 text-brand-700" : "border-ink-200 text-ink-500 hover:bg-ink-50"}`}>
-                      {l}
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="بودجه (ریال)">
+                  <input className="input-field" inputMode="numeric" value={draft.estBudget ? draft.estBudget.toLocaleString("fa-IR") : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, estBudget: numIn(e.target.value) })} placeholder="۰" />
+                </Field>
+                <Field label="برآورد ساعت">
+                  <input className="input-field" inputMode="numeric" value={draft.estHours ? fa(draft.estHours) : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, estHours: numIn(e.target.value) })} placeholder="۰" />
+                </Field>
               </div>
-            </Field>
-            {docs.length > 0 && (
-              <Field label="فایل‌های پیوست">
-                <div className="space-y-1">
-                  {docs.map((d) => (
-                    <button key={d.id} onClick={() => goTab("documents", d.id)} className="flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
-                      <Paperclip size={12} /> {d.name} <span className="text-ink-400">(نسخه‌ی {fa(d.version)})</span>
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            )}
+            </div>
+
             {canEdit && (
-              <div className="flex items-center gap-2 pt-1">
+              <div className="md:col-span-2 flex items-center gap-2 pt-3 border-t border-ink-100 sticky bottom-0 bg-white">
                 <Button variant="primary" icon={<Save size={14} />} disabled={!dirty} onClick={save}>
                   ذخیره‌ی تغییرات
                 </Button>
@@ -221,7 +220,25 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                     بازگردانی
                   </Button>
                 )}
-                <p className="text-[11px] text-ink-400 mr-auto">هر تغییر با کد رویداد در تاریخچه ثبت و به افراد مرتبط اعلان می‌شود.</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mr-auto text-rose-600"
+                  icon={<Trash2 size={13} />}
+                  onClick={() =>
+                    confirm({
+                      title: `حذف تسک «${t.title}»؟`,
+                      message: `${succs.length ? `${fa(succs.length)} تسک به این تسک وابسته‌اند و وابستگی‌شان برداشته می‌شود. ` : ""}این رویداد در تاریخچه ثبت می‌شود.`,
+                      onConfirm: () => {
+                        pm.deleteTask(pid, t.id);
+                        onClose();
+                        notify("تسک حذف شد.", "info");
+                      },
+                    })
+                  }
+                >
+                  حذف تسک
+                </Button>
               </div>
             )}
           </div>
@@ -486,29 +503,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
           </div>
         )}
 
-        {canEdit && (
-          <div className="pt-3 border-t border-ink-100">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Trash2 size={13} />}
-              onClick={() =>
-                confirm({
-                  title: `حذف تسک «${t.title}»؟`,
-                  message: `${succs.length ? `${fa(succs.length)} تسک به این تسک وابسته‌اند و وابستگی‌شان برداشته می‌شود. ` : ""}این رویداد در تاریخچه ثبت می‌شود.`,
-                  onConfirm: () => {
-                    pm.deleteTask(pid, t.id);
-                    onClose();
-                    notify("تسک حذف شد.", "info");
-                  },
-                })
-              }
-            >
-              حذف تسک
-            </Button>
-          </div>
-        )}
       </div>
-    </Drawer>
+    </Modal>
   );
 }

@@ -104,16 +104,12 @@ export default function FinanceTab() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard label="بودجه مصوب" value={fmtRial(p.budget.total)} tone="brand" icon={<CircleDollarSign size={16} />} />
-        <StatCard label="هزینه‌کرد تاکنون" value={fmtRial(paid)} hint={`${fa(usage)}٪ بودجه`} tone="warning" icon={<Receipt size={16} />} />
-        <StatCard label="حامی مالی (اسپانسر)" value={p.meta.sponsor} hint={`مسئول مالی: ${p.meta.financeOfficer}`} icon={<Wallet size={16} />} />
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="بودجه‌ی باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint="ریال" icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />
-        <StatCard label="تعهدشده (در انتظار/تأییدشده)" value={fmtShort(committed)} hint="هنوز پرداخت نشده" icon={<Receipt size={16} />} />
-        <StatCard label="درآمد پروژه" value={fmtShort(p.budget.revenue)} hint="ریال" icon={<TrendingUp size={16} />} />
-        <StatCard label={profit >= 0 ? "سود (درآمد − هزینه)" : "زیان (درآمد − هزینه)"} value={fmtShort(Math.abs(profit))} hint="ریال" icon={profit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} tone={profit >= 0 ? "success" : "danger"} />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <StatCard label="بودجه مصوب" value={fmtShort(p.budget.total)} hint={`حامی مالی: ${p.meta.sponsor}`} tone="brand" icon={<CircleDollarSign size={16} />} />
+        <StatCard label="هزینه‌کرد تاکنون" value={fmtShort(paid)} hint={`${fa(usage)}٪ بودجه`} tone="warning" icon={<Receipt size={16} />} />
+        <StatCard label="باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint="ریال" icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />
+        <StatCard label="تعهدشده (پرداخت‌نشده)" value={fmtShort(committed)} hint="در انتظار یا تأییدشده" icon={<Wallet size={16} />} />
+        <StatCard label={profit >= 0 ? "سود" : "زیان"} value={fmtShort(Math.abs(profit))} hint={`درآمد: ${fmtShort(p.budget.revenue)}`} icon={profit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />} tone={profit >= 0 ? "success" : "danger"} />
       </div>
 
       <div className={`rounded-lg border p-3 text-xs flex items-center gap-2 flex-wrap ${passed.length ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>

@@ -2,13 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ZoomIn, ZoomOut, Maximize2, Link2, Flame, Lock, CheckCircle2, AlertTriangle, X, Play, Route, Unlink, MousePointerClick, Info } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
-import StatCard from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { chainOf, columnLabel, createsCycle, criticalPath, dependencyConflicts, isDone, isOverdue, isWaiting, kindOf, layerTasks, openPredecessors, predecessorsOf, successorsOf } from "../../pm/selectors";
 import { fa } from "../../pm/jalali";
 import type { PMTask } from "../../pm/types";
-import { Field, SectionTitle, TaskSelect, kindColor, kindTone, useProjectPage } from "./shared";
+import { Field, TaskSelect, kindColor, kindTone, useProjectPage } from "./shared";
 
 const W = 208;
 const H = 92;
@@ -113,12 +112,18 @@ export default function GraphTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatCard label="وابستگی‌ها" value={fa(p.deps.length)} icon={<Link2 size={16} />} tone="brand" />
-        <StatCard label="طول مسیر بحرانی" value={`${fa(cp.days)} روز`} hint={`${fa(cp.path.length)} تسک پشت‌سرهم`} icon={<Flame size={16} />} tone="danger" />
-        <StatCard label="آماده‌ی شروع" value={fa(readyToStart.length)} hint="همه‌ی پیش‌نیازها تمام شده" icon={<Play size={16} />} tone="success" />
-        <StatCard label="منتظر پیش‌نیاز" value={fa(waiting.length)} icon={<Lock size={16} />} tone="warning" />
-        <StatCard label="تعارض زمان‌بندی" value={fa(conflicts.length)} hint="شروع قبل از پایان پیش‌نیاز" icon={<AlertTriangle size={16} />} tone={conflicts.length ? "danger" : "neutral"} />
+      <div className="flex items-center gap-2 flex-wrap text-xs">
+        {[
+          { icon: <Link2 size={13} />, label: "وابستگی", value: fa(p.deps.length), cls: "text-brand-700 bg-brand-50 border-brand-200" },
+          { icon: <Flame size={13} />, label: "مسیر بحرانی", value: `${fa(cp.days)} روز · ${fa(cp.path.length)} تسک`, cls: "text-rose-700 bg-rose-50 border-rose-200" },
+          { icon: <Play size={13} />, label: "آماده‌ی شروع", value: fa(readyToStart.length), cls: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+          { icon: <Lock size={13} />, label: "منتظر پیش‌نیاز", value: fa(waiting.length), cls: "text-amber-700 bg-amber-50 border-amber-200" },
+          { icon: <AlertTriangle size={13} />, label: "تعارض زمانی", value: fa(conflicts.length), cls: conflicts.length ? "text-rose-700 bg-rose-50 border-rose-200" : "text-ink-600 bg-ink-50 border-ink-200" },
+        ].map((c) => (
+          <span key={c.label} className={`inline-flex items-center gap-1.5 border rounded-full px-3 py-1 ${c.cls}`}>
+            {c.icon} {c.label}: <b>{c.value}</b>
+          </span>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -405,14 +410,18 @@ export default function GraphTab() {
         </div>
       </div>
 
-      <div className="card p-4">
-        <SectionTitle icon={<Link2 size={15} className="text-brand-600" />} title="فهرست وابستگی‌ها" hint="همان داده‌ی GET /projects/{id}/task-dependencies — ایجاد با POST (predecessor, successor)" />
+      <details className="card p-4 group">
+        <summary className="text-sm font-bold text-ink-900 flex items-center gap-1.5 cursor-pointer list-none">
+          <Link2 size={15} className="text-brand-600" /> فهرست وابستگی‌ها ({fa(p.deps.length)}) و افزودن دستی
+          <span className="text-xs font-normal text-ink-400 mr-auto group-open:hidden">نمایش</span>
+        </summary>
+        <div className="mt-4">
         {canEdit && (
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end mb-4">
-            <Field label="پیش‌نیاز (predecessor)">
+            <Field label="پیش‌نیاز">
               <TaskSelect p={p} value={addPred} onChange={setAddPred} exclude={addSucc ? [addSucc] : []} />
             </Field>
-            <Field label="تسک وابسته (successor)">
+            <Field label="تسک وابسته">
               <TaskSelect p={p} value={addSucc} onChange={setAddSucc} exclude={addPred ? [addPred] : []} />
             </Field>
             <Button
@@ -473,7 +482,8 @@ export default function GraphTab() {
           </table>
           {p.deps.length === 0 && <p className="text-center text-xs text-ink-400 py-6">هنوز وابستگی‌ای تعریف نشده است.</p>}
         </div>
-      </div>
+        </div>
+      </details>
     </div>
   );
 }

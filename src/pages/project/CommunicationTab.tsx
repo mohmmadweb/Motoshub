@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { Hash, Lock, Megaphone, Pin, Plus, Reply, Search, Send, ThumbsUp, Check, Heart, Paperclip, Link2, X } from "lucide-react";
-import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -327,7 +326,6 @@ export default function CommunicationTab() {
           >
             انتشار
           </Button>
-          <Badge tone="warning">رویداد: ANNOUNCEMENT_POSTED · اولویت مهم</Badge>
         </div>
       </Modal>
     </div>

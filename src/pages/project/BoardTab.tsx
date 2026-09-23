@@ -31,6 +31,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colsOpen, setColsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const tasks = useMemo(() => {
     let ts = p.tasks.filter((t) => !t.archived);
@@ -46,6 +47,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   }, [p, q, member, priority, label, onlyWaiting, sort]);
 
   const filtered = !!(q || member || priority || label || onlyWaiting);
+  const activeFilters = [member, priority, label, onlyWaiting].filter(Boolean).length;
 
   const drop = (status: string, beforeId?: string) => {
     if (!dragId) return;
@@ -139,7 +141,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="flex rounded-lg border border-ink-200 overflow-hidden">
           <button onClick={() => setView("kanban")} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${view === "kanban" ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`}>
             <LayoutGrid size={13} /> کانبان
@@ -152,28 +154,10 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
           <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی تسک…" className="input-field !py-1.5 !pr-8 !text-xs w-44" />
         </div>
-        <ListFilter size={14} className="text-ink-400" />
-        <select value={member} onChange={(e) => setMember(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
-          <option value="">همه‌ی اعضا</option>
-          {[...new Set(p.tasks.map((t) => t.assignee))].map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
-          <option value="">همه‌ی اولویت‌ها</option>
-          {priorities.map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <select value={label} onChange={(e) => setLabel(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
-          <option value="">همه‌ی برچسب‌ها</option>
-          {[...new Set([...defaultLabels, ...p.tasks.flatMap((t) => t.labels)])].map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <label className="flex items-center gap-1 text-xs text-ink-600">
-          <input type="checkbox" checked={onlyWaiting} onChange={(e) => setOnlyWaiting(e.target.checked)} className="accent-[var(--color-brand-600)]" /> فقط منتظر پیش‌نیاز
-        </label>
+        <button onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen} className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1 ${filtered || filtersOpen ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
+          <ListFilter size={13} /> فیلتر
+          {activeFilters > 0 && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">{fa(activeFilters)}</span>}
+        </button>
         <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="input-field !py-1.5 !text-xs !w-auto" aria-label="مرتب‌سازی">
           <option value="manual">ترتیب دستی</option>
           <option value="priority">بر اساس اولویت</option>
@@ -182,15 +166,40 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
         </select>
         {filtered && (
           <button onClick={() => { setQ(""); setMember(""); setPriority(""); setLabel(""); setOnlyWaiting(false); }} className="text-xs text-brand-700 hover:underline">
-            پاک‌کردن فیلترها ({fa(tasks.length)} نتیجه)
+            پاک‌کردن ({fa(tasks.length)} نتیجه)
           </button>
         )}
         {canEdit && (
-          <Button variant="secondary" size="sm" icon={<Settings2 size={13} />} className="mr-auto" onClick={() => setColsOpen(true)}>
-            مدیریت ستون‌ها
-          </Button>
+          <button onClick={() => setColsOpen(true)} className="mr-auto p-2 rounded-lg border border-ink-200 bg-white text-ink-500 hover:text-ink-800" title="مدیریت ستون‌های بورد" aria-label="مدیریت ستون‌های بورد">
+            <Settings2 size={14} />
+          </button>
         )}
       </div>
+      {filtersOpen && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap bg-ink-50 border border-ink-100 rounded-lg p-2">
+          <select value={member} onChange={(e) => setMember(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
+            <option value="">همه‌ی اعضا</option>
+            {[...new Set(p.tasks.map((t) => t.assignee))].map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
+            <option value="">همه‌ی اولویت‌ها</option>
+            {priorities.map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <select value={label} onChange={(e) => setLabel(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto">
+            <option value="">همه‌ی برچسب‌ها</option>
+            {[...new Set([...defaultLabels, ...p.tasks.flatMap((t) => t.labels)])].map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-1 text-xs text-ink-600">
+            <input type="checkbox" checked={onlyWaiting} onChange={(e) => setOnlyWaiting(e.target.checked)} className="accent-[var(--color-brand-600)]" /> فقط منتظر پیش‌نیاز
+          </label>
+        </div>
+      )}
 
       {view === "kanban" ? (
         <div className="grid grid-flow-col auto-cols-[minmax(178px,1fr)] gap-2.5 overflow-x-auto pb-2">

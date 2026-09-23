@@ -103,7 +103,7 @@ export default function HistoryTab() {
               خروجی CSV
             </Button>
             <Button size="sm" variant="secondary" icon={<FileJson size={13} />} onClick={exportJson}>
-              خروجی JSON (شکل API)
+              خروجی JSON
             </Button>
           </>
         )}
@@ -266,7 +266,7 @@ function Catalog() {
               <th className="p-2.5 font-medium">کد رویداد</th>
               <th className="p-2.5 font-medium">شرح / نمونه‌ی متن فارسی لاگ</th>
               <th className="p-2.5 font-medium">منشأ</th>
-              <th className="p-2.5 font-medium">API</th>
+              <th className="p-2.5 font-medium">وضعیت پیاده‌سازی</th>
               <th className="p-2.5 font-medium">گیرندگان اعلان</th>
               <th className="p-2.5 font-medium">کانال / اولویت</th>
             </tr>

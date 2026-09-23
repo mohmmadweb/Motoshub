@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export default function Modal({
@@ -24,7 +25,8 @@ export default function Modal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // پورتال به body تا پوشش تیره کل صفحه (از جمله منوی کناری) را بگیرد
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
       <div className={`relative w-full ${width} bg-white rounded-xl shadow-2xl border border-ink-200 max-h-[88vh] flex flex-col`}>
@@ -40,5 +42,6 @@ export default function Modal({
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
+    ,document.body
   );
 }
