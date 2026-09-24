@@ -41,6 +41,7 @@ const kindIcon: Record<InboxKind, typeof AtSign> = {
   event_invite: CalendarPlus,
   reply: Reply,
   knowledge: BookOpen,
+  chat_added: UserPlus,
 };
 
 /** ترجیحات اعلانِ هر کاربر (فقط در مرورگر همین کاربر) */

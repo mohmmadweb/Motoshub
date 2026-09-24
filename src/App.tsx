@@ -1,5 +1,5 @@
-import { Suspense, lazy } from "react";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Suspense, lazy, type ReactNode } from "react";
+import { HashRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ToastProvider } from "./components/ui/ToastProvider";
 import { ConfirmProvider } from "./components/ui/ConfirmProvider";
 import { ContentProvider } from "./context/ContentContext";
@@ -8,24 +8,28 @@ import { TenancyProvider } from "./context/TenancyContext";
 import { ProjectsProvider } from "./context/ProjectsContext";
 import { InboxProvider } from "./context/InboxContext";
 import { KnowledgeProvider } from "./context/KnowledgeContext";
+import { SocialProvider } from "./context/SocialContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
 import RequirePerm from "./components/RequirePerm";
+
+/** لینک‌های قدیمی (مثلاً /news/nw1) به شناسه‌ی جدید مدل API (news-nw1) هدایت می‌شوند */
+function LegacyId({ prefix, legacy, children }: { prefix: string; legacy: RegExp; children: ReactNode }) {
+  const { id } = useParams();
+  const base = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "").split("?")[0].replace(/\/[^/]+$/, "") : "";
+  if (id && legacy.test(id)) return <Navigate to={`${base}/${prefix}${id}`} replace />;
+  return <>{children}</>;
+}
+function LegacyRedirect({ to }: { to: (id?: string) => string }) {
+  const { id } = useParams();
+  return <Navigate to={to(id)} replace />;
+}
 
 // مسیرها به‌صورت lazy بارگذاری می‌شوند تا باندل اولیه سبک بماند
 const Landing = lazy(() => import("./pages/Landing"));
 const PublicShowcase = lazy(() => import("./pages/PublicShowcase"));
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const News = lazy(() => import("./pages/News"));
-const Groups = lazy(() => import("./pages/Groups"));
-const GroupDetail = lazy(() => import("./pages/GroupDetail"));
-const Forum = lazy(() => import("./pages/Forum"));
-const ForumTopic = lazy(() => import("./pages/ForumTopic"));
-const Events = lazy(() => import("./pages/Events"));
-const Blog = lazy(() => import("./pages/Blog"));
-const Media = lazy(() => import("./pages/Media"));
-const Chat = lazy(() => import("./pages/Chat"));
 const SearchPage = lazy(() => import("./pages/SearchPage"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
@@ -42,18 +46,27 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Help = lazy(() => import("./pages/Help"));
 const Appearance = lazy(() => import("./pages/Appearance"));
-const Friends = lazy(() => import("./pages/Friends"));
-const Polls = lazy(() => import("./pages/Polls"));
-const Competitions = lazy(() => import("./pages/Competitions"));
 const Tickets = lazy(() => import("./pages/Tickets"));
 const Award = lazy(() => import("./pages/Award"));
 const PublicItemDetail = lazy(() => import("./pages/PublicItemDetail"));
-const NewsItemDetail = lazy(() => import("./pages/NewsItemDetail"));
 const NotFound404 = lazy(() => import("./pages/NotFound404"));
-const BlogPostDetail = lazy(() => import("./pages/BlogPostDetail"));
-const EventItemDetail = lazy(() => import("./pages/EventItemDetail"));
-const MediaItemDetail = lazy(() => import("./pages/MediaItemDetail"));
 const MyAccess = lazy(() => import("./pages/MyAccess"));
+// بخش شبکه اجتماعی — منطبق بر Motoshub Social API
+const Members = lazy(() => import("./pages/social/Members"));
+const Connections = lazy(() => import("./pages/social/Connections"));
+const ContentModule = lazy(() => import("./pages/social/ContentModule"));
+const ContentDetail = lazy(() => import("./pages/social/ContentDetail"));
+const MediaPage = lazy(() => import("./pages/social/MediaPage"));
+const MediaDetail = lazy(() => import("./pages/social/MediaDetail"));
+const ForumPage = lazy(() => import("./pages/social/ForumPage"));
+const TopicDetail = lazy(() => import("./pages/social/TopicDetail"));
+const TopicsHub = lazy(() => import("./pages/social/TopicsHub"));
+const Messenger = lazy(() => import("./pages/social/Messenger"));
+const EventsCalendar = lazy(() => import("./pages/social/EventsCalendar"));
+const EventDetail = lazy(() => import("./pages/social/EventDetail"));
+const FilesPage = lazy(() => import("./pages/social/FilesPage"));
+const ProjectTeams = lazy(() => import("./pages/social/ProjectTeams"));
+const SocialAdmin = lazy(() => import("./pages/social/SocialAdmin"));
 
 function PageFallback() {
   return (
@@ -80,6 +93,7 @@ export default function App() {
     <ProjectsProvider>
     <InboxProvider>
     <KnowledgeProvider>
+    <SocialProvider>
     <HashRouter>
       <Suspense fallback={<PageFallback />}>
       <Routes>
@@ -93,22 +107,39 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route path="my-work" element={<RequirePerm perm="projects.list" module="کارهای من"><MyWork /></RequirePerm>} />
-          <Route path="news" element={<RequirePerm perm="news.list" module="اخبار سازمان"><News /></RequirePerm>} />
-          <Route path="news/:id" element={<NewsItemDetail />} />
-          <Route path="groups" element={<RequirePerm perm="groups.list" module="گروه‌های تعاملی"><Groups /></RequirePerm>} />
-          <Route path="groups/:id" element={<GroupDetail />} />
-          <Route path="forum" element={<RequirePerm perm="forum.list" module="انجمن"><Forum /></RequirePerm>} />
-          <Route path="forum/:id" element={<ForumTopic />} />
-          <Route path="events" element={<RequirePerm perm="events.list" module="رویدادها و جلسات"><Events /></RequirePerm>} />
-          <Route path="events/:id" element={<EventItemDetail />} />
-          <Route path="blog" element={<RequirePerm perm="blog.list" module="بلاگ"><Blog /></RequirePerm>} />
-          <Route path="blog/:id" element={<BlogPostDetail />} />
-          <Route path="media" element={<RequirePerm perm="media.list" module="تصاویر و ویدیو"><Media /></RequirePerm>} />
-          <Route path="media/:id" element={<MediaItemDetail />} />
-          <Route path="chat" element={<RequirePerm perm="chat.view" module="گفتگو"><Chat /></RequirePerm>} />
-          <Route path="friends" element={<Friends />} />
-          <Route path="polls" element={<Polls />} />
-          <Route path="competitions" element={<Competitions />} />
+          {/* همکاران */}
+          <Route path="members" element={<RequirePerm perm="members.view" module="اعضای سازمان"><Members /></RequirePerm>} />
+          <Route path="connections" element={<RequirePerm perm="relations.use" module="ارتباطات من"><Connections /></RequirePerm>} />
+          {/* دانش و محتوا */}
+          <Route path="magazines" element={<RequirePerm perm="magazines.list" module="مجلات"><ContentModule section="magazines" /></RequirePerm>} />
+          <Route path="magazines/:id" element={<RequirePerm perm="magazines.list" module="مجلات"><ContentDetail section="magazines" /></RequirePerm>} />
+          <Route path="news" element={<RequirePerm perm="news.list" module="اخبار سازمان"><ContentModule section="news" /></RequirePerm>} />
+          <Route path="news/:id" element={<LegacyId prefix="news-" legacy={/^nw\d+$/}><RequirePerm perm="news.list" module="اخبار سازمان"><ContentDetail section="news" /></RequirePerm></LegacyId>} />
+          <Route path="media" element={<RequirePerm perm="media.list" module="رسانه"><MediaPage /></RequirePerm>} />
+          <Route path="media/:id" element={<LegacyId prefix="media-" legacy={/^m\d+$/}><RequirePerm perm="media.list" module="رسانه"><MediaDetail /></RequirePerm></LegacyId>} />
+          <Route path="forum" element={<RequirePerm perm="forum.list" module="پرسش و پاسخ"><ForumPage /></RequirePerm>} />
+          <Route path="forum/:id" element={<LegacyId prefix="tp-" legacy={/^f\d+$/}><RequirePerm perm="forum.list" module="پرسش و پاسخ"><TopicDetail /></RequirePerm></LegacyId>} />
+          <Route path="topics" element={<TopicsHub />} />
+          {/* تعامل و همکاری */}
+          <Route path="chat" element={<RequirePerm perm="chat.view" module="گفتگوها"><Messenger mode="chat" /></RequirePerm>} />
+          <Route path="chat/:id" element={<RequirePerm perm="chat.view" module="گفتگوها"><Messenger mode="chat" /></RequirePerm>} />
+          <Route path="groups" element={<RequirePerm perm="groups.list" module="گروه‌ها"><Messenger mode="groups" /></RequirePerm>} />
+          <Route path="groups/:id" element={<RequirePerm perm="groups.list" module="گروه‌ها"><Messenger mode="groups" /></RequirePerm>} />
+          <Route path="channels" element={<RequirePerm perm="channels.list" module="کانال‌ها"><Messenger mode="channels" /></RequirePerm>} />
+          <Route path="channels/:id" element={<RequirePerm perm="channels.list" module="کانال‌ها"><Messenger mode="channels" /></RequirePerm>} />
+          {/* رویدادها */}
+          <Route path="events" element={<RequirePerm perm="events.list" module="تقویم رویدادها"><EventsCalendar /></RequirePerm>} />
+          <Route path="events/:id" element={<LegacyId prefix="ev-" legacy={/^e\d+$/}><RequirePerm perm="events.list" module="تقویم رویدادها"><EventDetail /></RequirePerm></LegacyId>} />
+          {/* پروژه‌ها و اسناد */}
+          <Route path="project-teams" element={<RequirePerm perm="projects.list" module="تیم‌ها و مستندات پروژه"><ProjectTeams /></RequirePerm>} />
+          <Route path="files" element={<RequirePerm perm="files.use" module="اسناد و فایل‌ها"><FilesPage /></RequirePerm>} />
+          <Route path="social-admin" element={<RequirePerm perm="social.dashboards" module="داشبورد مدیریتی شبکه"><SocialAdmin /></RequirePerm>} />
+          {/* نشانی‌های قدیمی */}
+          <Route path="blog" element={<Navigate to="/dashboard/magazines?tab=blog" replace />} />
+          <Route path="blog/:id" element={<LegacyRedirect to={(id) => `/dashboard/magazines/${id?.startsWith("blog-") ? id : `blog-${id}`}`} />} />
+          <Route path="friends" element={<Navigate to="/dashboard/connections" replace />} />
+          <Route path="polls" element={<Navigate to="/dashboard" replace />} />
+          <Route path="competitions" element={<Navigate to="/dashboard" replace />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="access" element={<MyAccess />} />
           <Route path="search" element={<SearchPage />} />
@@ -122,7 +153,7 @@ export default function App() {
           <Route path="award" element={<Award />} />
           <Route path="training" element={<RequirePerm perm="training.list" module="آموزش و توانمندسازی"><Training /></RequirePerm>} />
           <Route path="assistant" element={<RequirePerm perm="assistant.chat" module="دستیار هوشمند"><Assistant /></RequirePerm>} />
-          <Route path="reports" element={<RequirePerm perm="reports.view" module="گزارش‌گیری پیشرفته"><Reports /></RequirePerm>} />
+          <Route path="reports" element={<RequirePerm perm="reports.export" module="گزارش‌گیری پیشرفته"><Reports /></RequirePerm>} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="appearance" element={<Appearance />} />
           <Route path="admin" element={<Admin />} />
@@ -134,6 +165,7 @@ export default function App() {
       </Routes>
       </Suspense>
     </HashRouter>
+    </SocialProvider>
     </KnowledgeProvider>
     </InboxProvider>
     </ProjectsProvider>

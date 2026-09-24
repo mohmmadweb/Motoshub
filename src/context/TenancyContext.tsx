@@ -41,7 +41,7 @@ type TenancyValue = {
   session: SessionScope;
   /** نقشِ مؤثرِ کاربرِ واردشده (برای نمایش «نقش و دسترسی من») */
   role: RoleDef;
-  /** تخصیصِ نقش به کاربر (سطح/هلدینگ/شرکت/گروه) — در نبودِ آن، عضو عادی */
+  /** تخصیصِ نقش به کاربر (سطح/هلدینگ/شرکت/گروه) — در نبودِ آن، کاربر عادی */
   grant?: RoleGrant;
 
   // --- دامنه‌ی فعال ---
@@ -62,7 +62,7 @@ type TenancyValue = {
   hasPermission: (id: string) => boolean;
   /** آیا این کاربر می‌تواند هلدینگ بسازد/حذف کند */
   canManageHoldings: boolean;
-  /** اختیار مدیریتِ یک گروه مشخص — نقش «ناظم گروه» فقط در گروه خودش */
+  /** اختیار مدیریتِ یک گروه مشخص — نقش «مدیر گروه» (سطح گروه) فقط در گروه خودش */
   canModerateGroup: (group: { id: string; scope?: string; holdingId?: string; companyId?: string }) => boolean;
   /**
    * آیا این کاربر می‌تواند این آیتم را ویرایش/حذف کند؟
@@ -170,15 +170,12 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
 
     const visible = (item: Scoped) => isVisibleForSession(item, session, activeHoldingId, activeCompanyId);
 
-    // دسترسی مؤثر از نقشِ کاربر — کاربرِ بدون تخصیص = «عضو عادی» (r4)
+    // دسترسی مؤثر از نقشِ کاربر — کاربرِ بدون تخصیص = «کاربر عادی» (r4)
     const actingRole = allRoles.find((r) => r.id === (grant?.roleId ?? "r4")) ?? allRoles.find((r) => r.id === "r4")!;
     const permissionSet = new Set(actingRole?.permissions ?? []);
     const hasPermission = (id: string) => permissionSet.has(id);
-    // پنل راهبری: سطح سیستم/هلدینگ همیشه؛ سطح شرکت فقط با نقشِ دارای مجوز مدیریتی
-    const canAccessAdmin =
-      session.level === "سیستم" ||
-      session.level === "هلدینگ" ||
-      ["users.create", "users.edit", "roles.edit", "settings.system"].some((p) => permissionSet.has(p));
+        // با پنج نقش جدید، پنل راهبری فقط از روی مجوز تعیین می‌شود (نه سطح سازمانی)
+    const canAccessAdmin = ["users.create", "users.edit", "roles.edit", "settings.system"].some((p) => permissionSet.has(p));
 
     // زنجیره‌ی واگذاری: هر سطح فقط زیرمجموعه‌ی خودش را می‌تواند اداره کند
     const managedHoldingIds =

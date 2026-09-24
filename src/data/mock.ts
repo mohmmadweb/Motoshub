@@ -1337,82 +1337,101 @@ export const permissionCatalog: PermissionGroup[] = [
     ],
   },
   {
+    id: "members",
+    label: "همکاران",
+    actions: [
+      { id: "members.view", label: "مشاهده‌ی اعضای سازمان" },
+      { id: "relations.use", label: "ارتباطات من (درخواست، پذیرش، مسدودسازی)" },
+    ],
+  },
+  {
+    id: "magazines",
+    label: "مجلات و بلاگ",
+    actions: [
+      { id: "magazines.list", label: "مشاهده‌ی مجلات و بلاگ" },
+      { id: "magazines.create", label: "نوشتن مجله و بلاگ" },
+      { id: "magazines.manage", label: "ویرایش، انتشار و حذف مطالب دیگران" },
+    ],
+  },
+  {
     id: "news",
     label: "اخبار سازمان",
     actions: [
-      { id: "news.list", label: "مشاهده اخبار" },
-      { id: "news.create", label: "افزودن خبر" },
-      { id: "news.edit", label: "ویرایش خبر" },
-      { id: "news.delete", label: "حذف خبر" },
-      { id: "news.pin", label: "سنجاق‌کردن خبر" },
-      { id: "news.comments", label: "مدیریت و تایید نظرات اخبار" },
+      { id: "news.list", label: "مشاهده‌ی اخبار" },
+      { id: "news.create", label: "نوشتن خبر" },
+      { id: "news.manage", label: "ویرایش، انتشار و حذف اخبار دیگران" },
     ],
   },
   {
-    id: "blog",
-    label: "بلاگ",
+    id: "media",
+    label: "رسانه",
     actions: [
-      { id: "blog.list", label: "مشاهده یادداشت‌ها" },
-      { id: "blog.create", label: "انتشار یادداشت" },
-      { id: "blog.edit", label: "ویرایش یادداشت" },
-      { id: "blog.delete", label: "حذف یادداشت" },
-      { id: "blog.comments", label: "مدیریت نظرات بلاگ" },
-    ],
-  },
-  {
-    id: "groups",
-    label: "گروه‌های تعاملی",
-    actions: [
-      { id: "groups.list", label: "مشاهده گروه‌ها" },
-      { id: "groups.create", label: "ایجاد گروه" },
-      { id: "groups.edit", label: "ویرایش گروه" },
-      { id: "groups.delete", label: "حذف گروه" },
-      { id: "groups.members", label: "مدیریت اعضای گروه" },
-      { id: "groups.post", label: "انتشار پست در گروه" },
+      { id: "media.list", label: "مشاهده‌ی رسانه‌ها" },
+      { id: "media.upload", label: "بارگذاری تصویر، ویدیو و آلبوم" },
+      { id: "media.manage", label: "ویرایش، انتشار و حذف رسانه‌ی دیگران" },
     ],
   },
   {
     id: "forum",
-    label: "انجمن",
+    label: "پرسش و پاسخ",
     actions: [
-      { id: "forum.list", label: "مشاهده مباحث" },
-      { id: "forum.create", label: "ایجاد مبحث جدید" },
-      { id: "forum.reply", label: "پاسخ به مباحث" },
-      { id: "forum.edit", label: "ویرایش مباحث" },
-      { id: "forum.delete", label: "حذف مباحث" },
-      { id: "forum.solve", label: "علامت‌گذاری پاسخ برگزیده" },
+      { id: "forum.list", label: "مشاهده‌ی پرسش‌ها" },
+      { id: "forum.create", label: "طرح پرسش" },
+      { id: "forum.reply", label: "پاسخ‌دادن" },
+      { id: "forum.moderate", label: "سنجاق، قفل و حذف پرسش‌ها" },
+    ],
+  },
+  {
+    id: "taxonomy",
+    label: "هشتگ‌ها، موضوعات و نظرها",
+    actions: [
+      { id: "taxonomy.manage", label: "مدیریت هشتگ‌ها و موضوعات" },
+      { id: "comments.moderate", label: "تأیید و حذف نظرها" },
+    ],
+  },
+  {
+    id: "chat",
+    label: "گفتگوها",
+    actions: [{ id: "chat.view", label: "پیام مستقیم و پیام‌های ذخیره‌شده" }],
+  },
+  {
+    id: "groups",
+    label: "گروه‌ها",
+    actions: [
+      { id: "groups.list", label: "مشاهده و عضویت در گروه‌ها" },
+      { id: "groups.create", label: "ساخت گروه" },
+      { id: "groups.manage", label: "مدیریت همه‌ی گروه‌ها" },
+    ],
+  },
+  {
+    id: "channels",
+    label: "کانال‌ها",
+    actions: [
+      { id: "channels.list", label: "مشاهده و عضویت در کانال‌ها" },
+      { id: "channels.create", label: "ساخت کانال" },
+      { id: "channels.manage", label: "مدیریت همه‌ی کانال‌ها" },
     ],
   },
   {
     id: "events",
     label: "رویدادها و جلسات",
     actions: [
-      { id: "events.list", label: "مشاهده رویدادها" },
-      { id: "events.create", label: "ایجاد رویداد" },
-      { id: "events.edit", label: "ویرایش رویداد" },
-      { id: "events.delete", label: "حذف رویداد" },
-      { id: "events.invite", label: "ارسال دعوت‌نامه" },
+      { id: "events.list", label: "مشاهده‌ی تقویم و شرکت در رویداد" },
+      { id: "events.create", label: "ساخت رویداد و دعوت" },
+      { id: "events.manage", label: "مدیریت همه‌ی رویدادها" },
     ],
   },
   {
-    id: "media",
-    label: "تصاویر و ویدیو",
-    actions: [
-      { id: "media.list", label: "مشاهده رسانه‌ها" },
-      { id: "media.upload", label: "بارگذاری تصویر و ویدیو" },
-      { id: "media.edit", label: "ویرایش رسانه" },
-      { id: "media.delete", label: "حذف رسانه" },
-      { id: "media.albums", label: "مدیریت آلبوم‌ها" },
-    ],
+    id: "files",
+    label: "اسناد و فایل‌ها",
+    actions: [{ id: "files.use", label: "مدیر فایل شخصی و گروهی" }],
   },
   {
-    id: "chat",
-    label: "گفتگو و کانال‌ها",
+    id: "social",
+    label: "مدیریت شبکه",
     actions: [
-      { id: "chat.view", label: "مشاهده و ارسال پیام" },
-      { id: "chat.channels", label: "ایجاد و مدیریت کانال" },
-      { id: "chat.pin", label: "سنجاق‌کردن پیام" },
-      { id: "chat.integrations", label: "مدیریت وب‌هوک‌ها و بات‌ها" },
+      { id: "social.dashboards", label: "داشبورد مدیریتی ماژول‌ها" },
+      { id: "social.settings", label: "تنظیمات ماژول‌ها و واکنش‌های مجاز" },
     ],
   },
   {
@@ -1566,44 +1585,71 @@ export type RoleDef = {
 };
 
 export const roles: RoleDef[] = [
-  { id: "r1", title: "راهبر پلتفرم", scope: "سیستم", members: 2, description: "دسترسی کامل به همه‌ی سازمان‌ها و تنظیمات زیرساخت", permissions: [...allPermissionIds], system: true },
-  { id: "r2", title: "مدیر سازمان", scope: "هلدینگ", members: 4, description: "مدیریت کامل یک سازمان: کاربران، ماژول‌ها، برندسازی", permissions: allPermissionIds.filter((p) => !p.startsWith("settings.system") && !p.startsWith("settings.storage")), system: true },
-  { id: "r3", title: "ناظم گروه", scope: "گروه", members: 18, description: "مدیریت محتوا و اعضای یک گروه مشخص", permissions: ["groups.list", "groups.edit", "groups.members", "groups.post", "forum.list", "forum.create", "forum.reply", "forum.solve", "chat.view", "chat.pin", "media.list", "media.upload", "news.list", "blog.list", "events.list"], system: true },
   {
-    id: "r4",
-    title: "عضو عادی",
-    scope: "گروه",
-    members: 1280,
-    description: "دسترسی استاندارد: مشاهده‌ی محتوای عمومی، و ساختِ محتوای شخصیِ خود (یادداشت، رسانه، موضوع انجمن) که فقط خودش آن را مدیریت می‌کند",
+    id: "r1",
+    title: "مدیر سامانه",
+    scope: "سیستم",
+    members: 3,
+    description: "همه‌ی دسترسی‌ها: کاربران، نقش‌ها، تنظیمات، داشبوردهای مدیریتی و همه‌ی ماژول‌ها",
+    permissions: [...allPermissionIds],
+    system: true,
+  },
+  {
+    id: "r2",
+    title: "مدیر محتوا",
+    scope: "هلدینگ",
+    members: 9,
+    description: "انتشار و مدیریت مجلات، اخبار، رسانه و دانش؛ تأیید نظرها؛ مدیریت هشتگ‌ها، موضوعات و پرسش و پاسخ",
     permissions: [
-      "news.list", "knowledge.list", "reports.view", "chat.view",
-      "groups.list", "groups.post",
-      "forum.list", "forum.create", "forum.reply",
-      "blog.list", "blog.create",
-      "media.list", "media.upload",
-      "events.list",
+      "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "magazines.manage", "news.create", "news.manage", "media.manage", "forum.moderate", "taxonomy.manage", "comments.moderate",
+      "channels.create", "events.create", "social.dashboards",
+      "knowledge.edit", "knowledge.delete", "knowledge.categories", "knowledge.approve", "knowledge.archive", "knowledge.glossary", "knowledge.experiences", "knowledge.reports",
+      "training.create", "reports.export",
     ],
     system: true,
   },
   {
-    id: "r6",
-    title: "مدیر شرکت",
+    id: "r3",
+    title: "مدیر پروژه",
     scope: "شرکت",
-    members: 11,
-    description: "مدیریت کاملِ یک شرکت: کاربران، نقش‌ها و محتوای همان شرکت (بدون تنظیمات زیرساخت یا انتشار هلدینگی/سراسری)",
-    permissions: allPermissionIds.filter(
-      (p) => !p.startsWith("settings.") && p !== "companies.manage" && p !== "companies.publish-global" && p !== "companies.publish-holding"
-    ),
+    members: 24,
+    description: "ساخت و مدیریت کامل پروژه‌ها، تیم، بودجه و اسناد پروژه؛ ساخت رویداد و گروه برای تیم",
+    permissions: [
+      "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "groups.create", "events.create",
+      "projects.create", "projects.edit", "projects.archive", "projects.tasks.delete", "projects.members", "projects.budget", "projects.expenses", "projects.expenses.approve",
+      "projects.risks", "projects.meetings", "projects.documents", "projects.templates", "projects.groups", "projects.playbooks", "projects.notifications", "projects.reports", "projects.history",
+      "knowledge.experiences", "reports.export",
+    ],
     system: true,
   },
   {
     id: "r5",
-    title: "کارشناس داوری صندوق",
-    scope: "هلدینگ",
-    members: 7,
-    description: "نقش سفارشی: بررسی، امتیازدهی و پایش طرح‌های صندوق نوآوری",
-    permissions: ["funds.list", "funds.refer", "funds.score", "funds.monitor", "reports.view", "knowledge.list", "events.list", "chat.view"],
-    holdingId: "h-saba",
+    title: "مدیر گروه",
+    scope: "گروه",
+    members: 36,
+    description: "ساخت و اداره‌ی گروه‌ها و کانال‌ها (اعضا، تاپیک‌ها، فایل‌ها) و برگزاری رویداد برای اعضا",
+    permissions: [
+      "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "groups.create", "channels.create", "events.create", "forum.moderate",
+    ],
+    system: true,
+  },
+  {
+    id: "r4",
+    title: "کاربر عادی",
+    scope: "شرکت",
+    members: 1280,
+    description: "مشاهده و مشارکت: ارتباط با همکاران، گفتگو، عضویت در گروه و کانال، پرسش و پاسخ، رسانه، شرکت در رویداد و کار روی تسک‌های خود",
+    permissions: [
+      "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll",
+    ],
+    system: true,
   },
 ];
 
@@ -1619,15 +1665,18 @@ export type RoleGrant = {
 };
 export type RoleAssignment = Record<string, RoleGrant>;
 export const initialRoleAssignments: RoleAssignment = {
+  // مدیر سامانه
   u1: { roleId: "r1", level: "سیستم" },
+  // مدیر محتوا — روابط‌عمومی هلدینگ صنایع غذایی سینا
   u2: { roleId: "r2", level: "هلدینگ", holdingId: "h-sina-food" },
+  // کاربر عادی
   u3: { roleId: "r4", level: "شرکت", holdingId: "h-sina-food", companyId: "c-behnoush" },
-  u4: { roleId: "r2", level: "هلدینگ", holdingId: "h-ferdows" },
-  u5: { roleId: "r5", level: "شرکت", holdingId: "h-saba", companyId: "c-saba-niru" },
-  // مدیر شرکت: بردیا کوشا مدیرِ «بانک سینا» است — فقط همان شرکت را اداره می‌کند
-  u13: { roleId: "r6", level: "شرکت", holdingId: "h-mali", companyId: "c-bank-sina" },
-  // ناظم گروه: مهسا نیک‌اندیش فقط در «ستاد محرومیت‌زدایی» اختیار مدیریتی دارد
-  u7: { roleId: "r3", level: "گروه", groupId: "g1" },
+  // مدیران پروژه‌ی طرح قلعه‌گنج
+  u4: { roleId: "r3", level: "هلدینگ", holdingId: "h-ferdows" },
+  u5: { roleId: "r3", level: "شرکت", holdingId: "h-saba", companyId: "c-saba-niru" },
+  // مدیر گروه — «ستاد محرومیت‌زدایی»
+  u7: { roleId: "r5", level: "گروه", groupId: "g1" },
+  u13: { roleId: "r4", level: "شرکت", holdingId: "h-mali", companyId: "c-bank-sina" },
 };
 
 /**
@@ -1636,13 +1685,11 @@ export const initialRoleAssignments: RoleAssignment = {
  * ترتیب: از بیشترین دسترسی تا کمترین.
  */
 export const demoPersonas: { id: string; summary: string }[] = [
-  { id: "u1", summary: "راهبر پلتفرم — دسترسی کامل به کل سامانه، همه‌ی هلدینگ‌ها، نقش‌ها و تنظیمات زیرساخت." },
-  { id: "u2", summary: "مدیر سازمان — مدیریت کاملِ هلدینگ صنایع غذایی سینا و شرکت‌های زیرمجموعه‌ی آن." },
-  { id: "u4", summary: "مدیر سازمان — مدیریت کاملِ هلدینگ کشاورزی فردوس پارس (عضو دو شرکت)." },
-  { id: "u13", summary: "مدیر شرکت — مدیریت کاملِ «بانک سینا»: کاربران، نقش‌ها و محتوای همین شرکت. خارج از آن دسترسی ندارد." },
-  { id: "u5", summary: "کارشناس داوری صندوق — فقط صندوق نوآوری: بررسی، ارجاع، داوری و پایش طرح‌ها. اخبار/بلاگ/انجمن را نمی‌بیند." },
-  { id: "u7", summary: "ناظم گروه — مدیریت محتوا و اعضای گروه «ستاد محرومیت‌زدایی»؛ در بقیه‌ی سامانه کاربر عادی." },
-  { id: "u3", summary: "عضو عادی — مشاهده، نظر، پاسخ و مشارکت؛ روی محتوای سازمانی فقط‌خواندنی و بدون پنل راهبری." },
+  { id: "u1", summary: "مدیر سامانه — همه‌ی منوها، پنل راهبری، داشبورد مدیریتی شبکه و تنظیمات ماژول‌ها." },
+  { id: "u2", summary: "مدیر محتوا — انتشار مجلات، اخبار و رسانه، تأیید نظرها، مدیریت هشتگ‌ها و موضوعات و مدیریت دانش." },
+  { id: "u5", summary: "مدیر پروژه — ساخت و مدیریت پروژه، تیم، بودجه و اسناد؛ رویداد و گروه برای تیم." },
+  { id: "u7", summary: "مدیر گروه — ساخت و اداره‌ی گروه‌ها و کانال‌ها، تاپیک‌ها و فایل‌های گروه، برگزاری رویداد." },
+  { id: "u3", summary: "کاربر عادی — ارتباط با همکاران، گفتگو، گروه و کانال، پرسش و پاسخ، رسانه، رویداد و تسک‌های خودش." },
 ];
 
 export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];

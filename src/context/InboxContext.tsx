@@ -19,7 +19,8 @@ export type InboxKind =
   | "channel_message"
   | "event_invite"
   | "reply"
-  | "knowledge";
+  | "knowledge"
+  | "chat_added";
 
 export const inboxKindLabel: Record<InboxKind, string> = {
   friend_request: "درخواست دوستی",
@@ -32,6 +33,7 @@ export const inboxKindLabel: Record<InboxKind, string> = {
   event_invite: "دعوت به رویداد",
   reply: "پاسخ به شما",
   knowledge: "مدیریت دانش",
+  chat_added: "عضویت در گروه/کانال",
 };
 
 export type InboxItem = {

@@ -738,10 +738,10 @@ function RolesSection({ roles, setRoles, notify }: { roles: RoleDef[]; setRoles:
   const removeRole = (role: RoleDef) =>
     confirm({
       title: `حذف نقش «${role.title}»؟`,
-      message: `${role.members.toLocaleString("fa-IR")} کاربر این نقش به «عضو عادی» منتقل می‌شوند.`,
+      message: `${role.members.toLocaleString("fa-IR")} کاربر این نقش به «کاربر عادی» منتقل می‌شوند.`,
       onConfirm: () => {
         setRoles((prev) => prev.filter((r) => r.id !== role.id));
-        notify(`نقش «${role.title}» حذف شد. کاربران آن به نقش «عضو عادی» منتقل می‌شوند.`, "info");
+        notify(`نقش «${role.title}» حذف شد. کاربران آن به نقش «کاربر عادی» منتقل می‌شوند.`, "info");
       },
     });
 

@@ -57,8 +57,8 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
               {filterNavSections({ canAccessAdmin, hasPermission })
                 .map((section) => (
-                <div key={section.title}>
-                  <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>
+                <div key={section.title || "home"}>
+                  {section.title && !(section.items.length === 1 && section.items[0].label === section.title) && <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>}
                   <div className="space-y-0.5">
                     {section.items.map((item) => (
                       <NavLink

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Briefcase, ShieldCheck, MessageCircle, Laptop, Smartphone, MapPin, LogOut } from "lucide-react";
-import { users, posts, projects, activeSessions } from "../data/mock";
+import { users, posts, projects, activeSessions, roles, initialRoleAssignments } from "../data/mock";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PostCard from "../components/PostCard";
@@ -16,6 +16,7 @@ export default function Profile() {
   const [params] = useSearchParams();
   const [tab, setTab] = useState<TabId>((params.get("tab") as TabId) || "activity");
   const user = users.find((u) => u.id === id) ?? users[0];
+  const userRole = roles.find((r) => r.id === (initialRoleAssignments[user.id]?.roleId ?? "r4"));
   const userPosts = posts.filter((p) => p.authorId === user.id);
   const userProjects = projects.filter((p) => p.tasks.some((t) => t.assignee === user.name));
 
@@ -81,7 +82,7 @@ export default function Profile() {
               </div>
               <div>
                 <dt className="text-xs text-ink-400 mb-1">سطح دسترسی</dt>
-                <dd><Badge tone="navy">عضو عادی</Badge></dd>
+                <dd><Badge tone="navy">{userRole?.title ?? "کاربر عادی"}</Badge></dd>
               </div>
             </dl>
             <h4 className="text-xs font-bold text-ink-500 mb-2">پروژه‌های در حال فعالیت</h4>

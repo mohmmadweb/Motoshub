@@ -20,7 +20,7 @@ export default function Tabs<T extends string>({
           {t.label}
           {t.count !== undefined && (
             <span className={`text-[10px] rounded-full px-1.5 ${active === t.id ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>
-              {t.count}
+              {t.count.toLocaleString("fa-IR")}
             </span>
           )}
         </button>
