@@ -36,7 +36,56 @@ export type PMTask = {
   milestoneId?: string;
   archived?: boolean;
   createdAt: string;
+  // ---- قابلیت‌های هم‌تراز Jira / Asana / ClickUp / میزیتو (فقط پروتوتایپ) ----
+  /** زیرتسک: شناسه‌ی تسک والد */
+  parentId?: string;
+  /** دنبال‌کنندگان — بدون مسئول بودن، از تغییرات تسک اعلان می‌گیرند */
+  watchers?: string[];
+  /** تکرار: با انجام‌شدن تسک، نمونه‌ی بعدی خودکار ساخته می‌شود */
+  recurrence?: Recurrence;
+  /** امتیاز داستانی (Story Point) برای برنامه‌ریزی اسپرینت */
+  storyPoints?: number;
+  sprintId?: string;
+  /** مقادیر فیلدهای سفارشی پروژه — کلید = شناسه‌ی فیلد */
+  customFields?: Record<string, string>;
+  /** درخواست تأیید (Approval) */
+  approval?: TaskApproval;
+  /** تایمر در حال اجرا (زمان شروع به میلی‌ثانیه) */
+  timer?: { by: string; startedAt: number };
 };
+
+export type Recurrence = "روزانه" | "هفتگی" | "ماهانه";
+export type ApprovalStatus = "در انتظار" | "تأییدشده" | "ردشده";
+export type TaskApproval = { approver: string; requestedBy: string; status: ApprovalStatus; note?: string; at: string };
+
+export type SprintStatus = "برنامه‌ریزی" | "فعال" | "تکمیل‌شده";
+export type Sprint = {
+  id: string;
+  name: string;
+  goal: string;
+  start: string;
+  end: string;
+  status: SprintStatus;
+  /** امتیاز تعهدشده هنگام شروع و امتیاز تحویل‌شده هنگام پایان — برای نمودار سرعت تیم */
+  committedPoints?: number;
+  completedPoints?: number;
+};
+
+export type CustomFieldType = "متن" | "عدد" | "انتخابی" | "تاریخ";
+export type CustomFieldDef = { id: string; name: string; type: CustomFieldType; options?: string[] };
+
+/** خط مبنا (Baseline) — عکس لحظه‌ای از زمان‌بندی برای مقایسه با برنامه‌ی فعلی */
+export type Baseline = { savedAt: string; savedBy: string; tasks: Record<string, { start: string; due: string }> };
+
+/** قاعده‌ی خودکارسازی سفارشی «وقتی … آنگاه …» (مشابه Jira Automation / Trello Butler) */
+export type CustomRuleTrigger = { type: "moved"; columnId: string } | { type: "created" } | { type: "labelAdded"; label: string };
+export type CustomRuleAction =
+  | { type: "assign"; member: string }
+  | { type: "priority"; priority: PMPriority }
+  | { type: "label"; label: string }
+  | { type: "watch"; member: string }
+  | { type: "checklist"; text: string };
+export type CustomRule = { id: string; name: string; trigger: CustomRuleTrigger; action: CustomRuleAction; enabled: boolean; runs: number };
 
 /** وابستگی «پایان به شروع»: successor تا پایان predecessor نمی‌تواند شروع شود */
 export type Dependency = { id: string; predecessor: string; successor: string; createdAt: string };
@@ -258,7 +307,10 @@ export type RecipientRole =
   | "playbookStarter"
   | "issueAssignee"
   | "issueReporter"
-  | "expenseCreator";
+  | "expenseCreator"
+  | "approver"
+  | "requester"
+  | "watchers";
 
 export type NotifRule = { enabled: boolean; recipients: RecipientRole[]; channels: NotifChannel[]; priority: NotifPriority };
 
@@ -304,4 +356,8 @@ export type ProjectState = {
   logs: ActivityLog[];
   /** رویدادهای زمان‌بندی‌شده‌ای که یک بار صادر شده‌اند (مثلاً «سررسید فردا» برای تسک t2) */
   firedReminders: string[];
+  sprints?: Sprint[];
+  customFields?: CustomFieldDef[];
+  baseline?: Baseline;
+  customRules?: CustomRule[];
 };

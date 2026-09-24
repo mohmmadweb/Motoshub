@@ -1,12 +1,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { KanbanSquare, Plus, Wallet, ListChecks, ClipboardList, PlayCircle, AlertTriangle, Milestone, GanttChartSquare, ListFilter, Search, Star, Users, History, Archive, LayoutTemplate, X } from "lucide-react";
+import { KanbanSquare, Plus, ListChecks, ClipboardList, PlayCircle, AlertTriangle, GanttChartSquare, ListFilter, Search, Star, Archive, LayoutTemplate, X, LayoutGrid, Table2 } from "lucide-react";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
 import { type Scoped } from "../data/tenancy";
 import { users } from "../data/mock";
 import PageHeader from "../components/ui/PageHeader";
@@ -15,7 +14,7 @@ import Modal from "../components/ui/Modal";
 import StatCard from "../components/ui/StatCard";
 import JalaliDatePicker from "../components/ui/JalaliDatePicker";
 import { useToast } from "../components/ui/ToastProvider";
-import { activeTasks, budgetUsage, isDone, projectProgress } from "../pm/selectors";
+import { activeTasks, budgetUsage, isDone, isOverdue, projectProgress } from "../pm/selectors";
 import { addDays, dayNum, fa } from "../pm/jalali";
 import type { PMPlaybookTemplate, ProjectMeta, ProjectRole, ProjectState } from "../pm/types";
 import { ProjectIcon, projectColors, projectIconNames } from "./project/projectIcons";
@@ -28,6 +27,8 @@ const healthTone: Record<string, BadgeTone> = {
   زرد: "warning",
   قرمز: "danger",
 };
+
+const healthDot: Record<string, string> = { سبز: "bg-emerald-500", زرد: "bg-amber-500", قرمز: "bg-rose-500" };
 
 const healthFilters = ["همه", "سبز", "زرد", "قرمز"] as const;
 const listFilters = ["فعال", "ستاره‌دار", "تکمیل‌شده", "بایگانی‌شده", "همه"] as const;
@@ -70,6 +71,9 @@ export default function Projects() {
   const [groupId, setGroupId] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
   const [tplEdit, setTplEdit] = useState<ProjectTemplate | "new" | null>(null);
+  const [section, setSection] = useState<"projects" | "templates" | "playbooks">("projects");
+  const [layout, setLayout] = useState<"grid" | "table">("grid");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [team, setTeam] = useState<{ name: string; title: string; role: ProjectRole }[]>([]);
   const [teamName, setTeamName] = useState("");
   const [teamTitle, setTeamTitle] = useState("");
@@ -275,197 +279,271 @@ export default function Projects() {
         <StatCard label="ریسک‌ها و پروژه‌های در خطر" value={`${riskCount} ریسک · ${atRisk} پروژه`} tone={atRisk > 0 ? "danger" : "success"} icon={<AlertTriangle size={16} />} />
       </div>
 
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <div className="flex rounded-lg border border-ink-200 overflow-hidden">
-          {listFilters.map((f) => (
-            <button key={f} onClick={() => setListFilter(f)} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${listFilter === f ? "bg-navy-900 text-white" : "bg-white text-ink-600 hover:bg-ink-50"}`}>
-              {f === "ستاره‌دار" && <Star size={11} />}
-              {f === "بایگانی‌شده" && <Archive size={11} />}
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="relative">
-          <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی پروژه، کارفرما، مدیر…" className="input-field !py-1.5 !pr-8 !text-xs w-56" />
-        </div>
-        <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="input-field !py-1.5 !text-xs !w-auto" aria-label="مرتب‌سازی">
-          <option value="recent">آخرین فعالیت</option>
-          <option value="deadline">نزدیک‌ترین مهلت</option>
-          <option value="progress">بیشترین پیشرفت</option>
-          <option value="name">نام</option>
-        </select>
-      </div>
-      <ProjectGroupsBar value={groupFilter} onChange={setGroupFilter} canManage={hasPermission("projects.groups")} />
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <ListFilter size={14} className="text-ink-400" />
-        {healthFilters.map((f) => (
+      <div className="flex items-center gap-1 border-b border-ink-200 mb-4 overflow-x-auto" role="tablist">
+        {(
+          [
+            ["projects", "پروژه‌ها", scopedProjects.length],
+            ["templates", "قالب‌های پروژه", pm.store.projectTemplates.length],
+            ["playbooks", "قالب‌های فرآیند (Playbook)", playbooks.length],
+          ] as const
+        ).map(([id, label, n]) => (
           <button
-            key={f}
-            onClick={() => setHealthFilter(f)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
-              healthFilter === f ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
-            }`}
+            key={id}
+            role="tab"
+            aria-selected={section === id}
+            onClick={() => setSection(id)}
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px whitespace-nowrap ${section === id ? "border-brand-600 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-800"}`}
           >
-            {f === "همه" ? "همه" : `وضعیت ${f}`}
-            <span className="mr-1 opacity-60">({f === "همه" ? live.length : live.filter((p) => p.meta.health === f).length})</span>
+            {label}
+            <span className="text-[10px] rounded-full px-1.5 bg-ink-100 text-ink-500">{fa(n)}</span>
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {filteredProjects.map((p) => {
-          const last = lastActivity(p);
-          const progress = projectProgress(p);
-          const next = p.milestones.filter((m) => m.status !== "انجام‌شده").sort((a, b) => (dayNum(a.due) ?? 0) - (dayNum(b.due) ?? 0))[0];
-          return (
-            <Link key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} className={`card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3 ${p.meta.archived ? "opacity-70" : ""}`}>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Badge tone={healthTone[p.meta.health]}>وضعیت: {p.meta.health}</Badge>
-                  {p.meta.archived && <Badge tone="neutral">بایگانی</Badge>}
-                  {(() => {
-                    const g = pm.store.groups.find((x) => x.id === p.meta.groupId);
-                    return g ? (
-                      <span className="text-[10.5px] px-1.5 py-0.5 rounded border" style={{ color: g.color, borderColor: `color-mix(in srgb, ${g.color} 35%, transparent)` }}>
-                        {g.name}
+      {section === "projects" && (
+        <>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex rounded-lg border border-ink-200 overflow-hidden">
+              {listFilters.map((f) => (
+                <button key={f} onClick={() => setListFilter(f)} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${listFilter === f ? "bg-navy-900 text-white" : "bg-white text-ink-600 hover:bg-ink-50"}`}>
+                  {f === "ستاره‌دار" && <Star size={11} />}
+                  {f === "بایگانی‌شده" && <Archive size={11} />}
+                  {f}
+                </button>
+              ))}
+            </div>
+            <div className="relative">
+              <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی پروژه، کارفرما، مدیر…" className="input-field !py-1.5 !pr-8 !text-xs w-52" />
+            </div>
+            <ProjectGroupsBar value={groupFilter} onChange={setGroupFilter} canManage={hasPermission("projects.groups")} />
+            <div className="relative">
+              <button onClick={() => setFilterOpen((v) => !v)} aria-expanded={filterOpen} className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1 ${healthFilter !== "همه" || sort !== "recent" ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
+                <ListFilter size={13} /> فیلتر و مرتب‌سازی
+                {healthFilter !== "همه" && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">۱</span>}
+              </button>
+              {filterOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setFilterOpen(false)} />
+                  <div className="absolute z-30 top-full mt-1 right-0 w-64 bg-white border border-ink-200 rounded-xl shadow-lg p-3 space-y-3">
+                    <div>
+                      <p className="text-[11px] font-bold text-ink-500 mb-1.5">وضعیت سلامت</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {healthFilters.map((f) => (
+                          <button key={f} onClick={() => setHealthFilter(f)} className={`text-xs px-2.5 py-1 rounded-md border flex items-center gap-1 ${healthFilter === f ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"}`}>
+                            {f !== "همه" && <span className={`w-2 h-2 rounded-full ${healthDot[f]}`} />}
+                            {f}
+                            <span className="opacity-60">({fa(f === "همه" ? live.length : live.filter((p) => p.meta.health === f).length)})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-ink-500 mb-1.5">مرتب‌سازی</p>
+                      <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="input-field !py-1.5 !text-xs" aria-label="مرتب‌سازی">
+                        <option value="recent">آخرین فعالیت</option>
+                        <option value="deadline">نزدیک‌ترین مهلت</option>
+                        <option value="progress">بیشترین پیشرفت</option>
+                        <option value="name">نام</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex rounded-lg border border-ink-200 overflow-hidden mr-auto">
+              <button onClick={() => setLayout("grid")} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${layout === "grid" ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`} aria-label="نمای کارتی" title="نمای کارتی">
+                <LayoutGrid size={13} />
+              </button>
+              <button onClick={() => setLayout("table")} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${layout === "table" ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`} aria-label="نمای جدولی (پورتفولیو)" title="نمای جدولی (پورتفولیو)">
+                <Table2 size={13} />
+              </button>
+            </div>
+          </div>
+
+          {layout === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {filteredProjects.map((p) => {
+                const progress = projectProgress(p);
+                const left = (dayNum(p.meta.deadline) ?? 0) - (dayNum(pm.refDate) ?? 0);
+                const lateCount = activeTasks(p).filter((t) => isOverdue(p, t, pm.refDate)).length;
+                return (
+                  <Link key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} className={`group card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3 ${p.meta.archived ? "opacity-70" : ""}`}>
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${p.meta.color} 14%, transparent)`, color: p.meta.color }}>
+                        <ProjectIcon name={p.meta.icon} size={17} />
                       </span>
-                    ) : null;
-                  })()}
-                </span>
-                <span className="flex items-center gap-1">
-                  <ScopeBadge item={p.meta} />
-                  <span className="text-xs text-ink-400">مهلت {p.meta.deadline}</span>
-                  <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="flex items-center">
-                    <button onClick={() => pm.toggleStar(p.meta.id)} className={`p-1 ${p.meta.starred ? "text-amber-500" : "text-ink-300 hover:text-amber-500"}`} title={p.meta.starred ? "برداشتن علامت مهم" : "علامت‌گذاری به‌عنوان مهم"} aria-label="علامت مهم">
-                      <Star size={14} fill={p.meta.starred ? "currentColor" : "none"} />
-                    </button>
-                    <RowActions onEdit={canManageItem(p.meta, "projects.edit") ? () => startEditProject(p) : undefined} onDelete={canManageItem(p.meta, "projects.delete") ? () => removeProject(p) : undefined} size={13} />
-                  </span>
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${p.meta.color} 14%, transparent)`, color: p.meta.color }}>
-                  <ProjectIcon name={p.meta.icon} size={17} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-sm text-ink-900">{p.meta.name}</h3>
-                  <p className="text-xs text-ink-400 mt-1">
-                    کارفرما: {p.meta.client} · {p.meta.phase}
-                  </p>
-                </div>
-              </div>
-              {p.meta.description && <p className="text-[11.5px] text-ink-500 leading-5 line-clamp-2">{p.meta.description}</p>}
-              <div>
-                <div className="flex items-center justify-between text-xs text-ink-500 mb-1">
-                  <span>پیشرفت</span>
-                  <span>{fa(progress)}٪</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-ink-100 overflow-hidden">
-                  <div className="h-full bg-brand-500" style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-ink-400 pt-2 border-t border-ink-100">
-                <span className="flex items-center gap-1">
-                  <Wallet size={12} /> مصرف بودجه: {fa(Math.round(budgetUsage(p)))}٪
-                </span>
-                <span className="flex items-center gap-1">
-                  <ListChecks size={12} /> {fa(activeTasks(p).length)} تسک
-                </span>
-                <span className="flex items-center gap-1">
-                  <Users size={12} /> {fa(p.members.length)}
-                </span>
-              </div>
-              <div className="text-[11px] text-ink-400 flex items-center justify-between gap-2">
-                <span className="truncate">مدیر: {p.meta.manager}</span>
-                {next && (
-                  <span className="flex items-center gap-1 truncate">
-                    <Milestone size={11} className="shrink-0" /> {next.title}
-                  </span>
-                )}
-              </div>
-              {last && (
-                <p className="text-[11px] text-ink-400 flex items-center gap-1 truncate -mt-1">
-                  <History size={11} className="shrink-0" /> <span className="truncate">{last.description}</span>
-                </p>
-              )}
-            </Link>
-          );
-        })}
-        {filteredProjects.length === 0 && <p className="text-xs text-ink-400 col-span-full text-center py-8">پروژه‌ای با این فیلترها پیدا نشد.</p>}
-      </div>
-
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <ClipboardList size={15} className="text-brand-600" /> قالب‌های فرآیند عملیاتی (Playbooks)
-          </h2>
-          <p className="text-xs text-ink-400 mt-0.5">رویه‌های تکرارشونده (مثل تحویل پروژه یا واکنش به حادثه) را به یک گردش‌کار چک‌لیستی تبدیل کنید.</p>
-        </div>
-        {hasPermission("projects.create") && (
-          <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setPlaybookOpen(true)}>
-            قالب جدید
-          </Button>
-        )}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-        {playbooks.map((pb) => {
-          const running = pm.store.executions.filter((e) => e.templateId === pb.id && e.status === "در حال اجرا").length;
-          return (
-            <div key={pb.id} className="card p-4">
-              <p className="text-sm font-semibold text-ink-900">{pb.name}</p>
-              <p className="text-xs text-ink-400 mt-1">
-                {pb.category} · {fa(pb.steps.length)} مرحله
-              </p>
-              <p className="text-[11px] text-ink-500 mt-2 leading-5 line-clamp-2">{pb.steps.map((s) => s.title).join(" ← ")}</p>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
-                <span className="text-[11px] text-ink-400">
-                  {fa(pb.usedCount)} بار اجراشده{running ? ` · ${fa(running)} در جریان` : ""}
-                </span>
-                <Button variant="ghost" size="sm" icon={<PlayCircle size={13} />} onClick={() => { setRunPb(pb); setRunTarget(live[0]?.meta.id ?? ""); }}>
-                  اجرا
-                </Button>
-                <RowActions onEdit={hasPermission("projects.edit") ? () => startEditPlaybook(pb) : undefined} onDelete={hasPermission("projects.delete") ? () => removePlaybook(pb) : undefined} />
-              </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-sm text-ink-900 leading-6 line-clamp-2">{p.meta.name}</h3>
+                        <p className="text-xs text-ink-400 truncate">{p.meta.client}</p>
+                      </div>
+                      <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="flex items-center shrink-0 -mt-1">
+                        <span className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <RowActions onEdit={canManageItem(p.meta, "projects.edit") ? () => startEditProject(p) : undefined} onDelete={canManageItem(p.meta, "projects.delete") ? () => removeProject(p) : undefined} size={13} />
+                        </span>
+                        <button onClick={() => pm.toggleStar(p.meta.id)} className={`p-1 ${p.meta.starred ? "text-amber-500" : "text-ink-300 hover:text-amber-500"}`} title={p.meta.starred ? "برداشتن علامت مهم" : "علامت‌گذاری به‌عنوان مهم"} aria-label="علامت مهم">
+                          <Star size={14} fill={p.meta.starred ? "currentColor" : "none"} />
+                        </button>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+                        <div className="h-full bg-brand-500" style={{ width: `${progress}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-ink-700 w-9 text-left">{fa(progress)}٪</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[11.5px] text-ink-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${healthDot[p.meta.health]}`} title={`وضعیت ${p.meta.health}`} />
+                        {p.meta.archived ? "بایگانی" : p.meta.phase}
+                        {lateCount > 0 && <span className="text-rose-600">· {fa(lateCount)} تسک عقب</span>}
+                      </span>
+                      <span className={left < 0 && !p.meta.archived ? "text-rose-600" : ""}>
+                        {p.meta.deadline === "نامشخص" ? "بدون مهلت" : left < 0 ? `${fa(-left)} روز از مهلت گذشته` : `${fa(left)} روز مانده`}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+              {filteredProjects.length === 0 && <p className="text-xs text-ink-400 col-span-full text-center py-8">پروژه‌ای با این فیلترها پیدا نشد.</p>}
             </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-1.5 mb-3">
-        <LayoutTemplate size={15} className="text-brand-600" />
-        <h2 className="text-sm font-bold text-ink-900">قالب‌های پروژه</h2>
-        <span className="text-xs text-ink-400 mr-2">بورد، تسک‌ها با وابستگی، برچسب‌ها، مایل‌ستون‌ها و نقش‌ها — ساخت پروژه‌ی تکراری در چند ثانیه</span>
-        {hasPermission("projects.templates") && (
-          <Button variant="secondary" size="sm" icon={<Plus size={13} />} className="mr-auto" onClick={() => setTplEdit("new")}>
-            قالب پروژه‌ی جدید
-          </Button>
-        )}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {pm.store.projectTemplates.map((t) => (
-          <div key={t.id} className="card p-4">
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-semibold text-ink-900">{t.name}</p>
-              {hasPermission("projects.templates") && (
-                <RowActions
-                  onEdit={() => setTplEdit(t)}
-                  onDelete={() => confirm({ title: `حذف قالب «${t.name}»؟`, message: "پروژه‌هایی که قبلاً از این قالب ساخته شده‌اند تغییری نمی‌کنند.", onConfirm: () => { pm.removeProjectTemplate(t.id); notify(`قالب «${t.name}» حذف شد.`, "info"); } })}
-                />
-              )}
+          ) : (
+            <div className="card overflow-x-auto mb-8">
+              <table className="w-full text-xs min-w-[980px]">
+                <thead>
+                  <tr className="text-ink-400 border-b border-ink-100 text-right">
+                    <th className="p-3 font-medium">پروژه</th>
+                    <th className="p-3 font-medium">گروه</th>
+                    <th className="p-3 font-medium">مدیر</th>
+                    <th className="p-3 font-medium">سلامت</th>
+                    <th className="p-3 font-medium">مرحله</th>
+                    <th className="p-3 font-medium w-32">پیشرفت</th>
+                    <th className="p-3 font-medium">مصرف بودجه</th>
+                    <th className="p-3 font-medium">تسک باز</th>
+                    <th className="p-3 font-medium">ریسک باز</th>
+                    <th className="p-3 font-medium">مهلت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProjects.map((p) => {
+                    const g = pm.store.groups.find((x) => x.id === p.meta.groupId);
+                    const progress = projectProgress(p);
+                    return (
+                      <tr key={p.meta.id} className="border-b border-ink-100 hover:bg-ink-50 cursor-pointer" onClick={() => navigate(`/dashboard/projects/${p.meta.id}`)}>
+                        <td className="p-3">
+                          <span className="flex items-center gap-2 font-medium text-ink-900">
+                            <span style={{ color: p.meta.color }}>
+                              <ProjectIcon name={p.meta.icon} size={14} />
+                            </span>
+                            {p.meta.name}
+                            {p.meta.starred && <Star size={11} className="text-amber-500" fill="currentColor" />}
+                          </span>
+                        </td>
+                        <td className="p-3 text-ink-500">{g ? g.name : "—"}</td>
+                        <td className="p-3 text-ink-600">{p.meta.manager}</td>
+                        <td className="p-3">
+                          <Badge tone={healthTone[p.meta.health]}>{p.meta.health}</Badge>
+                        </td>
+                        <td className="p-3 text-ink-500">{p.meta.phase}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+                              <div className="h-full bg-brand-500" style={{ width: `${progress}%` }} />
+                            </div>
+                            {fa(progress)}٪
+                          </div>
+                        </td>
+                        <td className="p-3 text-ink-600">{fa(Math.round(budgetUsage(p)))}٪</td>
+                        <td className="p-3 text-ink-600">{fa(activeTasks(p).filter((t) => !isDone(p, t)).length)}</td>
+                        <td className="p-3 text-ink-600">{fa(p.risks.filter((r) => r.status !== "بسته").length)}</td>
+                        <td className="p-3 text-ink-500">{p.meta.deadline}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredProjects.length === 0 && <p className="text-xs text-ink-400 text-center py-8">پروژه‌ای با این فیلترها پیدا نشد.</p>}
             </div>
-            <p className="text-xs text-ink-400 mt-1 leading-5">{t.description}</p>
-            <p className="text-[11px] text-ink-500 mt-2">
-              {fa(t.tasks.length)} تسک · {fa(t.deps.length)} وابستگی · {fa(t.milestones.length)} مایل‌ستون · نقش‌ها: {t.roles.join("، ")}
-            </p>
+          )}
+        </>
+      )}
+
+      {section === "playbooks" && (
+        <>
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <p className="text-xs text-ink-500">رویه‌های تکرارشونده (مثل تحویل پروژه یا واکنش به حادثه) را به یک گردش‌کار چک‌لیستی تبدیل کنید.</p>
             {hasPermission("projects.create") && (
-              <Button size="sm" variant="ghost" className="mt-2" onClick={() => { resetForm(); setTemplateId(t.id); setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
-                ساخت پروژه از این قالب
+              <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setPlaybookOpen(true)}>
+                قالب جدید
               </Button>
             )}
           </div>
-        ))}
-      </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {playbooks.map((pb) => {
+              const running = pm.store.executions.filter((e) => e.templateId === pb.id && e.status === "در حال اجرا").length;
+              return (
+                <div key={pb.id} className="card p-4">
+                  <p className="text-sm font-semibold text-ink-900 flex items-center gap-1.5">
+                    <ClipboardList size={14} className="text-brand-600" /> {pb.name}
+                  </p>
+                  <p className="text-xs text-ink-400 mt-1">
+                    {pb.category} · {fa(pb.steps.length)} مرحله
+                  </p>
+                  <p className="text-[11px] text-ink-500 mt-2 leading-5 line-clamp-2">{pb.steps.map((s) => s.title).join(" ← ")}</p>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
+                    <span className="text-[11px] text-ink-400">
+                      {fa(pb.usedCount)} بار اجراشده{running ? ` · ${fa(running)} در جریان` : ""}
+                    </span>
+                    <Button variant="ghost" size="sm" icon={<PlayCircle size={13} />} onClick={() => { setRunPb(pb); setRunTarget(live[0]?.meta.id ?? ""); }}>
+                      اجرا
+                    </Button>
+                    <RowActions onEdit={hasPermission("projects.edit") ? () => startEditPlaybook(pb) : undefined} onDelete={hasPermission("projects.delete") ? () => removePlaybook(pb) : undefined} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {section === "templates" && (
+        <>
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <p className="text-xs text-ink-500 flex items-center gap-1.5">
+              <LayoutTemplate size={14} className="text-brand-600" /> بورد، تسک‌ها با وابستگی، برچسب‌ها، مایل‌ستون‌ها و نقش‌ها — ساخت پروژه‌ی تکراری در چند ثانیه
+            </p>
+            {hasPermission("projects.templates") && (
+              <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => setTplEdit("new")}>
+                قالب پروژه‌ی جدید
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {pm.store.projectTemplates.map((t) => (
+              <div key={t.id} className="card p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-ink-900">{t.name}</p>
+                  {hasPermission("projects.templates") && (
+                    <RowActions
+                      onEdit={() => setTplEdit(t)}
+                      onDelete={() => confirm({ title: `حذف قالب «${t.name}»؟`, message: "پروژه‌هایی که قبلاً از این قالب ساخته شده‌اند تغییری نمی‌کنند.", onConfirm: () => { pm.removeProjectTemplate(t.id); notify(`قالب «${t.name}» حذف شد.`, "info"); } })}
+                    />
+                  )}
+                </div>
+                <p className="text-xs text-ink-400 mt-1 leading-5">{t.description}</p>
+                <p className="text-[11px] text-ink-500 mt-2">
+                  {fa(t.tasks.length)} تسک · {fa(t.deps.length)} وابستگی · {fa(t.milestones.length)} مایل‌ستون · نقش‌ها: {t.roles.join("، ")}
+                </p>
+                {hasPermission("projects.create") && (
+                  <Button size="sm" variant="ghost" className="mt-2" onClick={() => { resetForm(); setTemplateId(t.id); setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
+                    ساخت پروژه از این قالب
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Modal open={projectOpen} onClose={closeProjectModal} title={editingProjectId ? "ویرایش پروژه" : "ایجاد پروژه جدید"} description={editingProjectId ? undefined : "پس از ایجاد، یک محیط اختصاصی (بورد، کانال‌ها، مالی، تاریخچه) برای پروژه ساخته می‌شود."} width="max-w-2xl">
         <div className="space-y-3">
@@ -595,7 +673,6 @@ export default function Projects() {
               {templateId && <p className="text-[11px] text-ink-400 mt-1">در قالب انتخابی، تسک‌ها بر اساس عنوان شغلی (مثلاً «طراح»، «برنامه‌نویس») به همین اعضا واگذار می‌شوند.</p>}
             </Field>
           )}
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitProject}>
               {editingProjectId ? "ذخیره تغییرات" : "ایجاد پروژه"}

@@ -10,7 +10,7 @@ import Drawer from "../components/ui/Drawer";
 import DataTable, { type Column } from "../components/ui/DataTable";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // تیکت پشتیبانی — معادل iisticketing (تیکت + دسته + پاسخ‌گویی)
@@ -265,7 +265,6 @@ export default function Tickets() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">شرح کامل <span className="text-rose-500">*</span></label>
             <textarea value={body} onChange={(e) => setBody(e.target.value)} className="input-field min-h-24" placeholder="جزئیات، مراحل بازتولید مشکل، اسکرین‌شات…" />
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "ثبت تیکت"}</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

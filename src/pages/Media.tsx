@@ -14,7 +14,7 @@ import { useInbox } from "../context/InboxContext";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import type { Scoped } from "../data/tenancy";
 import { mediaImg, bgStyle } from "../data/images";
 
@@ -232,7 +232,6 @@ export default function Media() {
             <input value={album} onChange={(e) => setAlbum(e.target.value)} placeholder="رویدادهای رسمی" className="input-field" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "بارگذاری"}</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

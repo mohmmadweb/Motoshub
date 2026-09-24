@@ -30,11 +30,13 @@ import HistoryTab from "./project/HistoryTab";
 import NotificationsTab from "./project/NotificationsTab";
 import PlaybooksTab from "./project/PlaybooksTab";
 import SettingsTab from "./project/SettingsTab";
+import SprintsTab from "./project/SprintsTab";
+import WorkloadTab from "./project/WorkloadTab";
 import TaskDrawer from "./project/TaskDrawer";
 import TaskCreateModal from "./project/TaskCreateModal";
 import { ProjectKnowledgeFile } from "./knowledge/ProjectKnowledge";
 
-const validTabs: TabId[] = ["overview", "board", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings"];
+const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings"];
 
 export default function ProjectBoard() {
   const { id } = useParams();
@@ -83,6 +85,7 @@ export default function ProjectBoard() {
   const primary: TabDef[] = [
     { id: "overview", label: "نمای کلی" },
     { id: "board", label: "بورد وظایف", count: ts.length },
+    { id: "sprints", label: "اسپرینت‌ها" },
     { id: "gantt", label: "گانت چارت" },
     { id: "graph", label: "گراف وابستگی وظایف" },
     { id: "milestones", label: "مایل‌ستون‌ها" },
@@ -94,6 +97,7 @@ export default function ProjectBoard() {
   const more: TabDef[] = [
     { id: "calendar", label: "تقویم" },
     { id: "time", label: "ثبت زمان" },
+    { id: "workload", label: "بار کاری تیم" },
     { id: "issues", label: "مشکلات", count: openIssues || undefined },
     { id: "reports", label: "گزارش‌ها" },
     { id: "communication", label: "کانال‌ها و گفتگو" },
@@ -251,6 +255,8 @@ export default function ProjectBoard() {
 
         {view === "overview" && <OverviewTab />}
         {view === "board" && <BoardTab onNewTask={openCreate} />}
+        {view === "sprints" && <SprintsTab />}
+        {view === "workload" && <WorkloadTab />}
         {view === "gantt" && <GanttTab />}
         {view === "graph" && <GraphTab />}
         {view === "calendar" && <CalendarTab />}

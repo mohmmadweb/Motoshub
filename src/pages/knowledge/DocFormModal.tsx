@@ -3,7 +3,6 @@ import { Send, Save, X } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
-import { ScopePicker } from "../../components/ui/ScopeControl";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
@@ -210,7 +209,6 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
             </Field>
           </div>
         </div>
-        <ScopePicker value={scope} onChange={setScope} />
         <div className="flex items-center gap-2 pt-3 border-t border-ink-100 flex-wrap">
           {doc ? (
             <Button variant="primary" icon={<Save size={14} />} onClick={() => submit(false)}>

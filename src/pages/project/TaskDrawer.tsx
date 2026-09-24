@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat } from "lucide-react";
+import { useTenancy } from "../../context/TenancyContext";
 import Modal from "../../components/ui/Modal";
 import TaskCostItems from "./TaskCostItems";
 import Badge from "../../components/ui/Badge";
@@ -9,12 +10,23 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { createsCycle, isDone, openPredecessors, predecessorsOf, successorsOf, taskActualCost, taskLoggedHours, columnLabel, kindOf } from "../../pm/selectors";
-import { fa, fmtRial, diffDays } from "../../pm/jalali";
+import { fa, fmtRial, fmtHours, diffDays } from "../../pm/jalali";
 import { defaultLabels } from "../../pm/seed";
-import type { PMTask } from "../../pm/types";
+import type { PMTask, Recurrence } from "../../pm/types";
 import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindColor, kindTone, numIn, priorities, priorityTone, useProjectPage } from "./shared";
 
-type Section = "details" | "checklist" | "deps" | "cost" | "comments" | "history";
+type Section = "details" | "subtasks" | "checklist" | "deps" | "cost" | "comments" | "history";
+
+/** نمایش hh:mm:ss برای تایمر */
+const clock = (ms: number) => {
+  const sec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const x = sec % 60;
+  return [h, m, x].map((n) => String(n).padStart(2, "0")).join(":").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+};
+/** فیلدهایی که با اکشن اختصاصی خودشان ذخیره می‌شوند، نه با «ذخیره‌ی تغییرات» */
+const liveKeys = { checklist: [], comments: [], status: "", watchers: [], approval: null, timer: null } as const;
 
 export default function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
   const { p, pid, canEdit, can, refDate, openTask, goTab } = useProjectPage();
@@ -30,6 +42,19 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const [newSucc, setNewSucc] = useState("");
   const [hours, setHours] = useState("");
   const [hoursWho, setHoursWho] = useState("");
+  const [subTitle, setSubTitle] = useState("");
+  const [subWho, setSubWho] = useState("");
+  const [approver, setApprover] = useState("");
+  const [decisionNote, setDecisionNote] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const { actingUser } = useTenancy();
+  const me = actingUser.name;
+  const running = !!t?.timer;
+  useEffect(() => {
+    if (!running) return;
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [running]);
 
   useEffect(() => {
     setDraft(t ? structuredClone(t) : null);
@@ -47,12 +72,21 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const logged = taskLoggedHours(p, t.id);
   const doneCount = t.checklist.filter((c) => c.done).length;
   const history = p.logs.filter((l) => l.entity?.id === t.id || (l.entity?.type === "dependency" && p.deps.some((d) => d.id === l.entity?.id && (d.predecessor === t.id || d.successor === t.id)))).sort((a, b) => b.seq - a.seq);
-  const dirty = JSON.stringify({ ...draft, checklist: [], comments: [], status: "" }) !== JSON.stringify({ ...t, checklist: [], comments: [], status: "" });
+  const dirty = JSON.stringify({ ...draft, ...liveKeys }) !== JSON.stringify({ ...t, ...liveKeys });
+  const subtasks = p.tasks.filter((x) => x.parentId === t.id && !x.archived);
+  const subDone = subtasks.filter((x) => isDone(p, x)).length;
+  const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
+  const watching = (t.watchers ?? []).includes(me);
+  const sprints = (p.sprints ?? []).filter((x) => x.status !== "تکمیل‌شده" || x.id === t.sprintId);
+  const fields = p.customFields ?? [];
+  const doneCol = p.columns.find((c) => c.kind === "done")?.id;
+  const todoCol = p.columns.find((c) => c.kind === "todo")?.id ?? p.columns[0]?.id;
 
   const save = () => {
     if (!draft.title.trim()) return notify("عنوان تسک الزامی است.", "warning");
     if (diffDays(draft.start, draft.due) < 0) return notify("سررسید نمی‌تواند قبل از تاریخ شروع باشد.", "warning");
-    const { checklist: _c, comments: _m, status: _s, ...patch } = draft;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { checklist: _c, comments: _m, status: _s, watchers: _w, approval: _a, timer: _t, ...patch } = draft;
     pm.updateTask(pid, t.id, patch);
     notify(`تغییرات تسک «${draft.title}» ذخیره و در تاریخچه ثبت شد.`);
   };
@@ -86,6 +120,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
 
   const sections: { id: Section; label: string; icon: typeof Clock; count?: number }[] = [
     { id: "details", label: "جزئیات", icon: CheckSquare },
+    ...(parent ? [] : [{ id: "subtasks" as Section, label: "زیرتسک‌ها", icon: ListTree, count: subtasks.length }]),
     { id: "checklist", label: "چک‌لیست", icon: CheckSquare, count: t.checklist.length },
     { id: "deps", label: "وابستگی", icon: Link2, count: preds.length + succs.length },
     { id: "cost", label: "زمان و هزینه", icon: Wallet },
@@ -115,6 +150,46 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   return (
     <Modal open onClose={onClose} title={t.title} width="max-w-4xl">
       <div className="space-y-4">
+        {parent && (
+          <button onClick={() => openTask(parent.id)} className="-mt-2 text-[11.5px] text-ink-500 hover:text-brand-700 flex items-center gap-1">
+            <CornerDownLeft size={12} /> زیرتسکِ «{parent.title}»
+          </button>
+        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => pm.toggleWatch(pid, t.id, me)}
+            title={(t.watchers ?? []).length ? `دنبال‌کنندگان: ${(t.watchers ?? []).join("، ")}` : "هنوز کسی این تسک را دنبال نمی‌کند"}
+            className={`text-[11.5px] px-2 py-1 rounded-md border flex items-center gap-1 ${watching ? "bg-brand-50 border-brand-300 text-brand-700" : "border-ink-200 text-ink-600 hover:bg-ink-50"}`}
+          >
+            {watching ? <EyeOff size={13} /> : <Eye size={13} />}
+            {watching ? "دنبال نکن" : "دنبال کن"}
+            {(t.watchers ?? []).length > 0 && <span className="text-[10px] bg-ink-100 text-ink-600 rounded-full px-1.5">{fa((t.watchers ?? []).length)}</span>}
+          </button>
+          {canEdit && (
+            <button
+              onClick={() => {
+                if (!t.timer) return pm.startTimer(pid, t.id);
+                const h = pm.stopTimer(pid, t.id);
+                notify(`${fmtHours(h)} کار روی این تسک ثبت شد.`);
+              }}
+              title={t.timer ? `تایمر «${t.timer.by}» — برای توقف و ثبت زمان کلیک کنید` : "شروع تایمر؛ با توقف، زمان کار خودکار ثبت می‌شود"}
+              className={`text-[11.5px] px-2 py-1 rounded-md border flex items-center gap-1 tabular-nums ${t.timer ? "bg-rose-50 border-rose-300 text-rose-700" : "border-ink-200 text-ink-600 hover:bg-ink-50"}`}
+            >
+              {t.timer ? <Square size={12} fill="currentColor" /> : <Play size={12} />}
+              {t.timer ? clock(now - t.timer.startedAt) : "تایمر"}
+            </button>
+          )}
+          {t.approval && (
+            <Badge tone={t.approval.status === "تأییدشده" ? "success" : t.approval.status === "ردشده" ? "danger" : "warning"} icon={<ShieldCheck size={11} />}>
+              {t.approval.status === "در انتظار" ? `منتظر تأیید ${t.approval.approver}` : t.approval.status}
+            </Badge>
+          )}
+          {t.recurrence && (
+            <Badge tone="navy" icon={<Repeat size={11} />}>
+              تکرار {t.recurrence}
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           {statusSelect}
           <Badge tone={priorityTone[t.priority]}>اولویت {t.priority}</Badge>
@@ -158,6 +233,86 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   })}
                 </div>
               </Field>
+              {fields.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  {fields.map((f) => {
+                    const v = draft.customFields?.[f.id] ?? "";
+                    const set = (val: string) => setDraft({ ...draft, customFields: { ...(draft.customFields ?? {}), [f.id]: val } });
+                    return (
+                      <Field key={f.id} label={f.name}>
+                        {f.type === "انتخابی" ? (
+                          <select className="input-field" value={v} disabled={!canEdit} onChange={(e) => set(e.target.value)}>
+                            <option value="">—</option>
+                            {(f.options ?? []).map((o) => (
+                              <option key={o}>{o}</option>
+                            ))}
+                          </select>
+                        ) : f.type === "تاریخ" ? (
+                          <JalaliDatePicker value={v} onChange={set} />
+                        ) : (
+                          <input className="input-field" value={v} disabled={!canEdit} inputMode={f.type === "عدد" ? "numeric" : undefined} onChange={(e) => set(e.target.value)} />
+                        )}
+                      </Field>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="rounded-lg border border-ink-100 p-3">
+                <p className="text-xs font-medium text-ink-600 mb-2 flex items-center gap-1">
+                  <ShieldCheck size={13} /> تأیید
+                </p>
+                {!t.approval || t.approval.status !== "در انتظار" ? (
+                  <>
+                    {t.approval && (
+                      <p className={`text-xs mb-2 ${t.approval.status === "تأییدشده" ? "text-emerald-700" : "text-rose-700"}`}>
+                        {t.approval.status} توسط «{t.approval.approver}» · {t.approval.at}
+                        {t.approval.note ? ` — «${t.approval.note}»` : ""}
+                      </p>
+                    )}
+                    {canEdit ? (
+                      <div className="flex gap-2">
+                        <MemberSelect p={p} value={approver} onChange={setApprover} />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            if (!approver) return notify("تأییدکننده را انتخاب کنید.", "warning");
+                            pm.requestApproval(pid, t.id, approver);
+                            setApprover("");
+                            notify(`درخواست تأیید برای «${approver}» ارسال شد.`);
+                          }}
+                        >
+                          درخواست تأیید
+                        </Button>
+                      </div>
+                    ) : (
+                      !t.approval && <p className="text-[11px] text-ink-400">درخواست تأییدی ثبت نشده است.</p>
+                    )}
+                  </>
+                ) : t.approval.approver === me ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-amber-700">«{t.approval.requestedBy}» تأیید این تسک را از شما خواسته است.</p>
+                    <input className="input-field" value={decisionNote} onChange={(e) => setDecisionNote(e.target.value)} placeholder="یادداشت (اختیاری، برای رد توصیه می‌شود)" />
+                    <div className="flex gap-2">
+                      <Button variant="primary" size="sm" onClick={() => { pm.decideApproval(pid, t.id, true, decisionNote.trim()); setDecisionNote(""); notify("تسک تأیید شد."); }}>
+                        تأیید
+                      </Button>
+                      <Button variant="secondary" size="sm" className="text-rose-600" onClick={() => { pm.decideApproval(pid, t.id, false, decisionNote.trim()); setDecisionNote(""); notify("تسک رد شد و به درخواست‌کننده اطلاع داده شد.", "info"); }}>
+                        رد
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-amber-700">منتظر تأیید «{t.approval.approver}» — درخواست از «{t.approval.requestedBy}»</p>
+                    {(t.approval.requestedBy === me || canEdit) && (
+                      <button onClick={() => pm.cancelApproval(pid, t.id)} className="text-[11px] text-ink-500 hover:text-rose-600">
+                        لغو درخواست
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               {docs.length > 0 && (
                 <Field label="فایل‌های پیوست">
                   <div className="space-y-1">
@@ -208,7 +363,38 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                 <Field label="برآورد ساعت">
                   <input className="input-field" inputMode="numeric" value={draft.estHours ? fa(draft.estHours) : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, estHours: numIn(e.target.value) })} placeholder="۰" />
                 </Field>
+                <Field label="امتیاز (Story Point)">
+                  <select className="input-field" value={draft.storyPoints ?? 0} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, storyPoints: Number(e.target.value) || undefined })}>
+                    <option value={0}>—</option>
+                    {[1, 2, 3, 5, 8, 13, 21].map((n) => (
+                      <option key={n} value={n}>
+                        {fa(n)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="تکرار">
+                  <select className="input-field" value={draft.recurrence ?? ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, recurrence: (e.target.value || undefined) as Recurrence | undefined })}>
+                    <option value="">بدون تکرار</option>
+                    {(["روزانه", "هفتگی", "ماهانه"] as Recurrence[]).map((r) => (
+                      <option key={r}>{r}</option>
+                    ))}
+                  </select>
+                </Field>
               </div>
+              {sprints.length > 0 && (
+                <Field label="اسپرینت">
+                  <select className="input-field" value={draft.sprintId ?? ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, sprintId: e.target.value || undefined })}>
+                    <option value="">بک‌لاگ (بدون اسپرینت)</option>
+                    {sprints.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                        {x.status === "فعال" ? " (فعال)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
             </div>
 
             {canEdit && (
@@ -241,6 +427,62 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   حذف تسک
                 </Button>}
               </div>
+            )}
+          </div>
+        )}
+
+        {section === "subtasks" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-ink-500">
+              <span>
+                {fa(subDone)} از {fa(subtasks.length)} زیرتسک انجام شده
+              </span>
+              <span>{fa(subtasks.length ? Math.round((subDone / subtasks.length) * 100) : 0)}٪</span>
+            </div>
+            <Progress value={subtasks.length ? (subDone / subtasks.length) * 100 : 0} tone="bg-emerald-500" />
+            <div className="divide-y divide-ink-100 border border-ink-100 rounded-lg">
+              {subtasks.map((x) => {
+                const dn = isDone(p, x);
+                return (
+                  <div key={x.id} className="flex items-center gap-2 px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={dn}
+                      disabled={!canEdit}
+                      aria-label={`انجام‌شده: ${x.title}`}
+                      onChange={() => doneCol && todoCol && pm.moveTask(pid, x.id, dn ? todoCol : doneCol)}
+                      className="accent-[var(--color-brand-600)] w-4 h-4"
+                    />
+                    <button onClick={() => openTask(x.id)} className={`flex-1 text-right text-sm ${dn ? "line-through text-ink-400" : "text-ink-800 hover:text-brand-700"}`}>
+                      {x.title}
+                    </button>
+                    <Badge tone={kindTone[kindOf(p, x.status)]}>{columnLabel(p, x.status)}</Badge>
+                    <span className="text-[11px] text-ink-500 w-24 truncate">{x.assignee}</span>
+                    <span className="text-[11px] text-ink-400">{x.due}</span>
+                  </div>
+                );
+              })}
+              {subtasks.length === 0 && <p className="text-xs text-ink-400 p-3">زیرتسکی ندارد. برخلاف چک‌لیست، هر زیرتسک مسئول، سررسید و وضعیت جداگانه دارد و روی بورد هم دیده می‌شود.</p>}
+            </div>
+            {canEdit && (
+              <form
+                className="flex gap-2 flex-wrap"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!subTitle.trim()) return;
+                  pm.createTask(pid, { title: subTitle.trim(), assignee: subWho || t.assignee, priority: t.priority, start: t.start, due: t.due, status: todoCol, parentId: t.id, sprintId: t.sprintId, labels: t.labels });
+                  setSubTitle("");
+                  notify("زیرتسک اضافه شد.");
+                }}
+              >
+                <input className="input-field flex-1 min-w-[180px]" value={subTitle} onChange={(e) => setSubTitle(e.target.value)} placeholder="عنوان زیرتسک…" />
+                <div className="w-44">
+                  <MemberSelect p={p} value={subWho || t.assignee} onChange={setSubWho} />
+                </div>
+                <Button variant="secondary" icon={<Plus size={14} />} type="submit">
+                  افزودن زیرتسک
+                </Button>
+              </form>
             )}
           </div>
         )}

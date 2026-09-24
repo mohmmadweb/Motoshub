@@ -13,7 +13,7 @@ import Modal from "../components/ui/Modal";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 import Drawer from "../components/ui/Drawer";
 import { useToast } from "../components/ui/ToastProvider";
@@ -398,7 +398,6 @@ function OpportunitiesTab() {
               <input value={supervisor} onChange={(e) => setSupervisor(e.target.value)} placeholder="دفتر مطالعات راهبردی" className="input-field" />
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار فراخوان</Button>
             <Button variant="secondary" onClick={closeModal}>انصراف</Button>

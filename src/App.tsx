@@ -30,6 +30,7 @@ const SearchPage = lazy(() => import("./pages/SearchPage"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Projects = lazy(() => import("./pages/Projects"));
+const MyWork = lazy(() => import("./pages/MyWork"));
 const ProjectBoard = lazy(() => import("./pages/ProjectBoard"));
 const Contracts = lazy(() => import("./pages/Contracts"));
 const Funds = lazy(() => import("./pages/Funds"));
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/dashboard" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="my-work" element={<RequirePerm perm="projects.list" module="کارهای من"><MyWork /></RequirePerm>} />
           <Route path="news" element={<RequirePerm perm="news.list" module="اخبار سازمان"><News /></RequirePerm>} />
           <Route path="news/:id" element={<NewsItemDetail />} />
           <Route path="groups" element={<RequirePerm perm="groups.list" module="گروه‌های تعاملی"><Groups /></RequirePerm>} />

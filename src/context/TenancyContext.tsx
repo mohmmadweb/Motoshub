@@ -87,6 +87,8 @@ type TenancyValue = {
   defaultScopeForNew: () => Scoped;
 };
 
+const ACTING_USER_KEY = "motoshub.actingUser.v1";
+
 const TenancyContext = createContext<TenancyValue | null>(null);
 
 export function TenancyProvider({ children }: { children: ReactNode }) {
@@ -94,9 +96,25 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
   const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
   const [companies, setCompanies] = useState<Company[]>(initialCompanies);
   // کاربرِ واردشده. در محصول واقعی از توکن می‌آید؛ اینجا برای نمایشِ سناریوها قابل تعویض است.
-  const [actingUserId, setActingUserId] = useState<string>(currentUser.id);
-  const [activeHoldingId, setActiveHoldingId] = useState<string | undefined>(undefined);
-  const [activeCompanyId, setActiveCompanyId] = useState<string | undefined>(undefined);
+  // کاربرِ انتخاب‌شده در «مشاهده به‌عنوان» بعد از بارگذاری مجدد صفحه حفظ می‌شود
+  const [initialScope] = useState(() => {
+    let uid = currentUser.id;
+    try {
+      const saved = localStorage.getItem(ACTING_USER_KEY);
+      if (saved && allUsers.some((u) => u.id === saved)) uid = saved;
+    } catch { /* دسترسی به حافظه‌ی مرورگر ممکن نیست */ }
+    const u = allUsers.find((x) => x.id === uid) ?? currentUser;
+    const g = initialRoleAssignments[uid];
+    const lv: ScopeLevel = g?.level ?? (u.companyIds?.length ? "شرکت" : "سیستم");
+    const s = buildSessionScope(u.companyIds ?? [], lv, g?.holdingId, initialHoldings, initialCompanies);
+    if (s.level === "سیستم") return { uid, h: undefined, c: undefined };
+    if (s.level === "هلدینگ") return { uid, h: s.memberHoldingIds[0], c: undefined };
+    const first = initialCompanies.find((c) => c.id === s.memberCompanyIds[0]);
+    return { uid, h: first?.holdingId, c: first?.id };
+  });
+  const [actingUserId, setActingUserId] = useState<string>(initialScope.uid);
+  const [activeHoldingId, setActiveHoldingId] = useState<string | undefined>(initialScope.h);
+  const [activeCompanyId, setActiveCompanyId] = useState<string | undefined>(initialScope.c);
 
   const actingUser = allUsers.find((u) => u.id === actingUserId) ?? currentUser;
   const grant = initialRoleAssignments[actingUserId];
@@ -131,6 +149,7 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     const lv: ScopeLevel = g?.level ?? (u.companyIds?.length ? "شرکت" : "سیستم");
     const s = buildSessionScope(u.companyIds ?? [], lv, g?.holdingId, holdings, companies);
     setActingUserId(userId);
+    try { localStorage.setItem(ACTING_USER_KEY, userId); } catch { /* نادیده */ }
     resetScopeFor(s);
   };
 

@@ -58,6 +58,8 @@ export function toEnDigits(s: string): string {
   return s.replace(/[۰-۹]/g, (c) => String(faDigits.indexOf(c))).replace(/[٠-٩]/g, (c) => String(arDigits.indexOf(c)));
 }
 
+/** مدت کار: زیر یک ساعت به دقیقه، بالاتر به ساعت (تا دو رقم اعشار) */
+export const fmtHours = (h: number) => (h < 1 ? `${Math.round(h * 60).toLocaleString("fa-IR")} دقیقه` : `${h.toLocaleString("fa-IR", { maximumFractionDigits: 2 })} ساعت`);
 export const fa = (n: number, grouping = false) => n.toLocaleString("fa-IR", { useGrouping: grouping, maximumFractionDigits: 1 });
 
 export function parseJalali(s: string | undefined): [number, number, number] | null {

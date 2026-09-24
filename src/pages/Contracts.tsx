@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { FileSignature, Plus, Paperclip, CircleDollarSign, Hourglass, ShieldCheck, ListFilter, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3 } from "lucide-react";
 import { contracts as initialContracts, type ContractRecord } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 import { contractDetails, type ContractDetail } from "../data/mockDetails";
 import { techTransferContracts, eSignDocuments, tenders, pendingReviewItems, type TechTransferContract, type TenderRecord } from "../data/mockDaneshmand";
@@ -522,7 +522,6 @@ function TechContractsTab() {
               <input value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="۱۴۰۵/۰۹/۰۱" className="input-field" />
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت قرارداد</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

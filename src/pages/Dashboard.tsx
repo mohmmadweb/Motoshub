@@ -7,11 +7,6 @@ import {
   Hash,
   CalendarDays,
   MapPin,
-  Bell,
-  MessageCircle,
-  ClipboardCheck,
-  AtSign,
-  ChevronLeft,
   Clock3,
   CheckCircle2,
   Circle,
@@ -29,6 +24,7 @@ import PostCard from "../components/PostCard";
 import Avatar from "../components/Avatar";
 import Badge from "../components/ui/Badge";
 import PageHeader from "../components/ui/PageHeader";
+import PersonalHub from "./dashboard/PersonalHub";
 
 // «شروع سریع سازمان» — چک‌لیست راه‌اندازی برای راهبر؛ قابل بستن (localStorage)
 const quickStartSteps = [
@@ -132,116 +128,6 @@ function LiveDateTime() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// «امروزِ شما» — نمای شخصی‌سازی‌شده: هرچه این کاربر امروز باید ببیند؛
-// اعلان‌ها، پیام‌ها، منشن‌ها و اقداماتِ در انتظارِ خودِ او — با امکان تیک‌زدن.
-// ---------------------------------------------------------------------------
-function PersonalToday() {
-  const [doneIds, setDoneIds] = useState<string[]>([]);
-  const toggleDone = (id: string) => setDoneIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  const { events } = useContent();
-  const { actingUser } = useTenancy();
-  // داده‌ی شخصیِ همین کاربر — با تعویض حساب کاملاً عوض می‌شود
-  const me = personalFor(actingUser.id);
-  const unreadNotifs = me.notifications.filter((n) => !n.read);
-  const unreadChats = me.chats.filter((c) => c.unread > 0);
-  const unreadMessages = me.chats.reduce((s, c) => s + c.unread, 0);
-  const mentions = me.mentions;
-
-  // «کارهای امروز شما» — اقدامات در انتظارِ همین کاربر
-  const pendingActions = me.tasks;
-
-  const todayEvent = events[0];
-
-  const tiles = [
-    { icon: Bell, label: "اعلان خوانده‌نشده", value: unreadNotifs.length, to: "/dashboard/notifications", tone: "text-brand-600" },
-    { icon: MessageCircle, label: "پیام جدید", value: unreadMessages, to: "/dashboard/chat", tone: "text-emerald-600" },
-    { icon: AtSign, label: "منشن در کانال‌ها", value: mentions, to: "/dashboard/chat", tone: "text-amber-600" },
-    { icon: ClipboardCheck, label: "اقدام در انتظار شما", value: pendingActions.length, to: "/dashboard/funds", tone: "text-rose-600" },
-  ];
-
-  const doneCount = pendingActions.filter((a) => doneIds.includes(a.id)).length;
-
-  return (
-    <div className="card p-4 mb-5">
-      <div className="mb-4 pb-3 border-b border-ink-100">
-        <LiveDateTime />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        {tiles.map((t) => (
-          <Link key={t.label} to={t.to} className="rounded-lg border border-ink-100 bg-ink-50/50 p-3 hover:border-brand-300 transition-colors">
-            <p className="text-[11px] text-ink-400 flex items-center gap-1.5 mb-1">
-              <t.icon size={13} className={t.tone} /> {t.label}
-            </p>
-            <p className="text-lg font-bold text-ink-900 leading-6">{t.value.toLocaleString("fa-IR")}</p>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div>
-          <p className="text-[11px] font-bold text-ink-500 mb-2">تازه‌ترین اعلان‌ها و پیام‌ها</p>
-          <div className="space-y-1.5">
-            {unreadNotifs.slice(0, 2).map((n) => (
-              <Link key={n.id} to="/dashboard/notifications" className="flex items-center gap-2 text-[12px] text-ink-700 hover:text-brand-700 rounded-lg border border-ink-100 px-2.5 py-2">
-                <Bell size={12} className="text-brand-500 shrink-0" />
-                <span className="flex-1 truncate">{n.text}</span>
-                <span className="text-[10.5px] text-ink-400 shrink-0">{n.time}</span>
-              </Link>
-            ))}
-            {unreadChats.slice(0, 2).map((c) => (
-              <Link key={c.id} to="/dashboard/chat" className="flex items-center gap-2 text-[12px] text-ink-700 hover:text-brand-700 rounded-lg border border-ink-100 px-2.5 py-2">
-                <MessageCircle size={12} className="text-emerald-500 shrink-0" />
-                <span className="flex-1 truncate">{c.with}: {c.lastMessage}</span>
-                <Badge tone="brand">{c.unread.toLocaleString("fa-IR")}</Badge>
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-bold text-ink-500">کارهای امروز شما</p>
-            {pendingActions.length > 0 && (
-              <span className="flex items-center gap-1.5 text-[10.5px] text-ink-400">
-                {doneCount.toLocaleString("fa-IR")} از {pendingActions.length.toLocaleString("fa-IR")} انجام شد
-                <span className="w-14 h-1.5 rounded-full bg-ink-100 overflow-hidden">
-                  <span className="block h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pendingActions.length ? (doneCount / pendingActions.length) * 100 : 0}%` }} />
-                </span>
-              </span>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            {pendingActions.map((a) => {
-              const done = doneIds.includes(a.id);
-              return (
-                <div key={a.id} className={`flex items-center gap-2 text-[12px] rounded-lg border px-2.5 py-2 transition-colors ${done ? "border-emerald-200 bg-emerald-50/50" : "border-ink-100"}`}>
-                  <button onClick={() => toggleDone(a.id)} aria-label={done ? "بازگردانی به در انتظار" : "علامت‌گذاری به‌عنوان انجام‌شده"} className="shrink-0">
-                    {done ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Circle size={15} className="text-ink-300 hover:text-brand-500" />}
-                  </button>
-                  <Link to={a.to} className={`flex-1 truncate ${done ? "line-through text-ink-400" : "text-ink-700 hover:text-brand-700"}`}>
-                    {a.text}
-                  </Link>
-                  {a.late && !done && <Badge tone="danger">تاخیر</Badge>}
-                  <ChevronLeft size={13} className="text-ink-300 shrink-0" />
-                </div>
-              );
-            })}
-            {pendingActions.length === 0 && <p className="text-[11.5px] text-ink-400">اقدامی در انتظار شما نیست. 🎉</p>}
-            {todayEvent && (
-              <Link to="/dashboard/events" className="flex items-center gap-2 text-[12px] text-ink-700 hover:text-brand-700 rounded-lg border border-ink-100 px-2.5 py-2">
-                <CalendarDays size={12} className="text-brand-500 shrink-0" />
-                <span className="flex-1 truncate">رویداد پیش‌رو: {todayEvent.title}</span>
-                <span className="text-[10.5px] text-ink-400 shrink-0">{todayEvent.jalaliDate}</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,12 +151,12 @@ export default function Dashboard() {
     <div>
       <PageHeader
         title={`خوش آمدید، ${actingUser.name}`}
-        description="هرچه امروز باید ببینید: اعلان‌ها، پیام‌ها، اقدامات در انتظار و فید گروه‌های شما"
+        description="میز کار شخصی شما: اعلان‌ها، پیام‌ها، منشن‌ها، کارها و تأییدهای منتظر شما در همه‌ی بخش‌های سامانه"
       />
 
       {session.level === "سیستم" && <QuickStart />}
 
-      <PersonalToday />
+      <PersonalHub header={<LiveDateTime />} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
         <div className="space-y-4">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { LayoutGrid, List, Plus, Search, Settings2, MessageSquare, CheckSquare, Link2, ArrowUp, ArrowDown, Trash2, ListFilter } from "lucide-react";
+import { LayoutGrid, List, Plus, Search, Settings2, MessageSquare, CheckSquare, Link2, ArrowUp, ArrowDown, Trash2, ListFilter, ListTree, Repeat, Eye, ShieldCheck, CornerDownLeft, UserRound, X } from "lucide-react";
+import { useTenancy } from "../../context/TenancyContext";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -7,13 +8,14 @@ import RowActions from "../../components/ui/RowActions";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { columnLabel, isWaiting, kindOf, openPredecessors, predecessorsOf } from "../../pm/selectors";
+import { columnLabel, isDone, isWaiting, kindOf, openPredecessors, predecessorsOf } from "../../pm/selectors";
 import { dayNum, fa } from "../../pm/jalali";
 import { defaultLabels, kindLabel } from "../../pm/seed";
 import type { ColumnKind, PMTask } from "../../pm/types";
 import { Field, Progress, TaskFlags, kindColor, kindTone, priorities, priorityTone, useProjectPage } from "./shared";
 
 type SortId = "manual" | "priority" | "due" | "title";
+type LaneId = "none" | "assignee" | "priority" | "sprint";
 const prRank = { بحرانی: 0, زیاد: 1, متوسط: 2, کم: 3 } as const;
 
 export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) => void }) {
@@ -33,6 +35,14 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colsOpen, setColsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [lane, setLane] = useState<LaneId>("none");
+  const [mine, setMine] = useState(false);
+  const [sprint, setSprint] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const { actingUser } = useTenancy();
+  const sprints = p.sprints ?? [];
+  const fields = p.customFields ?? [];
+  const activeSprint = sprints.find((x) => x.status === "فعال");
 
   const tasks = useMemo(() => {
     let ts = p.tasks.filter((t) => !t.archived);
@@ -41,14 +51,32 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
     if (priority) ts = ts.filter((t) => t.priority === priority);
     if (label) ts = ts.filter((t) => t.labels.includes(label));
     if (onlyWaiting) ts = ts.filter((t) => isWaiting(p, t));
+    if (mine) ts = ts.filter((t) => t.assignee === actingUser.name || (t.watchers ?? []).includes(actingUser.name));
+    if (sprint === "backlog") ts = ts.filter((t) => !t.sprintId);
+    else if (sprint) ts = ts.filter((t) => t.sprintId === sprint);
     if (sort === "priority") ts = [...ts].sort((a, b) => prRank[a.priority] - prRank[b.priority]);
     if (sort === "due") ts = [...ts].sort((a, b) => (dayNum(a.due) ?? 0) - (dayNum(b.due) ?? 0));
     if (sort === "title") ts = [...ts].sort((a, b) => a.title.localeCompare(b.title, "fa"));
     return ts;
-  }, [p, q, member, priority, label, onlyWaiting, sort]);
+  }, [p, q, member, priority, label, onlyWaiting, sort, mine, sprint, actingUser.name]);
 
-  const filtered = !!(q || member || priority || label || onlyWaiting);
-  const activeFilters = [member, priority, label, onlyWaiting].filter(Boolean).length;
+  const filtered = !!(q || member || priority || label || onlyWaiting || mine || sprint);
+  const activeFilters = [member, priority, label, onlyWaiting, sprint].filter(Boolean).length;
+  const visibleSel = selected.filter((id) => tasks.some((t) => t.id === id));
+  const toggleSel = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const bulk = (patch: Parameters<typeof pm.bulkUpdate>[2]) => {
+    pm.bulkUpdate(pid, visibleSel, patch);
+    notify(`${fa(visibleSel.length)} تسک به‌روزرسانی شد.`);
+  };
+
+  // ردیف‌های افقی (Swimlane) مثل Jira — بر اساس مسئول، اولویت یا اسپرینت
+  const lanes: { key: string; label: string; tasks: PMTask[] }[] = useMemo(() => {
+    if (lane === "none") return [{ key: "all", label: "", tasks }];
+    const keyOf = (t: PMTask) => (lane === "assignee" ? t.assignee : lane === "priority" ? t.priority : t.sprintId ?? "");
+    const labelOf = (k: string) => (lane === "sprint" ? sprints.find((x) => x.id === k)?.name ?? "بک‌لاگ" : k || "—");
+    const order = lane === "priority" ? priorities.slice().reverse() : [...new Set(tasks.map(keyOf))];
+    return order.map((k) => ({ key: k, label: labelOf(k), tasks: tasks.filter((t) => keyOf(t) === k) })).filter((l) => l.tasks.length);
+  }, [lane, tasks, sprints]);
 
   const drop = (status: string, beforeId?: string) => {
     if (!dragId) return;
@@ -82,6 +110,9 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   const Card = ({ t }: { t: PMTask }) => {
     const doneC = t.checklist.filter((c) => c.done).length;
     const pre = predecessorsOf(p, t.id).length;
+    const subs = p.tasks.filter((x) => x.parentId === t.id);
+    const subsDone = subs.filter((x) => isDone(p, x)).length;
+    const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
     return (
       <div
         draggable={canEdit}
@@ -107,6 +138,11 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
               ))}
             </div>
           )}
+          {parent && (
+            <p className="text-[10px] text-ink-400 flex items-center gap-0.5 mb-0.5 truncate">
+              <CornerDownLeft size={10} className="shrink-0" /> <span className="truncate">{parent.title}</span>
+            </p>
+          )}
           <p className="text-xs font-medium leading-5 text-ink-900">{t.title}</p>
           <div className="flex items-center justify-between mt-2 gap-1 flex-wrap">
             <Badge tone={priorityTone[t.priority]}>{t.priority}</Badge>
@@ -130,6 +166,31 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                 <Link2 size={11} /> {fa(pre)}
               </span>
             )}
+            {subs.length > 0 && (
+              <span className={`flex items-center gap-0.5 ${subsDone === subs.length ? "text-emerald-600" : ""}`} title="زیرتسک‌ها">
+                <ListTree size={11} /> {fa(subsDone)}/{fa(subs.length)}
+              </span>
+            )}
+            {t.recurrence && (
+              <span className="flex items-center" title={`تکرار ${t.recurrence}`}>
+                <Repeat size={11} />
+              </span>
+            )}
+            {(t.watchers ?? []).length > 0 && (
+              <span className="flex items-center gap-0.5" title={`دنبال‌کنندگان: ${(t.watchers ?? []).join("، ")}`}>
+                <Eye size={11} /> {fa((t.watchers ?? []).length)}
+              </span>
+            )}
+            {t.approval?.status === "در انتظار" && (
+              <span className="flex items-center text-amber-600" title={`منتظر تأیید ${t.approval.approver}`}>
+                <ShieldCheck size={11} />
+              </span>
+            )}
+            {t.storyPoints ? (
+              <span className="mr-auto text-[10px] font-bold bg-ink-100 text-ink-600 rounded-full min-w-5 h-5 px-1 flex items-center justify-center" title="امتیاز (Story Point)">
+                {fa(t.storyPoints)}
+              </span>
+            ) : null}
           </div>
         </button>
         <div className="flex items-center justify-between mt-2">
@@ -159,6 +220,17 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
           <ListFilter size={13} /> فیلتر
           {activeFilters > 0 && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">{fa(activeFilters)}</span>}
         </button>
+        <button onClick={() => setMine((v) => !v)} aria-pressed={mine} title="تسک‌هایی که مسئولشان هستید یا دنبالشان می‌کنید" className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1 ${mine ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
+          <UserRound size={13} /> فقط کارهای من
+        </button>
+        {view === "kanban" && (
+          <select value={lane} onChange={(e) => setLane(e.target.value as LaneId)} className="input-field !py-1.5 !text-xs !w-auto" aria-label="گروه‌بندی ردیف‌ها">
+            <option value="none">بدون ردیف‌بندی</option>
+            <option value="assignee">ردیف بر اساس مسئول</option>
+            <option value="priority">ردیف بر اساس اولویت</option>
+            {sprints.length > 0 && <option value="sprint">ردیف بر اساس اسپرینت</option>}
+          </select>
+        )}
         <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="input-field !py-1.5 !text-xs !w-auto" aria-label="مرتب‌سازی">
           <option value="manual">ترتیب دستی</option>
           <option value="priority">بر اساس اولویت</option>
@@ -166,7 +238,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
           <option value="title">بر اساس عنوان</option>
         </select>
         {filtered && (
-          <button onClick={() => { setQ(""); setMember(""); setPriority(""); setLabel(""); setOnlyWaiting(false); }} className="text-xs text-brand-700 hover:underline">
+          <button onClick={() => { setQ(""); setMember(""); setPriority(""); setLabel(""); setOnlyWaiting(false); setMine(false); setSprint(""); }} className="text-xs text-brand-700 hover:underline">
             پاک‌کردن ({fa(tasks.length)} نتیجه)
           </button>
         )}
@@ -196,6 +268,18 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
               <option key={x}>{x}</option>
             ))}
           </select>
+          {sprints.length > 0 && (
+            <select value={sprint} onChange={(e) => setSprint(e.target.value)} className="input-field !py-1.5 !text-xs !w-auto" aria-label="اسپرینت">
+              <option value="">همه‌ی اسپرینت‌ها</option>
+              {activeSprint && <option value={activeSprint.id}>اسپرینت فعال ({activeSprint.name})</option>}
+              <option value="backlog">بک‌لاگ (بدون اسپرینت)</option>
+              {sprints.filter((x) => x.id !== activeSprint?.id).map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          )}
           <label className="flex items-center gap-1 text-xs text-ink-600">
             <input type="checkbox" checked={onlyWaiting} onChange={(e) => setOnlyWaiting(e.target.checked)} className="accent-[var(--color-brand-600)]" /> فقط منتظر پیش‌نیاز
           </label>
@@ -203,9 +287,18 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
       )}
 
       {view === "kanban" ? (
+        <div className="space-y-4">
+        {lanes.map((ln) => (
+        <div key={ln.key}>
+        {lane !== "none" && (
+          <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-2">
+            {ln.label}
+            <span className="text-[10px] font-normal bg-ink-100 text-ink-500 rounded-full px-1.5">{fa(ln.tasks.length)}</span>
+          </p>
+        )}
         <div className="grid grid-flow-col auto-cols-[minmax(178px,1fr)] gap-2.5 overflow-x-auto pb-2">
           {p.columns.map((col) => {
-            const colTasks = tasks.filter((t) => t.status === col.id);
+            const colTasks = ln.tasks.filter((t) => t.status === col.id);
             const over = col.wip !== undefined && colTasks.length > col.wip;
             return (
               <div
@@ -236,7 +329,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                   ))}
                   {colTasks.length === 0 && <p className="text-[11px] text-ink-400 text-center py-3">خالی</p>}
                 </div>
-                {canEdit && (
+                {canEdit && lane === "none" && (
                   <button onClick={() => onNewTask(col.id)} className="mt-2 w-full text-[11px] text-ink-500 hover:text-brand-700 hover:bg-white/60 rounded-md py-1.5 flex items-center justify-center gap-1">
                     <Plus size={12} /> افزودن تسک
                   </button>
@@ -245,12 +338,95 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
             );
           })}
         </div>
+        </div>
+        ))}
+        {lanes.length === 0 && <p className="text-center text-xs text-ink-400 py-8">تسکی با این فیلترها پیدا نشد.</p>}
+        </div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-xs min-w-[860px]">
+          {canEdit && visibleSel.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap p-2.5 bg-brand-50 border-b border-brand-200 sticky right-0">
+              <span className="text-xs font-bold text-brand-800 ml-1">{fa(visibleSel.length)} تسک انتخاب شده</span>
+              <select defaultValue="" onChange={(e) => { if (e.target.value) bulk({ status: e.target.value }); e.target.value = ""; }} className="input-field !py-1 !text-xs !w-auto" aria-label="تغییر وضعیت گروهی">
+                <option value="">تغییر وضعیت…</option>
+                {p.columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <select defaultValue="" onChange={(e) => { if (e.target.value) bulk({ assignee: e.target.value }); e.target.value = ""; }} className="input-field !py-1 !text-xs !w-auto" aria-label="واگذاری گروهی">
+                <option value="">واگذاری به…</option>
+                {p.members.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <select defaultValue="" onChange={(e) => { if (e.target.value) bulk({ priority: e.target.value as PMTask["priority"] }); e.target.value = ""; }} className="input-field !py-1 !text-xs !w-auto" aria-label="تغییر اولویت گروهی">
+                <option value="">تغییر اولویت…</option>
+                {priorities.map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+              {sprints.length > 0 && (
+                <select defaultValue="-" onChange={(e) => { if (e.target.value !== "-") bulk({ sprintId: e.target.value }); e.target.value = "-"; }} className="input-field !py-1 !text-xs !w-auto" aria-label="انتقال گروهی به اسپرینت">
+                  <option value="-">انتقال به اسپرینت…</option>
+                  <option value="">بک‌لاگ</option>
+                  {sprints.filter((x) => x.status !== "تکمیل‌شده").map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <select defaultValue="" onChange={(e) => { if (e.target.value) bulk({ addLabel: e.target.value }); e.target.value = ""; }} className="input-field !py-1 !text-xs !w-auto" aria-label="افزودن برچسب گروهی">
+                <option value="">افزودن برچسب…</option>
+                {[...new Set([...defaultLabels, ...p.tasks.flatMap((t) => t.labels)])].map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-rose-600"
+                  icon={<Trash2 size={13} />}
+                  onClick={() =>
+                    confirm({
+                      title: `حذف ${fa(visibleSel.length)} تسک؟`,
+                      message: "زیرتسک‌ها و وابستگی‌های این تسک‌ها هم برداشته می‌شوند و رویداد در تاریخچه ثبت می‌شود.",
+                      onConfirm: () => {
+                        pm.bulkDelete(pid, visibleSel);
+                        setSelected([]);
+                        notify("تسک‌های انتخاب‌شده حذف شدند.", "info");
+                      },
+                    })
+                  }
+                >
+                  حذف
+                </Button>
+              )}
+              <button onClick={() => setSelected([])} className="mr-auto p-1 text-ink-500 hover:text-ink-800" aria-label="لغو انتخاب">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <table className="w-full text-xs min-w-[1180px]">
             <thead>
               <tr className="text-ink-400 border-b border-ink-100 text-right">
-                <th className="p-3 font-medium">عنوان</th>
+                {canEdit && (
+                  <th className="p-3 w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="انتخاب همه"
+                      checked={tasks.length > 0 && visibleSel.length === tasks.length}
+                      onChange={(e) => setSelected(e.target.checked ? tasks.map((t) => t.id) : [])}
+                      className="accent-[var(--color-brand-600)]"
+                    />
+                  </th>
+                )}
+                <th className="p-3 font-medium min-w-[240px]">عنوان</th>
                 <th className="p-3 font-medium">وضعیت</th>
                 <th className="p-3 font-medium">مسئول</th>
                 <th className="p-3 font-medium">اولویت</th>
@@ -258,13 +434,26 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                 <th className="p-3 font-medium">سررسید</th>
                 <th className="p-3 font-medium">پیشرفت</th>
                 <th className="p-3 font-medium">پیش‌نیاز</th>
+                {sprints.length > 0 && <th className="p-3 font-medium">اسپرینت</th>}
+                <th className="p-3 font-medium">امتیاز</th>
+                {fields.map((f) => (
+                  <th key={f.id} className="p-3 font-medium">
+                    {f.name}
+                  </th>
+                ))}
                 <th className="p-3" />
               </tr>
             </thead>
             <tbody>
               {tasks.map((t) => (
-                <tr key={t.id} className="border-b border-ink-100 hover:bg-ink-50 cursor-pointer" onClick={() => openTask(t.id)}>
+                <tr key={t.id} className={`border-b border-ink-100 hover:bg-ink-50 cursor-pointer ${visibleSel.includes(t.id) ? "bg-brand-50/50" : ""}`} onClick={() => openTask(t.id)}>
+                  {canEdit && (
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={visibleSel.includes(t.id)} onChange={() => toggleSel(t.id)} aria-label={`انتخاب ${t.title}`} className="accent-[var(--color-brand-600)]" />
+                    </td>
+                  )}
                   <td className="p-3 font-medium text-ink-900">
+                    {t.parentId && <CornerDownLeft size={11} className="inline ml-1 text-ink-400" />}
                     {t.title} <TaskFlags p={p} t={t} refDate={refDate} />
                   </td>
                   <td className="p-3">
@@ -280,6 +469,13 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                     <Progress value={kindOf(p, t.status) === "done" ? 100 : t.progress} />
                   </td>
                   <td className="p-3 text-ink-500">{fa(predecessorsOf(p, t.id).length)}</td>
+                  {sprints.length > 0 && <td className="p-3 text-ink-500 whitespace-nowrap">{sprints.find((x) => x.id === t.sprintId)?.name ?? "—"}</td>}
+                  <td className="p-3 text-ink-500">{t.storyPoints ? fa(t.storyPoints) : "—"}</td>
+                  {fields.map((f) => (
+                    <td key={f.id} className="p-3 text-ink-500 whitespace-nowrap">
+                      {t.customFields?.[f.id] || "—"}
+                    </td>
+                  ))}
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <RowActions onEdit={canEdit ? () => openTask(t.id) : undefined} onDelete={canDelete ? () => removeTask(t) : undefined} size={12} />
                   </td>

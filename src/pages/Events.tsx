@@ -15,7 +15,7 @@ import { useToast } from "../components/ui/ToastProvider";
 import { useInbox } from "../context/InboxContext";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import type { Scoped } from "../data/tenancy";
 
 export default function Events() {
@@ -276,7 +276,6 @@ function EventsListTab() {
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-20" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار رویداد</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

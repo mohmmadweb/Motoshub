@@ -153,6 +153,19 @@ export const EVENT_CATALOG = [
   { code: "PLAYBOOK_STEP_STATUS_CHANGED", category: "playbook", label: "تغییر وضعیت مرحله‌ی Playbook", sample: "مرحله‌ی «ساخت حساب‌ها» انجام‌شده علامت خورد.", en: "Playbook step 'Setup Accounts' was marked as DONE.", api: "requested", trigger: "user", notify: r(["playbookStarter"], ["inapp"], "کم") },
 
   // ------------------------------ خودکارسازی ------------------------------
+  // ------------------------- قابلیت‌های تکمیلی (هم‌تراز Jira / Asana / میزیتو) -------------------------
+  { code: "SUBTASK_CREATED", category: "task", label: "ایجاد زیرتسک", sample: "زیرتسک «خرید میز» زیر تسک «تجهیز مدارس» ایجاد شد.", api: "proposed", trigger: "user", notify: r(["assignee"], ["inapp"]), why: "مسئول زیرتسک باید بداند کار تازه‌ای به او رسیده است." },
+  { code: "TASK_WATCHER_ADDED", category: "task", label: "دنبال‌کردن تسک", sample: "«سارا» دنبال‌کننده‌ی تسک «طراحی» شد.", api: "proposed", trigger: "user", notify: null },
+  { code: "TASK_APPROVAL_REQUESTED", category: "task", label: "درخواست تأیید تسک", sample: "تأیید تسک «قرارداد پیمانکار» از «مدیر پروژه» درخواست شد.", api: "proposed", trigger: "user", notify: r(["approver"], ["inapp", "email", "push"], "مهم"), why: "تأییدکننده باید بداند کاری منتظر تصمیم اوست؛ بدون اعلان، کار پشت تأیید می‌ماند." },
+  { code: "TASK_APPROVED", category: "task", label: "تأیید تسک", sample: "تسک «قرارداد پیمانکار» تأیید شد.", api: "proposed", trigger: "user", notify: r(["requester", "assignee"], ["inapp", "push"]), why: "درخواست‌کننده و مسئول منتظر نتیجه‌اند." },
+  { code: "TASK_REJECTED", category: "task", label: "رد تسک", sample: "تسک «قرارداد پیمانکار» رد شد: «مبلغ بیش از سقف است».", api: "proposed", trigger: "user", notify: r(["requester", "assignee"], ["inapp", "push"], "مهم"), why: "کار باید اصلاح و دوباره ارسال شود." },
+  { code: "TASK_RECURRED", category: "task", label: "ساخت نمونه‌ی بعدی تسک تکرارشونده", sample: "نمونه‌ی بعدی تسک هفتگی «گزارش پیشرفت» برای ۱۴۰۵/۰۳/۱۵ ساخته شد.", api: "proposed", trigger: "system", notify: r(["assignee"], ["inapp"]) },
+  { code: "TIMER_STOPPED", category: "time", label: "ثبت زمان با تایمر", sample: "«سارا» ۱٫۵ ساعت روی تسک «طراحی» با تایمر ثبت کرد.", api: "proposed", trigger: "user", notify: null },
+  { code: "SPRINT_CREATED", category: "task", label: "ایجاد اسپرینت", sample: "اسپرینت «اسپرینت ۳» ایجاد شد.", api: "proposed", trigger: "user", notify: null },
+  { code: "SPRINT_STARTED", category: "task", label: "شروع اسپرینت", sample: "اسپرینت «اسپرینت ۳» با ۲۱ امتیاز شروع شد.", api: "proposed", trigger: "user", notify: r(["team"], ["inapp", "email"]), why: "تیم باید بداند تعهد این دوره چیست." },
+  { code: "SPRINT_COMPLETED", category: "task", label: "پایان اسپرینت", sample: "اسپرینت «اسپرینت ۳» بسته شد: ۱۸ از ۲۱ امتیاز تحویل شد.", api: "proposed", trigger: "user", notify: r(["team", "sponsor"], ["inapp", "email"]), why: "نتیجه‌ی دوره و کارهای منتقل‌شده برای تیم و کارفرما مهم است." },
+  { code: "BASELINE_SAVED", category: "project", label: "ذخیره‌ی خط مبنا", sample: "خط مبنای زمان‌بندی با ۱۲ تسک ذخیره شد.", api: "proposed", trigger: "user", notify: null },
+  { code: "BULK_UPDATED", category: "task", label: "ویرایش گروهی تسک‌ها", sample: "۵ تسک به‌صورت گروهی به «سارا» واگذار شد.", api: "proposed", trigger: "user", notify: null },
   { code: "AUTOMATION_TRIGGERED", category: "automation", label: "اجرای قاعده‌ی خودکار", sample: "قاعده‌ی «Done ← تکمیل» روی تسک «تست» اجرا شد.", api: "proposed", trigger: "system", notify: null },
 ] as const satisfies readonly EventDef[];
 
@@ -198,6 +211,9 @@ export const recipientLabel: Record<RecipientRole, string> = {
   issueAssignee: "مسئول رفع مشکل",
   issueReporter: "گزارش‌دهنده‌ی مشکل",
   expenseCreator: "ثبت‌کننده‌ی هزینه",
+  approver: "تأییدکننده",
+  requester: "درخواست‌کننده‌ی تأیید",
+  watchers: "دنبال‌کنندگان تسک",
 };
 
 export const channelLabel: Record<NotifChannel, string> = {

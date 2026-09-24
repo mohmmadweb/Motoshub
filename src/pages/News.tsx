@@ -236,7 +236,7 @@ const scopeIcon: Record<ContentScope, typeof Globe2> = { سراسری: Globe2, �
 const scopeTone = { سراسری: "brand", هلدینگ: "navy", شرکت: "warning" } as const;
 
 function ScopedNewsSection() {
-  const { session, managedHoldingIds, managedCompanyIds, allowedPublishScopes } = useTenancy();
+  const { session, managedHoldingIds, managedCompanyIds } = useTenancy();
   // ابزار «مشاهده به‌عنوان / خبر شرکتی» فقط دامنه‌ی تحتِ مدیریتِ همین کاربر را نشان می‌دهد
   const scopedHoldings = holdings
     .map((h) => ({ ...h, companies: h.companies.filter((c) => session.level === "سیستم" || managedCompanyIds.includes(c.id)) }))
@@ -250,7 +250,7 @@ function ScopedNewsSection() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [ownerCompany, setOwnerCompany] = useState(scopedCompanies[0]?.id ?? allCompanies[0].id);
-  const [scope, setScope] = useState<ContentScope>("شرکت");
+  const scope = "شرکت" as ContentScope;
   const { notify } = useToast();
   const confirmDialog = useConfirm();
 
@@ -365,7 +365,7 @@ function ScopedNewsSection() {
         open={open}
         onClose={() => setOpen(false)}
         title="انتشار خبر شرکتی"
-        description="مالک محتوا و دامنه‌ی انتشار را انتخاب کنید؛ فقط مخاطبان همان دامنه خبر را خواهند دید."
+        description="شرکت مالک خبر را انتخاب کنید؛ خبر برای اعضای همان شرکت منتشر می‌شود."
       >
         <div className="space-y-3">
           <div>
@@ -387,26 +387,6 @@ function ScopedNewsSection() {
                 </optgroup>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه‌ی انتشار</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["شرکت", "هلدینگ", "سراسری"] as ContentScope[]).filter((s) => allowedPublishScopes.includes(s)).map((s) => {
-                const Icon = scopeIcon[s];
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setScope(s)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs font-medium ${
-                      scope === s ? "border-brand-500 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:bg-ink-50"
-                    }`}
-                  >
-                    <Icon size={15} />
-                    {s === "شرکت" ? "فقط شرکت خودم" : s === "هلدینگ" ? "کل هلدینگ" : "کل مجموعه"}
-                  </button>
-                );
-              })}
-            </div>
           </div>
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار خبر</Button>

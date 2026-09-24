@@ -9,7 +9,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
-import { addDays, dayNum, fmtRial, nowClock, fa } from "../pm/jalali";
+import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa } from "../pm/jalali";
 import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
 import { budgetUsage, columnLabel, isDone, kindOf, openPredecessors, successorsOf, taskActualCost } from "../pm/selectors";
@@ -39,10 +39,14 @@ import type {
   PMBudget,
   Announcement,
   ProjectGroup,
+  Sprint,
+  CustomFieldDef,
+  CustomRule,
+  Recurrence,
 } from "../pm/types";
 
 const STORAGE_KEY = "motoshub.pm.v1";
-const STORE_VERSION = 5;
+const STORE_VERSION = 6;
 
 type StoreState = {
   version: number;
@@ -72,6 +76,8 @@ type EvCtx = {
   issueAssignee?: string;
   issueReporter?: string;
   expenseCreator?: string;
+  approver?: string;
+  requester?: string;
 };
 type Emitted = { code: EventCode; description: string; entity?: { type: string; id: string }; meta: Record<string, string | number | boolean>; ctx: EvCtx; actor?: string };
 type Emit = (code: EventCode, description: string, opts?: { entity?: { type: string; id: string }; meta?: Emitted["meta"]; ctx?: EvCtx; actor?: string }) => void;
@@ -167,8 +173,19 @@ function route(p: ProjectState, ev: Emitted, actor: string, s: StoreState): PMNo
       case "expenseCreator":
         add([ev.ctx.expenseCreator], role);
         break;
+      case "approver":
+        add([ev.ctx.approver], role);
+        break;
+      case "requester":
+        add([ev.ctx.requester], role);
+        break;
+      case "watchers":
+        add(task?.watchers ?? [], role);
+        break;
     }
   });
+  // دنبال‌کنندگان تسک (Watchers) هر رویداد اعلان‌دارِ همان تسک را هم می‌گیرند — مثل Jira/Asana
+  if (task?.watchers?.length && ["task", "dependency", "time"].includes(def?.category ?? "")) add(task.watchers, "watchers");
   const time = nowClock();
   // انجام‌دهنده‌ی کار برای کار خودش اعلان نمی‌گیرد
   return targets
@@ -380,6 +397,11 @@ export type NewTaskInput = {
   estHours?: number;
   predecessors?: string[];
   milestoneId?: string;
+  parentId?: string;
+  storyPoints?: number;
+  sprintId?: string;
+  recurrence?: Recurrence;
+  watchers?: string[];
 };
 
 export type NewProjectInput = Omit<ProjectMeta, "id" | "health" | "phase" | "starred" | "archived" | "createdAt"> & {
@@ -422,6 +444,25 @@ type Ctx = {
   toggleChecklistItem: (pid: string, taskId: string, itemId: string) => void;
   removeChecklistItem: (pid: string, taskId: string, itemId: string) => void;
   addComment: (pid: string, taskId: string, text: string) => void;
+  toggleWatch: (pid: string, taskId: string, name: string) => void;
+  requestApproval: (pid: string, taskId: string, approver: string) => void;
+  decideApproval: (pid: string, taskId: string, approve: boolean, note?: string) => void;
+  cancelApproval: (pid: string, taskId: string) => void;
+  startTimer: (pid: string, taskId: string) => void;
+  stopTimer: (pid: string, taskId: string) => number;
+  bulkUpdate: (pid: string, taskIds: string[], patch: Partial<Pick<PMTask, "status" | "assignee" | "priority" | "sprintId">> & { addLabel?: string }) => void;
+  bulkDelete: (pid: string, taskIds: string[]) => void;
+  // --- اسپرینت، فیلد سفارشی، خط مبنا، قاعده‌ی سفارشی ---
+  saveSprint: (pid: string, sp: Omit<Sprint, "id" | "status"> & { id?: string }) => void;
+  deleteSprint: (pid: string, id: string) => void;
+  startSprint: (pid: string, id: string) => void;
+  completeSprint: (pid: string, id: string, moveOpenTo: string) => void;
+  saveCustomField: (pid: string, f: Omit<CustomFieldDef, "id"> & { id?: string }) => void;
+  removeCustomField: (pid: string, id: string) => void;
+  saveBaseline: (pid: string) => void;
+  clearBaseline: (pid: string) => void;
+  saveCustomRule: (pid: string, r: Omit<CustomRule, "id" | "runs"> & { id?: string }) => void;
+  removeCustomRule: (pid: string, id: string) => void;
   // --- وابستگی ---
   addDependency: (pid: string, pred: string, succ: string) => void;
   removeDependency: (pid: string, depId: string) => void;
@@ -500,7 +541,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const on = (pid: string, fn: (p: ProjectState, emit: Emit, s: StoreState) => void) => setStore((prev) => apply(prev, pid, actor, fn));
 
   // ---------------------------------------------------------------- تسک (هسته)
-  const doMove = (p: ProjectState, emit: Emit, t: PMTask, to: string) => {
+  const doMove = (p: ProjectState, emit: Emit, t: PMTask, to: string, s?: StoreState) => {
     const from = t.status;
     if (from === to) return;
     const fromKind = kindOf(p, from);
@@ -520,7 +561,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         meta: { open_predecessors: openPre.length },
       });
     }
+    if (s) runCustomRules(p, emit, s, t, { type: "moved", columnId: to });
     if (toKind === "done") {
+      if (s && t.recurrence) spawnRecurrence(p, emit, s, t);
       if (ruleOn(p, "a1")) {
         const changed = t.progress !== 100 || t.checklist.some((c) => !c.done);
         t.progress = 100;
@@ -576,6 +619,63 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /** قواعد سفارشی «وقتی … آنگاه …» */
+  const runCustomRules = (p: ProjectState, emit: Emit, s: StoreState, t: PMTask, trig: { type: "moved"; columnId: string } | { type: "created" } | { type: "labelAdded"; label: string }) => {
+    (p.customRules ?? []).forEach((r) => {
+      if (!r.enabled || r.trigger.type !== trig.type) return;
+      if (r.trigger.type === "moved" && trig.type === "moved" && r.trigger.columnId !== trig.columnId) return;
+      if (r.trigger.type === "labelAdded" && trig.type === "labelAdded" && r.trigger.label !== trig.label) return;
+      const a = r.action;
+      let what = "";
+      if (a.type === "assign" && t.assignee !== a.member) {
+        const old = clean(t.assignee);
+        t.assignee = a.member;
+        what = `مسئول «${a.member}» شد`;
+        emit(old ? "TASK_REASSIGNED" : "TASK_ASSIGNED", `تسک «${t.title}» به‌صورت خودکار به «${a.member}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: a.member, previousAssignee: old }, actor: SYSTEM_ACTOR });
+      } else if (a.type === "priority" && t.priority !== a.priority) {
+        t.priority = a.priority;
+        what = `اولویت «${a.priority}» شد`;
+      } else if (a.type === "label" && !t.labels.includes(a.label)) {
+        t.labels = [...t.labels, a.label];
+        what = `برچسب «${a.label}» گرفت`;
+      } else if (a.type === "watch" && !(t.watchers ?? []).includes(a.member)) {
+        t.watchers = [...(t.watchers ?? []), a.member];
+        what = `«${a.member}» دنبال‌کننده شد`;
+      } else if (a.type === "checklist" && !t.checklist.some((c) => c.text === a.text)) {
+        t.checklist.push({ id: nid(s, "c"), text: a.text, done: false });
+        what = `مورد «${a.text}» به چک‌لیست اضافه شد`;
+      }
+      if (!what) return;
+      r.runs += 1;
+      emit("AUTOMATION_TRIGGERED", `قاعده‌ی سفارشی «${r.name}» روی تسک «${t.title}» اجرا شد: ${what}.`, { entity: { type: "task", id: t.id }, meta: { rule: r.id }, actor: SYSTEM_ACTOR });
+    });
+  };
+
+  const recurStep: Record<Recurrence, number> = { روزانه: 1, هفتگی: 7, ماهانه: 30 };
+  /** تسک تکرارشونده: با انجام‌شدن، نمونه‌ی بعدی با همان مشخصات و تاریخ‌های جلوبرده ساخته می‌شود */
+  const spawnRecurrence = (p: ProjectState, emit: Emit, s: StoreState, t: PMTask) => {
+    const key = `recur:${t.id}:${t.due}`;
+    if (!t.recurrence || p.firedReminders.includes(key)) return;
+    p.firedReminders.push(key);
+    const step = recurStep[t.recurrence];
+    const firstOpen = p.columns.find((c) => c.kind === "todo") ?? p.columns[0];
+    const next: PMTask = {
+      ...structuredClone(t),
+      id: nid(s, "t"),
+      status: firstOpen.id,
+      progress: 0,
+      start: addDays(t.start, step),
+      due: addDays(t.due, step),
+      checklist: t.checklist.map((c) => ({ ...c, id: nid(s, "c"), done: false })),
+      comments: [],
+      approval: undefined,
+      timer: undefined,
+      createdAt: s.refDate,
+    };
+    p.tasks.unshift(next);
+    emit("TASK_RECURRED", `نمونه‌ی بعدی تسک ${t.recurrence} «${t.title}» برای ${next.start} تا ${next.due} ساخته شد.`, { entity: { type: "task", id: next.id }, ctx: { taskId: next.id, assignee: next.assignee }, meta: { recurrence: t.recurrence, from_task: t.id }, actor: SYSTEM_ACTOR });
+  };
+
   const insertTask = (p: ProjectState, emit: Emit, s: StoreState, input: NewTaskInput): PMTask => {
     const t: PMTask = {
       id: nid(s, "t"),
@@ -594,9 +694,16 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       comments: [],
       milestoneId: input.milestoneId,
       createdAt: s.refDate,
+      parentId: input.parentId,
+      storyPoints: input.storyPoints,
+      sprintId: input.sprintId,
+      recurrence: input.recurrence,
+      watchers: input.watchers,
     };
     p.tasks.unshift(t);
-    emit("TASK_CREATED", `تسک «${t.title}» ایجاد شد.`, { entity: { type: "task", id: t.id }, meta: { priority: t.priority, due_date: t.due, status: columnLabel(p, t.status) } });
+    const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
+    if (parent) emit("SUBTASK_CREATED", `زیرتسک «${t.title}» زیر تسک «${parent.title}» ایجاد شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id }, meta: { parent: parent.id } });
+    else emit("TASK_CREATED", `تسک «${t.title}» ایجاد شد.`, { entity: { type: "task", id: t.id }, meta: { priority: t.priority, due_date: t.due, status: columnLabel(p, t.status) } });
     if (clean(t.assignee)) emit("TASK_ASSIGNED", `تسک «${t.title}» به «${t.assignee}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: t.assignee }, meta: { assigned_to: t.assignee } });
     if (input.milestoneId) {
       const m = p.milestones.find((x) => x.id === input.milestoneId);
@@ -610,6 +717,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       emit("TASK_DEPENDENCY_ADDED", `تسک «${t.title}» به تسک «${a.title}» وابسته شد.`, { entity: { type: "dependency", id: dep.id }, ctx: { taskId: t.id, assignee: t.assignee, predecessorNames: [a.assignee] }, meta: { predecessor: a.id, successor: t.id } });
     });
     conflictCheck(p, emit, t);
+    runCustomRules(p, emit, s, t, { type: "created" });
+    t.labels.forEach((l) => runCustomRules(p, emit, s, t, { type: "labelAdded", label: l }));
     return t;
   };
 
@@ -676,6 +785,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           notifRules: {},
           logs: [],
           firedReminders: [],
+          sprints: [],
+          customFields: [],
+          customRules: [],
         };
         let s: StoreState = { ...prev, projects: [blank, ...prev.projects] };
         s = apply(s, id, actor, (p, emit, st) => {
@@ -875,7 +987,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     createTask: (pid, input) => on(pid, (p, emit, s) => void insertTask(p, emit, s, input)),
 
     updateTask: (pid, taskId, patch) =>
-      on(pid, (p, emit) => {
+      on(pid, (p, emit, s) => {
         const t = p.tasks.find((x) => x.id === taskId);
         if (!t) return;
         const e = { entity: { type: "task", id: t.id } };
@@ -918,8 +1030,37 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         }
         if (patch.labels && patch.labels.join("،") !== t.labels.join("،")) {
           emit("TASK_LABELS_UPDATED", `برچسب‌های تسک «${t.title}» به «${patch.labels.join("، ") || "بدون برچسب"}» تغییر کرد.`, { ...e, meta: { labels: patch.labels.join(",") } });
+          const added = patch.labels.filter((l) => !t.labels.includes(l));
           t.labels = patch.labels;
+          added.forEach((l) => runCustomRules(p, emit, s, t, { type: "labelAdded", label: l }));
         }
+        // فیلدهای تکمیلی — بدون رویداد جداگانه، یک رویداد خلاصه
+        const extra: string[] = [];
+        if (patch.storyPoints !== undefined && patch.storyPoints !== t.storyPoints) {
+          extra.push(`امتیاز ${fa(patch.storyPoints || 0)}`);
+          t.storyPoints = patch.storyPoints || undefined;
+        }
+        if (patch.sprintId !== undefined && patch.sprintId !== t.sprintId) {
+          const sp = (p.sprints ?? []).find((x) => x.id === patch.sprintId);
+          extra.push(sp ? `اسپرینت «${sp.name}»` : "خروج از اسپرینت");
+          t.sprintId = patch.sprintId || undefined;
+        }
+        if (patch.recurrence !== undefined && patch.recurrence !== t.recurrence) {
+          extra.push(patch.recurrence ? `تکرار ${patch.recurrence}` : "بدون تکرار");
+          t.recurrence = patch.recurrence || undefined;
+        }
+        if (patch.customFields && JSON.stringify(patch.customFields) !== JSON.stringify(t.customFields ?? {})) {
+          const defs = p.customFields ?? [];
+          const changed = defs.filter((d) => (patch.customFields![d.id] ?? "") !== (t.customFields?.[d.id] ?? "")).map((d) => d.name);
+          if (changed.length) extra.push(`فیلدهای ${changed.map((n) => `«${n}»`).join("، ")}`);
+          t.customFields = patch.customFields;
+        }
+        if (patch.parentId !== undefined && patch.parentId !== t.parentId) {
+          const par = p.tasks.find((x) => x.id === patch.parentId);
+          extra.push(par ? `زیرتسکِ «${par.title}»` : "تسک مستقل");
+          t.parentId = patch.parentId || undefined;
+        }
+        if (extra.length) emit("TASK_ESTIMATE_UPDATED", `تسک «${t.title}» به‌روزرسانی شد: ${extra.join("، ")}.`, { ...e, meta: { fields: extra.join(" | ") } });
         if ((patch.estBudget !== undefined && patch.estBudget !== t.estBudget) || (patch.estHours !== undefined && patch.estHours !== t.estHours)) {
           const parts: string[] = [];
           if (patch.estBudget !== undefined && patch.estBudget !== t.estBudget) parts.push(`بودجه‌ی تخمینی ${fmtRial(patch.estBudget)}`);
@@ -934,11 +1075,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           if (m) m.taskIds.push(t.id);
           t.milestoneId = patch.milestoneId || undefined;
         }
-        if (patch.status && patch.status !== t.status) doMove(p, emit, t, patch.status);
+        if (patch.status && patch.status !== t.status) doMove(p, emit, t, patch.status, s);
       }),
 
     moveTask: (pid, taskId, status, beforeTaskId) =>
-      on(pid, (p, emit) => {
+      on(pid, (p, emit, s) => {
         const t = p.tasks.find((x) => x.id === taskId);
         if (!t) return;
         if (beforeTaskId !== undefined) {
@@ -947,7 +1088,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           if (at >= 0) p.tasks.splice(at, 0, t);
           else p.tasks.push(t);
         }
-        doMove(p, emit, t, status);
+        doMove(p, emit, t, status, s);
       }),
 
     deleteTask: (pid, taskId) =>
@@ -955,11 +1096,13 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         const t = p.tasks.find((x) => x.id === taskId);
         if (!t) return;
         const succNames = successorsOf(p, taskId).map((x) => x.assignee);
-        const depCount = p.deps.filter((d) => d.predecessor === taskId || d.successor === taskId).length;
-        p.tasks = p.tasks.filter((x) => x.id !== taskId);
-        p.deps = p.deps.filter((d) => d.predecessor !== taskId && d.successor !== taskId);
-        p.milestones.forEach((m) => (m.taskIds = m.taskIds.filter((x) => x !== taskId)));
-        emit("TASK_DELETED", `تسک «${t.title}» حذف شد${depCount ? ` و ${fa(depCount)} وابستگی آن برداشته شد` : ""}.`, { entity: { type: "task", id: taskId }, ctx: { assignee: t.assignee, successorNames: succNames }, meta: { removed_dependencies: depCount } });
+        // زیرتسک‌ها همراه تسک والد حذف می‌شوند (مثل Jira)
+        const gone = new Set([taskId, ...p.tasks.filter((x) => x.parentId === taskId).map((x) => x.id)]);
+        const depCount = p.deps.filter((d) => gone.has(d.predecessor) || gone.has(d.successor)).length;
+        p.tasks = p.tasks.filter((x) => !gone.has(x.id));
+        p.deps = p.deps.filter((d) => !gone.has(d.predecessor) && !gone.has(d.successor));
+        p.milestones.forEach((m) => (m.taskIds = m.taskIds.filter((x) => !gone.has(x))));
+        emit("TASK_DELETED", `تسک «${t.title}» حذف شد${gone.size > 1 ? ` (همراه ${fa(gone.size - 1)} زیرتسک)` : ""}${depCount ? ` و ${fa(depCount)} وابستگی آن برداشته شد` : ""}.`, { entity: { type: "task", id: taskId }, ctx: { assignee: t.assignee, successorNames: succNames }, meta: { removed_dependencies: depCount } });
       }),
 
     addChecklistItem: (pid, taskId, text) =>
@@ -994,6 +1137,183 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         emit("TASK_COMMENT_ADDED", `«${actor}» روی تسک «${t.title}» نظر گذاشت: «${text.length > 60 ? `${text.slice(0, 60)}…` : text}»`, { entity: { type: "task", id: taskId }, ctx: { taskId } });
         const mentioned = parseMentions(p, text);
         if (mentioned.length) emit("USER_MENTIONED", `«${actor}» ${mentioned.map((m) => `«${m}»`).join("، ")} را در تسک «${t.title}» منشن کرد.`, { entity: { type: "task", id: taskId }, ctx: { mentioned }, meta: { mentioned: mentioned.join(",") } });
+      }),
+
+    toggleWatch: (pid, taskId, name) =>
+      on(pid, (p, emit) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        if (!t) return;
+        const w = t.watchers ?? [];
+        if (w.includes(name)) t.watchers = w.filter((x) => x !== name);
+        else {
+          t.watchers = [...w, name];
+          emit("TASK_WATCHER_ADDED", `«${name}» دنبال‌کننده‌ی تسک «${t.title}» شد.`, { entity: { type: "task", id: taskId } });
+        }
+      }),
+    requestApproval: (pid, taskId, approver) =>
+      on(pid, (p, emit, s) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        if (!t || !approver) return;
+        t.approval = { approver, requestedBy: actor, status: "در انتظار", at: `${s.refDate} ${nowClock()}` };
+        emit("TASK_APPROVAL_REQUESTED", `تأیید تسک «${t.title}» از «${approver}» درخواست شد.`, { entity: { type: "task", id: taskId }, ctx: { taskId, approver }, meta: { approver } });
+      }),
+    decideApproval: (pid, taskId, approve, note) =>
+      on(pid, (p, emit, s) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        if (!t?.approval) return;
+        t.approval = { ...t.approval, status: approve ? "تأییدشده" : "ردشده", note: note || undefined, at: `${s.refDate} ${nowClock()}` };
+        emit(approve ? "TASK_APPROVED" : "TASK_REJECTED", `تسک «${t.title}» توسط «${actor}» ${approve ? "تأیید شد" : "رد شد"}${note ? `: «${note}»` : ""}.`, { entity: { type: "task", id: taskId }, ctx: { taskId, requester: t.approval.requestedBy }, meta: { note: note ?? "" } });
+      }),
+    cancelApproval: (pid, taskId) =>
+      on(pid, (p) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        if (t) t.approval = undefined;
+      }),
+    startTimer: (pid, taskId) =>
+      setStore((prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) => (p.meta.id !== pid ? p : { ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, timer: { by: actor, startedAt: Date.now() } } : t)) })),
+      })),
+    stopTimer: (pid, taskId) => {
+      const t = store.projects.find((x) => x.meta.id === pid)?.tasks.find((x) => x.id === taskId);
+      if (!t?.timer) return 0;
+      // گرد به ربع ساعت؛ حداقل ۰٫۲۵ ساعت
+      const hours = Math.max(0.25, Math.round(((Date.now() - t.timer.startedAt) / 3_600_000) * 4) / 4);
+      const by = t.timer.by;
+      on(pid, (p, emit, s) => {
+        const tt = p.tasks.find((x) => x.id === taskId);
+        if (!tt) return;
+        tt.timer = undefined;
+        p.timeLogs.unshift({ id: nid(s, "tl"), member: by, taskId, hours, date: s.refDate, note: "ثبت با تایمر" });
+        emit("TIMER_STOPPED", `«${by}» ${fmtHours(hours)} روی تسک «${tt.title}» با تایمر ثبت کرد.`, { entity: { type: "task", id: taskId }, meta: { hours } });
+      });
+      return hours;
+    },
+    bulkUpdate: (pid, taskIds, patch) =>
+      on(pid, (p, emit, s) => {
+        const ts = p.tasks.filter((t) => taskIds.includes(t.id));
+        if (!ts.length) return;
+        const parts: string[] = [];
+        ts.forEach((t) => {
+          if (patch.status && patch.status !== t.status) doMove(p, emit, t, patch.status, s);
+          if (patch.assignee !== undefined && patch.assignee !== t.assignee) {
+            const old = clean(t.assignee);
+            t.assignee = patch.assignee || "بدون مسئول";
+            if (clean(t.assignee)) emit(old ? "TASK_REASSIGNED" : "TASK_ASSIGNED", `تسک «${t.title}» به «${t.assignee}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: t.assignee, previousAssignee: old } });
+          }
+          if (patch.priority) t.priority = patch.priority;
+          if (patch.sprintId !== undefined) t.sprintId = patch.sprintId || undefined;
+          if (patch.addLabel && !t.labels.includes(patch.addLabel)) {
+            t.labels = [...t.labels, patch.addLabel];
+            runCustomRules(p, emit, s, t, { type: "labelAdded", label: patch.addLabel });
+          }
+        });
+        if (patch.status) parts.push(`انتقال به «${columnLabel(p, patch.status)}»`);
+        if (patch.assignee !== undefined) parts.push(`واگذاری به «${patch.assignee || "بدون مسئول"}»`);
+        if (patch.priority) parts.push(`اولویت «${patch.priority}»`);
+        if (patch.sprintId !== undefined) parts.push(patch.sprintId ? `اسپرینت «${(p.sprints ?? []).find((x) => x.id === patch.sprintId)?.name ?? ""}»` : "خروج از اسپرینت");
+        if (patch.addLabel) parts.push(`برچسب «${patch.addLabel}»`);
+        emit("BULK_UPDATED", `${fa(ts.length)} تسک به‌صورت گروهی ویرایش شد: ${parts.join("، ")}.`, { entity: { type: "project", id: pid }, meta: { count: ts.length, tasks: ts.map((t) => t.id).join(",") } });
+      }),
+    bulkDelete: (pid, taskIds) =>
+      on(pid, (p, emit) => {
+        const gone = new Set([...taskIds, ...p.tasks.filter((x) => x.parentId && taskIds.includes(x.parentId)).map((x) => x.id)]);
+        const titles = p.tasks.filter((t) => gone.has(t.id)).map((t) => `«${t.title}»`);
+        p.tasks = p.tasks.filter((x) => !gone.has(x.id));
+        p.deps = p.deps.filter((d) => !gone.has(d.predecessor) && !gone.has(d.successor));
+        p.milestones.forEach((m) => (m.taskIds = m.taskIds.filter((x) => !gone.has(x))));
+        emit("TASK_DELETED", `${fa(gone.size)} تسک به‌صورت گروهی حذف شد: ${titles.slice(0, 4).join("، ")}${titles.length > 4 ? "، …" : ""}.`, { entity: { type: "project", id: pid }, meta: { count: gone.size } });
+      }),
+
+    // ============================================================ اسپرینت
+    saveSprint: (pid, input) =>
+      on(pid, (p, emit, s) => {
+        p.sprints = p.sprints ?? [];
+        if (!input.id) {
+          const sp: Sprint = { ...input, id: nid(s, "sp"), status: "برنامه‌ریزی" };
+          p.sprints.push(sp);
+          emit("SPRINT_CREATED", `اسپرینت «${sp.name}» (${sp.start} تا ${sp.end}) ایجاد شد.`, { entity: { type: "sprint", id: sp.id }, meta: { goal: sp.goal } });
+          return;
+        }
+        const sp = p.sprints.find((x) => x.id === input.id);
+        if (sp) Object.assign(sp, { name: input.name, goal: input.goal, start: input.start, end: input.end });
+      }),
+    deleteSprint: (pid, id) =>
+      on(pid, (p) => {
+        p.sprints = (p.sprints ?? []).filter((x) => x.id !== id);
+        p.tasks.forEach((t) => {
+          if (t.sprintId === id) t.sprintId = undefined;
+        });
+      }),
+    startSprint: (pid, id) =>
+      on(pid, (p, emit) => {
+        const sp = (p.sprints ?? []).find((x) => x.id === id);
+        if (!sp || (p.sprints ?? []).some((x) => x.status === "فعال")) return;
+        const pts = p.tasks.filter((t) => t.sprintId === id).reduce((a, t) => a + (t.storyPoints ?? 0), 0);
+        sp.status = "فعال";
+        sp.committedPoints = pts;
+        emit("SPRINT_STARTED", `اسپرینت «${sp.name}» با ${fa(p.tasks.filter((t) => t.sprintId === id).length)} تسک و ${fa(pts)} امتیاز شروع شد. هدف: ${sp.goal || "—"}`, { entity: { type: "sprint", id }, meta: { committed_points: pts } });
+      }),
+    completeSprint: (pid, id, moveOpenTo) =>
+      on(pid, (p, emit) => {
+        const sp = (p.sprints ?? []).find((x) => x.id === id);
+        if (!sp) return;
+        const ts = p.tasks.filter((t) => t.sprintId === id);
+        const done = ts.filter((t) => isDone(p, t));
+        const open = ts.filter((t) => !isDone(p, t));
+        open.forEach((t) => (t.sprintId = moveOpenTo || undefined));
+        sp.status = "تکمیل‌شده";
+        sp.completedPoints = done.reduce((a, t) => a + (t.storyPoints ?? 0), 0);
+        const target = (p.sprints ?? []).find((x) => x.id === moveOpenTo);
+        emit("SPRINT_COMPLETED", `اسپرینت «${sp.name}» بسته شد: ${fa(sp.completedPoints)} از ${fa(sp.committedPoints ?? 0)} امتیاز تحویل شد${open.length ? ` و ${fa(open.length)} تسک ناتمام به ${target ? `«${target.name}»` : "بک‌لاگ"} منتقل شد` : ""}.`, { entity: { type: "sprint", id }, meta: { completed_points: sp.completedPoints, committed_points: sp.committedPoints ?? 0, carried_over: open.length } });
+      }),
+
+    // ============================================================ فیلد سفارشی
+    saveCustomField: (pid, f) =>
+      on(pid, (p, emit, s) => {
+        p.customFields = p.customFields ?? [];
+        if (f.id) {
+          const x = p.customFields.find((c) => c.id === f.id);
+          if (x) Object.assign(x, f);
+        } else p.customFields.push({ ...f, id: nid(s, "cf") });
+        emit("PROJECT_SETTINGS_UPDATED", `فیلد سفارشی «${f.name}» (${f.type}) ${f.id ? "ویرایش" : "تعریف"} شد.`, { entity: { type: "project", id: pid }, meta: { custom_field: f.name } });
+      }),
+    removeCustomField: (pid, id) =>
+      on(pid, (p, emit) => {
+        const f = (p.customFields ?? []).find((c) => c.id === id);
+        if (!f) return;
+        p.customFields = (p.customFields ?? []).filter((c) => c.id !== id);
+        p.tasks.forEach((t) => {
+          if (t.customFields) delete t.customFields[id];
+        });
+        emit("PROJECT_SETTINGS_UPDATED", `فیلد سفارشی «${f.name}» حذف شد.`, { entity: { type: "project", id: pid } });
+      }),
+
+    // ============================================================ خط مبنا
+    saveBaseline: (pid) =>
+      on(pid, (p, emit, s) => {
+        const ts = p.tasks.filter((t) => !t.archived);
+        p.baseline = { savedAt: s.refDate, savedBy: actor, tasks: Object.fromEntries(ts.map((t) => [t.id, { start: t.start, due: t.due }])) };
+        emit("BASELINE_SAVED", `خط مبنای زمان‌بندی با ${fa(ts.length)} تسک ذخیره شد؛ از این پس انحراف برنامه نسبت به آن سنجیده می‌شود.`, { entity: { type: "project", id: pid }, meta: { tasks: ts.length } });
+      }),
+    clearBaseline: (pid) =>
+      on(pid, (p) => {
+        p.baseline = undefined;
+      }),
+
+    // ============================================================ قاعده‌ی سفارشی
+    saveCustomRule: (pid, r) =>
+      on(pid, (p, emit, s) => {
+        p.customRules = p.customRules ?? [];
+        if (r.id) {
+          const x = p.customRules.find((c) => c.id === r.id);
+          if (x) Object.assign(x, r);
+        } else p.customRules.push({ ...r, id: nid(s, "cr"), runs: 0 });
+        emit("PROJECT_SETTINGS_UPDATED", `قاعده‌ی خودکارسازی «${r.name}» ${r.id ? "ویرایش" : "ایجاد"} شد.`, { entity: { type: "project", id: pid } });
+      }),
+    removeCustomRule: (pid, id) =>
+      on(pid, (p) => {
+        p.customRules = (p.customRules ?? []).filter((c) => c.id !== id);
       }),
 
     // ============================================================ وابستگی

@@ -3,7 +3,8 @@ import Badge from "../../components/ui/Badge";
 import StatCard from "../../components/ui/StatCard";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { activeTasks, analyzeRisks, budgetUsage, isDone, isOverdue, isWaiting, kindOf, paidTotal, projectProgress, riskLevelLabel, riskTypeLabel } from "../../pm/selectors";
-import { dayNum, fa, fmtShort } from "../../pm/jalali";
+import { dayNum, fa, fmtRial, fmtShort } from "../../pm/jalali";
+import { useTenancy } from "../../context/TenancyContext";
 import { eventByCode, categoryLabel } from "../../pm/events";
 import type { LifecyclePhase } from "../../pm/types";
 import { Progress, SectionTitle, useProjectPage } from "./shared";
@@ -34,6 +35,9 @@ export default function OverviewTab() {
   const findings = analyzeRisks(p, refDate).slice(0, 4);
   const recent = [...p.logs].sort((a, b) => b.seq - a.seq).slice(0, 8);
   const phaseIdx = phases.findIndex((x) => x.id === p.meta.phase);
+  const group = pm.store.groups.find((g) => g.id === p.meta.groupId);
+  const activeSprint = (p.sprints ?? []).find((x) => x.status === "فعال");
+  const { ownerLabel } = useTenancy();
 
   return (
     <div className="space-y-5">
@@ -88,25 +92,45 @@ export default function OverviewTab() {
 
         <div className="space-y-4">
           <div className="card p-4">
-            <p className="text-xs font-bold text-ink-900 mb-2">درباره‌ی پروژه</p>
+            <p className="text-xs font-bold text-ink-900 mb-2">مشخصات پروژه</p>
             <p className="text-xs text-ink-600 leading-6">{p.meta.description || "—"}</p>
             <div className="flex flex-wrap gap-1 mt-2">
               <Badge tone="brand">{p.meta.category}</Badge>
-              <Badge tone="neutral">اولویت: {p.meta.priority}</Badge>
-              <Badge tone="neutral">{p.meta.visibility}</Badge>
+              {group && (
+                <span className="text-[10.5px] px-1.5 py-0.5 rounded border" style={{ color: group.color, borderColor: `color-mix(in srgb, ${group.color} 35%, transparent)` }}>
+                  گروه: {group.name}
+                </span>
+              )}
               {p.meta.tags.map((t) => (
                 <Badge key={t} tone="neutral">
                   #{t}
                 </Badge>
               ))}
             </div>
-            <div className="text-[11px] text-ink-500 mt-3 space-y-1">
-              <p>کارفرما: {p.meta.client} · حامی مالی: {p.meta.sponsor}</p>
-              <p>فضای کاری: {p.meta.workspace}</p>
-              <p>
-                بازه: {p.meta.start} تا {p.meta.deadline}
-              </p>
-            </div>
+            <dl className="text-[11.5px] mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+              {(
+                [
+                  ["کارفرما", p.meta.client],
+                  ["حامی مالی", p.meta.sponsor],
+                  ["مدیر پروژه", p.meta.manager],
+                  ["مسئول مالی", p.meta.financeOfficer],
+                  ["مالک محتوا", ownerLabel(p.meta)],
+                  ["فضای کاری", p.meta.workspace],
+                  ["بازه", `${p.meta.start} تا ${p.meta.deadline}`],
+                  ["اولویت", p.meta.priority],
+                  ["سطح دسترسی", p.meta.visibility],
+                  ["بودجه‌ی کل", fmtRial(p.budget.total)],
+                  ["تیم", `${fa(p.members.length)} عضو — ${p.members.slice(0, 4).map((m) => m.name).join("، ")}${p.members.length > 4 ? "، …" : ""}`],
+                  ...(activeSprint ? ([["اسپرینت فعال", `${activeSprint.name} (تا ${activeSprint.end})`]] as [string, string][]) : []),
+                  ["ایجاد", p.meta.createdAt],
+                ] as [string, string][]
+              ).map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-ink-400 whitespace-nowrap">{k}</dt>
+                  <dd className="text-ink-700 min-w-0 break-words">{v || "—"}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
 
           {nextMs && (

@@ -25,6 +25,7 @@ import {
   LifeBuoy,
   Award,
   KeyRound,
+  ListTodo,
 } from "lucide-react";
 import { useTenancy } from "../context/TenancyContext";
 
@@ -42,6 +43,7 @@ export const navSections: { title: string; items: Item[] }[] = [
     title: "نمای کلی",
     items: [
       { to: "/dashboard", label: "داشبورد فعالیت‌ها", icon: LayoutDashboard, end: true },
+      { to: "/dashboard/my-work", label: "کارهای من", icon: ListTodo, viewPerm: "projects.list" },
       { to: "/dashboard/news", label: "اخبار سازمان", icon: Newspaper, viewPerm: "news.list" },
       { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot, viewPerm: "assistant.chat" },
     ],

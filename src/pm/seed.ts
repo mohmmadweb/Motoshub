@@ -532,9 +532,63 @@ export const kindLabel: Record<ColumnKind, string> = {
   done: "انجام‌شده (Done)",
 };
 
+/**
+ * داده‌ی نمونه برای قابلیت‌های هم‌تراز Jira / Asana / ClickUp / میزیتو:
+ * اسپرینت و امتیاز داستانی، زیرتسک، دنبال‌کننده، تسک تکرارشونده، درخواست تأیید،
+ * فیلد سفارشی و قاعده‌ی خودکارسازی سفارشی — روی پروژه‌ی نمونه‌ی قلعه‌گنج.
+ */
+function enrichPr1<T extends { tasks: PMTask[] }>(s: T): T {
+  const pts: Record<string, number> = { t9: 5, t10: 3, t1: 8, t2: 8, t3: 8, t11: 5, t4: 3, t12: 3, t13: 2, t14: 3, t15: 2 };
+  const sprintOf: Record<string, string> = { t9: "sp1", t10: "sp1", t1: "sp1", t2: "sp2", t3: "sp2", t11: "sp2", t13: "sp2", t4: "sp3", t12: "sp3" };
+  const cf: Record<string, Record<string, string>> = {
+    t1: { cf1: "همه‌ی روستاها", cf2: "ق-۱۴۰۴-۱۲۳", cf3: "۴۲۰۰" },
+    t2: { cf1: "دهستان رمشک", cf3: "۱۶۰" },
+    t3: { cf1: "دهستان چاه‌دادخدا", cf2: "ق-۱۴۰۵-۰۱۸", cf3: "۱۱۰۰" },
+    t11: { cf1: "دهستان رمشک", cf2: "ق-۱۴۰۵-۰۳۱" },
+  };
+  const tasks = s.tasks.map((t) => ({
+    ...t,
+    storyPoints: pts[t.id],
+    sprintId: sprintOf[t.id],
+    customFields: cf[t.id],
+    ...(t.id === "t2" ? { watchers: ["پایگاه اطلاع‌رسانی بنیاد", "واحد مالی"] } : {}),
+    ...(t.id === "t13" ? { watchers: ["پایگاه اطلاع‌رسانی بنیاد"] } : {}),
+    ...(t.id === "t11"
+      ? { approval: { approver: "پایگاه اطلاع‌رسانی بنیاد", requestedBy: "تیم تدارکات", status: "در انتظار" as const, at: "۱۴۰۵/۰۳/۰۷ ۱۰:۱۵" } }
+      : {}),
+  }));
+  const extra: PMTask[] = [
+    task({ id: "t16", parentId: "t11", title: "خرید ۸ دستگاه چرخ خیاطی صنعتی", assignee: "تیم تدارکات", start: "۱۴۰۵/۰۲/۲۰", due: "۱۴۰۵/۰۲/۳۰", status: "done", progress: 100, priority: "زیاد", labels: ["تدارکات"], storyPoints: 2, sprintId: "sp2" }),
+    task({ id: "t17", parentId: "t11", title: "ترخیص ابزار صنایع‌دستی از گمرک", assignee: "تیم تدارکات", start: "۱۴۰۵/۰۳/۰۱", due: "۱۴۰۵/۰۳/۰۹", status: "doing", progress: 50, priority: "زیاد", labels: ["تدارکات"], storyPoints: 1, sprintId: "sp2" }),
+    task({ id: "t19", parentId: "t3", title: "نقاشی و نصب پنجره‌های مدرسه‌ی رمشک", assignee: "تیم عمرانی", start: "۱۴۰۵/۰۳/۰۱", due: "۱۴۰۵/۰۳/۱۰", status: "doing", progress: 30, priority: "متوسط", labels: ["عمرانی"] }),
+    task({ id: "t18", title: "گزارش هفتگی پیشرفت برای کارفرما", assignee: "پایگاه اطلاع‌رسانی بنیاد", start: "۱۴۰۵/۰۳/۰۸", due: "۱۴۰۵/۰۳/۰۹", status: "todo", priority: "متوسط", labels: ["مستندات"], recurrence: "هفتگی", storyPoints: 1, sprintId: "sp2", estHours: 2, watchers: ["محسن مردعلی"], description: "خلاصه‌ی پیشرفت، هزینه‌ها و مشکلات هفته برای بنیاد علوی — با انجام‌شدن، نمونه‌ی هفته‌ی بعد خودکار ساخته می‌شود." }),
+    task({ id: "t20", title: "بازبینی قرارداد پیمانکار نقاشی مدارس", assignee: "پایگاه اطلاع‌رسانی بنیاد", start: "۱۴۰۵/۰۳/۰۵", due: "۱۴۰۵/۰۳/۰۷", status: "todo", priority: "زیاد", labels: ["حقوقی"], storyPoints: 1, sprintId: "sp2", estHours: 3 }),
+  ];
+  return {
+    ...s,
+    tasks: [...tasks, ...extra],
+    sprints: [
+      { id: "sp1", name: "اسپرینت ۱ — آب‌رسانی", goal: "تحویل موقت فاز اول آب‌رسانی", start: "۱۴۰۵/۰۲/۰۱", end: "۱۴۰۵/۰۲/۱۵", status: "تکمیل‌شده", committedPoints: 19, completedPoints: 16 },
+      { id: "sp1b", name: "اسپرینت ۲ — تأمین", goal: "تأمین تجهیزات کارگاه‌ها", start: "۱۴۰۵/۰۲/۱۶", end: "۱۴۰۵/۰۲/۳۰", status: "تکمیل‌شده", committedPoints: 14, completedPoints: 12 },
+      { id: "sp2", name: "اسپرینت ۳ — تجهیز و تحویل", goal: "استقرار کارگاه‌ها و تحویل موقت مدارس", start: "۱۴۰۵/۰۳/۰۱", end: "۱۴۰۵/۰۳/۱۴", status: "فعال", committedPoints: 29 },
+      { id: "sp3", name: "اسپرینت ۴ — بهره‌برداری", goal: "آموزش تسهیل‌گران و جذب بهره‌برداران", start: "۱۴۰۵/۰۳/۱۵", end: "۱۴۰۵/۰۳/۲۸", status: "برنامه‌ریزی" },
+    ],
+    customFields: [
+      { id: "cf1", name: "روستا / دهستان", type: "انتخابی", options: ["همه‌ی روستاها", "دهستان رمشک", "دهستان چاه‌دادخدا", "دهستان قلعه‌گنج"] },
+      { id: "cf2", name: "کد قرارداد", type: "متن" },
+      { id: "cf3", name: "تعداد ذی‌نفع", type: "عدد" },
+    ],
+    customRules: [
+      { id: "cr1", name: "انتقال به «بازبینی» ← مدیر پروژه دنبال‌کننده شود", trigger: { type: "moved", columnId: "review" }, action: { type: "watch", member: "محسن مردعلی" }, enabled: true, runs: 3 },
+      { id: "cr2", name: "برچسب «مالی» ← واگذاری به واحد مالی", trigger: { type: "labelAdded", label: "مالی" }, action: { type: "assign", member: "واحد مالی" }, enabled: true, runs: 1 },
+      { id: "cr3", name: "ایجاد تسک ← افزودن «ثبت گزارش تصویری» به چک‌لیست", trigger: { type: "created" }, action: { type: "checklist", text: "ثبت گزارش تصویری" }, enabled: false, runs: 0 },
+    ],
+  };
+}
+
 export function seedProjects(): ProjectState[] {
   const scoped = withDemoScopes(legacyProjects, 18);
-  const seeds = [seedPr1(), seedPr2(), seedPr3()];
+  const seeds = [enrichPr1(seedPr1()), seedPr2(), seedPr3()];
   return seeds.map((s) => {
     const sc = scoped.find((p) => p.id === s.meta.id)!;
     return { ...s, meta: { ...s.meta, scope: sc.scope, holdingId: sc.holdingId, companyId: sc.companyId, authorId: sc.authorId } } as ProjectState;

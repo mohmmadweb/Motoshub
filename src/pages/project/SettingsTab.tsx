@@ -10,6 +10,7 @@ import { fa } from "../../pm/jalali";
 import type { ProjectMeta } from "../../pm/types";
 import { Field, MemberSelect, SectionTitle, useProjectPage } from "./shared";
 import { phases } from "./OverviewTab";
+import CustomFieldsCard from "./CustomFieldsCard";
 import { ProjectIcon, projectColors, projectIconNames } from "./projectIcons";
 
 export default function SettingsTab() {
@@ -157,6 +158,8 @@ export default function SettingsTab() {
           <p className="text-xs text-ink-400 mt-1">آستانه‌ها: {p.budget.thresholds.map((x) => `${fa(x)}٪`).join("، ")}</p>
         </button>
       </div>
+
+      <CustomFieldsCard />
 
       <div className="card p-4 space-y-4">
         <SectionTitle title="قالب، بایگانی و حذف" />

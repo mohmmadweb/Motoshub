@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GraduationCap, CalendarDays, Users, Award, Gauge, CheckCircle2, Plus } from "lucide-react";
 import { trainingCourses as initialCourses, type TrainingCourse } from "../data/mockDaneshmand";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 import PageHeader from "../components/ui/PageHeader";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
@@ -185,7 +185,6 @@ export default function Training() {
               <input value={capacity} onChange={(e) => setCapacity(e.target.value)} className="input-field" />
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "تعریف دوره"}</Button>
             <Button variant="secondary" onClick={() => { setOpen(false); setEditingId(null); }}>انصراف</Button>

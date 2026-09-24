@@ -8,6 +8,8 @@ import { fa } from "../../pm/jalali";
 export type TabId =
   | "overview"
   | "board"
+  | "sprints"
+  | "workload"
   | "gantt"
   | "graph"
   | "calendar"

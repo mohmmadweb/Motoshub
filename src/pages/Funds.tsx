@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { funds as initialFunds, type FundRecord } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 import { fundDetails, fundOverview, reviewSessions } from "../data/mockDetails";
 import {
@@ -462,7 +462,6 @@ function InnovationFundTab() {
               <input value={projectManager} onChange={(e) => setProjectManager(e.target.value)} placeholder="نماینده تیم" className="input-field" />
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" icon={<Send size={14} />} onClick={submitProposal}>
               ثبت پروپوزال و تخصیص کد یکتا
@@ -936,7 +935,6 @@ function EmploymentFundTab() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">میزان درخواستی (ریال)</label>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="۲۵۰٬۰۰۰٬۰۰۰" className="input-field" />
           </div>
-          <ScopePicker value={fundScope} onChange={setFundScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت طرح</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

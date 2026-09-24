@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
-import { Diamond } from "lucide-react";
-import { dependencyConflicts, isDone, isOverdue, kindOf, taskLoggedHours } from "../../pm/selectors";
+import { Diamond, Save, Trash2 } from "lucide-react";
+import Button from "../../components/ui/Button";
+import { useToast } from "../../components/ui/ToastProvider";
+import { useProjectsPM } from "../../context/ProjectsContext";
+import { criticalPath, dependencyConflicts, isDone, isOverdue, kindOf, taskLoggedHours } from "../../pm/selectors";
 import { dayNum, fa, fromDayNum, monthNames, parseJalali } from "../../pm/jalali";
 import { kindColor, useProjectPage } from "./shared";
 
@@ -10,7 +13,12 @@ const scales = { روز: 30, هفته: 12, ماه: 5 } as const;
 type Scale = keyof typeof scales;
 
 export default function GanttTab() {
-  const { p, refDate, openTask } = useProjectPage();
+  const { p, pid, canEdit, refDate, openTask } = useProjectPage();
+  const pm = useProjectsPM();
+  const { notify } = useToast();
+  const [showBase, setShowBase] = useState(true);
+  const [showCrit, setShowCrit] = useState(false);
+  const base = p.baseline;
   // مقیاس پیش‌فرض طوری انتخاب می‌شود که کل بازه‌ی پروژه بدون اسکرول دیده شود
   const [scale, setScale] = useState<Scale>(() => {
     const ds = p.tasks.flatMap((t) => [dayNum(t.start), dayNum(t.due)]).filter((x): x is number => x !== null);
@@ -34,6 +42,12 @@ export default function GanttTab() {
   const width = days * dw;
   const xr = (d: number) => (d - min) * dw; // فاصله از راست
   const conflicts = new Set(dependencyConflicts(p).map((c) => c.dep.id));
+  const crit = useMemo(() => (showCrit ? criticalPath(p, tasks) : null), [showCrit, p, tasks]);
+  /** انحراف سررسید نسبت به خط مبنا (روز؛ مثبت = عقب‌افتادگی) */
+  const slip = (id: string, due: string) => {
+    const b = base?.tasks[id];
+    return b ? (dayNum(due) ?? 0) - (dayNum(b.due) ?? 0) : null;
+  };
 
   // سربرگ ماه‌ها
   const months: { label: string; from: number; to: number }[] = [];
@@ -66,6 +80,32 @@ export default function GanttTab() {
         <label className="flex items-center gap-1.5 text-xs text-ink-600">
           <input type="checkbox" checked={showDeps} onChange={(e) => setShowDeps(e.target.checked)} className="accent-[var(--color-brand-600)]" /> نمایش پیکان وابستگی‌ها
         </label>
+        <label className="flex items-center gap-1.5 text-xs text-ink-600" title="طولانی‌ترین زنجیره‌ی وابستگی؛ هر تأخیر در آن، پایان پروژه را عقب می‌اندازد">
+          <input type="checkbox" checked={showCrit} onChange={(e) => setShowCrit(e.target.checked)} className="accent-[var(--color-brand-600)]" /> مسیر بحرانی
+        </label>
+        {base ? (
+          <span className="flex items-center gap-1.5 text-xs text-ink-600">
+            <label className="flex items-center gap-1.5" title={`ذخیره‌شده در ${base.savedAt} توسط ${base.savedBy}`}>
+              <input type="checkbox" checked={showBase} onChange={(e) => setShowBase(e.target.checked)} className="accent-[var(--color-brand-600)]" /> خط مبنا ({base.savedAt})
+            </label>
+            {canEdit && (
+              <>
+                <button onClick={() => { pm.saveBaseline(pid); notify("خط مبنا با زمان‌بندی فعلی جایگزین شد."); }} className="p-1 text-ink-400 hover:text-brand-700" title="به‌روزرسانی خط مبنا با برنامه‌ی فعلی" aria-label="به‌روزرسانی خط مبنا">
+                  <Save size={13} />
+                </button>
+                <button onClick={() => pm.clearBaseline(pid)} className="p-1 text-ink-400 hover:text-rose-600" title="حذف خط مبنا" aria-label="حذف خط مبنا">
+                  <Trash2 size={13} />
+                </button>
+              </>
+            )}
+          </span>
+        ) : (
+          canEdit && (
+            <Button variant="secondary" size="sm" icon={<Save size={13} />} onClick={() => { pm.saveBaseline(pid); notify("خط مبنا ذخیره شد؛ از این پس انحراف هر تسک از برنامه‌ی اولیه نمایش داده می‌شود."); }}>
+              ذخیره‌ی خط مبنا
+            </Button>
+          )
+        )}
         <div className="flex items-center gap-3 text-[11px] text-ink-500 mr-auto flex-wrap">
           {(["backlog", "doing", "review", "blocked", "done"] as const).map((k) => (
             <span key={k} className="flex items-center gap-1">
@@ -90,7 +130,13 @@ export default function GanttTab() {
             {tasks.map((t) => (
               <button key={t.id} onClick={() => openTask(t.id)} style={{ height: ROW }} className="w-full text-right px-3 border-b border-ink-100 hover:bg-ink-50 flex flex-col justify-center">
                 <span className="text-xs font-medium text-ink-800 truncate">{t.title}</span>
-                <span className="text-[10.5px] text-ink-400 truncate">{t.assignee}</span>
+                <span className="text-[10.5px] text-ink-400 truncate">
+                  {t.assignee}
+                  {(() => {
+                    const d = base && showBase ? slip(t.id, t.due) : null;
+                    return d ? <span className={d > 0 ? "text-rose-600" : "text-emerald-600"}> · {d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}</span> : null;
+                  })()}
+                </span>
               </button>
             ))}
           </div>
@@ -163,10 +209,11 @@ export default function GanttTab() {
                     const ex = width - xr(dayNum(b.start)!);
                     const ey = (rb + msTop) * ROW + ROW / 2;
                     const bad = conflicts.has(d.id);
+                    const onCrit = crit?.edges.has(`${d.predecessor}>${d.successor}`);
                     // پیکان باید از سمت راست وارد ابتدای نوار تسک وابسته شود (جهت زمان راست‌به‌چپ است)
                     const turnX = Math.max(ex + 10, sx - 8);
                     const path = `M ${sx} ${sy} H ${turnX} V ${ey} H ${ex + 2}`;
-                    return <path key={d.id} d={path} fill="none" stroke={bad ? "#e11d48" : "var(--color-ink-400)"} strokeWidth={bad ? 1.8 : 1.2} markerEnd={`url(#${bad ? "g-arr-bad" : "g-arr"})`} opacity={0.85} />;
+                    return <path key={d.id} d={path} fill="none" stroke={bad ? "#e11d48" : onCrit ? "var(--color-navy-700)" : "var(--color-ink-400)"} strokeWidth={bad || onCrit ? 2 : 1.2} markerEnd={`url(#${bad ? "g-arr-bad" : "g-arr"})`} opacity={0.85} />;
                   })}
                 </svg>
               )}
@@ -179,19 +226,31 @@ export default function GanttTab() {
                 const prog = isDone(p, t) ? 100 : t.progress;
                 const logged = taskLoggedHours(p, t.id);
                 const late = isOverdue(p, t, refDate);
+                const b = base && showBase ? base.tasks[t.id] : undefined;
+                const bs = b ? dayNum(b.start) : null;
+                const be = b ? dayNum(b.due) : null;
+                const d = slip(t.id, t.due);
                 return (
+                  <span key={t.id}>
+                  {bs !== null && be !== null && (
+                    <span
+                      className="absolute rounded-sm bg-ink-400/60 z-[3]"
+                      title={`خط مبنا: ${b!.start} ← ${b!.due}`}
+                      style={{ right: xr(bs), width: Math.max(dw, (be - bs + 1) * dw), top: (i + msTop) * ROW + ROW - 9, height: 4 }}
+                    />
+                  )}
                   <button
-                    key={t.id}
                     onClick={() => openTask(t.id)}
-                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}`}
-                    className={`absolute rounded-md overflow-hidden z-[4] shadow-sm ${late ? "ring-2 ring-rose-400" : ""}`}
-                    style={{ right: xr(s), width: Math.max(dw, (e - s + 1) * dw), top: (i + msTop) * ROW + 8, height: ROW - 16, background: `color-mix(in srgb, ${kindColor[k]} 30%, transparent)` }}
+                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}${d ? `\nانحراف از خط مبنا: ${d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}` : ""}${crit?.path.includes(t.id) ? "\nروی مسیر بحرانی" : ""}`}
+                    className={`absolute rounded-md overflow-hidden z-[4] shadow-sm ${late ? "ring-2 ring-rose-400" : crit?.path.includes(t.id) ? "ring-2 ring-navy-700" : ""}`}
+                    style={{ right: xr(s), width: Math.max(dw, (e - s + 1) * dw), top: (i + msTop) * ROW + 7, height: ROW - 18, background: `color-mix(in srgb, ${kindColor[k]} 30%, transparent)` }}
                   >
                     <span className="absolute top-0 right-0 bottom-0" style={{ width: `${prog}%`, background: kindColor[k] }} />
                     <span className="relative text-[10px] font-medium px-1.5 text-white mix-blend-normal whitespace-nowrap" style={{ textShadow: "0 0 3px rgba(0,0,0,.45)" }}>
                       {fa(prog)}٪
                     </span>
                   </button>
+                  </span>
                 );
               })}
             </div>

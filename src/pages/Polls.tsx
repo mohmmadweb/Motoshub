@@ -11,7 +11,7 @@ import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTabParam } from "../lib/useTabParam";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // نظرسنجی (iisquestions/Poll) + آزمون و داوری (iispors/Quiz)
@@ -318,7 +318,6 @@ export default function Polls() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">گزینه‌ها (با «،» جدا کنید) <span className="text-rose-500">*</span></label>
             <textarea value={optionsText} onChange={(e) => setOptionsText(e.target.value)} placeholder="گزینه یک، گزینه دو، گزینه سه" className="input-field min-h-16" />
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={createPoll}>
               {editingId ? "ذخیره تغییرات" : "انتشار نظرسنجی"}
@@ -354,7 +353,6 @@ export default function Polls() {
               <input value={quizForm.passing} onChange={(e) => setQuizForm((f) => ({ ...f, passing: e.target.value }))} className="input-field" placeholder="۷۰" />
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitQuiz}>
               {editingQuizId ? "ذخیره تغییرات" : "ایجاد آزمون"}

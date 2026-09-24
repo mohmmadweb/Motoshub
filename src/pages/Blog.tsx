@@ -16,7 +16,7 @@ import { useToast } from "../components/ui/ToastProvider";
 import { useInbox } from "../context/InboxContext";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import type { Scoped } from "../data/tenancy";
 import { useTabParam } from "../lib/useTabParam";
 
@@ -232,7 +232,6 @@ export default function Blog() {
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="معماری، چندمستأجری" className="input-field" />
           </div>
           <VisibilityPicker value={visibility} onChange={setVisibility} />
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>انتشار</Button>
             <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>

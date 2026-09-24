@@ -11,7 +11,7 @@ import { useToast } from "../components/ui/ToastProvider";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useTabParam } from "../lib/useTabParam";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
+import { ScopeBadge } from "../components/ui/ScopeControl";
 import { withDemoScopes, type Scoped } from "../data/tenancy";
 
 // مسابقات (iiscompetition) + چالش‌ها (iischallenge)
@@ -397,7 +397,6 @@ export default function Competitions() {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">جایزه</label>
             <input value={compForm.prize} onChange={(e) => setCompForm((f) => ({ ...f, prize: e.target.value }))} className="input-field" />
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitComp}>{editingCompId ? "ذخیره تغییرات" : "ایجاد مسابقه"}</Button>
             <Button variant="secondary" onClick={() => setCompOpen(false)}>انصراف</Button>
@@ -424,7 +423,6 @@ export default function Competitions() {
               </select>
             </div>
           </div>
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submitCh}>{editingChId ? "ذخیره تغییرات" : "ایجاد چالش"}</Button>
             <Button variant="secondary" onClick={() => setChOpen(false)}>انصراف</Button>

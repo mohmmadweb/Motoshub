@@ -9,6 +9,7 @@ import { EVENT_CATALOG, categoryLabel, channelLabel, eventByCode, recipientLabel
 import { fa } from "../../pm/jalali";
 import type { NotifChannel, NotifPriority, NotifRule, RecipientRole } from "../../pm/types";
 import { SectionTitle, useProjectPage, type TabId } from "./shared";
+import CustomRulesSection from "./CustomRulesSection";
 
 type View = "rules" | "outbox" | "automation";
 const channelIcon: Record<NotifChannel, typeof Mail> = { inapp: MonitorSmartphone, email: Mail, sms: MessageSquareText, push: Smartphone };
@@ -237,6 +238,7 @@ export default function NotificationsTab() {
               <span className="text-[11px] text-ink-400 whitespace-nowrap">{fa(a.runs)} بار اجرا</span>
             </div>
           ))}
+          <CustomRulesSection canEdit={canEdit} />
         </div>
       )}
     </div>

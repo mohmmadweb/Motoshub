@@ -10,7 +10,6 @@ import ScopeSwitcher from "./ScopeSwitcher";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useInbox } from "../context/InboxContext";
-import { users as allUsers, demoPersonas, roles, initialRoleAssignments } from "../data/mock";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -19,21 +18,18 @@ const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "offline", label: "نامرئی", dot: "bg-ink-300" },
 ];
 
-const IS_DEMO = import.meta.env.VITE_DEMO !== "false";
-
 export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
-  const { actingUser, setActingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
+  const { actingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
   const inbox = useInbox();
   // اعلان‌های شخصی + اعلان‌های پروژه که گیرنده‌شان همین کاربر است
   const unread = personalFor(actingUser.id).notifications.filter((n) => !n.read).length + pmStore.notifications.filter((n) => n.recipient === actingUser.name && !n.read).length + inbox.unread;
   const [status, setStatus] = useState<PresenceStatus>(userPresence[actingUser.id] ?? "online");
-  const roleOf = (uid: string) => roles.find((r) => r.id === (initialRoleAssignments[uid]?.roleId ?? "r4"));
 
   const toggleDark = () => setMode(resolved === "dark" ? "light" : "dark");
 
@@ -176,35 +172,6 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                     </button>
                   ))}
                 </div>
-                <div className="h-px bg-ink-100 my-1" />
-                {IS_DEMO && (
-                <p className="px-3.5 py-1 text-[11px] text-ink-400">
-                  ورود به‌عنوان <span className="text-ink-300">(نمایشی)</span>
-                </p>
-                )}
-                {IS_DEMO && (
-                <div className="px-2 pb-1.5">
-                  <select
-                    value={actingUser.id}
-                    onChange={(e) => setActingUser(e.target.value)}
-                    aria-label="تعویض کاربر واردشده"
-                    className="w-full text-[12px] border border-ink-200 rounded-md px-2 py-1.5 outline-none focus:border-brand-400 bg-white"
-                  >
-                    {demoPersonas.map((p) => {
-                      const u = allUsers.find((x) => x.id === p.id)!;
-                      const r = roleOf(p.id);
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {u.name} — {r?.title}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <p className="text-[10px] text-ink-400 mt-1 leading-4">
-                    نقش فعلی: <b>{role.title}</b> · سطح <b>{session.level}</b> — برای دیدن دسترسی‌ها به «نقش و دسترسی من» بروید.
-                  </p>
-                </div>
-                )}
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to={`/dashboard/profile/${displayUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <UserCircle size={15} className="text-ink-400" /> پروفایل من

@@ -3,7 +3,6 @@ import { Plus, Users } from "lucide-react";
 import { type Group } from "../data/mock";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopePicker } from "../components/ui/ScopeControl";
 import type { Scoped } from "../data/tenancy";
 import GroupCard from "../components/GroupCard";
 import PageHeader from "../components/ui/PageHeader";
@@ -189,7 +188,6 @@ export default function Groups() {
             <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: فنی" className="input-field" />
           </div>
           <VisibilityPicker value={privacy} onChange={setPrivacy} />
-          <ScopePicker value={itemScope} onChange={setItemScope} />
           <div className="flex items-center gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={submit}>
               {editingId ? "ذخیره تغییرات" : "ایجاد گروه"}

@@ -6,7 +6,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { addDays, diffDays } from "../../pm/jalali";
 import { defaultLabels } from "../../pm/seed";
-import type { PMPriority } from "../../pm/types";
+import type { PMPriority, Recurrence } from "../../pm/types";
 import { Field, MemberSelect, numIn, priorities, useProjectPage } from "./shared";
 
 export default function TaskCreateModal({ open, onClose, defaultStatus }: { open: boolean; onClose: () => void; defaultStatus?: string }) {
@@ -25,6 +25,10 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
   const [estBudget, setEstBudget] = useState("");
   const [estHours, setEstHours] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
+  const [sprintId, setSprintId] = useState("");
+  const [points, setPoints] = useState(0);
+  const [recurrence, setRecurrence] = useState<Recurrence | "">("");
+  const sprints = (p.sprints ?? []).filter((x) => x.status !== "تکمیل‌شده");
 
   useEffect(() => {
     if (open) {
@@ -45,12 +49,15 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
     setEstBudget("");
     setEstHours("");
     setMilestoneId("");
+    setSprintId("");
+    setPoints(0);
+    setRecurrence("");
   };
 
   const submit = () => {
     if (!title.trim()) return notify("عنوان تسک الزامی است.", "warning");
     if (diffDays(start, due) < 0) return notify("سررسید نمی‌تواند قبل از شروع باشد.", "warning");
-    pm.createTask(pid, { title: title.trim(), description, assignee, priority, start, due, status, labels, predecessors: preds, estBudget: numIn(estBudget), estHours: numIn(estHours), milestoneId: milestoneId || undefined });
+    pm.createTask(pid, { title: title.trim(), description, assignee, priority, start, due, status, labels, predecessors: preds, estBudget: numIn(estBudget), estHours: numIn(estHours), milestoneId: milestoneId || undefined, sprintId: sprintId || undefined, storyPoints: points || undefined, recurrence: recurrence || undefined });
     notify(`تسک «${title.trim()}» ایجاد شد${assignee ? ` و به «${assignee}» اعلان رفت` : ""}.`);
     reset();
     onClose();
@@ -106,6 +113,36 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
           </Field>
           <Field label="برآورد ساعت">
             <input value={estHours} onChange={(e) => setEstHours(e.target.value)} inputMode="numeric" className="input-field" placeholder="۰" />
+          </Field>
+          {sprints.length > 0 && (
+            <Field label="اسپرینت">
+              <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className="input-field">
+                <option value="">بک‌لاگ</option>
+                {sprints.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="امتیاز (Story Point)">
+            <select value={points} onChange={(e) => setPoints(Number(e.target.value))} className="input-field">
+              <option value={0}>—</option>
+              {[1, 2, 3, 5, 8, 13, 21].map((n) => (
+                <option key={n} value={n}>
+                  {n.toLocaleString("fa-IR")}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="تکرار">
+            <select value={recurrence} onChange={(e) => setRecurrence(e.target.value as Recurrence | "")} className="input-field">
+              <option value="">بدون تکرار</option>
+              {(["روزانه", "هفتگی", "ماهانه"] as Recurrence[]).map((r) => (
+                <option key={r}>{r}</option>
+              ))}
+            </select>
           </Field>
         </div>
         <Field label="برچسب‌ها">
