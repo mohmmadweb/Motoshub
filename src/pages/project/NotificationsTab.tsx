@@ -17,7 +17,8 @@ const allPriorities: NotifPriority[] = ["کم", "عادی", "مهم", "فوری"
 const prTone = { کم: "neutral", عادی: "neutral", مهم: "warning", فوری: "danger" } as const;
 
 export default function NotificationsTab() {
-  const { p, pid, canEdit, refDate, goTab } = useProjectPage();
+  const { p, pid, can, refDate, goTab } = useProjectPage();
+  const canEdit = can("projects.notifications");
   const pm = useProjectsPM();
   const { notify } = useToast();
   const [view, setView] = useState<View>("rules");

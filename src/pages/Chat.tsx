@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell } from "lucide-react";
+import { useInbox, mentionsIn } from "../context/InboxContext";
 import type { ReactNode } from "react";
 import {
   Search,
@@ -135,6 +137,7 @@ export default function Chat() {
   const [showJump, setShowJump] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { notify } = useToast();
+  const inbox = useInbox();
 
   const activeChannel = selection.kind === "channel" ? scopedChannels.find((c) => c.id === selection.id) : undefined;
   const activeDm = selection.kind === "dm" ? dmThreads.find((c) => c.id === selection.id) : undefined;
@@ -196,6 +199,13 @@ export default function Chat() {
     if (selection.kind === "channel") {
       const newMsg: ChannelMessage = { id: `cm-${Date.now()}`, channelId: selection.id, authorId: actingUser.id, text, time: nowFa() };
       setMessages((prev) => [...prev, newMsg]);
+      const chName = activeChannel?.name ?? "";
+      // بند ۵: منشن‌شده‌ها همیشه مطلع می‌شوند
+      const mentioned = mentionsIn(text, users.map((u) => u.name));
+      if (mentioned.length) inbox.send(mentioned, "mention", `«${actingUser.name}» شما را در کانال «${chName}» منشن کرد: «${text.slice(0, 70)}»`, "/dashboard/chat");
+      // بند ۶: فقط مشترکانی که اعلان این کانال را روشن کرده‌اند
+      const subs = inbox.subscribersOf(selection.id).filter((n) => !mentioned.includes(n));
+      if (subs.length) inbox.send(subs, "channel_message", `پیام جدید در «${chName}» از «${actingUser.name}»: «${text.slice(0, 70)}»`, "/dashboard/chat");
     } else if (activeDm) {
       const id = `dm-${Date.now()}`;
       const msg: DmMsg = {
@@ -209,6 +219,8 @@ export default function Chat() {
       };
       updateDm(activeDm.id, (msgs) => [...msgs, msg], text);
       simulateDelivery(activeDm.id, id);
+      // بند ۴: پیام شخصی
+      inbox.send([activeDm.with], "direct_message", `پیام جدید از «${actingUser.name}»: «${text.slice(0, 70)}»`, "/dashboard/chat");
     }
     setDraft("");
     setReplyTo(null);
@@ -419,6 +431,12 @@ export default function Chat() {
               }
               onTogglePanel={(p) => setPanel((prev) => (prev === p ? "none" : p))}
               activePanel={panel}
+              subscribed={inbox.isSubscribed(activeChannel.id)}
+              onToggleSubscribe={() => {
+                const on = inbox.isSubscribed(activeChannel.id);
+                inbox.toggleSubscription(activeChannel.id);
+                notify(on ? `اعلان پیام‌های «${activeChannel.name}» خاموش شد (منشن‌ها همچنان اعلان می‌دهند).` : `اعلان پیام‌های «${activeChannel.name}» روشن شد.`, "info");
+              }}
             />
           )}
 
@@ -1087,12 +1105,16 @@ function ChannelHeader({
   onToggleFavorite,
   onTogglePanel,
   activePanel,
+  subscribed,
+  onToggleSubscribe,
 }: {
   channel: Channel;
   favorited: boolean;
   onToggleFavorite: () => void;
   onTogglePanel: (p: "pinned" | "saved" | "members") => void;
   activePanel: string;
+  subscribed: boolean;
+  onToggleSubscribe: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-ink-100 flex-wrap bg-white/90 backdrop-blur">
@@ -1110,6 +1132,9 @@ function ChannelHeader({
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        <button onClick={onToggleSubscribe} title={subscribed ? "اعلان پیام‌های این کانال روشن است — برای خاموش کردن کلیک کنید" : "اعلان پیام‌های این کانال خاموش است — برای روشن کردن کلیک کنید"} aria-pressed={subscribed} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full transition-colors ${subscribed ? "bg-brand-50 text-brand-700" : "text-ink-500 hover:bg-ink-100"}`}>
+          {subscribed ? <Bell size={13} /> : <BellOff size={13} />} {subscribed ? "اعلان روشن" : "اعلان خاموش"}
+        </button>
         <button onClick={() => onTogglePanel("members")} title="اعضا" className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full transition-colors ${activePanel === "members" ? "bg-brand-50 text-brand-700" : "hover:bg-ink-100"}`}>
           <Users size={13} /> {channel.members}
         </button>

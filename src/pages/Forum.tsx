@@ -10,6 +10,7 @@ import RowActions from "../components/ui/RowActions";
 import EmptyState from "../components/ui/EmptyState";
 import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -26,6 +27,7 @@ export default function Forum() {
   const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const { notify } = useToast();
+  const inbox = useInbox();
   const confirm = useConfirm();
 
   const startEdit = (t: ForumTopic) => {
@@ -85,6 +87,7 @@ export default function Forum() {
       authorId: actingUser.id,
     };
     setTopics((prev) => [newTopic, ...prev]);
+    inbox.send("*", "new_content", `موضوع جدید در انجمن: «${newTopic.title}»`, `/dashboard/forum/${newTopic.id}`);
     notify(`موضوع «${newTopic.title}» در انجمن منتشر شد (${visibility}).`);
     closeModal();
   };

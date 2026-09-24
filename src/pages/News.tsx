@@ -16,6 +16,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { VisibilityPicker, VisibilityToggle, VisibilityBadge } from "../components/ui/VisibilityControl";
 import RowActions from "../components/ui/RowActions";
 import DataTable from "../components/ui/DataTable";
@@ -36,6 +37,7 @@ export default function News() {
   const [errors, setErrors] = useState<{ title?: boolean; summary?: boolean }>({});
   const [month, setMonth] = useState<number | null>(null);
   const { notify } = useToast();
+  const inbox = useInbox();
   const confirm = useConfirm();
 
   const startEdit = (n: NewsItem) => {
@@ -79,6 +81,7 @@ export default function News() {
         authorId: actingUser.id,
       };
       setNewsItems((prev) => [newItem, ...prev]);
+      inbox.send("*", "new_content", `خبر جدید منتشر شد: «${newItem.title}»`, `/dashboard/news/${newItem.id}`);
       notify(`اطلاعیه «${newItem.title}» ${visibility === "عمومی" ? "برای همه‌ی اعضا" : "به‌صورت خصوصی"} منتشر شد.`);
     }
     setOpen(false);

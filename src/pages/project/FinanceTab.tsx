@@ -22,7 +22,10 @@ const baseCategories = ["حقوق نیروها", "خرید سرویس", "خری�
 type ExpDraft = Omit<PMExpense, "id" | "createdBy"> & { id?: string };
 
 export default function FinanceTab() {
-  const { p, pid, canEdit, refDate, openTask, focusId } = useProjectPage();
+  const { p, pid, can, refDate, openTask, focusId } = useProjectPage();
+  const canExp = can("projects.expenses");
+  const canApprove = can("projects.expenses.approve");
+  const canBudget = can("projects.budget");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();
@@ -77,10 +80,12 @@ export default function FinanceTab() {
       key: "status",
       label: "وضعیت",
       render: (e) =>
-        canEdit ? (
-          <select value={e.status} onClick={(ev) => ev.stopPropagation()} onChange={(ev) => pm.saveExpense(pid, { ...e, status: ev.target.value as ExpenseStatus })} className="input-field !py-1 !text-xs !w-auto">
+        canExp ? (
+          <select value={e.status} onClick={(ev) => ev.stopPropagation()} onChange={(ev) => pm.saveExpense(pid, { ...e, status: ev.target.value as ExpenseStatus })} className="input-field !py-1 !text-xs !w-auto" title={canApprove ? undefined : "تأیید و پرداخت نیاز به مجوز «تأیید و پرداخت هزینه‌ها» دارد"}>
             {expStatuses.map((s) => (
-              <option key={s}>{s}</option>
+              <option key={s} disabled={!canApprove && (s === "تأییدشده" || s === "پرداخت‌شده") && s !== e.status}>
+                {s}
+              </option>
             ))}
           </select>
         ) : (
@@ -93,8 +98,8 @@ export default function FinanceTab() {
       label: "",
       render: (e) => (
         <RowActions
-          onEdit={canEdit ? () => openEdit(e) : undefined}
-          onDelete={canEdit ? () => confirm({ title: `حذف هزینه‌ی «${e.title}»؟`, message: `مبلغ ${fmtRial(e.amount)} از حساب پروژه برداشته می‌شود.`, onConfirm: () => pm.deleteExpense(pid, e.id) }) : undefined}
+          onEdit={canExp ? () => openEdit(e) : undefined}
+          onDelete={canExp ? () => confirm({ title: `حذف هزینه‌ی «${e.title}»؟`, message: `مبلغ ${fmtRial(e.amount)} از حساب پروژه برداشته می‌شود.`, onConfirm: () => pm.deleteExpense(pid, e.id) }) : undefined}
         />
       ),
     },
@@ -123,7 +128,7 @@ export default function FinanceTab() {
           title="تقسیم بودجه بین سرفصل‌ها"
           hint={`تخصیص‌یافته ${fmtRial(allocated)} از ${fmtRial(p.budget.total)}${allocated !== p.budget.total ? ` — ${allocated > p.budget.total ? "بیش از" : "کمتر از"} بودجه‌ی کل` : ""}`}
           action={
-            canEdit && (
+            canBudget && (
               <Button size="sm" variant="secondary" icon={<Pencil size={13} />} onClick={() => setBudgetOpen(true)}>
                 ویرایش بودجه و سرفصل‌ها
               </Button>
@@ -162,7 +167,7 @@ export default function FinanceTab() {
                   <option key={s}>{s}</option>
                 ))}
               </select>
-              {canEdit && (
+              {canExp && (
                 <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={openNew}>
                   ثبت هزینه
                 </Button>
@@ -232,7 +237,9 @@ export default function FinanceTab() {
               <Field label="وضعیت">
                 <select className="input-field" value={exp.status} onChange={(e) => setExp({ ...exp, status: e.target.value as ExpenseStatus })}>
                   {expStatuses.map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} disabled={!canApprove && (s === "تأییدشده" || s === "پرداخت‌شده")}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </Field>

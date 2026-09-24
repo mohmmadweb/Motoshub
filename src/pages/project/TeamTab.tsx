@@ -23,7 +23,8 @@ export const roleDefs: { role: ProjectRole; desc: string }[] = [
 ];
 
 export default function TeamTab() {
-  const { p, pid, canEdit, openTask, focusId } = useProjectPage();
+  const { p, pid, can, openTask, focusId } = useProjectPage();
+  const canEdit = can("projects.members");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();

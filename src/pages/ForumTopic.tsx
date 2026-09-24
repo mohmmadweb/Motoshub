@@ -13,6 +13,7 @@ import RowActions from "../components/ui/RowActions";
 import EmptyState from "../components/ui/EmptyState";
 import { VisibilityBadge, VisibilityToggle } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 
 type Reply = { id: string; author: string; avatarColor: string; body: string; accepted: boolean; when: string; mine: boolean };
@@ -22,6 +23,7 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const { forumTopics, setForumTopics } = useContent();
   const { notify } = useToast();
+  const inbox = useInbox();
   const { hasPermission, canManageItem, actingUser } = useTenancy();
   const confirm = useConfirm();
   const topic = forumTopics.find((t) => t.id === id);
@@ -108,8 +110,11 @@ export default function ForumTopic() {
     };
     setReplies((prev) => [...prev, r]);
     setForumTopics((prev) => prev.map((t) => (t.id === topic.id ? { ...t, replies: t.replies + 1, lastActivity: "اکنون" } : t)));
+    // بند ۸: صاحب موضوع و کسانی که قبلاً در این موضوع پاسخ داده‌اند مطلع می‌شوند
+    inbox.send([topic.author], "reply", `«${actingUser.name}» به موضوع شما «${topic.title}» پاسخ داد.`, `/dashboard/forum/${topic.id}`);
+    inbox.send(replies.map((x) => x.author).filter((n) => n !== topic.author), "reply", `«${actingUser.name}» در موضوع «${topic.title}» که در آن نظر داده بودید پاسخ جدیدی نوشت.`, `/dashboard/forum/${topic.id}`);
     setDraft("");
-    notify("پاسخ شما ثبت شد.");
+    notify("پاسخ شما ثبت شد و صاحب موضوع مطلع شد.");
   };
 
   const saveReplyEdit = () => {

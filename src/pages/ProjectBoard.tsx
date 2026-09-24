@@ -32,8 +32,9 @@ import PlaybooksTab from "./project/PlaybooksTab";
 import SettingsTab from "./project/SettingsTab";
 import TaskDrawer from "./project/TaskDrawer";
 import TaskCreateModal from "./project/TaskCreateModal";
+import { ProjectKnowledgeFile } from "./knowledge/ProjectKnowledge";
 
-const validTabs: TabId[] = ["overview", "board", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "settings"];
+const validTabs: TabId[] = ["overview", "board", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings"];
 
 export default function ProjectBoard() {
   const { id } = useParams();
@@ -98,6 +99,7 @@ export default function ProjectBoard() {
     { id: "communication", label: "کانال‌ها و گفتگو" },
     { id: "documents", label: "اسناد" },
     { id: "playbooks", label: "Playbook" },
+    { id: "knowledge", label: "دانش و درس‌آموخته‌ها" },
     { id: "history", label: "تاریخچه رویدادها" },
     { id: "notifications", label: "اعلان‌ها و خودکارسازی", count: unreadHere || undefined },
     { id: "settings", label: "تنظیمات پروژه" },
@@ -134,7 +136,7 @@ export default function ProjectBoard() {
   const healthDot = p.meta.health === "سبز" ? "bg-emerald-500" : p.meta.health === "زرد" ? "bg-amber-500" : "bg-rose-500";
 
   return (
-    <ProjectPageContext.Provider value={{ p, pid: id, canEdit, canManage, refDate: pm.refDate, openTask: setTaskId, goTab, focusId }}>
+    <ProjectPageContext.Provider value={{ p, pid: id, canEdit, canManage, can: (perm: string) => canEdit && hasPermission(perm), hasPerm: hasPermission, refDate: pm.refDate, openTask: setTaskId, goTab, focusId }}>
       <div>
         <PageHeader
           title={p.meta.name}
@@ -266,6 +268,7 @@ export default function ProjectBoard() {
         {view === "notifications" && <NotificationsTab />}
         {view === "playbooks" && <PlaybooksTab />}
         {view === "settings" && <SettingsTab />}
+        {view === "knowledge" && <ProjectKnowledgeFile projectId={id} inProjectPage />}
 
         {canEdit && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
         <TaskDrawer taskId={taskId} onClose={() => setTaskId(null)} />

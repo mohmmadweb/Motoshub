@@ -154,6 +154,7 @@ function seedPr1(): Omit<ProjectState, "meta"> & { meta: Omit<ProjectState["meta
       starred: true,
       archived: false,
       financeOfficer: "واحد مالی",
+      groupId: "pg1",
       createdAt: "۱۴۰۴/۱۲/۱۰",
     },
     columns: defaultColumns(),
@@ -313,6 +314,7 @@ function seedPr2(): ReturnType<typeof seedPr1> {
       starred: false,
       archived: false,
       financeOfficer: "دکتر یاسمن روشن",
+      groupId: "pg2",
       createdAt: "۱۴۰۵/۰۱/۳۰",
     },
     columns: defaultColumns(),
@@ -427,6 +429,7 @@ function seedPr3(): ReturnType<typeof seedPr1> {
       starred: false,
       archived: false,
       financeOfficer: "واحد مالی",
+      groupId: "pg3",
       createdAt: "۱۴۰۵/۰۳/۰۱",
     },
     columns: defaultColumns(),
@@ -476,6 +479,12 @@ function seedPr3(): ReturnType<typeof seedPr1> {
     firedReminders: [],
   };
 }
+
+export const seedProjectGroups = (): import("./types").ProjectGroup[] => [
+  { id: "pg1", name: "محرومیت‌زدایی و عمران", description: "طرح‌های آبادانی، زیرساخت و اشتغال مناطق کم‌برخوردار", color: "#059669" },
+  { id: "pg2", name: "تحول دیجیتال", description: "سامانه‌ها و زیرساخت‌های نرم‌افزاری بنیاد", color: "#1f4f99" },
+  { id: "pg3", name: "دارایی و سرمایه‌گذاری", description: "واگذاری، ارزش‌گذاری و مدیریت دارایی‌ها", color: "#d97706" },
+];
 
 export function seedTemplates(): PMPlaybookTemplate[] {
   const stepsFor: Record<string, string[]> = {

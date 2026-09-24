@@ -10,7 +10,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
 import { addDays, dayNum, fmtRial, nowClock, fa } from "../pm/jalali";
-import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, seedExecutions, seedProjects, seedTemplates } from "../pm/seed";
+import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
 import { budgetUsage, columnLabel, isDone, kindOf, openPredecessors, successorsOf, taskActualCost } from "../pm/selectors";
 import type {
@@ -38,10 +38,11 @@ import type {
   TimeLog,
   PMBudget,
   Announcement,
+  ProjectGroup,
 } from "../pm/types";
 
 const STORAGE_KEY = "motoshub.pm.v1";
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 type StoreState = {
   version: number;
@@ -50,6 +51,7 @@ type StoreState = {
   projects: ProjectState[];
   templates: PMPlaybookTemplate[];
   projectTemplates: ProjectTemplate[];
+  groups: ProjectGroup[];
   executions: PlaybookExecution[];
   notifications: PMNotification[];
 };
@@ -341,6 +343,7 @@ function initialStore(): StoreState {
     projects: seedProjects(),
     templates,
     projectTemplates: seedProjectTemplates,
+    groups: seedProjectGroups(),
     executions: seedExecutions(templates),
     notifications: [],
   };
@@ -397,6 +400,10 @@ type Ctx = {
   toggleStar: (pid: string) => void;
   deleteProject: (pid: string) => void;
   saveAsTemplate: (pid: string, name: string) => void;
+  saveProjectTemplate: (t: ProjectTemplate) => void;
+  removeProjectTemplate: (id: string) => void;
+  saveGroup: (g: Omit<ProjectGroup, "id"> & { id?: string }) => void;
+  removeGroup: (id: string) => void;
   // --- اعضا ---
   addMember: (pid: string, m: Omit<PMMember, "id">) => void;
   updateMember: (pid: string, id: string, patch: Partial<PMMember>) => void;
@@ -640,6 +647,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
             starred: false,
             archived: false,
             financeOfficer: input.financeOfficer,
+            groupId: input.groupId,
             createdAt: prev.refDate,
             scope: input.scope,
             holdingId: input.holdingId,
@@ -736,11 +744,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           });
         }
         if (patch.archived !== undefined && patch.archived !== m.archived) emit(patch.archived ? "PROJECT_ARCHIVED" : "PROJECT_RESTORED", patch.archived ? "پروژه بایگانی شد؛ اطلاعات آن حذف نشده و قابل بازیابی است." : "پروژه از بایگانی بازیابی شد.", e);
-        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer"];
+        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer", "groupId"];
         const changed = settingKeys.filter((k) => patch[k] !== undefined && patch[k] !== m[k]);
         if (patch.tags && patch.tags.join("،") !== m.tags.join("،")) changed.push("tags");
         if (changed.length) {
-          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها" };
+          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها", groupId: "گروه پروژه" };
           emit("PROJECT_SETTINGS_UPDATED", `تنظیمات پروژه تغییر کرد: ${changed.map((k) => names[k]).join("، ")}.`, { ...e, meta: Object.fromEntries(changed.map((k) => [k, String(patch[k])])) });
         }
         Object.assign(m, patch);
@@ -777,6 +785,21 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         };
         return { ...prev, seq: prev.seq + 1, projectTemplates: [...prev.projectTemplates, tpl] };
       }),
+
+    saveProjectTemplate: (t) =>
+      setStore((prev) => (prev.projectTemplates.some((x) => x.id === t.id) ? { ...prev, projectTemplates: prev.projectTemplates.map((x) => (x.id === t.id ? t : x)) } : { ...prev, projectTemplates: [...prev.projectTemplates, t] })),
+    removeProjectTemplate: (id) => setStore((prev) => ({ ...prev, projectTemplates: prev.projectTemplates.filter((x) => x.id !== id) })),
+    saveGroup: (g) =>
+      setStore((prev) => {
+        if (g.id) return { ...prev, groups: prev.groups.map((x) => (x.id === g.id ? { ...x, ...g, id: x.id } : x)) };
+        return { ...prev, seq: prev.seq + 1, groups: [...prev.groups, { ...g, id: `pg${prev.seq + 1}` }] };
+      }),
+    removeGroup: (id) =>
+      setStore((prev) => ({
+        ...prev,
+        groups: prev.groups.filter((x) => x.id !== id),
+        projects: prev.projects.map((p) => (p.meta.groupId === id ? { ...p, meta: { ...p.meta, groupId: undefined } } : p)),
+      })),
 
     // ============================================================ اعضا
     addMember: (pid, m) =>

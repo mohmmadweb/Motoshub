@@ -10,6 +10,7 @@ import RowActions from "../components/ui/RowActions";
 import EmptyState from "../components/ui/EmptyState";
 import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -32,6 +33,7 @@ export default function Media() {
   const [visibility, setVisibility] = useState<Visibility>("خصوصی");
   const [editingId, setEditingId] = useState<string | null>(null);
   const { notify } = useToast();
+  const inbox = useInbox();
   const confirm = useConfirm();
 
   const [topic, setTopic] = useState<string>("همه");
@@ -102,6 +104,7 @@ export default function Media() {
       authorId: actingUser.id,
     };
     setItems((prev) => [newItem, ...prev]);
+    inbox.send("*", "new_content", `${newItem.kind === "video" ? "ویدیوی" : "تصویر"} جدید در گالری: «${newItem.title}»`, `/dashboard/media/${newItem.id}`);
     notify(`«${newItem.title}» در گالری بارگذاری شد (${visibility}).`);
     closeModal();
   };

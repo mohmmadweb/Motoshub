@@ -6,6 +6,8 @@ import { ContentProvider } from "./context/ContentContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import { TenancyProvider } from "./context/TenancyContext";
 import { ProjectsProvider } from "./context/ProjectsContext";
+import { InboxProvider } from "./context/InboxContext";
+import { KnowledgeProvider } from "./context/KnowledgeContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AppLayout from "./layouts/AppLayout";
 import RequirePerm from "./components/RequirePerm";
@@ -75,6 +77,8 @@ export default function App() {
     <TenancyProvider>
     <ContentProvider>
     <ProjectsProvider>
+    <InboxProvider>
+    <KnowledgeProvider>
     <HashRouter>
       <Suspense fallback={<PageFallback />}>
       <Routes>
@@ -128,6 +132,8 @@ export default function App() {
       </Routes>
       </Suspense>
     </HashRouter>
+    </KnowledgeProvider>
+    </InboxProvider>
     </ProjectsProvider>
     </ContentProvider>
     </TenancyProvider>

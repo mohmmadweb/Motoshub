@@ -9,6 +9,7 @@ import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
+import { useInbox } from "../context/InboxContext";
 import { users as allUsers, demoPersonas, roles, initialRoleAssignments } from "../data/mock";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
@@ -28,8 +29,9 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   const { actingUser, setActingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
+  const inbox = useInbox();
   // اعلان‌های شخصی + اعلان‌های پروژه که گیرنده‌شان همین کاربر است
-  const unread = personalFor(actingUser.id).notifications.filter((n) => !n.read).length + pmStore.notifications.filter((n) => n.recipient === actingUser.name && !n.read).length;
+  const unread = personalFor(actingUser.id).notifications.filter((n) => !n.read).length + pmStore.notifications.filter((n) => n.recipient === actingUser.name && !n.read).length + inbox.unread;
   const [status, setStatus] = useState<PresenceStatus>(userPresence[actingUser.id] ?? "online");
   const roleOf = (uid: string) => roles.find((r) => r.id === (initialRoleAssignments[uid]?.roleId ?? "r4"));
 

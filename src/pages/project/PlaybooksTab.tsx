@@ -14,7 +14,8 @@ export const execTone: Record<PlaybookExecStatus, BadgeTone> = { "در انتظ�
 const stepTone: Record<PlaybookStepStatus, BadgeTone> = { "در انتظار": "neutral", "انجام‌شده": "success", ردشده: "warning" };
 
 export default function PlaybooksTab() {
-  const { pid, canEdit, focusId } = useProjectPage();
+  const { pid, can, focusId } = useProjectPage();
+  const canEdit = can("projects.playbooks");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();

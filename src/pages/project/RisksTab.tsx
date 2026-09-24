@@ -22,7 +22,8 @@ const stats: RiskStatus[] = ["باز", "در حال رفع", "بسته"];
 type Draft = Omit<PMRisk, "id"> & { id?: string };
 
 export default function RisksTab() {
-  const { p, pid, canEdit, refDate, openTask, goTab, focusId } = useProjectPage();
+  const { p, pid, can, refDate, openTask, goTab, focusId } = useProjectPage();
+  const canEdit = can("projects.risks");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();

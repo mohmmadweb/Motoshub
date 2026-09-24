@@ -19,6 +19,9 @@ import { activeTasks, budgetUsage, isDone, projectProgress } from "../pm/selecto
 import { addDays, dayNum, fa } from "../pm/jalali";
 import type { PMPlaybookTemplate, ProjectMeta, ProjectRole, ProjectState } from "../pm/types";
 import { ProjectIcon, projectColors, projectIconNames } from "./project/projectIcons";
+import ProjectGroupsBar from "./project/ProjectGroupsBar";
+import TemplateEditorModal from "./project/TemplateEditorModal";
+import type { ProjectTemplate } from "../pm/templates";
 
 const healthTone: Record<string, BadgeTone> = {
   سبز: "success",
@@ -64,6 +67,9 @@ export default function Projects() {
   const [workspace, setWorkspace] = useState("");
   const [category, setCategory] = useState("");
   const [templateId, setTemplateId] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [tplEdit, setTplEdit] = useState<ProjectTemplate | "new" | null>(null);
   const [team, setTeam] = useState<{ name: string; title: string; role: ProjectRole }[]>([]);
   const [teamName, setTeamName] = useState("");
   const [teamTitle, setTeamTitle] = useState("");
@@ -100,6 +106,7 @@ export default function Projects() {
     setWorkspace("");
     setCategory("");
     setTemplateId("");
+    setGroupId(groupFilter && groupFilter !== "none" ? groupFilter : "");
     setTeam([]);
   };
 
@@ -118,6 +125,7 @@ export default function Projects() {
     setVisibility(p.meta.visibility);
     setWorkspace(p.meta.workspace);
     setCategory(p.meta.category);
+    setGroupId(p.meta.groupId ?? "");
     setProjectOpen(true);
   };
 
@@ -168,7 +176,7 @@ export default function Projects() {
       return;
     }
     if (editingProjectId) {
-      pm.updateMeta(editingProjectId, { name: name.trim(), client: client.trim(), description, start, deadline: deadline.trim() || "نامشخص", ...(manager.trim() ? { manager: manager.trim() } : {}), priority, icon, color, visibility, workspace, category, ...itemScope });
+      pm.updateMeta(editingProjectId, { name: name.trim(), client: client.trim(), description, start, deadline: deadline.trim() || "نامشخص", ...(manager.trim() ? { manager: manager.trim() } : {}), priority, icon, color, visibility, workspace, category, groupId: groupId || undefined, ...itemScope });
       notify(`پروژه «${name.trim()}» ویرایش شد.`);
       closeProjectModal();
       return;
@@ -198,6 +206,7 @@ export default function Projects() {
       budget: Number(budget.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace(/[^\d]/g, "")) || 0,
       members,
       templateId: templateId || undefined,
+      groupId: groupId || undefined,
       ...itemScope,
       authorId: actingUser.id,
     });
@@ -228,6 +237,7 @@ export default function Projects() {
     if (listFilter === "تکمیل‌شده") ps = ps.filter((p) => !p.meta.archived && ["تکمیل", "اختتام"].includes(p.meta.phase));
     if (listFilter === "بایگانی‌شده") ps = ps.filter((p) => p.meta.archived);
     if (healthFilter !== "همه") ps = ps.filter((p) => p.meta.health === healthFilter);
+    if (groupFilter) ps = ps.filter((p) => (groupFilter === "none" ? !p.meta.groupId : p.meta.groupId === groupFilter));
     if (q) ps = ps.filter((p) => p.meta.name.includes(q) || p.meta.client.includes(q) || p.meta.manager.includes(q) || p.meta.tags.some((t) => t.includes(q)));
     const sorted = [...ps];
     if (sort === "deadline") sorted.sort((a, b) => (dayNum(a.meta.deadline) ?? 9e9) - (dayNum(b.meta.deadline) ?? 9e9));
@@ -235,7 +245,7 @@ export default function Projects() {
     if (sort === "name") sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name, "fa"));
     if (sort === "recent") sorted.sort((a, b) => (lastActivity(b)?.seq ?? 0) - (lastActivity(a)?.seq ?? 0));
     return sorted.sort((a, b) => Number(b.meta.starred) - Number(a.meta.starred));
-  }, [scopedProjects, listFilter, healthFilter, q, sort]);
+  }, [scopedProjects, listFilter, healthFilter, groupFilter, q, sort]);
 
   const live = projects.filter((p) => !p.meta.archived);
   const atRisk = live.filter((p) => p.meta.health !== "سبز").length;
@@ -286,6 +296,7 @@ export default function Projects() {
           <option value="name">نام</option>
         </select>
       </div>
+      <ProjectGroupsBar value={groupFilter} onChange={setGroupFilter} canManage={hasPermission("projects.groups")} />
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <ListFilter size={14} className="text-ink-400" />
         {healthFilters.map((f) => (
@@ -313,6 +324,14 @@ export default function Projects() {
                 <span className="flex items-center gap-1.5">
                   <Badge tone={healthTone[p.meta.health]}>وضعیت: {p.meta.health}</Badge>
                   {p.meta.archived && <Badge tone="neutral">بایگانی</Badge>}
+                  {(() => {
+                    const g = pm.store.groups.find((x) => x.id === p.meta.groupId);
+                    return g ? (
+                      <span className="text-[10.5px] px-1.5 py-0.5 rounded border" style={{ color: g.color, borderColor: `color-mix(in srgb, ${g.color} 35%, transparent)` }}>
+                        {g.name}
+                      </span>
+                    ) : null;
+                  })()}
                 </span>
                 <span className="flex items-center gap-1">
                   <ScopeBadge item={p.meta} />
@@ -417,11 +436,24 @@ export default function Projects() {
         <LayoutTemplate size={15} className="text-brand-600" />
         <h2 className="text-sm font-bold text-ink-900">قالب‌های پروژه</h2>
         <span className="text-xs text-ink-400 mr-2">بورد، تسک‌ها با وابستگی، برچسب‌ها، مایل‌ستون‌ها و نقش‌ها — ساخت پروژه‌ی تکراری در چند ثانیه</span>
+        {hasPermission("projects.templates") && (
+          <Button variant="secondary" size="sm" icon={<Plus size={13} />} className="mr-auto" onClick={() => setTplEdit("new")}>
+            قالب پروژه‌ی جدید
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {pm.store.projectTemplates.map((t) => (
           <div key={t.id} className="card p-4">
-            <p className="text-sm font-semibold text-ink-900">{t.name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-ink-900">{t.name}</p>
+              {hasPermission("projects.templates") && (
+                <RowActions
+                  onEdit={() => setTplEdit(t)}
+                  onDelete={() => confirm({ title: `حذف قالب «${t.name}»؟`, message: "پروژه‌هایی که قبلاً از این قالب ساخته شده‌اند تغییری نمی‌کنند.", onConfirm: () => { pm.removeProjectTemplate(t.id); notify(`قالب «${t.name}» حذف شد.`, "info"); } })}
+                />
+              )}
+            </div>
             <p className="text-xs text-ink-400 mt-1 leading-5">{t.description}</p>
             <p className="text-[11px] text-ink-500 mt-2">
               {fa(t.tasks.length)} تسک · {fa(t.deps.length)} وابستگی · {fa(t.milestones.length)} مایل‌ستون · نقش‌ها: {t.roles.join("، ")}
@@ -487,6 +519,16 @@ export default function Projects() {
             </Field>
             <Field label="دسته‌بندی">
               <input className="input-field" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: تحول دیجیتال" />
+            </Field>
+            <Field label="گروه پروژه">
+              <select className="input-field" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+                <option value="">بدون گروه</option>
+                {pm.store.groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
             </Field>
             {!editingProjectId && (
               <Field label="قالب پروژه">
@@ -621,6 +663,7 @@ export default function Projects() {
           </div>
         )}
       </Modal>
+      <TemplateEditorModal template={tplEdit} onClose={() => setTplEdit(null)} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CalendarDays, MapPin, Users, Plus, Calendar, Send } from "lucide-react";
 import { Link } from "react-router-dom";
-import { eventCategories, type EventCategory, type EventItem, type Visibility } from "../data/mock";
+import { eventCategories, users, type EventCategory, type EventItem, type Visibility } from "../data/mock";
 import RowActions from "../components/ui/RowActions";
 import DataTable from "../components/ui/DataTable";
 import { useConfirm } from "../components/ui/ConfirmProvider";
@@ -12,6 +12,7 @@ import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
 import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
@@ -47,6 +48,7 @@ function EventsListTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ title?: boolean; date?: boolean }>({});
   const { notify } = useToast();
+  const inbox = useInbox();
   const confirm = useConfirm();
 
   const startEdit = (ev: EventItem) => {
@@ -103,6 +105,7 @@ function EventsListTab() {
         authorId: actingUser.id,
       };
       setEvents((prev) => [newEvent, ...prev]);
+      inbox.send("*", "new_content", `رویداد جدید: «${newEvent.title}» (${newEvent.jalaliDate})`, `/dashboard/events/${newEvent.id}`);
       notify(`رویداد «${newEvent.title}» منتشر شد (${visibility}).`);
     }
     setOpen(false);
@@ -110,8 +113,18 @@ function EventsListTab() {
     setTitle(""); setJalaliDate(""); setTime(""); setLocation(""); setDescription(""); setVisibility("عمومی");
   };
 
-  const sendInvite = (e: EventItem) =>
-    notify(`دعوت‌نامه‌ی رویداد «${e.title}» برای اعضای واجد شرایط ارسال شد.`, "info");
+  const [inviteFor, setInviteFor] = useState<EventItem | null>(null);
+  const [invitees, setInvitees] = useState<string[]>([]);
+  const sendInvite = (e: EventItem) => {
+    setInviteFor(e);
+    setInvitees([]);
+  };
+  const confirmInvite = () => {
+    if (!inviteFor || !invitees.length) return notify("حداقل یک نفر را انتخاب کنید.", "warning");
+    inbox.send(invitees, "event_invite", `«${actingUser.name}» شما را به رویداد «${inviteFor.title}» (${inviteFor.jalaliDate} ساعت ${inviteFor.time}) دعوت کرد.`, `/dashboard/events/${inviteFor.id}`);
+    notify(`دعوت‌نامه‌ی «${inviteFor.title}» برای ${invitees.length.toLocaleString("fa-IR")} نفر ارسال شد.`);
+    setInviteFor(null);
+  };
 
   const toggleVisibility = (id: string) => {
     const ev = events.find((e) => e.id === id);
@@ -192,6 +205,37 @@ function EventsListTab() {
         searchPlaceholder="جستجو در عنوان یا مکان رویداد…"
         emptyTitle="هنوز رویدادی ثبت نشده"
       />
+
+      <Modal open={!!inviteFor} onClose={() => setInviteFor(null)} title={`دعوت به «${inviteFor?.title ?? ""}»`} description="برای هر دعوت‌شده اعلان شخصی ارسال می‌شود.">
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-xs text-ink-700">
+            <input
+              type="checkbox"
+              className="accent-[var(--color-brand-600)]"
+              checked={invitees.length === users.filter((u) => u.id !== actingUser.id).length}
+              onChange={(e) => setInvitees(e.target.checked ? users.filter((u) => u.id !== actingUser.id).map((u) => u.name) : [])}
+            />
+            انتخاب همه
+          </label>
+          <div className="max-h-64 overflow-y-auto border border-ink-200 rounded-lg divide-y divide-ink-100">
+            {users.filter((u) => u.id !== actingUser.id).map((u) => (
+              <label key={u.id} className="flex items-center gap-2 px-3 py-2 text-xs text-ink-700 hover:bg-ink-50">
+                <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={invitees.includes(u.name)} onChange={() => setInvitees((x) => (x.includes(u.name) ? x.filter((y) => y !== u.name) : [...x, u.name]))} />
+                <span className="flex-1">{u.name}</span>
+                <span className="text-ink-400 truncate max-w-[45%]">{u.role}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="primary" className="flex-1 justify-center" icon={<Send size={13} />} onClick={confirmInvite}>
+              ارسال دعوت‌نامه ({invitees.length.toLocaleString("fa-IR")})
+            </Button>
+            <Button variant="secondary" onClick={() => setInviteFor(null)}>
+              انصراف
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={open} onClose={() => { setOpen(false); setEditingId(null); }} title={editingId ? "ویرایش رویداد" : "ایجاد رویداد جدید"}>
         <div className="space-y-3">

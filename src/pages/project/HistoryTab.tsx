@@ -29,7 +29,7 @@ const catTone: Record<EventCategory, BadgeTone> = {
 const apiTone = { implemented: "success", requested: "brand", proposed: "warning" } as const;
 
 export default function HistoryTab() {
-  const { p, openTask, goTab } = useProjectPage();
+  const { p, openTask, goTab, hasPerm } = useProjectPage();
   const { store } = useProjectsPM();
   const [view, setView] = useState<"log" | "catalog">("log");
   const [cat, setCat] = useState<EventCategory | "">("");
@@ -85,6 +85,8 @@ export default function HistoryTab() {
       toCsv([["تاریخ", "ساعت", "کد رویداد", "دسته", "انجام‌دهنده", "شرح", "متادیتا"], ...logs.map((l) => [l.date, l.time, l.event, categoryLabel[eventByCode[l.event]?.category ?? "project"], l.actor, l.description, JSON.stringify(l.metadata)])])
     );
   const exportJson = () => downloadText(`history-${p.meta.id}.json`, JSON.stringify(logs.map(apiShape), null, 2), "application/json");
+
+  if (!hasPerm("projects.history")) return <p className="text-sm text-ink-500 card p-6 text-center">دسترسی مشاهده‌ی تاریخچه‌ی رویدادها این پروژه برای نقش شما فعال نیست.</p>;
 
   return (
     <div className="space-y-4">

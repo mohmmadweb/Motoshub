@@ -17,7 +17,8 @@ const statuses: IssueStatus[] = ["باز", "در حال بررسی", "حل‌ش�
 type Draft = Omit<PMIssue, "id" | "createdAt"> & { id?: string };
 
 export default function IssuesTab() {
-  const { p, pid, canEdit, openTask, focusId } = useProjectPage();
+  const { p, pid, can, openTask, focusId } = useProjectPage();
+  const canEdit = can("projects.risks");
   const pm = useProjectsPM();
   const actor = pm.actor;
   const confirm = useConfirm();

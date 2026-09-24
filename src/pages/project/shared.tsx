@@ -24,6 +24,7 @@ export type TabId =
   | "history"
   | "notifications"
   | "playbooks"
+  | "knowledge"
   | "settings";
 
 /** تب مقصد برای هر دسته‌ی رویداد (کلیک روی لاگ یا اعلان) */
@@ -52,6 +53,10 @@ type PageCtx = {
   canEdit: boolean;
   /** مدیریت پروژه (حتی وقتی بایگانی است) — برای بازیابی و حذف */
   canManage: boolean;
+  /** مجوز ریز ماژول پروژه + امکان ویرایش (پروژه‌ی بایگانی‌نشده، نقش غیرمشاهده‌گر) */
+  can: (perm: string) => boolean;
+  /** فقط مجوز نقش (برای مشاهده) */
+  hasPerm: (perm: string) => boolean;
   refDate: string;
   openTask: (taskId: string) => void;
   goTab: (tab: TabId, entityId?: string) => void;

@@ -13,6 +13,7 @@ import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import { VisibilityToggle, VisibilityPicker, VisibilityBadge } from "../components/ui/VisibilityControl";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 import { useContent } from "../context/ContentContext";
 import { useTenancy } from "../context/TenancyContext";
 import { ScopeBadge, ScopePicker } from "../components/ui/ScopeControl";
@@ -81,6 +82,7 @@ export default function Blog() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ title?: boolean; excerpt?: boolean }>({});
   const { notify } = useToast();
+  const inbox = useInbox();
 
   const startEdit = (b: BlogPost) => {
     setItemScope({ scope: b.scope, holdingId: b.holdingId, companyId: b.companyId });
@@ -124,6 +126,7 @@ export default function Blog() {
         authorId: actingUser.id,
       };
       setPosts((prev) => [newPost, ...prev]);
+      inbox.send("*", "new_content", `یادداشت جدید در مجله/بلاگ: «${newPost.title}»`, `/dashboard/blog/${newPost.id}`);
       notify(`یادداشت «${newPost.title}» در بلاگ منتشر شد (${visibility}).`);
     }
     setOpen(false);

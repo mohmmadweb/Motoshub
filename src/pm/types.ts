@@ -197,6 +197,8 @@ export type ProjectMeta = {
   archived: boolean;
   /** مسئول امور مالی پروژه — گیرنده‌ی هشدارهای بودجه */
   financeOfficer: string;
+  /** گروه پروژه (پورتفولیو) — مثلاً «تحول دیجیتال» */
+  groupId?: string;
   createdAt: string;
 } & Scoped;
 
@@ -275,6 +277,9 @@ export type PlaybookExecution = {
   completedAt?: string;
   steps: { id: string; title: string; order: number; status: PlaybookStepStatus; completedBy?: string; completedAt?: string; notes?: string }[];
 };
+
+/** گروه‌بندی پروژه‌ها (پورتفولیو) */
+export type ProjectGroup = { id: string; name: string; description: string; color: string };
 
 export type ProjectState = {
   meta: ProjectMeta;

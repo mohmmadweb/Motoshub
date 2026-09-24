@@ -47,7 +47,7 @@ function Kpi({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export default function ReportsTab() {
-  const { p, refDate } = useProjectPage();
+  const { p, refDate, hasPerm } = useProjectPage();
   const [rid, setRid] = useState<ReportId>("progress");
   const ts = activeTasks(p);
   const paid = paidTotal(p);
@@ -73,6 +73,8 @@ export default function ReportsTab() {
   const byStatus = p.columns.map((c) => ({ label: c.label, value: ts.filter((t) => t.status === c.id).length }));
   const byPriority = (["بحرانی", "زیاد", "متوسط", "کم"] as const).map((x) => ({ label: x, value: ts.filter((t) => t.priority === x).length }));
   const byCategory = [...new Set(p.expenses.map((e) => e.category))].map((c) => ({ label: c, value: p.expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0) })).sort((a, b) => b.value - a.value);
+
+  if (!hasPerm("projects.reports")) return <p className="text-sm text-ink-500 card p-6 text-center">دسترسی مشاهده‌ی گزارش‌ها این پروژه برای نقش شما فعال نیست.</p>;
 
   return (
     <div className="space-y-4 print:space-y-2">

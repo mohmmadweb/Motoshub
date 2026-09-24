@@ -10,6 +10,7 @@ import Tabs from "../components/ui/Tabs";
 import Avatar from "../components/Avatar";
 import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInbox } from "../context/InboxContext";
 
 // دوستان و دنبال‌کردن — معادل ماژول‌های friends و user-follow در motoshub-web
 type FriendState = "friend" | "incoming" | "outgoing" | "suggested";
@@ -36,6 +37,7 @@ export default function Friends() {
     setFollowing(personalFor(actingUser.id).following);
   }, [actingUser.id]);
   const { notify } = useToast();
+  const inbox = useInbox();
 
   const list = (s: FriendState) => users.filter((u) => u.id !== actingUser.id && states[u.id] === s);
   const set = (id: string, s: FriendState) => setStates((prev) => ({ ...prev, [id]: s }));
@@ -110,10 +112,10 @@ export default function Friends() {
                   id={u.id}
                   actions={
                     <>
-                      <Button variant="primary" size="sm" icon={<UserCheck size={13} />} onClick={() => { set(u.id, "friend"); notify(`درخواست دوستی «${u.name}» پذیرفته شد.`); }}>
+                      <Button variant="primary" size="sm" icon={<UserCheck size={13} />} onClick={() => { set(u.id, "friend"); inbox.send([u.name], "friend_accept", `«${actingUser.name}» درخواست دوستی شما را پذیرفت.`, "/dashboard/friends"); notify(`درخواست دوستی «${u.name}» پذیرفته شد و به او اطلاع داده شد.`); }}>
                         پذیرش
                       </Button>
-                      <Button variant="secondary" size="sm" icon={<UserX size={13} />} onClick={() => { set(u.id, "suggested"); notify("درخواست رد شد.", "info"); }}>
+                      <Button variant="secondary" size="sm" icon={<UserX size={13} />} onClick={() => { set(u.id, "suggested"); inbox.send([u.name], "friend_reject", `«${actingUser.name}» درخواست دوستی شما را نپذیرفت.`, "/dashboard/friends"); notify("درخواست رد شد و به فرستنده اطلاع داده شد.", "info"); }}>
                         رد
                       </Button>
                     </>
@@ -151,7 +153,7 @@ export default function Friends() {
               key={u.id}
               id={u.id}
               actions={
-                <Button variant="primary" size="sm" icon={<UserPlus size={13} />} onClick={() => { set(u.id, "outgoing"); notify(`درخواست دوستی برای «${u.name}» ارسال شد.`); }}>
+                <Button variant="primary" size="sm" icon={<UserPlus size={13} />} onClick={() => { set(u.id, "outgoing"); inbox.send([u.name], "friend_request", `«${actingUser.name}» برای شما درخواست دوستی فرستاد.`, "/dashboard/friends"); notify(`درخواست دوستی برای «${u.name}» ارسال شد.`); }}>
                   افزودن دوست
                 </Button>
               }

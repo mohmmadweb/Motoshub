@@ -17,7 +17,8 @@ type MeetDraft = Omit<PMMeeting, "id" | "status"> & { id?: string };
 type MinDraft = Omit<PMMinute, "id"> & { id?: string; publish: boolean };
 
 export default function MeetingsTab() {
-  const { p, pid, canEdit, refDate, openTask, focusId } = useProjectPage();
+  const { p, pid, can, refDate, openTask, focusId } = useProjectPage();
+  const canEdit = can("projects.meetings");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();

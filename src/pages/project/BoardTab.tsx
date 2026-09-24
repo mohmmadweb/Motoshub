@@ -17,7 +17,8 @@ type SortId = "manual" | "priority" | "due" | "title";
 const prRank = { بحرانی: 0, زیاد: 1, متوسط: 2, کم: 3 } as const;
 
 export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) => void }) {
-  const { p, pid, canEdit, refDate, openTask } = useProjectPage();
+  const { p, pid, canEdit, can, refDate, openTask } = useProjectPage();
+  const canDelete = can("projects.tasks.delete");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();
@@ -133,7 +134,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
         </button>
         <div className="flex items-center justify-between mt-2">
           <p className="text-[11px] text-ink-500 truncate">مسئول: {t.assignee}</p>
-          <RowActions onEdit={canEdit ? () => openTask(t.id) : undefined} onDelete={canEdit ? () => removeTask(t) : undefined} size={12} />
+          <RowActions onEdit={canEdit ? () => openTask(t.id) : undefined} onDelete={canDelete ? () => removeTask(t) : undefined} size={12} />
         </div>
       </div>
     );
@@ -280,7 +281,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                   </td>
                   <td className="p-3 text-ink-500">{fa(predecessorsOf(p, t.id).length)}</td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                    <RowActions onEdit={canEdit ? () => openTask(t.id) : undefined} onDelete={canEdit ? () => removeTask(t) : undefined} size={12} />
+                    <RowActions onEdit={canEdit ? () => openTask(t.id) : undefined} onDelete={canDelete ? () => removeTask(t) : undefined} size={12} />
                   </td>
                 </tr>
               ))}

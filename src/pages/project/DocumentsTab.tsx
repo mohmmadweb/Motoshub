@@ -16,7 +16,8 @@ const types: DocType[] = ["قرارداد", "پروپوزال", "گزارش", "�
 const sizeOf = (b: number) => (b > 1024 * 1024 ? `${fa(Math.round((b / 1024 / 1024) * 10) / 10)} مگابایت` : `${fa(Math.max(1, Math.round(b / 1024)))} کیلوبایت`);
 
 export default function DocumentsTab() {
-  const { p, pid, canEdit, openTask, goTab, focusId } = useProjectPage();
+  const { p, pid, can, openTask, goTab, focusId } = useProjectPage();
+  const canEdit = can("projects.documents");
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();

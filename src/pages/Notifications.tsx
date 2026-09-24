@@ -5,6 +5,8 @@ import { type Notification } from "../data/mock";
 import { personalFor } from "../data/personal";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
+import { useInbox, inboxKindLabel, type InboxItem, type InboxKind } from "../context/InboxContext";
+import { UserPlus, Megaphone, Mail as MailIcon, CalendarPlus, Reply, Hash, BookOpen, UserCheck, UserX } from "lucide-react";
 import { categoryLabel, channelLabel, eventByCode, type EventCategory } from "../pm/events";
 import type { NotifChannel, PMNotification } from "../pm/types";
 import PageHeader from "../components/ui/PageHeader";
@@ -28,6 +30,18 @@ const chIcon: Record<NotifChannel, typeof Mail> = { inapp: MonitorSmartphone, em
 const prTone = { کم: "neutral", عادی: "neutral", مهم: "warning", فوری: "danger" } as const;
 
 type FilterId = "all" | "unread" | "projects" | "outbox" | "prefs";
+const kindIcon: Record<InboxKind, typeof AtSign> = {
+  friend_request: UserPlus,
+  friend_accept: UserCheck,
+  friend_reject: UserX,
+  new_content: Megaphone,
+  direct_message: MailIcon,
+  mention: AtSign,
+  channel_message: Hash,
+  event_invite: CalendarPlus,
+  reply: Reply,
+  knowledge: BookOpen,
+};
 
 /** ترجیحات اعلانِ هر کاربر (فقط در مرورگر همین کاربر) */
 type Prefs = { channels: Record<string, NotifChannel[]>; quiet: boolean; quietFrom: string; quietTo: string; digest: boolean; mutedProjects: string[] };
@@ -54,6 +68,7 @@ export default function Notifications() {
   const [filter, setFilter] = useState<FilterId>("all");
   const { actingUser, canAccessAdmin } = useTenancy();
   const pm = useProjectsPM();
+  const inbox = useInbox();
   const navigate = useNavigate();
   const [items, setItems] = useState<Notification[]>(() => personalFor(actingUser.id).notifications);
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs(actingUser.id));
@@ -76,7 +91,8 @@ export default function Notifications() {
 
   const mine = useMemo(() => pm.store.notifications.filter((n) => n.recipient === actingUser.name && !prefs.mutedProjects.includes(n.projectId)), [pm.store.notifications, actingUser.name, prefs.mutedProjects]);
   const pmUnread = mine.filter((n) => !n.read).length;
-  const unreadCount = items.filter((n) => !n.read).length + pmUnread;
+  const inboxList = filter === "unread" ? inbox.mine.filter((i) => !inbox.isRead(i)) : inbox.mine;
+  const unreadCount = items.filter((n) => !n.read).length + pmUnread + inbox.unread;
   const personalList = filter === "unread" ? items.filter((n) => !n.read) : items;
   const pmList = (filter === "unread" ? mine.filter((n) => !n.read) : mine).filter((n) => !projectF || n.projectId === projectF);
   const outbox = pm.store.notifications.filter((n) => (!projectF || n.projectId === projectF) && (!recipientF || n.recipient === recipientF));
@@ -86,6 +102,7 @@ export default function Notifications() {
   const markAll = () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     pm.markAllRead(actingUser.name);
+    inbox.markAllRead();
     notify("همه‌ی اعلان‌ها خوانده‌شده علامت خوردند.", "info");
   };
 
@@ -102,10 +119,11 @@ export default function Notifications() {
   const clearAll = () =>
     confirm({
       title: "پاک‌کردن همه‌ی اعلان‌ها؟",
-      message: `${(items.length + mine.length).toLocaleString("fa-IR")} اعلان حذف می‌شود و قابل بازیابی نیست.`,
+      message: `${(items.length + mine.length + inbox.mine.length).toLocaleString("fa-IR")} اعلان حذف می‌شود و قابل بازیابی نیست.`,
       onConfirm: () => {
         setItems([]);
         mine.forEach((n) => pm.removeNotification(n.id));
+        inbox.hideAll();
         notify("همه‌ی اعلان‌ها پاک شدند.", "info");
       },
     });
@@ -153,6 +171,35 @@ export default function Notifications() {
     );
   };
 
+  const InboxRow = ({ n }: { n: InboxItem }) => {
+    const Icon = kindIcon[n.kind];
+    const read = inbox.isRead(n);
+    return (
+      <div className={`p-4 flex items-start gap-3 transition-colors ${!read ? "bg-brand-50/40" : ""}`}>
+        <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-600 flex items-center justify-center shrink-0">
+          <Icon size={15} />
+        </span>
+        <button
+          className="flex-1 min-w-0 text-right"
+          onClick={() => {
+            inbox.markRead(n.id);
+            navigate(n.link);
+          }}
+        >
+          <p className={`text-sm leading-6 ${read ? "text-ink-500" : "text-ink-800 font-medium"}`}>{n.text}</p>
+          <p className="text-xs text-ink-400 mt-1">
+            {inboxKindLabel[n.kind]} · {n.time}
+            {n.recipient === "*" && " · همگانی"}
+          </p>
+        </button>
+        <button onClick={() => inbox.markRead(n.id, !read)} title={read ? "علامت‌گذاری به‌عنوان خوانده‌نشده" : "علامت‌گذاری به‌عنوان خوانده‌شده"} aria-label={read ? "خوانده‌نشده کن" : "خوانده‌شده کن"} className="shrink-0 mt-1 text-ink-300 hover:text-brand-600 transition-colors">
+          {read ? <Circle size={16} /> : <CheckCircle2 size={16} className="text-brand-600" />}
+        </button>
+        <RowActions onDelete={() => inbox.hide(n.id)} size={15} />
+      </div>
+    );
+  };
+
   const projectOptions = pm.projects.map((p) => ({ id: p.meta.id, name: p.meta.name }));
 
   return (
@@ -168,7 +215,7 @@ export default function Notifications() {
                 خواندن همه ({unreadCount.toLocaleString("fa-IR")})
               </Button>
             )}
-            {items.length + mine.length > 0 && (
+            {items.length + mine.length + inbox.mine.length > 0 && (
               <Button variant="secondary" size="sm" icon={<Trash2 size={14} />} onClick={clearAll}>
                 پاک‌کردن همه
               </Button>
@@ -179,7 +226,7 @@ export default function Notifications() {
 
       <Tabs<FilterId>
         tabs={[
-          { id: "all", label: "همه", count: items.length + mine.length },
+          { id: "all", label: "همه", count: items.length + mine.length + inbox.mine.length },
           { id: "unread", label: "خوانده‌نشده", count: unreadCount },
           { id: "projects", label: "پروژه‌ها", count: mine.length },
           ...(canAccessAdmin ? [{ id: "outbox" as FilterId, label: "مرکز ارسال (همه‌ی گیرندگان)", count: pm.store.notifications.length }] : []),
@@ -213,6 +260,9 @@ export default function Notifications() {
 
       {(filter === "all" || filter === "unread") && (
         <div className="card divide-y divide-ink-100">
+          {inboxList.map((n) => (
+            <InboxRow key={n.id} n={n} />
+          ))}
           {pmList.map((n) => (
             <PmRow key={n.id} n={n} />
           ))}
@@ -239,7 +289,7 @@ export default function Notifications() {
               </div>
             );
           })}
-          {personalList.length + pmList.length === 0 && <EmptyState icon={<Bell size={18} />} title={filter === "unread" ? "اعلان خوانده‌نشده‌ای ندارید" : "اعلانی وجود ندارد"} />}
+          {personalList.length + pmList.length + inboxList.length === 0 && <EmptyState icon={<Bell size={18} />} title={filter === "unread" ? "اعلان خوانده‌نشده‌ای ندارید" : "اعلانی وجود ندارد"} />}
         </div>
       )}
 

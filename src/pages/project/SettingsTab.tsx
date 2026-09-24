@@ -13,7 +13,7 @@ import { phases } from "./OverviewTab";
 import { ProjectIcon, projectColors, projectIconNames } from "./projectIcons";
 
 export default function SettingsTab() {
-  const { p, pid, canEdit, canManage, refDate, goTab } = useProjectPage();
+  const { p, pid, canEdit, canManage, hasPerm, refDate, goTab } = useProjectPage();
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();
@@ -102,6 +102,16 @@ export default function SettingsTab() {
           <Field label="دسته‌بندی">
             <input className="input-field" value={d.category} onChange={(e) => setD({ ...d, category: e.target.value })} />
           </Field>
+          <Field label="گروه پروژه">
+            <select className="input-field" value={d.groupId ?? ""} onChange={(e) => setD({ ...d, groupId: e.target.value || undefined })}>
+              <option value="">بدون گروه</option>
+              {pm.store.groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="برچسب‌ها (با ، جدا کنید)">
             <input className="input-field" value={tags} onChange={(e) => setTags(e.target.value)} />
           </Field>
@@ -150,16 +160,16 @@ export default function SettingsTab() {
 
       <div className="card p-4 space-y-4">
         <SectionTitle title="قالب، بایگانی و حذف" />
-        <div className="flex items-end gap-2 flex-wrap">
+        {hasPerm("projects.templates") && <div className="flex items-end gap-2 flex-wrap">
           <Field label="ذخیره به‌عنوان قالب پروژه (بورد، تسک‌ها، وابستگی‌ها، برچسب‌ها، مایل‌ستون‌ها، نقش‌ها)">
             <input className="input-field w-72" value={tplName} onChange={(e) => setTplName(e.target.value)} />
           </Field>
           <Button variant="secondary" icon={<Copy size={14} />} onClick={() => { pm.saveAsTemplate(pid, tplName.trim() || p.meta.name); notify("قالب ذخیره شد؛ هنگام ایجاد پروژه‌ی جدید قابل انتخاب است."); }}>
             ذخیره‌ی قالب
           </Button>
-        </div>
+        </div>}
         <div className="flex gap-2 flex-wrap border-t border-ink-100 pt-4">
-          {p.meta.archived ? (
+          {!hasPerm("projects.archive") ? null : p.meta.archived ? (
             <Button variant="secondary" icon={<ArchiveRestore size={14} />} onClick={() => pm.updateMeta(pid, { archived: false })}>
               بازیابی از بایگانی
             </Button>
@@ -168,7 +178,7 @@ export default function SettingsTab() {
               بایگانی پروژه
             </Button>
           )}
-          <Button
+          {hasPerm("projects.delete") && <Button
             variant="danger"
             icon={<Trash2 size={14} />}
             onClick={() =>
@@ -183,7 +193,7 @@ export default function SettingsTab() {
             }
           >
             حذف پروژه
-          </Button>
+          </Button>}
         </div>
       </div>
 

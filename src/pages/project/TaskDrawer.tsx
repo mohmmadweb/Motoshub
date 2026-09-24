@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip } from "lucide-react";
 import Modal from "../../components/ui/Modal";
+import TaskCostItems from "./TaskCostItems";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -16,7 +17,7 @@ import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindColor, kindTo
 type Section = "details" | "checklist" | "deps" | "cost" | "comments" | "history";
 
 export default function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
-  const { p, pid, canEdit, refDate, openTask, goTab } = useProjectPage();
+  const { p, pid, canEdit, can, refDate, openTask, goTab } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -220,7 +221,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                     بازگردانی
                   </Button>
                 )}
-                <Button
+                {can("projects.tasks.delete") && <Button
                   variant="ghost"
                   size="sm"
                   className="mr-auto text-rose-600"
@@ -238,7 +239,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   }
                 >
                   حذف تسک
-                </Button>
+                </Button>}
               </div>
             )}
           </div>
@@ -380,17 +381,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold text-ink-700 mb-2">هزینه‌های متصل</p>
-              {p.expenses.filter((e) => e.taskId === t.id).map((e) => (
-                <div key={e.id} className="flex items-center justify-between text-xs py-1.5 border-b border-ink-100">
-                  <span className="text-ink-800">{e.title}</span>
-                  <span className="flex items-center gap-2">
-                    <Badge tone={e.status === "پرداخت‌شده" ? "success" : e.status === "تأییدشده" ? "brand" : "warning"}>{e.status}</Badge>
-                    <span className="text-ink-600">{fmtRial(e.amount)}</span>
-                  </span>
-                </div>
-              ))}
-              {!p.expenses.some((e) => e.taskId === t.id) && <p className="text-[11px] text-ink-400">هزینه‌ای به این تسک متصل نیست (از تب مالی می‌توانید متصل کنید).</p>}
+              <TaskCostItems t={t} />
             </div>
             <div>
               <div className="flex items-center justify-between text-xs mb-2">
