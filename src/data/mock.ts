@@ -1647,7 +1647,7 @@ export const roles: RoleDef[] = [
     description: "مشاهده و مشارکت: ارتباط با همکاران، گفتگو، عضویت در گروه و کانال، پرسش و پاسخ، رسانه، شرکت در رویداد و کار روی تسک‌های خود",
     permissions: [
       "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
-      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
     ],
     system: true,
   },

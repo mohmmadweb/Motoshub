@@ -130,7 +130,7 @@ export default function EventsCalendar() {
   return (
     <div>
       <PageHeader
-        title="تقویم رویدادها"
+        title="تقویم"
         description="رویدادها و جلسات در نمای ماه، هفته یا فهرست — دعوت‌ها را از همین‌جا پاسخ دهید"
         icon={<CalendarDays size={18} />}
         breadcrumb={[{ label: "رویدادها و جلسات" }, { label: "تقویم" }]}

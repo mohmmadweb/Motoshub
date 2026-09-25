@@ -150,7 +150,7 @@ export default function ProjectBoard() {
               <ProjectIcon name={p.meta.icon} size={18} />
             </span>
           }
-          breadcrumb={[{ label: "مدیریت پروژه", to: "/dashboard/projects" }, { label: p.meta.name }]}
+          breadcrumb={[{ label: "پروژه‌های من", to: "/dashboard/projects" }, { label: p.meta.name }]}
           actions={
             <div className="flex items-center gap-2">
               {iconAction("history", "تاریخچه رویدادها", History)}

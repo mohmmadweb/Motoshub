@@ -40,7 +40,7 @@ export default function EventDetail() {
   if (!ev || !visible(ev))
     return (
       <div>
-        <PageHeader title="رویداد" breadcrumb={[{ label: "رویدادها و جلسات", to: "/dashboard/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
+        <PageHeader title="رویداد" breadcrumb={[{ label: "تقویم", to: "/dashboard/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
         <EmptyState icon={<CalendarDays size={22} />} title="رویداد پیدا نشد" description="این رویداد حذف شده یا اجازه‌ی دیدن آن را ندارید (privacy)." />
       </div>
     );
@@ -80,7 +80,7 @@ export default function EventDetail() {
       <PageHeader
         title={ev.title}
         icon={<CalendarDays size={18} />}
-        breadcrumb={[{ label: "رویدادها و جلسات", to: "/dashboard/events" }, { label: ev.title }]}
+        breadcrumb={[{ label: "تقویم", to: "/dashboard/events" }, { label: ev.title }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <ApiChip

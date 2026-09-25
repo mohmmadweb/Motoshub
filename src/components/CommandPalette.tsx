@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Hash, User, Compass } from "lucide-react";
 import { channels, users } from "../data/mock";
-import { navSections } from "./Sidebar";
+import { navSections, navClusters } from "./Sidebar";
 
 type Item = { id: string; label: string; hint: string; icon: typeof Hash; to: string };
 
 // همه‌ی صفحات سایدبار به‌صورت خودکار در پالت هستند — صفحه‌ی جدید = خودکار قابل جستجو
 const pages: Item[] = navSections.flatMap((s) =>
-  s.items.map((i) => ({ id: i.to, label: i.label, hint: "صفحه", icon: Compass, to: i.to }))
+  s.items.map((i) => ({ id: i.to, label: i.label, hint: [navClusters[s.cluster].title, s.title].filter(Boolean).join(" · "), icon: Compass, to: i.to }))
 );
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -20,7 +20,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   }, [open]);
 
   const items: Item[] = useMemo(() => {
-    const channelItems: Item[] = channels.map((c) => ({ id: c.id, label: `${c.name}`, hint: "کانال", icon: Hash, to: "/dashboard/chat" }));
+    const channelItems: Item[] = channels.map((c) => ({ id: c.id, label: `${c.name}`, hint: "کانال", icon: Hash, to: `/dashboard/channels/${c.id}` }));
     const userItems: Item[] = users.map((u) => ({ id: u.id, label: u.name, hint: "کاربر", icon: User, to: `/dashboard/profile/${u.id}` }));
     const all = [...pages, ...channelItems, ...userItems];
     if (!q) return all.slice(0, 8);

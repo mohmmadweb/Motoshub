@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import Avatar from "./Avatar";
 import { userPresence, type PresenceStatus } from "../data/mock";
 import { personalFor } from "../data/personal";
-import { filterNavSections } from "./Sidebar";
+import { NavTree } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
 import { useTenancy } from "../context/TenancyContext";
@@ -23,7 +23,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   const [navOpen, setNavOpen] = useState(false);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
-  const { actingUser, session, identity, canAccessAdmin, hasPermission, role } = useTenancy();
+  const { actingUser, session, identity, canAccessAdmin, role } = useTenancy();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
   const inbox = useInbox();
@@ -54,32 +54,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                 <X size={18} />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-              {filterNavSections({ canAccessAdmin, hasPermission })
-                .map((section) => (
-                <div key={section.title || "home"}>
-                  {section.title && !(section.items.length === 1 && section.items[0].label === section.title) && <p className="text-[10.5px] font-semibold text-navy-300 uppercase tracking-wide px-2.5 mb-1.5">{section.title}</p>}
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end={item.end}
-                        onClick={() => setNavOpen(false)}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2.5 px-2.5 py-2.5 rounded-md text-[13.5px] font-medium transition-colors ${
-                            isActive ? "bg-brand-600 text-white" : "text-navy-200 hover:bg-white/5 hover:text-white"
-                          }`
-                        }
-                      >
-                        <item.icon size={17} className="shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </nav>
+            <NavTree mobile onNavigate={() => setNavOpen(false)} />
           </div>
         </div>
       )}

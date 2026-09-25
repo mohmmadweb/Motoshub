@@ -85,7 +85,7 @@ export default function MyWork() {
 
   return (
     <div>
-      <PageHeader title="کارهای من" description={`همه‌ی تسک‌های «${me}» در همه‌ی پروژه‌ها — بر اساس سررسید مرتب شده‌اند`} icon={<ListTodo size={18} />} />
+      <PageHeader title="فعالیت‌ها و وظایف" description={`همه‌ی تسک‌های «${me}» در همه‌ی پروژه‌ها — بر اساس سررسید مرتب شده‌اند`} icon={<ListTodo size={18} />} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="تسک‌های باز من" value={fa(w.open.length)} tone="brand" icon={<ListTodo size={16} />} />
         <StatCard label="عقب‌افتاده" value={fa(overdue)} tone={overdue ? "danger" : "success"} icon={<AlertTriangle size={16} />} />

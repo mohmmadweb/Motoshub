@@ -31,7 +31,7 @@ const healthTone: Record<string, BadgeTone> = {
 const healthDot: Record<string, string> = { سبز: "bg-emerald-500", زرد: "bg-amber-500", قرمز: "bg-rose-500" };
 
 const healthFilters = ["همه", "سبز", "زرد", "قرمز"] as const;
-const listFilters = ["فعال", "ستاره‌دار", "تکمیل‌شده", "بایگانی‌شده", "همه"] as const;
+const listFilters = ["پروژه‌های من", "فعال", "ستاره‌دار", "تکمیل‌شده", "بایگانی‌شده", "همه"] as const;
 type SortId = "recent" | "deadline" | "progress" | "name";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -46,7 +46,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export default function Projects() {
   const pm = useProjectsPM();
   const [healthFilter, setHealthFilter] = useState<(typeof healthFilters)[number]>("همه");
-  const [listFilter, setListFilter] = useState<(typeof listFilters)[number]>("فعال");
+  const [listFilter, setListFilter] = useState<(typeof listFilters)[number]>("پروژه‌های من");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortId>("recent");
   const [projectOpen, setProjectOpen] = useState(false);
@@ -236,6 +236,7 @@ export default function Projects() {
   const scopedProjects = filterScoped(projects.map((p) => ({ ...p.meta, _p: p }))).map((x) => x._p);
   const filteredProjects = useMemo(() => {
     let ps = scopedProjects;
+    if (listFilter === "پروژه‌های من") ps = ps.filter((p) => !p.meta.archived && (p.meta.manager === actingUser.name || p.members.some((m) => m.name === actingUser.name || m.userId === actingUser.id)));
     if (listFilter === "فعال") ps = ps.filter((p) => !p.meta.archived && !["تکمیل", "اختتام"].includes(p.meta.phase));
     if (listFilter === "ستاره‌دار") ps = ps.filter((p) => p.meta.starred);
     if (listFilter === "تکمیل‌شده") ps = ps.filter((p) => !p.meta.archived && ["تکمیل", "اختتام"].includes(p.meta.phase));
@@ -249,7 +250,7 @@ export default function Projects() {
     if (sort === "name") sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name, "fa"));
     if (sort === "recent") sorted.sort((a, b) => (lastActivity(b)?.seq ?? 0) - (lastActivity(a)?.seq ?? 0));
     return sorted.sort((a, b) => Number(b.meta.starred) - Number(a.meta.starred));
-  }, [scopedProjects, listFilter, healthFilter, groupFilter, q, sort]);
+  }, [scopedProjects, listFilter, healthFilter, groupFilter, q, sort, actingUser]);
 
   const live = projects.filter((p) => !p.meta.archived);
   const atRisk = live.filter((p) => p.meta.health !== "سبز").length;
@@ -260,7 +261,7 @@ export default function Projects() {
   return (
     <div>
       <PageHeader
-        title="مدیریت پروژه"
+        title="پروژه‌های من"
         description="پروژه‌های پژوهشی، فناورانه و آموزشی با بودجه، تسک، گانت چارت و گراف وابستگی"
         icon={<KanbanSquare size={18} />}
         actions={

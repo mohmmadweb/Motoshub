@@ -153,7 +153,7 @@ export default function App() {
           <Route path="award" element={<Award />} />
           <Route path="training" element={<RequirePerm perm="training.list" module="آموزش و توانمندسازی"><Training /></RequirePerm>} />
           <Route path="assistant" element={<RequirePerm perm="assistant.chat" module="دستیار هوشمند"><Assistant /></RequirePerm>} />
-          <Route path="reports" element={<RequirePerm perm="reports.export" module="گزارش‌گیری پیشرفته"><Reports /></RequirePerm>} />
+          <Route path="reports" element={<RequirePerm perm="reports.view" module="گزارش‌گیری پیشرفته"><Reports /></RequirePerm>} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="appearance" element={<Appearance />} />
           <Route path="admin" element={<Admin />} />
