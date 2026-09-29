@@ -1,10 +1,39 @@
 @import "tailwindcss";
-/* فونت به‌صورت محلی بسته‌بندی می‌شود — بدون وابستگی به Google Fonts که در ایران
-   قابل اتکا نیست و باعث می‌شود متن با فونت جایگزین رندر شود. */
-@import "@fontsource-variable/vazirmatn";
+/* فونت برند: «ساحل» (Sahel FD نسخه‌ی ۳٫۴، ارقام فارسی) — همان فونت motonext.shub.ir.
+   به‌صورت محلی بسته‌بندی می‌شود؛ بدون وابستگی به CDN خارجی. */
+@font-face {
+  font-family: "Sahel FD";
+  src: url("./assets/fonts/Sahel-Light-FD.woff2") format("woff2");
+  font-weight: 100 399;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sahel FD";
+  src: url("./assets/fonts/Sahel-FD.woff2") format("woff2");
+  font-weight: 400 499;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sahel FD";
+  src: url("./assets/fonts/Sahel-SemiBold-FD.woff2") format("woff2");
+  font-weight: 500 650;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sahel FD";
+  src: url("./assets/fonts/Sahel-Bold-FD.woff2") format("woff2");
+  font-weight: 651 799;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sahel FD";
+  src: url("./assets/fonts/Sahel-Black-FD.woff2") format("woff2");
+  font-weight: 800 950;
+  font-display: swap;
+}
 
 @theme {
-  --font-sans: "Vazirmatn Variable", "Vazirmatn", system-ui, sans-serif;
+  --font-sans: "Sahel FD", system-ui, sans-serif;
 
   /* Primary — corporate blue, used for actions/links/active states */
   --color-brand-50: #eef4fc;
