@@ -24,6 +24,10 @@ import {
   Megaphone,
   LogIn,
   MessageSquare,
+  MessagesSquare,
+  Pin,
+  PinOff,
+  Search,
 } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 import Button from "../../../components/ui/Button";
@@ -36,6 +40,7 @@ import { useConfirm } from "../../../components/ui/ConfirmProvider";
 import { AttachmentList, Field, TagList, fa, toAttachments } from "../kit";
 import type { Attachment, Chat, Message } from "../../../social/types";
 import { ChatAvatar, RichText, chatTitle, modeConf, otherUserId, stickers, tagsIn, timeOf, type MessengerMode } from "./shared";
+import { ChatSearchBar, PinnedBar, ReactionChips, ReactionPicker, ThreadDrawer } from "./extras";
 
 export default function Conversation({ mode, root, initialSub, onBack, onInfo }: { mode: MessengerMode; root: Chat; initialSub: string | null; onBack: () => void; onInfo: () => void }) {
   const s = useSocial();
@@ -58,6 +63,12 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<number | null>(null);
+  const [threadRoot, setThreadRoot] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [searchIdx, setSearchIdx] = useState(0);
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
 
   const isRoom = root.chat_type === "group" || root.chat_type === "channel";
   const children = isRoom ? s.chats.filter((c) => c.parent === root.id && !c.deleted_at) : [];
@@ -69,7 +80,43 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
   const canRead = rootMember || !root.is_private || manage;
   const canPost = member && (active.chat_type !== "channel" || s.chatRole(active) === "admin");
   const muted = active.muted_by.includes(me);
-  const msgs = canRead ? s.chatMessages(active.id) : [];
+  const allMsgs = canRead ? s.chatMessages(active.id) : [];
+  // پاسخ‌های رشته در جریان اصلی نمی‌آیند؛ زیر پیام ریشه شمارنده‌ی «n پاسخ» نشان داده می‌شود
+  const msgs = allMsgs.filter((m) => !m.in_thread);
+  const threadCount: Record<string, number> = {};
+  allMsgs.forEach((m) => {
+    if (m.in_thread && m.parent_message_id) threadCount[m.parent_message_id] = (threadCount[m.parent_message_id] ?? 0) + 1;
+  });
+  const canPin = member && (!isRoom || isAdmin);
+  const pins = active.pinned_message_ids ?? [];
+
+  // ------------------------------------------------------------ پرش به پیام + هایلایت
+  const jump = (mid: string) => {
+    document.getElementById(`m-${mid}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    setFlash(mid);
+    if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 1800);
+  };
+  // جستجو داخل گفتگو — تازه‌ترین نتیجه اول
+  const term = searchOpen ? searchQ.trim().toLowerCase() : "";
+  const matches = term ? msgs.filter((m) => m.type === "text" && m.content.toLowerCase().includes(term)).reverse() : [];
+  const current = matches[Math.min(searchIdx, Math.max(0, matches.length - 1))];
+  useEffect(() => {
+    setSearchIdx(0);
+    if (matches[0]) jump(matches[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term]);
+  const step = (d: number) => {
+    if (!matches.length) return;
+    const i = (searchIdx + d + matches.length) % matches.length;
+    setSearchIdx(i);
+    jump(matches[i].id);
+  };
+  const togglePin = (m: Message) => {
+    const r = s.togglePinMessage(active.id, m.id);
+    if (!r.ok) return notify(r.error, "warning");
+    notify(pins.includes(m.id) ? "سنجاق پیام برداشته شد." : "پیام سنجاق شد.", "success");
+  };
 
   // POST …/mark-read/ هنگام باز کردن گفتگو و رسیدن پیام تازه
   useEffect(() => {
@@ -83,6 +130,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
     setEditing(null);
     setText("");
     setFiles([]);
+    setThreadRoot(null);
+    setSearchOpen(false);
+    setSearchQ("");
   }, [active.id]);
 
   const resetComposer = () => {
@@ -188,6 +238,11 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
             عضویت
           </Button>
         )}
+        {canRead && (
+          <button onClick={() => setSearchOpen((v) => !v)} className={`p-2 rounded-lg hover:bg-ink-100 ${searchOpen ? "text-brand-600" : "text-ink-500"}`} title="جستجو در گفتگو" aria-label="جستجو در گفتگو" aria-pressed={searchOpen}>
+            <Search size={17} />
+          </button>
+        )}
         {member && root.chat_type !== "saved_messages" && (
           <button
             onClick={() => {
@@ -236,6 +291,22 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
         </div>
       )}
 
+      {searchOpen && canRead && (
+        <ChatSearchBar
+          q={searchQ}
+          onQ={setSearchQ}
+          count={matches.length}
+          index={Math.min(searchIdx, Math.max(0, matches.length - 1))}
+          onPrev={() => step(1)}
+          onNext={() => step(-1)}
+          onClose={() => {
+            setSearchOpen(false);
+            setSearchQ("");
+          }}
+        />
+      )}
+      {canRead && <PinnedBar key={active.id} chat={active} onJump={jump} canUnpin={canPin} />}
+
       {/* ---------------- messages */}
       <div className="flex-1 min-h-0 overflow-y-auto bg-ink-50 px-3 py-3">
         {!canRead ? (
@@ -265,6 +336,8 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
               const extraTags = m.tags.filter((t) => !m.content.includes(`#${t}`));
               const actions = [
                 canPost && { k: "reply", label: "پاسخ", icon: CornerUpLeft, run: () => (setEditing(null), setReply(m)) },
+                root.chat_type !== "saved_messages" && { k: "thread", label: "پاسخ در رشته", icon: MessagesSquare, run: () => setThreadRoot(m.id) },
+                canPin && { k: "pin", label: pins.includes(m.id) ? "برداشتن سنجاق" : "سنجاق پیام", icon: pins.includes(m.id) ? PinOff : Pin, run: () => togglePin(m) },
                 canEdit && { k: "edit", label: "ویرایش", icon: Pencil, run: () => (setReply(null), setEditing(m), setText(m.content)) },
                 { k: "fwd", label: "فوروارد", icon: Forward, run: () => setForwarding(m) },
                 root.chat_type !== "saved_messages" && {
@@ -299,7 +372,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                       onTouchEnd={() => pressTimer.current && window.clearTimeout(pressTimer.current)}
                       onTouchMove={() => pressTimer.current && window.clearTimeout(pressTimer.current)}
                     >
-                      <div className={m.type === "sticker" && !parent && !m.forwarded_from ? "" : `rounded-2xl px-3 py-2 border ${own ? "bg-brand-50 border-brand-100 rounded-br-md" : "bg-white border-ink-100 rounded-bl-md"}`}>
+                      <div
+                        className={`${m.type === "sticker" && !parent && !m.forwarded_from ? "rounded-2xl" : `rounded-2xl px-3 py-2 border ${own ? "bg-brand-50 border-brand-100 rounded-br-md" : "bg-white border-ink-100 rounded-bl-md"}`} transition-shadow ${flash === m.id || current?.id === m.id ? "ring-2 ring-amber-400" : ""}`}
+                      >
                         {showAuthor && (
                           <Link to={`/dashboard/profile/${m.user_id}`} className="block text-[11.5px] font-bold mb-0.5 hover:underline" style={{ color: author?.avatarColor }}>
                             {author?.name ?? "کاربر"}
@@ -328,7 +403,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                         ) : (
                           m.content && (
                             <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
-                              <RichText text={m.content} />
+                              <RichText text={m.content} highlight={term && current?.id === m.id ? searchQ.trim() : undefined} />
                             </p>
                           )
                         )}
@@ -343,10 +418,17 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                           </div>
                         )}
                         <p className="text-[10px] text-ink-400 mt-0.5 flex items-center gap-1 justify-end">
+                          {pins.includes(m.id) && <Pin size={10} className="rotate-45 text-brand-600" aria-label="سنجاق‌شده" />}
                           {m.edited && <span>ویرایش‌شده ·</span>}
                           {timeOf(m.created_at)}
                         </p>
                       </div>
+                      <ReactionChips m={m} align={own ? "start" : "end"} />
+                      {threadCount[m.id] > 0 && (
+                        <button onClick={() => setThreadRoot(m.id)} className={`mt-1 text-[11px] text-brand-700 hover:underline flex items-center gap-1 ${own ? "" : "mr-auto"}`}>
+                          <MessagesSquare size={12} /> {fa(threadCount[m.id])} پاسخ
+                        </button>
+                      )}
                       {/* منوی اقدام‌ها (هاور یا نگه‌داشتن لمسی) */}
                       <button
                         onClick={() => setMenu(menu === m.id ? null : m.id)}
@@ -358,7 +440,8 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                       {menu === m.id && (
                         <>
                           <span className="fixed inset-0 z-30" onClick={() => setMenu(null)} />
-                          <div className={`absolute z-40 top-7 ${own ? "right-0" : "left-0"} w-40 bg-white border border-ink-200 rounded-xl shadow-lg py-1`}>
+                          <div className={`absolute z-40 top-7 ${own ? "right-0" : "left-0"} w-48 bg-white border border-ink-200 rounded-xl shadow-lg py-1`}>
+                            {member && <ReactionPicker m={m} onDone={() => setMenu(null)} />}
                             {actions.map((a) => (
                               <button
                                 key={a.k}
@@ -489,6 +572,8 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
           )}
         </div>
       )}
+
+      <ThreadDrawer chat={active} rootId={threadRoot} canPost={canPost} onClose={() => setThreadRoot(null)} />
 
       {/* ---------------- forward */}
       <Modal open={!!forwarding} onClose={() => setForwarding(null)} title="فوروارد پیام" description="گفتگوی مقصد را انتخاب کنید (POST messages/{id}/forward/)">

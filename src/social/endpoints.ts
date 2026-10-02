@@ -7,8 +7,12 @@ import type { ContentKind, EntityName, OwnerType } from "./types";
 
 export const API_BASE = "https://social.shub.ir/api/v1";
 
-export type Ep = { method: "GET" | "POST" | "PATCH" | "DELETE"; path: string };
+/** proposed = در API فعلی نیست؛ «پیشنهادی» برای تیم بک‌اند */
+export type Ep = { method: "GET" | "POST" | "PATCH" | "DELETE"; path: string; proposed?: boolean };
 const e = (method: Ep["method"], path: string): Ep => ({ method, path });
+/** endpoint «پیشنهادی» — رابط کاربری آن را شبیه‌سازی می‌کند ولی هنوز در Motoshub Social API وجود ندارد */
+const p = (method: Ep["method"], path: string): Ep => ({ method, path, proposed: true });
+const fm = (o: OwnerType, id: string) => (o === "user" ? "/core/file-manager/user" : `/core/file-manager/${o}/${id}`);
 
 export const endpoints = {
   // ---------------- core
@@ -36,6 +40,20 @@ export const endpoints = {
   fileUpload: (o: OwnerType, id: string) => e("POST", o === "user" ? "/core/file-manager/user/files/" : `/core/file-manager/${o}/${id}/files/`),
   fileDelete: (o: OwnerType, id: string, f: string) => e("DELETE", o === "user" ? `/core/file-manager/user/files/${f}/` : `/core/file-manager/${o}/${id}/files/${f}/`),
   fileDownload: (o: OwnerType, id: string, f: string) => e("GET", o === "user" ? `/core/file-manager/user/files/${f}/download/` : `/core/file-manager/${o}/${id}/files/${f}/download/`),
+  // «پیشنهادی» — پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه
+  filePreview: (o: OwnerType, id: string, f: string) => p("GET", `${fm(o, id)}/files/${f}/preview/`),
+  fileVersions: (o: OwnerType, id: string, f: string) => p("GET", `${fm(o, id)}/files/${f}/versions/`),
+  fileVersionUpload: (o: OwnerType, id: string, f: string) => p("POST", `${fm(o, id)}/files/${f}/versions/`),
+  fileVersionRestore: (o: OwnerType, id: string, f: string, v: string) => p("POST", `${fm(o, id)}/files/${f}/versions/${v}/restore/`),
+  fileTrash: () => p("GET", "/core/file-manager/trash/"),
+  fileRestore: (f: string) => p("POST", `/core/file-manager/trash/${f}/restore/`),
+  filePurge: (f: string) => p("DELETE", `/core/file-manager/trash/${f}/`),
+  fileStar: (f: string) => p("POST", `/core/file-manager/files/${f}/star/`),
+  fileStarred: () => p("GET", "/core/file-manager/starred/"),
+  fileRecent: () => p("GET", "/core/file-manager/recent/"),
+  fileShare: (o: OwnerType, id: string, f: string) => p("POST", `${fm(o, id)}/files/${f}/share-link/`),
+  fileShareRevoke: (o: OwnerType, id: string, f: string) => p("DELETE", `${fm(o, id)}/files/${f}/share-link/`),
+  fileQuota: (o: OwnerType, id: string) => p("GET", `${fm(o, id)}/quota/`),
 
   // ---------------- content (blogs / news / magazines)
   contentList: (k: ContentKind) => e("GET", `/content/${k}/published/`),
@@ -47,6 +65,11 @@ export const endpoints = {
   contentUnpublish: (k: ContentKind, id: string) => e("POST", `/content/${k}/${id}/unpublish/`),
   contentAttach: (k: ContentKind, id: string) => e("POST", `/content/${k}/${id}/attachments/`),
   contentSetting: (k: ContentKind, key: string) => e("PATCH", `/content/${k}/setting/${key}/`),
+  // «پیشنهادی» — اطلاعیه‌ی رسمی و تأیید خواندن
+  newsAcknowledge: (id: string) => p("POST", `/content/news/${id}/acknowledge/`),
+  newsReadStatus: (id: string) => p("GET", `/content/news/${id}/read-status/`),
+  newsRemind: (id: string) => p("POST", `/content/news/${id}/remind-unread/`),
+  newsPinned: () => p("GET", "/content/news/pinned/"),
 
   // ---------------- media
   mediaList: () => e("GET", "/media/media/posts/published/"),
@@ -87,6 +110,12 @@ export const endpoints = {
   postCreate: () => e("POST", "/forums/forums/posts/"),
   postUpdate: (id: string) => e("PATCH", `/forums/forums/posts/${id}/`),
   postDelete: (id: string) => e("DELETE", `/forums/forums/posts/${id}/`),
+  // «پیشنهادی» — رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه
+  topicVote: (id: string) => p("POST", `/forums/forums/topics/${id}/vote/`),
+  postVote: (id: string) => p("POST", `/forums/forums/posts/${id}/vote/`),
+  topicAccept: (id: string) => p("POST", `/forums/forums/topics/${id}/accept-answer/`),
+  topicDuplicate: (id: string) => p("POST", `/forums/forums/topics/${id}/mark-duplicate/`),
+  topicSimilar: () => p("GET", "/forums/forums/topics/similar/?q="),
 
   // ---------------- messaging
   chatsMy: () => e("GET", "/messaging/messaging/my/"),
@@ -115,6 +144,12 @@ export const endpoints = {
   messageDelete: (id: string) => e("DELETE", `/messaging/messaging/messages/${id}/`),
   messageForward: (id: string) => e("POST", `/messaging/messaging/messages/${id}/forward/`),
   messageSave: (id: string) => e("POST", `/messaging/messaging/messages/${id}/save/`),
+  // «پیشنهادی» — واکنش، رشته، سنجاق و جستجو داخل گفتگو
+  messageReact: (id: string) => p("POST", `/messaging/messaging/messages/${id}/reactions/`),
+  messageThread: (id: string) => p("GET", `/messaging/messaging/messages/${id}/thread/`),
+  messagePin: (id: string) => p("POST", `/messaging/messaging/messages/${id}/pin/`),
+  chatPinned: (t: string, id: string) => p("GET", `/messaging/messaging/${t}/${id}/pinned/`),
+  chatSearch: (t: string, id: string) => p("GET", `/messaging/messaging/${t}/${id}/messages/?q=`),
   realtime: () => e("GET", "/messaging/chats/realtime/"),
 
   // ---------------- relations

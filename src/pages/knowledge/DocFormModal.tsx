@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Send, Save, X } from "lucide-react";
+import { Send, Save, X, FileUp, PenSquare, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -9,8 +9,10 @@ import { useKnowledge } from "../../context/KnowledgeContext";
 import { users } from "../../data/mock";
 import type { Scoped } from "../../data/tenancy";
 import { addDays } from "../../pm/jalali";
-import { accessLevels, type AccessLevel, type KDoc, type KFile } from "../../km/types";
+import { accessLevels, type AccessLevel, type KAcl, type KDoc, type KFile } from "../../km/types";
 import { Field, FilePicker } from "./shared";
+import { MarkdownEditor } from "./Markdown";
+import { AclEditor, AccessSummary } from "./AccessEditor";
 
 type Draft = {
   title: string;
@@ -25,6 +27,9 @@ type Draft = {
   approvers: string[];
   reviewDate: string;
   files: KFile[];
+  format: "file" | "article";
+  body: string;
+  acl?: KAcl;
 };
 
 /** ثبت سند جدید (چند فایل) یا ویرایش اطلاعات سند موجود */
@@ -35,11 +40,13 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
   const [d, setD] = useState<Draft | null>(null);
   const [scope, setScope] = useState<Scoped>({ scope: "سراسری" });
   const [tagInput, setTagInput] = useState("");
+  const [aclOpen, setAclOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (doc) {
-      setD({ title: doc.title, description: doc.description, type: doc.type, categoryId: doc.categoryId, tags: doc.tags, unit: doc.unit, owner: doc.owner, access: doc.access, importance: doc.importance, approvers: doc.approvers, reviewDate: doc.reviewDate, files: doc.files });
+      setD({ title: doc.title, description: doc.description, type: doc.type, categoryId: doc.categoryId, tags: doc.tags, unit: doc.unit, owner: doc.owner, access: doc.access, importance: doc.importance, approvers: doc.approvers, reviewDate: doc.reviewDate, files: doc.files, format: doc.format ?? "file", body: doc.body ?? "", acl: doc.acl });
+      setAclOpen(!!doc.acl);
       setScope({ scope: doc.scope, holdingId: doc.holdingId, companyId: doc.companyId });
     } else {
       setD({
@@ -55,7 +62,11 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
         approvers: km.settings.defaultApprovers,
         reviewDate: addDays(km.today, km.settings.reviewPeriodDays),
         files: [],
+        format: "file",
+        body: "",
+        acl: undefined,
       });
+      setAclOpen(false);
       setScope(defaultScopeForNew());
     }
     setTagInput("");
@@ -73,14 +84,18 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
 
   const submit = (sendForReview: boolean) => {
     if (!d.title.trim()) return notify("عنوان سند الزامی است.", "warning");
-    if (!doc && !d.files.length) return notify("حداقل یک فایل پیوست کنید.", "warning");
+    if (!doc && d.format === "file" && !d.files.length) return notify("حداقل یک فایل پیوست کنید.", "warning");
+    if (d.format === "article" && !d.body.trim()) return notify("متن مقاله را بنویسید.", "warning");
     if (!d.description.trim()) return notify("توضیح سند الزامی است.", "warning");
+    const { body, format, ...meta } = d;
     if (doc) {
-      km.updateDoc(doc.id, { ...d, title: d.title.trim(), ...scope });
-      notify("اطلاعات سند ذخیره شد.");
+      km.updateDoc(doc.id, { ...meta, format, title: d.title.trim(), ...scope });
+      // تغییر متن مقاله = نسخه‌ی جدید (برای تاریخچه و مقایسه‌ی متنی)
+      if (format === "article" && body !== (doc.body ?? "")) km.newVersion(doc.id, [], "ویرایش متن مقاله", body);
+      notify(format === "article" && body !== (doc.body ?? "") ? "تغییرات ذخیره و نسخه‌ی جدید متن ثبت شد." : "اطلاعات سند ذخیره شد.");
     } else {
       const skipReview = !km.settings.workflowSteps.review;
-      km.createDoc({ ...d, title: d.title.trim(), relations: [], ...scope, authorId: actingUser.id, submit: sendForReview && !skipReview });
+      km.createDoc({ ...meta, format, body: format === "article" ? body : undefined, title: d.title.trim(), relations: [], ...scope, authorId: actingUser.id, submit: sendForReview && !skipReview });
       notify(sendForReview ? (skipReview ? "سند ثبت شد." : `سند ثبت و برای بررسی به ${d.approvers.length.toLocaleString("fa-IR")} نفر ارسال شد.`) : "پیش‌نویس سند ذخیره شد.");
     }
     onClose();
@@ -89,11 +104,36 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
   const leaves = km.categories.filter((c) => c.parentId || !km.categories.some((x) => x.parentId === c.id));
 
   return (
-    <Modal open={open} onClose={onClose} title={doc ? "ویرایش اطلاعات سند" : "افزودن سند به مخزن دانش"} description={doc ? `${doc.code} · نسخه‌ی ${doc.version.toLocaleString("fa-IR")} — برای تغییر فایل، «نسخه‌ی جدید» بارگذاری کنید.` : "یک یا چند فایل را همراه با مشخصات سند ثبت کنید؛ سند پس از تأیید منتشر می‌شود."} width="max-w-3xl">
+    <Modal open={open} onClose={onClose} title={doc ? "ویرایش اطلاعات سند" : "افزودن سند به مخزن دانش"} description={doc ? `${doc.code} · نسخه‌ی ${doc.version.toLocaleString("fa-IR")}${(doc.format ?? "file") === "file" ? " — برای تغییر فایل، «نسخه‌ی جدید» بارگذاری کنید." : ""}` : "فایل بارگذاری کنید یا مقاله را همین‌جا بنویسید؛ سند پس از طی گردش کار منتشر می‌شود."} width="max-w-3xl">
       <div className="space-y-4">
         {!doc && (
-          <Field label="فایل‌های سند">
-            <FilePicker files={d.files} onChange={setFiles} />
+          <div className="flex rounded-lg border border-ink-200 overflow-hidden w-fit">
+            {(
+              [
+                ["file", FileUp, "بارگذاری فایل"],
+                ["article", PenSquare, "نوشتن مقاله"],
+              ] as const
+            ).map(([id, Icon, label]) => (
+              <button key={id} type="button" onClick={() => setD({ ...d, format: id })} className={`px-3 py-1.5 text-xs flex items-center gap-1.5 ${d.format === id ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`}>
+                <Icon size={13} /> {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {d.format === "article" ? (
+          <Field label="متن مقاله" hint={doc ? "با ذخیره‌ی تغییر متن، نسخه‌ی جدید ثبت می‌شود و تفاوت‌ها در «نسخه‌ها» قابل مقایسه است." : undefined}>
+            <MarkdownEditor value={d.body} onChange={(body) => setD({ ...d, body })} />
+          </Field>
+        ) : (
+          !doc && (
+            <Field label="فایل‌های سند">
+              <FilePicker files={d.files} onChange={setFiles} />
+            </Field>
+          )
+        )}
+        {!doc && d.format === "article" && (
+          <Field label="پیوست‌ها (اختیاری)">
+            <FilePicker files={d.files} onChange={(files) => setD({ ...d, files })} />
           </Field>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -208,6 +248,22 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
               </div>
             </Field>
           </div>
+        </div>
+        <div className="rounded-lg border border-ink-200">
+          <button type="button" onClick={() => setAclOpen((v) => !v)} className="w-full flex items-center gap-2 px-3 py-2.5 text-right">
+            <ShieldCheck size={15} className="text-brand-600 shrink-0" />
+            <span className="text-xs font-medium text-ink-800 flex-1">
+              دسترسی جزءبه‌جزء
+              <span className="text-ink-400 font-normal mr-1">— {d.acl?.entries.length ? `${d.acl.entries.length.toLocaleString("fa-IR")} ردیف` : "فقط سطح دسترسی"}{d.acl?.viewOnly ? " · فقط مشاهده" : ""}</span>
+            </span>
+            {aclOpen ? <ChevronUp size={14} className="text-ink-400" /> : <ChevronDown size={14} className="text-ink-400" />}
+          </button>
+          {aclOpen && (
+            <div className="px-3 pb-3 space-y-3 border-t border-ink-100 pt-3">
+              <AclEditor value={d.acl} onChange={(acl) => setD({ ...d, acl })} access={d.access} />
+              <AccessSummary doc={{ ...(doc ?? ({} as KDoc)), ...d, author: doc?.author ?? actingUser.name, acl: d.acl } as KDoc} />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 pt-3 border-t border-ink-100 flex-wrap">
           {doc ? (

@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FolderOpen, Folder, FolderPlus, Upload, Download, Pencil, Trash2, MoveRight, Search, ChevronLeft, HardDrive, Users, Megaphone, Briefcase, Lock, Home, X } from "lucide-react";
+import { FolderOpen, Folder, FolderPlus, Upload, Download, Pencil, Trash2, MoveRight, Search, ChevronLeft, HardDrive, Users, Megaphone, Briefcase, Lock, Home, X, Star, Clock, RotateCcw, Link2 } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -14,7 +14,9 @@ import Badge from "../../components/ui/Badge";
 import EmptyState from "../../components/ui/EmptyState";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
-import { useSocial } from "../../context/SocialContext";
+import { useSocial, parseSize, TRASH_DAYS } from "../../context/SocialContext";
+import { dayNum } from "../../pm/jalali";
+import FilePreview, { shareAlive } from "./files/FilePreview";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints, fmtEndpoint } from "../../social/endpoints";
 import type { Chat, FileFolder, FileItem, OwnerType } from "../../social/types";
@@ -22,6 +24,12 @@ import { ApiChip, Field, UserLine, fa, fileIcon, stamp, toAttachments } from "./
 
 type Drive = { type: OwnerType; id: string; title: string; chat?: Chat };
 const driveKey = (d: { type: OwnerType; id: string }) => `${d.type}:${d.id}`;
+/** نمای صفحه: درایو، دسترسی سریع (اخیر/ستاره‌دار) یا سطل بازیافت — «پیشنهادی» */
+type View = "drive" | "recent" | "starred" | "trash";
+/** سهمیه‌ی نمایشی هر درایو */
+const QUOTA: Record<OwnerType, number> = { user: 2 * 1024 ** 3, group: 10 * 1024 ** 3, channel: 10 * 1024 ** 3 };
+const fmtBytes = (b: number) =>
+  b >= 1024 ** 3 ? `${(b / 1024 ** 3).toLocaleString("fa-IR", { maximumFractionDigits: 1 })} گیگابایت` : b >= 1024 ** 2 ? `${(b / 1024 ** 2).toLocaleString("fa-IR", { maximumFractionDigits: 1 })} مگابایت` : `${Math.max(1, Math.round(b / 1024)).toLocaleString("fa-IR")} کیلوبایت`;
 
 export default function FilesPage() {
   const s = useSocial();
@@ -42,6 +50,15 @@ export default function FilesPage() {
   }, [s.chats, s.me]);
 
   const ownerParam = params.get("owner");
+  const viewParam = params.get("view");
+  const view: View = viewParam === "recent" || viewParam === "starred" || viewParam === "trash" ? viewParam : "drive";
+  const setView = (v: View) => {
+    const next = new URLSearchParams(params);
+    if (v === "drive") next.delete("view");
+    else next.set("view", v);
+    setParams(next, { replace: true });
+  };
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const drive = drives.find((d) => driveKey(d) === ownerParam) ?? drives[0];
   const [folderId, setFolderId] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -49,6 +66,7 @@ export default function FilesPage() {
     setFolderId(null);
     setQ("");
     const next = new URLSearchParams(params);
+    next.delete("view");
     if (d.type === "user") next.delete("owner");
     else next.set("owner", driveKey(d));
     setParams(next, { replace: true });
@@ -62,7 +80,34 @@ export default function FilesPage() {
   // ------------------------------------------------------------ دسترسی
   const isChatAdmin = drive.chat ? s.chatRole(drive.chat) === "admin" : false;
   const canWrite = drive.type === "user" ? hasPermission("files.use") : isChatAdmin;
-  const canDeleteFile = (f: FileItem) => canWrite || (drive.type !== "user" && f.created_by_user_id === s.me);
+  /** دسترسی نوشتن روی فایلِ هر درایو (برای نماهای «اخیر/ستاره‌دار/سطل» که چند درایو را با هم نشان می‌دهند) */
+  const writeIn = (o: { owner_type: OwnerType; owner_id: string }) => {
+    if (o.owner_type === "user") return o.owner_id === s.me && hasPermission("files.use");
+    const c = s.chats.find((x) => x.id === o.owner_id);
+    return !!c && s.chatRole(c) === "admin";
+  };
+  const canDeleteFile = (f: FileItem) => writeIn(f) || (f.owner_type !== "user" && f.created_by_user_id === s.me);
+  const driveKeys = new Set(drives.map(driveKey));
+  const reachableFiles = s.files.filter((f) => driveKeys.has(driveKey({ type: f.owner_type, id: f.owner_id })));
+  const driveTitle = (f: { owner_type: OwnerType; owner_id: string }) => drives.find((d) => d.type === f.owner_type && d.id === f.owner_id)?.title ?? "—";
+  const lastTouch = (f: FileItem) => [f.opened_at?.[s.me] ?? "", f.created_by_user_id === s.me ? f.created_at : ""].sort().pop() ?? "";
+  const recentFiles = reachableFiles.filter((f) => lastTouch(f)).sort((a, b) => lastTouch(b).localeCompare(lastTouch(a))).slice(0, 15);
+  const starredFiles = reachableFiles.filter((f) => (f.starred_by ?? []).includes(s.me)).sort((a, b) => a.name.localeCompare(b.name, "fa"));
+  const trashFiles = s.fileTrash.filter((f) => f.trashed_by === s.me || writeIn(f)).sort((a, b) => b.trashed_at.localeCompare(a.trashed_at));
+  const ageDays = (stampStr: string) => (dayNum(s.today) ?? 0) - (dayNum(stampStr.split(" ")[0]) ?? 0);
+  // سهمیه: فایل‌ها + نسخه‌های قبلی + سطل بازیافتِ همان درایو
+  const usedOf = (d: Drive) =>
+    s.files.filter((f) => f.owner_type === d.type && f.owner_id === d.id).reduce((a, f) => a + parseSize(f.size) + (f.versions ?? []).reduce((x, v) => x + parseSize(v.size), 0), 0) +
+    s.fileTrash.filter((f) => f.owner_type === d.type && f.owner_id === d.id).reduce((a, f) => a + parseSize(f.size), 0);
+  const quotaDrive = view === "drive" ? drive : drives[0];
+  const used = usedOf(quotaDrive);
+  const quota = QUOTA[quotaDrive.type];
+  const usedPct = Math.min(100, Math.round((used / quota) * 1000) / 10);
+  const openPreview = (f: FileItem) => {
+    s.openFile(f.id);
+    setPreviewId(f.id);
+  };
+  const previewFile = previewId ? s.files.find((f) => f.id === previewId) : undefined;
   const canEditFolder = (f: FileFolder) => canWrite || (drive.type !== "user" && f.created_by_user_id === s.me);
 
   // ------------------------------------------------------------ کمکی درخت
@@ -140,7 +185,7 @@ export default function FilesPage() {
     const c = countInside(f.id);
     confirm({
       title: `حذف پوشه‌ی «${f.name}»؟`,
-      message: c.folders || c.files ? `این پوشه به همراه ${fa(c.folders)} زیرپوشه و ${fa(c.files)} فایل داخلش برای همیشه حذف می‌شود.` : "پوشه خالی است.",
+      message: c.folders || c.files ? `این پوشه و ${fa(c.folders)} زیرپوشه‌اش حذف می‌شوند؛ ${fa(c.files)} فایل داخلش به سطل بازیافت می‌رود و تا ${fa(TRASH_DAYS)} روز قابل بازگردانی است.` : "پوشه خالی است.",
       onConfirm: () => {
         s.deleteFolder(f.id);
         notify("پوشه حذف شد.", "success");
@@ -150,9 +195,11 @@ export default function FilesPage() {
   const removeFile = (f: FileItem) =>
     confirm({
       title: `حذف فایل «${f.name}»؟`,
+      message: `به سطل بازیافت منتقل می‌شود و تا ${fa(TRASH_DAYS)} روز قابل بازگردانی است.`,
+      confirmLabel: "انتقال به سطل",
       onConfirm: () => {
         s.deleteFile(f.id);
-        notify("فایل حذف شد.", "success");
+        notify("فایل به سطل بازیافت رفت.", "success");
       },
     });
   const upload = (list: FileList | File[]) => {
@@ -208,6 +255,9 @@ export default function FilesPage() {
     ) : null;
   const fileActions = (f: FileItem) => (
     <Actions>
+      <IconBtn onClick={() => s.toggleStar(f.id)} title={(f.starred_by ?? []).includes(s.me) ? "برداشتن ستاره" : "ستاره‌دار کردن"}>
+        <Star size={14} className={(f.starred_by ?? []).includes(s.me) ? "fill-amber-400 text-amber-500" : ""} />
+      </IconBtn>
       <IconBtn onClick={() => download(f)} title="دریافت">
         <Download size={14} />
       </IconBtn>
@@ -228,7 +278,7 @@ export default function FilesPage() {
   return (
     <div>
       <PageHeader
-        title="اسناد و فایل‌ها"
+        title="مدیریت اسناد و فایل‌ها"
         description="فایل‌های شخصی و فایل‌های مشترک گروه‌ها و کانال‌هایی که عضوشان هستید."
         icon={<FolderOpen size={20} />}
         actions={
@@ -242,6 +292,19 @@ export default function FilesPage() {
               { label: "بارگذاری فایل", ep: endpoints.fileUpload(drive.type, drive.id) },
               { label: "حذف فایل", ep: endpoints.fileDelete(drive.type, drive.id, "{id}") },
               { label: "دریافت فایل", ep: endpoints.fileDownload(drive.type, drive.id, "{id}") },
+              { label: "پیش‌نمایش", ep: endpoints.filePreview(drive.type, drive.id, "{id}") },
+              { label: "تاریخچه‌ی نسخه‌ها", ep: endpoints.fileVersions(drive.type, drive.id, "{id}") },
+              { label: "بارگذاری نسخه‌ی جدید", ep: endpoints.fileVersionUpload(drive.type, drive.id, "{id}") },
+              { label: "بازگردانی نسخه", ep: endpoints.fileVersionRestore(drive.type, drive.id, "{id}", "{version}") },
+              { label: "لینک اشتراک با انقضا", ep: endpoints.fileShare(drive.type, drive.id, "{id}") },
+              { label: "لغو لینک اشتراک", ep: endpoints.fileShareRevoke(drive.type, drive.id, "{id}") },
+              { label: "ستاره‌دار کردن", ep: endpoints.fileStar("{id}") },
+              { label: "ستاره‌دارها", ep: endpoints.fileStarred() },
+              { label: "اخیر", ep: endpoints.fileRecent() },
+              { label: "سطل بازیافت", ep: endpoints.fileTrash() },
+              { label: "بازگردانی از سطل", ep: endpoints.fileRestore("{id}") },
+              { label: "حذف دائم", ep: endpoints.filePurge("{id}") },
+              { label: "سهمیه‌ی فضا", ep: endpoints.fileQuota(drive.type, drive.id) },
             ]}
           />
         }
@@ -251,10 +314,31 @@ export default function FilesPage() {
         {/* ---------------------------------------------------- انتخاب درایو */}
         <aside className="space-y-3 min-w-0">
           <div className="card p-2">
+            <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+              {(
+                [
+                  ["recent", "اخیر", Clock, recentFiles.length],
+                  ["starred", "ستاره‌دار", Star, starredFiles.length],
+                  ["trash", "سطل بازیافت", Trash2, trashFiles.length],
+                ] as const
+              ).map(([v, label, I, n]) => (
+                <button
+                  key={v}
+                  onClick={() => setView(view === v ? "drive" : v)}
+                  className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12.5px] text-right whitespace-nowrap shrink-0 lg:shrink ${view === v ? "bg-brand-50 text-brand-700 font-medium" : "text-ink-600 hover:bg-ink-50"}`}
+                >
+                  <I size={15} className="shrink-0" />
+                  <span className="flex-1 min-w-0 truncate">{label}</span>
+                  <span className="text-[10.5px] text-ink-400 tabular-nums">{fa(n)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card p-2">
             <p className="text-[11px] text-ink-400 px-2 pt-1 pb-2">درایوها</p>
             <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0">
               {drives.map((d) => {
-                const on = driveKey(d) === driveKey(drive);
+                const on = view === "drive" && driveKey(d) === driveKey(drive);
                 return (
                   <button
                     key={driveKey(d)}
@@ -271,6 +355,18 @@ export default function FilesPage() {
               })}
             </div>
           </div>
+          <div className="card p-3 space-y-1.5" aria-label="فضای مصرفی">
+            <div className="flex items-center justify-between gap-2 text-[11.5px]">
+              <span className="text-ink-700 font-medium truncate">فضای {quotaDrive.title}</span>
+              <span className="text-ink-400 tabular-nums shrink-0">{fa(usedPct)}٪</span>
+            </div>
+            <span className="block h-1.5 rounded-full bg-ink-100 overflow-hidden" role="progressbar" aria-valuenow={usedPct} aria-valuemin={0} aria-valuemax={100}>
+              <span className={`block h-full rounded-full ${usedPct >= 90 ? "bg-rose-500" : usedPct >= 70 ? "bg-amber-500" : "bg-brand-600"}`} style={{ width: `${Math.max(usedPct, 1.5)}%` }} />
+            </span>
+            <p className="text-[10.5px] text-ink-400">
+              {fmtBytes(used)} از {fmtBytes(quota)} · نسخه‌های قبلی و سطل بازیافت هم حساب می‌شوند
+            </p>
+          </div>
           <Link to="/dashboard/project-teams" className="card p-3 flex items-center gap-2.5 hover:border-brand-300 group">
             <span className="w-8 h-8 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center shrink-0">
               <Briefcase size={15} />
@@ -283,7 +379,118 @@ export default function FilesPage() {
           </Link>
         </aside>
 
+        {/* ---------------------------------------------------- اخیر / ستاره‌دار / سطل بازیافت */}
+        {view !== "drive" && (
+          <section className="card min-w-0">
+            <div className="p-3 border-b border-ink-100 flex items-center gap-2 flex-wrap">
+              <p className="text-[13px] font-bold text-ink-900 flex-1 min-w-0">
+                {view === "recent" ? "فایل‌هایی که اخیراً باز یا بارگذاری کرده‌اید" : view === "starred" ? "فایل‌های ستاره‌دار" : `سطل بازیافت — تا ${fa(TRASH_DAYS)} روز قابل بازگردانی`}
+              </p>
+              {view === "trash" && trashFiles.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<Trash2 size={13} />}
+                  className="!text-rose-600"
+                  onClick={() =>
+                    confirm({
+                      title: "خالی کردن سطل بازیافت؟",
+                      message: `${fa(trashFiles.length)} فایل برای همیشه حذف می‌شود و قابل بازگردانی نیست.`,
+                      confirmLabel: "حذف دائم",
+                      onConfirm: () => {
+                        trashFiles.forEach((f) => s.purgeFile(f.id));
+                        notify("سطل بازیافت خالی شد.", "info");
+                      },
+                    })
+                  }
+                >
+                  خالی کردن سطل
+                </Button>
+              )}
+            </div>
+            {view === "trash" ? (
+              trashFiles.length === 0 ? (
+                <div className="py-10">
+                  <EmptyState icon={<Trash2 size={22} />} title="سطل بازیافت خالی است" description="فایل‌های حذف‌شده تا ۳۰ روز اینجا می‌مانند." />
+                </div>
+              ) : (
+                <ul className="divide-y divide-ink-100">
+                  {trashFiles.map((f) => {
+                    const I = fileIcon(f.mime);
+                    const left = TRASH_DAYS - ageDays(f.trashed_at);
+                    return (
+                      <li key={f.id} className="flex items-center gap-2.5 px-3 sm:px-4 py-2.5">
+                        <I size={18} className="text-ink-400 shrink-0" />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[13px] text-ink-800 truncate">{f.name}</span>
+                          <span className="block text-[10.5px] text-ink-400 truncate">
+                            {driveTitle(f)} · {f.size} · حذف {stamp(f.trashed_at)} ·{" "}
+                            <span className={left <= 5 ? "text-rose-600" : ""}>{left > 0 ? `${fa(left)} روز تا حذف دائم` : "مهلت تمام شده"}</span>
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-0.5 shrink-0">
+                          {left > 0 && (
+                            <IconBtn
+                              onClick={() => {
+                                const r = s.restoreFile(f.id);
+                                notify(r.ok ? `«${f.name}» بازگردانده شد.` : r.error, r.ok ? "success" : "warning");
+                              }}
+                              title="بازگردانی"
+                            >
+                              <RotateCcw size={14} />
+                            </IconBtn>
+                          )}
+                          <IconBtn
+                            onClick={() =>
+                              confirm({
+                                title: `حذف دائم «${f.name}»؟`,
+                                message: "قابل بازگردانی نیست.",
+                                confirmLabel: "حذف دائم",
+                                onConfirm: () => {
+                                  s.purgeFile(f.id);
+                                  notify("فایل برای همیشه حذف شد.", "info");
+                                },
+                              })
+                            }
+                            title="حذف دائم"
+                            danger
+                          >
+                            <X size={14} />
+                          </IconBtn>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+            ) : (view === "recent" ? recentFiles : starredFiles).length === 0 ? (
+              <div className="py-10">
+                <EmptyState icon={view === "recent" ? <Clock size={22} /> : <Star size={22} />} title={view === "recent" ? "فایل اخیری نیست" : "هنوز فایلی را ستاره‌دار نکرده‌اید"} description={view === "starred" ? "با ستاره‌ی کنار هر فایل، آن را اینجا نگه دارید." : undefined} />
+              </div>
+            ) : (
+              <ul className="divide-y divide-ink-100">
+                {(view === "recent" ? recentFiles : starredFiles).map((f) => {
+                  const I = fileIcon(f.mime);
+                  return (
+                    <li key={f.id} className="flex items-center gap-2.5 px-3 sm:px-4 py-2.5">
+                      <I size={18} className="text-brand-600 shrink-0" />
+                      <button onClick={() => openPreview(f)} className="flex-1 min-w-0 text-right">
+                        <span className="block text-[13px] text-ink-800 hover:text-brand-700 truncate">{f.name}</span>
+                        <span className="block text-[10.5px] text-ink-400 truncate">
+                          {driveTitle(f)} · {f.size} · {view === "recent" ? stamp(lastTouch(f)) : stamp(f.created_at)}
+                        </span>
+                      </button>
+                      {fileActions(f)}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+
         {/* ---------------------------------------------------- محتوای درایو */}
+        {view === "drive" && (
         <section className="card min-w-0">
           {/* نوار ابزار */}
           <div className="p-3 border-b border-ink-100 flex flex-wrap items-center gap-2">
@@ -397,10 +604,14 @@ export default function FilesPage() {
                       return (
                         <tr key={f.id} className="hover:bg-ink-50">
                           <td className="px-4 py-2">
-                            <button onClick={() => download(f)} className="flex items-center gap-2 min-w-0 text-right">
+                            <button onClick={() => openPreview(f)} className="flex items-center gap-2 min-w-0 text-right">
                               <I size={16} className="text-brand-600 shrink-0" />
                               <span className="min-w-0">
-                                <span className="block truncate text-ink-800 hover:text-brand-700">{f.name}</span>
+                                <span className="truncate text-ink-800 hover:text-brand-700 flex items-center gap-1">
+                                  {f.name}
+                                  {shareAlive(f, s.today) && <Link2 size={12} className="text-emerald-600 shrink-0" aria-label="لینک اشتراک فعال" />}
+                                  {(f.version ?? 1) > 1 && <span className="text-[10px] text-ink-400 shrink-0">نسخه‌ی {fa(f.version ?? 1)}</span>}
+                                </span>
                                 {term && <span className="block text-[10.5px] text-ink-400 truncate">{folderPath(f.folder_id)}</span>}
                               </span>
                             </button>
@@ -436,7 +647,7 @@ export default function FilesPage() {
                     return (
                       <li key={f.id} className="flex items-center gap-2.5 px-3 py-2.5">
                         <I size={18} className="text-brand-600 shrink-0" />
-                        <button onClick={() => download(f)} className="flex-1 min-w-0 text-right">
+                        <button onClick={() => openPreview(f)} className="flex-1 min-w-0 text-right">
                           <span className="block text-[13px] text-ink-800 truncate">{f.name}</span>
                           <span className="block text-[10.5px] text-ink-400 truncate">
                             {f.size} · {s.userName(f.created_by_user_id)} · {stamp(f.created_at)}
@@ -457,7 +668,10 @@ export default function FilesPage() {
             {drive.type !== "user" && <span>{canWrite ? "شما مدیر این " + (drive.type === "group" ? "گروه" : "کانال") + " هستید." : "اعضا فقط مشاهده و دریافت می‌کنند؛ بارگذاری و ویرایش با مدیران است."}</span>}
           </div>
         </section>
+        )}
       </div>
+
+      {previewFile && <FilePreview key={previewFile.id} fileId={previewFile.id} canWrite={writeIn(previewFile)} onClose={() => setPreviewId(null)} />}
 
       {/* ---------------------------------------------------- پوشه‌ی جدید / تغییر نام */}
       <Modal open={!!nameModal} onClose={() => setNameModal(null)} title={nameModal?.mode === "rename" ? "تغییر نام پوشه" : "پوشه‌ی جدید"} description={nameModal?.mode === "rename" ? undefined : `در «${folderPath(cwd)}» — ${drive.title}`}>

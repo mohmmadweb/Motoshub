@@ -2,19 +2,20 @@
 // جزئیات پرسش — Topic + پاسخ‌های تو در تو (ForumPost با parent_id)
 // ---------------------------------------------------------------------------
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { MessagesSquare, Pin, PinOff, Lock, Unlock, Eye, Send, Pencil, Trash2, CornerDownLeft, X, Paperclip, Globe2, EyeOff, Calendar } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { MessagesSquare, Pin, PinOff, Lock, Unlock, Eye, Send, Pencil, Trash2, CornerDownLeft, X, Paperclip, Globe2, EyeOff, Calendar, CheckCircle2, Copy, Undo2 } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
-import { useSocial } from "../../context/SocialContext";
+import { useSocial, voteScore } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
-import type { Attachment, ForumPost } from "../../social/types";
+import type { Attachment, ForumPost, Vote } from "../../social/types";
 import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp } from "./kit";
 import { TopicEditor } from "./ForumPage";
+import { DuplicateBadge, DuplicatePicker, MoreMenu, SolvedBadge, VoteBox } from "./qa/QaKit";
 
 const MAX_DEPTH = 2; // ۳ سطح: ۰، ۱، ۲
 
@@ -46,10 +47,28 @@ export default function TopicDetail() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [answerSort, setAnswerSort] = useState<"votes" | "oldest">("votes");
   const boxRef = useRef<HTMLTextAreaElement>(null);
 
   const isOwner = topic?.user_id === s.me;
   const hidden = !topic || topic.deleted_at || !s.canView(topic, moderator) || ((topic.is_draft || !topic.is_public) && !isOwner && !moderator);
+  const canAccept = isOwner || moderator;
+  const markDup = (target: string | null) => {
+    const r = s.markDuplicate(id, target);
+    if (!r.ok) return notify(r.error, "warning");
+    setDupOpen(false);
+    notify(target ? "پرسش تکراری علامت خورد و قفل شد." : "علامت تکراری برداشته شد.", target ? "success" : "info");
+  };
+  const vote = (fn: (x: string, v: Vote) => { ok: boolean; error?: string }, x: string, v: Vote) => {
+    const r = fn(x, v);
+    if (!r.ok && "error" in r && r.error) notify(r.error, "warning");
+  };
+  const accept = (postId: string | null) => {
+    const r = s.acceptAnswer(id, postId);
+    if (!r.ok) return notify(r.error, "warning");
+    notify(postId ? "پاسخ پذیرفته شد و بالای فهرست سنجاق شد." : "پذیرش پاسخ لغو شد.", postId ? "success" : "info");
+  };
 
   const header = (
     <PageHeader
@@ -73,50 +92,44 @@ export default function TopicDetail() {
               { label: "حذف پرسش", ep: endpoints.topicDelete(id) },
               { label: "واکنش پرسش", ep: endpoints.reactionToggle("topic") },
               { label: "واکنش پاسخ", ep: endpoints.reactionToggle("post") },
+              { label: "رأی به پرسش", ep: endpoints.topicVote(id) },
+              { label: "رأی به پاسخ", ep: endpoints.postVote("{id}") },
+              { label: "پذیرفتن پاسخ", ep: endpoints.topicAccept(id) },
+              { label: "علامت‌گذاری تکراری", ep: endpoints.topicDuplicate(id) },
             ]}
           />
-          {topic && !hidden && moderator && (
-            <>
-              <Button size="sm" icon={topic.is_pinned ? <PinOff size={13} /> : <Pin size={13} />} onClick={() => (s.pinTopic(id), notify(topic.is_pinned ? "سنجاق برداشته شد." : "پرسش سنجاق شد.", "success"))}>
-                {topic.is_pinned ? "برداشتن سنجاق" : "سنجاق"}
-              </Button>
-              <Button size="sm" icon={topic.is_locked ? <Unlock size={13} /> : <Lock size={13} />} onClick={() => (s.lockTopic(id), notify(topic.is_locked ? "پرسش باز شد." : "پرسش قفل شد.", "success"))}>
-                {topic.is_locked ? "بازکردن" : "قفل"}
-              </Button>
-            </>
-          )}
           {topic && !hidden && (isOwner || moderator) && (
             <>
-              {topic.is_draft || !topic.is_public ? (
-                <Button size="sm" icon={<Globe2 size={13} />} onClick={() => (s.publishTopic(id, true), notify("پرسش منتشر شد.", "success"))}>
-                  انتشار
-                </Button>
-              ) : (
-                <Button size="sm" icon={<EyeOff size={13} />} onClick={() => (s.publishTopic(id, false), notify("انتشار پرسش لغو شد.", "info"))}>
-                  لغو انتشار
-                </Button>
-              )}
               <Button size="sm" icon={<Pencil size={13} />} onClick={() => setEditorOpen(true)}>
                 ویرایش
               </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                icon={<Trash2 size={13} />}
-                onClick={() =>
-                  confirm({
-                    title: "این پرسش حذف شود؟",
-                    message: "همه‌ی پاسخ‌های آن هم حذف می‌شوند.",
-                    onConfirm: () => {
-                      s.deleteTopic(id);
-                      notify("پرسش حذف شد.", "success");
-                      navigate("/dashboard/forum");
-                    },
-                  })
-                }
-              >
-                حذف
-              </Button>
+              <MoreMenu
+                items={[
+                  moderator && { label: topic.is_pinned ? "برداشتن سنجاق" : "سنجاق", icon: topic.is_pinned ? <PinOff size={13} /> : <Pin size={13} />, onClick: () => (s.pinTopic(id), notify(topic.is_pinned ? "سنجاق برداشته شد." : "پرسش سنجاق شد.", "success")) },
+                  moderator && { label: topic.is_locked ? "بازکردن" : "قفل", icon: topic.is_locked ? <Unlock size={13} /> : <Lock size={13} />, onClick: () => (s.lockTopic(id), notify(topic.is_locked ? "پرسش باز شد." : "پرسش قفل شد.", "success")) },
+                  topic.duplicate_of
+                    ? { label: "لغو علامت تکراری", icon: <Undo2 size={13} />, onClick: () => markDup(null) }
+                    : { label: "علامت‌گذاری تکراری", icon: <Copy size={13} />, onClick: () => setDupOpen(true) },
+                  topic.is_draft || !topic.is_public
+                    ? { label: "انتشار", icon: <Globe2 size={13} />, onClick: () => (s.publishTopic(id, true), notify("پرسش منتشر شد.", "success")) }
+                    : { label: "لغو انتشار", icon: <EyeOff size={13} />, onClick: () => (s.publishTopic(id, false), notify("انتشار پرسش لغو شد.", "info")) },
+                  {
+                    label: "حذف پرسش",
+                    icon: <Trash2 size={13} />,
+                    danger: true,
+                    onClick: () =>
+                      confirm({
+                        title: "این پرسش حذف شود؟",
+                        message: "همه‌ی پاسخ‌های آن هم حذف می‌شوند.",
+                        onConfirm: () => {
+                          s.deleteTopic(id);
+                          notify("پرسش حذف شد.", "success");
+                          navigate("/dashboard/forum");
+                        },
+                      }),
+                  },
+                ]}
+              />
             </>
           )}
         </span>
@@ -173,12 +186,20 @@ export default function TopicDetail() {
     const kids = childrenOf(p.id);
     if (p.deleted_at && !hasLiveDescendant(p.id)) return null;
     const mine = p.user_id === s.me;
+    const accepted = depth === 0 && p.id === topic.accepted_post_id && !p.deleted_at;
     return (
       <div key={p.id} className={depth ? "mr-4 sm:mr-8 mt-2 border-r-2 border-ink-100 pr-3" : ""}>
         {p.deleted_at ? (
           <div className="rounded-lg p-3 bg-ink-50 text-xs text-ink-400 italic">این پاسخ حذف شده است</div>
         ) : (
-          <div className="rounded-lg p-3 bg-ink-50">
+          <div className={`rounded-lg p-3 flex gap-2.5 ${accepted ? "bg-emerald-50 border border-emerald-200 border-r-4 border-r-emerald-500" : "bg-ink-50"}`}>
+            {depth === 0 && <VoteBox votes={p.votes} me={s.me} size="sm" onVote={(v) => vote(s.votePost, p.id, v)} />}
+            <div className="flex-1 min-w-0">
+            {accepted && (
+              <p className="text-[11.5px] font-bold text-emerald-700 flex items-center gap-1 mb-1.5">
+                <CheckCircle2 size={13} /> پاسخ پذیرفته‌شده
+              </p>
+            )}
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <UserLine id={p.user_id} size={24} sub={`${stamp(p.created_at)}${p.updated_at !== p.created_at && p.updated_at > p.created_at ? " · ویرایش‌شده" : ""}`} />
               <span className="flex items-center gap-0.5 shrink-0">
@@ -233,11 +254,19 @@ export default function TopicDetail() {
             )}
             <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
               <ReactionBar entity="post" id={p.id} compact />
-              {canReply && depth < MAX_DEPTH && (
-                <button onClick={() => startReply(p)} className="text-[11.5px] text-brand-700 flex items-center gap-1">
-                  <CornerDownLeft size={12} /> پاسخ
-                </button>
-              )}
+              <span className="flex items-center gap-3">
+                {depth === 0 && canAccept && (
+                  <button onClick={() => accept(accepted ? null : p.id)} className={`text-[11.5px] flex items-center gap-1 ${accepted ? "text-ink-500 hover:text-rose-600" : "text-emerald-700 hover:underline"}`}>
+                    {accepted ? <Undo2 size={12} /> : <CheckCircle2 size={12} />} {accepted ? "لغو پذیرش" : "پذیرفتن به‌عنوان پاسخ"}
+                  </button>
+                )}
+                {canReply && depth < MAX_DEPTH && (
+                  <button onClick={() => startReply(p)} className="text-[11.5px] text-brand-700 flex items-center gap-1">
+                    <CornerDownLeft size={12} /> پاسخ
+                  </button>
+                )}
+              </span>
+            </div>
             </div>
           </div>
         )}
@@ -246,13 +275,33 @@ export default function TopicDetail() {
     );
   };
 
-  const roots = childrenOf(null);
+  const roots = childrenOf(null)
+    .slice()
+    .sort((a, b) => Number(b.id === topic.accepted_post_id) - Number(a.id === topic.accepted_post_id) || (answerSort === "votes" ? voteScore(b.votes) - voteScore(a.votes) : 0) || a.created_at.localeCompare(b.created_at));
+  const dupTarget = topic.duplicate_of ? s.topics.find((t) => t.id === topic.duplicate_of) : undefined;
+  const dupChildren = s.topics.filter((t) => t.duplicate_of === topic.id && !t.deleted_at);
 
   return (
     <div>
       {header}
 
+      {topic.duplicate_of && (
+        <div className="card p-3 mb-4 border-amber-200 bg-amber-50 text-[12.5px] text-amber-800 flex items-center gap-2 flex-wrap">
+          <Copy size={14} className="shrink-0" />
+          <span>این پرسش تکراری است و قفل شده؛ پاسخ را در پرسش اصلی ببینید:</span>
+          {dupTarget ? (
+            <Link to={`/dashboard/forum/${dupTarget.id}`} className="font-bold text-brand-700 hover:underline min-w-0 truncate">
+              {dupTarget.title}
+            </Link>
+          ) : (
+            <span className="text-ink-500">پرسش اصلی حذف شده است.</span>
+          )}
+        </div>
+      )}
       <div className="card p-4 sm:p-5 mb-4">
+        <div className="flex gap-3">
+        <VoteBox votes={topic.votes} me={s.me} onVote={(v) => vote(s.voteTopic, topic.id, v)} />
+        <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
           <UserLine id={topic.user_id} size={34} sub={`ثبت: ${stamp(topic.created_at)}${topic.updated_at !== topic.created_at ? ` · آخرین فعالیت: ${stamp(topic.updated_at)}` : ""}`} />
           <span className="flex items-center gap-1.5 flex-wrap">
@@ -266,6 +315,8 @@ export default function TopicDetail() {
                 <Lock size={12} /> قفل‌شده
               </span>
             )}
+            {topic.accepted_post_id && <SolvedBadge />}
+            {topic.duplicate_of && <DuplicateBadge />}
             <PublishBadge item={topic} />
             <PrivacyBadge value={topic.privacy} />
           </span>
@@ -293,10 +344,38 @@ export default function TopicDetail() {
             )}
           </span>
         </div>
+        {dupChildren.length > 0 && (
+          <p className="text-[11.5px] text-ink-500 mt-3 flex items-center gap-1 flex-wrap">
+            <Copy size={12} /> {fa(dupChildren.length)} پرسش تکراری به این پرسش پیوند شده:
+            {dupChildren.map((d) => (
+              <Link key={d.id} to={`/dashboard/forum/${d.id}`} className="text-brand-700 hover:underline truncate max-w-[220px]">
+                {d.title}
+              </Link>
+            ))}
+          </p>
+        )}
+        </div>
+        </div>
       </div>
 
       <div className="card p-4 sm:p-5">
-        <p className="text-sm font-bold text-ink-900 mb-3">پاسخ‌ها ({fa(alive.length)})</p>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <p className="text-sm font-bold text-ink-900">پاسخ‌ها ({fa(alive.length)})</p>
+          {roots.length > 1 && (
+            <div className="flex rounded-lg border border-ink-200 p-0.5 bg-ink-50">
+              {(
+                [
+                  ["votes", "بیشترین رأی"],
+                  ["oldest", "قدیمی‌ترین"],
+                ] as const
+              ).map(([k, l]) => (
+                <button key={k} onClick={() => setAnswerSort(k)} className={`text-[11px] px-2.5 py-1 rounded-md whitespace-nowrap ${answerSort === k ? "bg-white shadow-sm text-brand-700 font-medium" : "text-ink-500"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="space-y-3">
           {roots.map((p) => renderPost(p, 0))}
           {alive.length === 0 && <p className="text-xs text-ink-400">هنوز پاسخی ثبت نشده است.</p>}
@@ -339,6 +418,7 @@ export default function TopicDetail() {
       </div>
 
       <TopicEditor open={editorOpen} onClose={() => setEditorOpen(false)} topic={topic} />
+      {dupOpen && <DuplicatePicker open onClose={() => setDupOpen(false)} topic={topic} pool={s.topics.filter((t) => !t.deleted_at && s.canView(t, moderator))} onPick={(t) => markDup(t)} />}
     </div>
   );
 }

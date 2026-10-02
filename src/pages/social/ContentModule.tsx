@@ -3,14 +3,17 @@
 // فهرست منتشرشده‌ها / پیش‌نویس‌ها، جستجو، فیلتر موضوع و فرم ساخت/ویرایش هم‌شکل
 // Blog/News/MagazineStoreRequest. ویرایشگر (ContentEditor) در صفحه‌ی جزئیات هم استفاده می‌شود.
 // ---------------------------------------------------------------------------
+import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { BookOpen, Newspaper, Plus, Search, MessageSquare, SmilePlus, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BookOpen, Newspaper, Plus, Search, MessageSquare, SmilePlus, Eye, Megaphone, BadgeCheck } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import EmptyState from "../../components/ui/EmptyState";
-import Tabs from "../../components/ui/Tabs";
+import Toggle from "../../components/ui/Toggle";
+import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
+import Badge from "../../components/ui/Badge";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useSocial } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
@@ -92,8 +95,8 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 
 // ---------------------------------------------------------------- ویرایشگر
 /** مسیر صفحه‌ی جزئیات یک محتوا */
-export const contentPath = (x: Pick<ContentItem, "id" | "kind">) => `/dashboard/${x.kind === "news" ? "news" : "magazines"}/${x.id}`;
-export const permPrefix = (k: ContentKind) => (k === "news" ? "news" : "magazines");
+export const contentPath = (x: Pick<ContentItem, "id" | "kind">) => `/dashboard/${x.kind === "news" ? "news" : x.kind === "blogs" ? "blog" : "magazines"}/${x.id}`;
+export const permPrefix = (k: ContentKind) => (k === "news" ? "news" : k === "blogs" ? "blog" : "magazines");
 
 function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: ContentItem; onDone: (id?: string) => void }) {
   const { saveContent } = useSocial();
@@ -110,6 +113,10 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
   );
   const [err, setErr] = useState<string | null>(null);
   const label = contentKindLabel[kind];
+  // «پیشنهادی» — اطلاعیه‌ی رسمی (فقط خبر)
+  const [official, setOfficial] = useState(!!item?.announcement);
+  const [requiresAck, setRequiresAck] = useState(item?.announcement?.requires_ack ?? true);
+  const [pinUntil, setPinUntil] = useState(item?.announcement?.pin_until ?? "");
 
   const save = () => {
     if (!title.trim()) return setErr("عنوان (title) الزامی است.");
@@ -130,6 +137,7 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
       published_time: pub.published_time || undefined,
       uploaded_files: files,
       send_notification: pub.send_notification,
+      announcement: kind === "news" ? (official ? { requires_ack: requiresAck, pin_until: pinUntil || null } : null) : undefined,
     });
     notify(item ? `${label} ویرایش شد.` : pub.is_draft ? `${label} به‌صورت پیش‌نویس ذخیره شد.` : `${label} منتشر شد.`, "success");
     onDone(id);
@@ -156,8 +164,30 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
           )}
           <AttachmentPicker value={files} onChange={setFiles} label={item ? "افزودن پیوست (uploaded_files)" : undefined} />
         </div>
-        <div className="lg:col-span-2">
-          <PublishOptions entity={contentEntity[kind]} value={pub} onChange={setPub} notifyOption={!item} />
+        <div className="lg:col-span-2 space-y-3">
+          {kind === "news" && (
+            <div className={`rounded-lg border p-3 space-y-3 ${official ? "border-rose-200 bg-rose-50" : "border-ink-200"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-ink-800 flex items-center gap-1.5">
+                  <Megaphone size={14} className="text-rose-600" /> اطلاعیه‌ی رسمی
+                </span>
+                <Toggle on={official} onChange={() => setOfficial((v) => !v)} label="اطلاعیه‌ی رسمی" />
+              </div>
+              <p className="text-[11px] text-ink-500 leading-5">به همه‌ی مخاطبانِ دامنه‌ی انتشار، اعلان «فوری» می‌رود (بی‌صدا و ساعات سکوت رویش اثر ندارد).</p>
+              {official && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-ink-700">نیاز به تأیید خواندن</span>
+                    <Toggle on={requiresAck} onChange={() => setRequiresAck((v) => !v)} label="نیاز به تأیید خواندن" />
+                  </div>
+                  <Field label="سنجاق در داشبورد تا تاریخ" hint="خالی = بدون سنجاق">
+                    <JalaliDatePicker value={pinUntil} onChange={setPinUntil} placeholder="بدون سنجاق" />
+                  </Field>
+                </>
+              )}
+            </div>
+          )}
+          <PublishOptions entity={contentEntity[kind]} value={pub} onChange={setPub} notifyOption={!item && !(kind === "news" && official)} />
         </div>
       </div>
       {err && <p className="text-xs text-rose-600">{err}</p>}
@@ -202,10 +232,22 @@ function ContentCard({ x }: { x: ContentItem }) {
   const entity = contentEntity[x.kind];
   const reactions = s.reactionSummary(entity, x.id).total;
   const comments = s.commentsFor(entity, x.id).length;
+  const ann = x.announcement;
+  const needMyAck = !!ann?.requires_ack && x.user_id !== s.me && !ann.acks[s.me] && x.is_public && !x.is_draft;
   return (
     <Link to={contentPath(x)} className="card overflow-hidden flex flex-col hover:border-brand-300 transition-colors">
       <Poster color={x.poster} className="h-28 !rounded-none">
         <span className="flex flex-wrap gap-1">
+          {ann && (
+            <Badge tone="danger" icon={<Megaphone size={10} />}>
+              اطلاعیه‌ی رسمی
+            </Badge>
+          )}
+          {needMyAck && (
+            <Badge tone="warning" icon={<BadgeCheck size={10} />}>
+              منتظر تأیید شما
+            </Badge>
+          )}
           <PublishBadge item={x} />
           {x.privacy !== "EVERYONE" && <PrivacyBadge value={x.privacy} />}
         </span>
@@ -230,11 +272,10 @@ function ContentCard({ x }: { x: ContentItem }) {
 }
 
 // ---------------------------------------------------------------- صفحه
-export default function ContentModule({ section }: { section: "magazines" | "news" }) {
+export default function ContentModule({ section }: { section: "magazines" | "news" | "blogs" }) {
   const s = useSocial();
   const { hasPermission } = useTenancy();
-  const [params, setParams] = useSearchParams();
-  const kind: ContentKind = section === "news" ? "news" : params.get("tab") === "blog" ? "blogs" : "magazines";
+  const kind: ContentKind = section;
   const perm = permPrefix(kind);
   const manager = hasPermission(`${perm}.manage`);
   const canCreate = hasPermission(`${perm}.create`) || manager;
@@ -246,12 +287,14 @@ export default function ContentModule({ section }: { section: "magazines" | "new
   const [creating, setCreating] = useState(false);
 
   const cats = s.categoriesOf(entity);
+  // اطلاعیه‌های رسمیِ سنجاق‌شده (تا تاریخشان) بالای فهرست اخبار
+  const pinnedNow = (x: ContentItem) => !!x.announcement?.pin_until && (dayNum(x.announcement.pin_until) ?? 0) >= (dayNum(s.today) ?? 0);
   const pool = s.content.filter((x) => x.kind === kind && s.canView(x, manager));
   const list = pool
     .filter((x) => matchesStatus(x, status, s.me, manager, s.today))
     .filter((x) => !cat || x.category_ids.includes(cat))
     .filter((x) => !q || x.title.includes(q) || x.excerpt.includes(q) || x.tags.some((t) => t.includes(q)))
-    .sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at));
+    .sort((a, b) => Number(pinnedNow(b)) - Number(pinnedNow(a)) || (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at));
 
   const dash = s.dashboard("content", "user");
   const stat = (key: string) => dash.find((d) => d.key === key)?.value ?? 0;
@@ -263,25 +306,31 @@ export default function ContentModule({ section }: { section: "magazines" | "new
           { title: "بازدید", value: stat("views") },
           { title: "نظر در انتظار تأیید", value: stat("comments_pending") },
         ]
-      : [
-          { title: "مجله‌های من", value: stat("magazines_published") },
-          { title: "بلاگ‌های من", value: stat("blogs_published") },
-          { title: "پیش‌نویس", value: stat("drafts") },
-          { title: "بازدید", value: stat("views") },
-        ];
+      : section === "blogs"
+        ? [
+            { title: "پست‌های منتشرشده‌ی من", value: stat("blogs_published") },
+            { title: "پیش‌نویس", value: stat("drafts") },
+            { title: "بازدید", value: stat("views") },
+          ]
+        : [
+            { title: "مجله‌های من", value: stat("magazines_published") },
+            { title: "پیش‌نویس", value: stat("drafts") },
+            { title: "بازدید", value: stat("views") },
+          ];
 
-  const title = section === "news" ? "اخبار سازمان" : "مجلات";
+  const title = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ" : "مجلات";
   const label = contentKindLabel[kind];
-  const ks: ContentKind[] = section === "news" ? ["news"] : ["magazines", "blogs"];
+  const ks: ContentKind[] = [section];
 
   return (
     <div>
       <PageHeader
         title={title}
-        description={section === "news" ? "اخبار و اطلاعیه‌های رسمی سازمان" : "مجله‌های سازمانی و یادداشت‌های بلاگ همکاران"}
+        description={section === "news" ? "اخبار و اطلاعیه‌های رسمی سازمان" : section === "blogs" ? "یادداشت‌ها، تجربه‌ها و روایت‌های همکاران" : "مجله‌های سازمانی و شماره‌های ویژه"}
         icon={section === "news" ? <Newspaper size={20} /> : <BookOpen size={20} />}
         actions={
           <>
+            <ModuleReportsButton module="content" />
             <ApiChip
               items={[
                 ...ks.flatMap((k) => [
@@ -291,6 +340,13 @@ export default function ContentModule({ section }: { section: "magazines" | "new
                 ]),
                 { label: "موضوع‌ها", ep: endpoints.categories(entity) },
                 { label: "داشبورد کاربر", ep: endpoints.dashboard("content/content", "user") },
+                ...(section === "news"
+                  ? [
+                      { label: "اطلاعیه‌های سنجاق‌شده در میز کار", ep: endpoints.newsPinned() },
+                      { label: "تأیید خواندن", ep: endpoints.newsAcknowledge("{id}") },
+                      { label: "وضعیت خواندن", ep: endpoints.newsReadStatus("{id}") },
+                    ]
+                  : []),
               ]}
             />
             {canCreate && (
@@ -301,20 +357,6 @@ export default function ContentModule({ section }: { section: "magazines" | "new
           </>
         }
       />
-
-      {section === "magazines" && (
-        <Tabs
-          tabs={[
-            { id: "magazines", label: "مجلات" },
-            { id: "blog", label: "بلاگ" },
-          ]}
-          active={kind === "blogs" ? "blog" : "magazines"}
-          onChange={(t) => {
-            setCat("");
-            setParams(t === "blog" ? { tab: "blog" } : {}, { replace: true });
-          }}
-        />
-      )}
 
       <StatStrip items={statItems} />
 

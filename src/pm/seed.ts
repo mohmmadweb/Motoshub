@@ -4,8 +4,8 @@
 // ---------------------------------------------------------------------------
 import { projects as legacyProjects, playbookTemplates as legacyPlaybooks } from "../data/mock";
 import { projectDetails } from "../data/mockDetails";
-import { withDemoScopes } from "../data/tenancy";
-import { parseRial } from "./jalali";
+import { withDemoScopes, holdings as tenancyHoldings, companies as tenancyCompanies } from "../data/tenancy";
+import { dayNum, fromDayNum, parseRial } from "./jalali";
 import type { EventCode } from "./events";
 import type {
   ActivityLog,
@@ -17,6 +17,7 @@ import type {
   ProjectState,
   PMMinute,
   ColumnKind,
+  TaskType,
 } from "./types";
 
 /** «امروزِ» دمو — داده‌های نمونه حول این تاریخ چیده شده‌اند (در تنظیمات پروژه قابل جلو بردن است) */
@@ -589,8 +590,283 @@ function enrichPr1<T extends { tasks: PMTask[] }>(s: T): T {
 export function seedProjects(): ProjectState[] {
   const scoped = withDemoScopes(legacyProjects, 18);
   const seeds = [enrichPr1(seedPr1()), seedPr2(), seedPr3()];
-  return seeds.map((s) => {
+  const base = seeds.map((s) => {
     const sc = scoped.find((p) => p.id === s.meta.id)!;
     return { ...s, meta: { ...s.meta, scope: sc.scope, holdingId: sc.holdingId, companyId: sc.companyId, authorId: sc.authorId } } as ProjectState;
   });
+  const pr4 = seedPr4();
+  pr4.meta = { ...pr4.meta, scope: base[0].meta.scope, holdingId: base[0].meta.holdingId, companyId: base[0].meta.companyId, authorId: base[0].meta.authorId };
+  return [...base, pr4].map(enrichV7);
 }
+
+// ===========================================================================
+// نسخه‌ی ۷ داده‌ی نمونه: کلید تسک، نوع کار و اپیک، بایگانی تسک، نوع وابستگی، نمای ذخیره‌شده،
+// تاریخچه‌ی جابه‌جایی وضعیت (برای تحلیل جریان)، بازبینی دوره‌ای، دفتر تصمیمات، فرم درخواست،
+// تنظیمات جلسات، پیوند نوآوری، فضای کاری IAM و یک پروژه‌ی خاتمه‌یافته با ارزیابی نهایی.
+// ===========================================================================
+
+const projectKeys: Record<string, string> = { pr1: "QGJ", pr2: "KMS", pr3: "WAG", pr4: "LDT" };
+
+const scopeNameOf = (id: string) => tenancyCompanies.find((c) => c.id === id)?.name ?? tenancyHoldings.find((h) => h.id === id)?.name ?? "بنیاد مستضعفان انقلاب اسلامی";
+
+const T = (n: number) => `${String(8 + (n % 9)).padStart(2, "0")}:${n % 2 ? "۳۰" : "۱۰"}`.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+
+/** زنجیره‌ی جابه‌جایی وضعیت هر تسک را از وضعیت فعلی و تاریخ‌هایش بازسازی می‌کند (فقط داده‌ی نمونه) */
+function synthTransitions(p: ProjectState): ActivityLog[] {
+  const ref = dayNum(DEMO_REF_DATE)!;
+  const label = (k: ColumnKind) => p.columns.find((c) => c.kind === k)?.label ?? k;
+  const out: ActivityLog[] = [];
+  p.tasks.forEach((t, i) => {
+    if (t.archived || t.type === "epic") return;
+    const k = p.columns.find((c) => c.id === t.status)?.kind ?? "backlog";
+    if (k === "backlog") return;
+    const created = dayNum(t.createdAt) ?? dayNum(t.start) ?? ref;
+    const start = Math.min(dayNum(t.start) ?? created, ref);
+    const due = dayNum(t.due) ?? start;
+    const steps: [ColumnKind, ColumnKind, number][] = [];
+    const clamp = (d: number) => Math.min(ref, Math.max(created, d));
+    steps.push(["backlog", "todo", clamp(Math.min(created + 1, start - 1))]);
+    if (k !== "todo") {
+      const sd = clamp(start);
+      steps.push(["todo", "doing", sd]);
+      if (k === "review") steps.push(["doing", "review", clamp(Math.max(sd, Math.min(due - 1, ref - 1)))]);
+      if (k === "blocked") steps.push(["doing", "blocked", clamp(Math.max(sd + 2, ref - 3))]);
+      if (k === "done") {
+        const fin = clamp(Math.max(sd, due - (i % 3)));
+        steps.push(["doing", "review", clamp(Math.max(sd, fin - 2))]);
+        steps.push(["review", "done", fin]);
+      }
+    }
+    let last = -1;
+    steps.forEach(([from, to, d], j) => {
+      const day = Math.max(d, last);
+      last = day;
+      out.push({
+        id: "",
+        event: "TASK_STATUS_CHANGED",
+        description: `تسک «${t.title}» از «${label(from)}» به «${label(to)}» منتقل شد.`,
+        actor: t.assignee,
+        date: fromDayNum(day),
+        time: T(i + j * 3),
+        seq: 0,
+        entity: { type: "task", id: t.id },
+        metadata: { old_status: label(from), new_status: label(to), old_kind: from, new_kind: to },
+      });
+    });
+  });
+  return out;
+}
+
+const typeOf: Record<string, Record<string, TaskType>> = {
+  pr1: { t4: "story", t12: "story", t30: "epic", t31: "epic", t32: "bug" },
+  pr2: { t18: "story", t21: "bug", t30: "epic", t31: "epic" },
+  pr3: { t30: "epic" },
+  pr4: {},
+};
+const epicOf: Record<string, Record<string, string>> = {
+  pr1: { t9: "t30", t10: "t30", t1: "t30", t3: "t30", t13: "t30", t19: "t30", t32: "t30", t2: "t31", t11: "t31", t4: "t31", t12: "t31", t16: "t31", t17: "t31", t14: "t31" },
+  pr2: { t17: "t30", t18: "t30", t6: "t30", t21: "t30", t5: "t30", t19: "t31", t20: "t31", t7: "t31" },
+  pr3: { t22: "t30", t23: "t30", t8: "t30", t24: "t30" },
+  pr4: {},
+};
+
+function extraTasks(pid: string): PMTask[] {
+  if (pid === "pr1")
+    return [
+      task({ id: "t30", type: "epic", title: "زیرساخت آب‌رسانی و بازسازی مدارس", assignee: "محسن مردعلی", start: "۱۴۰۴/۱۲/۱۵", due: "۱۴۰۵/۰۳/۱۵", status: "doing", priority: "زیاد", description: "همه‌ی کارهای عمرانی فاز دوم: شبکه‌ی آب، مدارس و تحویل موقت.", createdAt: "۱۴۰۴/۱۲/۱۲" }),
+      task({ id: "t31", type: "epic", title: "اشتغال خرد و کارگاه‌های روستایی", assignee: "وحید خاوئی", start: "۱۴۰۵/۰۲/۰۱", due: "۱۴۰۵/۰۳/۳۰", status: "doing", priority: "زیاد", description: "راه‌اندازی، تجهیز و بهره‌برداری ۸ کارگاه اشتغال خرد.", createdAt: "۱۴۰۴/۱۲/۱۲" }),
+      task({ id: "t32", title: "رفع نشتی شبکه‌ی آب روستای ۷", assignee: "تیم عمرانی", start: "۱۴۰۵/۰۳/۰۳", due: "۱۴۰۵/۰۳/۱۰", status: "doing", progress: 40, priority: "بحرانی", labels: ["عمرانی", "خطا"], estHours: 16, description: "پس از آزمایش فشار، نشتی در خط اصلی روستای ۷ گزارش شد (از فرم درخواست پروژه).", createdAt: "۱۴۰۵/۰۳/۰۳" }),
+      task({ id: "t33", title: "بازدید از نمایشگاه تجهیزات کارگاهی تهران", assignee: "وحید خاوئی", start: "۱۴۰۵/۰۲/۲۵", due: "۱۴۰۵/۰۲/۲۷", status: "todo", priority: "کم", labels: ["تدارکات"], archived: true, archivedAt: "۱۴۰۵/۰۲/۲۴", archivedBy: "محسن مردعلی", description: "با انتخاب تأمین‌کننده‌ی دوم، این بازدید لازم نشد و بایگانی شد." }),
+    ];
+  if (pid === "pr2")
+    return [
+      task({ id: "t30", type: "epic", title: "جستجوی هوشمند اسناد", assignee: "مهندس بردیا کوشا", start: "۱۴۰۵/۰۲/۰۱", due: "۱۴۰۵/۰۳/۲۵", status: "doing", priority: "بحرانی", createdAt: "۱۴۰۵/۰۱/۳۰" }),
+      task({ id: "t31", type: "epic", title: "استقرار، دسترسی‌ها و آموزش", assignee: "دبیرخانه", start: "۱۴۰۵/۰۳/۱۰", due: "۱۴۰۵/۰۴/۱۵", status: "todo", priority: "زیاد", createdAt: "۱۴۰۵/۰۱/۳۰" }),
+    ];
+  if (pid === "pr3") return [task({ id: "t30", type: "epic", title: "آماده‌سازی واگذاری اموال", assignee: "واحد حقوقی", start: "۱۴۰۵/۰۳/۰۱", due: "۱۴۰۵/۰۵/۱۰", status: "doing", priority: "زیاد", createdAt: "۱۴۰۵/۰۳/۰۱" })];
+  return [];
+}
+
+function enrichV7(s: ProjectState): ProjectState {
+  const pid = s.meta.id;
+  const p: ProjectState = structuredClone(s);
+  // ---- تسک‌های اضافه، نوع کار، اپیک
+  p.tasks = [...p.tasks, ...extraTasks(pid)].map((t) => ({ ...t, type: t.type ?? typeOf[pid]?.[t.id] ?? (t.parentId ? "subtask" : "task"), epicId: epicOf[pid]?.[t.id] }));
+  // ---- کلید تسک‌ها بر اساس ترتیب ایجاد
+  const key = projectKeys[pid] ?? "PRJ";
+  const order = [...p.tasks].map((t, i) => ({ t, i })).sort((a, b) => (dayNum(a.t.createdAt) ?? 0) - (dayNum(b.t.createdAt) ?? 0) || a.i - b.i);
+  order.forEach(({ t }, n) => (t.key = `${key}-${n + 1}`));
+  // ---- فضای کاری IAM
+  const scopeId = p.meta.companyId ?? p.meta.holdingId ?? "sys";
+  p.meta = { ...p.meta, key, nextTaskNo: order.length + 1, scopeId, workspace: scopeNameOf(scopeId) };
+  p.meetingSettings = { defaultDuration: 60, reminderMinutes: 30, recordingAllowed: true, defaultMode: "ویدیویی" };
+  p.savedViews = [];
+  p.stageGates = [];
+  p.decisions = [];
+  p.intake = [];
+  p.intakeOpen = true;
+
+  if (pid === "pr1") {
+    p.meta = { ...p.meta, fundId: "fn1", contractId: "ct1", opportunityId: "rs3", companyName: "شرکت عمران روستایی قلعه‌گنج" };
+    p.deps = p.deps.map((d) => (d.predecessor === "t2" && d.successor === "t4" ? { ...d, type: "SS" as const, lag: 10 } : d.predecessor === "t14" && d.successor === "t15" ? { ...d, type: "FF" as const, lag: 1 } : d));
+    p.deps.push({ id: "dp20", predecessor: "t32", successor: "t13", createdAt: "۱۴۰۵/۰۳/۰۳", type: "FS", lag: 0 });
+    p.meetings.push({ id: "mt5", title: "تماس صوتی هفتگی با پیمانکار عمرانی", date: "۱۴۰۵/۰۳/۱۰", time: "۰۸:۳۰", duration: 20, mode: "صوتی", participants: ["محسن مردعلی", "تیم عمرانی"], description: "پیگیری رفع نشتی و برنامه‌ی تحویل مدارس.", taskIds: ["t32", "t13"], status: "برنامه‌ریزی‌شده" });
+    const mn2 = p.minutes[1];
+    if (mn2) {
+      mn2.fileIds = ["dc4", "dc5"];
+      p.documents = p.documents.map((d) => (d.id === "dc4" ? { ...d, minuteId: mn2.id } : d));
+    }
+    p.savedViews = [
+      { id: "sv1", name: "تدارکات به تفکیک مسئول", owner: "محسن مردعلی", shared: true, layout: "kanban", filters: { label: "تدارکات" }, sort: "due", lane: "assignee", createdAt: "۱۴۰۵/۰۲/۲۰" },
+      { id: "sv2", name: "باگ‌ها و خطاها", owner: "پایگاه اطلاع‌رسانی بنیاد", shared: false, layout: "list", filters: { type: "bug" }, sort: "priority", lane: "none", columns: ["key", "type", "status", "assignee", "priority", "due", "progress"], createdAt: "۱۴۰۵/۰۳/۰۴" },
+      { id: "sv3", name: "اپیک اشتغال خرد", owner: "وحید خاوئی", shared: true, layout: "kanban", filters: { epic: "t31" }, sort: "manual", lane: "sprint", createdAt: "۱۴۰۵/۰۳/۰۱" },
+    ];
+    p.stageGates = [
+      { id: "sg1", date: "۱۴۰۵/۰۱/۲۱", decision: "ادامه", reason: "مطالعات میدانی کامل شد و نیازهای ۱۲ روستا تأیید شد؛ ورود به اجرای شبکه‌ی آب.", nextReview: "۱۴۰۵/۰۲/۱۶", by: "پایگاه اطلاع‌رسانی بنیاد", phase: "اجرا", snapshot: { progress: 18, budgetUsage: 12, health: "سبز", openRisks: 3 } },
+      { id: "sg2", date: "۱۴۰۵/۰۲/۱۶", decision: "اصلاح", reason: "فاز اول آب‌رسانی تحویل شد اما تأمین تجهیزات کارگاه‌ها عقب است.", actions: "تأمین از تأمین‌کننده‌ی دوم و پیش‌خرید اقلام بحرانی؛ گزارش هفتگی به کارفرما.", nextReview: "۱۴۰۵/۰۳/۱۶", by: "پایگاه اطلاع‌رسانی بنیاد", phase: "اجرا", snapshot: { progress: 46, budgetUsage: 39, health: "زرد", openRisks: 2 } },
+    ];
+    p.decisions = [
+      { id: "dcs1", title: "خرید تجهیزات کارگاه‌ها از تأمین‌کننده‌ی دوم", reason: "تأمین‌کننده‌ی اول دو ماه تأخیر اعلام کرد؛ قیمت تأمین‌کننده‌ی دوم ۶٪ بیشتر اما تحویل فوری است.", owner: "محسن مردعلی", date: mn2?.date ?? "۱۴۰۵/۰۲/۲۲", alternatives: "صبر برای تأمین‌کننده‌ی اول؛ خرید خرد از بازار محلی", link: { type: "task", id: "t11", label: "تجهیز کارگاه‌های اشتغال" }, minuteId: mn2?.id, minuteIndex: 1, createdBy: "محسن مردعلی" },
+      { id: "dcs2", title: "مراسم افتتاح پس از تحویل موقت مدارس برگزار شود", reason: "افتتاح هم‌زمان کارگاه‌ها و مدارس هزینه‌ی تشریفات را نصف می‌کند و حضور مسئولان استانی را تضمین می‌کند.", owner: "پایگاه اطلاع‌رسانی بنیاد", date: "۱۴۰۵/۰۳/۰۵", link: { type: "milestone", id: "m4", label: "افتتاح رسمی و تحویل به بهره‌بردار" }, createdBy: "پایگاه اطلاع‌رسانی بنیاد" },
+    ];
+    p.intake = [
+      { id: "ir1", title: "گزارش تصویری ماهانه برای کارفرما", type: "task", priority: "متوسط", description: "کارفرما خواسته هر ماه یک گزارش تصویری از پیشرفت کارگاه‌ها و مدارس دریافت کند.", requester: "بنیاد علوی", date: "۱۴۰۵/۰۳/۰۶", wantedBy: "۱۴۰۵/۰۳/۲۰", status: "جدید" },
+      { id: "ir2", title: "نصب سایه‌بان برای حیاط کارگاه شماره‌ی ۲", type: "story", priority: "کم", description: "بهره‌برداران کارگاه ۲ برای کار در فضای باز به سایه‌بان نیاز دارند.", requester: "وحید خاوئی", date: "۱۴۰۵/۰۳/۰۷", status: "جدید" },
+      { id: "ir3", title: "نشتی خط اصلی آب روستای ۷", type: "bug", priority: "بحرانی", description: "پس از آزمایش فشار، نشتی در خط اصلی مشاهده شد.", requester: "تیم عمرانی", date: "۱۴۰۵/۰۳/۰۲", status: "پذیرفته", taskId: "t32", decidedBy: "محسن مردعلی", decidedAt: "۱۴۰۵/۰۳/۰۳" },
+      { id: "ir4", title: "ساخت سالن ورزشی روستای رمشک", type: "story", priority: "متوسط", description: "درخواست دهیاری رمشک.", requester: "تیم عمرانی", date: "۱۴۰۵/۰۲/۳۰", status: "ردشده", rejectReason: "خارج از دامنه‌ی فاز دوم؛ برای فاز سوم ثبت شد.", decidedBy: "محسن مردعلی", decidedAt: "۱۴۰۵/۰۳/۰۱" },
+    ];
+  }
+  if (pid === "pr2") {
+    p.meta = { ...p.meta, opportunityId: "rs1", companyName: "شرکت داده‌پردازی بنیاد" };
+    p.deps = p.deps.map((d) => (d.predecessor === "t6" && d.successor === "t19" ? { ...d, type: "FS" as const, lag: 1 } : d.predecessor === "t17" && d.successor === "t6" ? { ...d, type: "SS" as const, lag: 3 } : d));
+    p.stageGates = [{ id: "sg1", date: "۱۴۰۵/۰۳/۰۳", decision: "اصلاح", reason: "تأخیر ماژول جستجو و ریسک بحرانی تیم سامانه.", actions: "افزودن یک توسعه‌دهنده‌ی پاره‌وقت و بازتعریف محدوده‌ی MVP جستجو.", nextReview: "۱۴۰۵/۰۳/۱۷", by: "وحید خاوئی", phase: "اجرا", snapshot: { progress: 41, budgetUsage: 30, health: "زرد", openRisks: 2 } }];
+    p.decisions = [{ id: "dcs1", title: "تبدیل خودکار کدگذاری به‌جای بازنویسی دستی فایل‌ها", reason: "۱۸٪ فایل‌ها Windows-1256 هستند؛ اسکریپت تبدیل ۳ روز و بازنویسی دستی ۳ هفته زمان می‌برد.", owner: "مهندس بردیا کوشا", date: "۱۴۰۵/۰۳/۰۶", alternatives: "ورود دستی توسط دبیرخانه؛ کنار گذاشتن فایل‌های قدیمی", link: { type: "issue", id: "is1", label: "ناسازگاری کدگذاری فایل‌ها" }, createdBy: "وحید خاوئی" }];
+    p.intake = [{ id: "ir1", title: "جستجو در متن صورت‌جلسات اسکن‌شده (OCR)", type: "story", priority: "زیاد", description: "واحد حقوقی می‌خواهد متن صورت‌جلسات قدیمی اسکن‌شده هم جستجوپذیر باشد.", requester: "دبیرخانه", date: "۱۴۰۵/۰۳/۰۷", status: "جدید" }];
+  }
+  if (pid === "pr3") {
+    p.stageGates = [{ id: "sg1", date: "۱۴۰۵/۰۳/۰۲", decision: "اصلاح", reason: "ارزش‌گذاری کارشناسی طولانی شده و سلامت پروژه قرمز است.", actions: "به‌کارگیری هم‌زمان سه هیئت کارشناسی.", nextReview: "۱۴۰۵/۰۳/۰۵", by: "پایگاه اطلاع‌رسانی بنیاد", phase: "برنامه‌ریزی", snapshot: { progress: 9, budgetUsage: 8, health: "قرمز", openRisks: 1 } }];
+  }
+  // ---- تاریخچه‌ی جابه‌جایی وضعیت (برای تحلیل جریان) و مرتب‌سازی تاریخچه بر اساس زمان
+  const kept = p.logs.filter((l) => l.event !== "TASK_STATUS_CHANGED");
+  const all = [...kept, ...synthTransitions(p)];
+  const stamp = (l: ActivityLog) => (dayNum(l.date) ?? 0) * 10000 + Number(l.time.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))).replace(/\D/g, "") || 0);
+  all.sort((a, b) => stamp(a) - stamp(b) || a.seq - b.seq);
+  p.logs = all.map((l, i) => ({ ...l, id: `lg-${pid}-${i + 1}`, seq: i + 1 }));
+  return p;
+}
+
+// ------------------------------- پروژه‌ی ۴ (خاتمه‌یافته) --------------------------------
+function seedPr4(): ProjectState {
+  const members = [
+    { id: "tm0", name: "پایگاه اطلاع‌رسانی بنیاد", title: "راهبر سامانه", role: "مالک" as const, allocation: 10, userId: "u1" },
+    { id: "tm1", name: "وحید خاوئی", title: "مدیر پروژه", role: "مدیر پروژه" as const, allocation: 40, userId: "u4" },
+    { id: "tm2", name: "تیم آموزش", title: "مدرسان دوره", role: "عضو" as const, allocation: 60 },
+    { id: "tm3", name: "تعاونی بانوان کارآفرین", title: "بهره‌بردار", role: "مشاهده‌گر" as const, allocation: 0 },
+    { id: "tm4", name: "واحد مالی", title: "مسئول مالی", role: "عضو" as const, allocation: 10 },
+  ];
+  const tasks: PMTask[] = [
+    task({ id: "t1", title: "نیازسنجی مهارتی ۶۰ متقاضی", assignee: "وحید خاوئی", start: "۱۴۰۴/۱۱/۰۱", due: "۱۴۰۴/۱۱/۱۵", status: "done", progress: 100, priority: "زیاد", labels: ["آموزش"], estHours: 40, createdAt: "۱۴۰۴/۱۰/۲۵" }),
+    task({ id: "t2", title: "تجهیز کلاس رایانه (۲۰ دستگاه)", assignee: "واحد مالی", start: "۱۴۰۴/۱۱/۱۰", due: "۱۴۰۴/۱۲/۰۵", status: "done", progress: 100, priority: "زیاد", labels: ["تدارکات"], estBudget: 700_000_000, estHours: 24, createdAt: "۱۴۰۴/۱۰/۲۵" }),
+    task({ id: "t3", title: "برگزاری دوره‌ی مهارت‌های دیجیتال (۸ هفته)", assignee: "تیم آموزش", start: "۱۴۰۴/۱۲/۰۶", due: "۱۴۰۵/۰۲/۰۵", status: "done", progress: 100, priority: "زیاد", labels: ["آموزش"], estBudget: 400_000_000, estHours: 320, createdAt: "۱۴۰۴/۱۰/۲۵" }),
+    task({ id: "t4", title: "راه‌اندازی فروشگاه برخط محصولات تعاونی", assignee: "تیم آموزش", start: "۱۴۰۵/۰۱/۲۰", due: "۱۴۰۵/۰۲/۱۵", status: "done", progress: 100, priority: "متوسط", labels: ["توسعه"], estHours: 60, createdAt: "۱۴۰۴/۱۱/۲۰" }),
+    task({ id: "t5", title: "ارزیابی پایانی و صدور گواهی‌نامه‌ها", assignee: "وحید خاوئی", start: "۱۴۰۵/۰۲/۱۰", due: "۱۴۰۵/۰۲/۱۵", status: "done", progress: 100, priority: "متوسط", labels: ["مستندات"], estHours: 16, createdAt: "۱۴۰۴/۱۱/۲۰" }),
+  ];
+  return {
+    meta: {
+      id: "pr4",
+      name: "توانمندسازی دیجیتال بانوان سرپرست خانوار — لنده",
+      description: "دوره‌ی ۸ هفته‌ای مهارت‌های دیجیتال و راه‌اندازی فروشگاه برخط برای ۶۰ بانوی سرپرست خانوار در شهرستان لنده.",
+      client: "تعاونی بانوان کارآفرین",
+      sponsor: "بنیاد علوی",
+      manager: "وحید خاوئی",
+      health: "سبز",
+      priority: "متوسط",
+      phase: "اختتام",
+      start: "۱۴۰۴/۱۱/۰۱",
+      deadline: "۱۴۰۵/۰۲/۱۵",
+      category: "توانمندسازی",
+      tags: ["لنده", "اشتغال", "آموزش"],
+      icon: "GraduationCap",
+      color: "#7c3aed",
+      visibility: "عمومی سازمان",
+      workspace: "",
+      starred: false,
+      archived: false,
+      financeOfficer: "واحد مالی",
+      groupId: "pg1",
+      createdAt: "۱۴۰۴/۱۰/۲۵",
+      fundId: "fn2",
+      companyName: "تعاونی بانوان کارآفرین",
+    },
+    columns: defaultColumns(),
+    tasks,
+    deps: [
+      { id: "dp1", predecessor: "t1", successor: "t3", createdAt: "۱۴۰۴/۱۰/۲۵" },
+      { id: "dp2", predecessor: "t2", successor: "t3", createdAt: "۱۴۰۴/۱۰/۲۵" },
+      { id: "dp3", predecessor: "t3", successor: "t5", createdAt: "۱۴۰۴/۱۰/۲۵" },
+      { id: "dp4", predecessor: "t3", successor: "t4", createdAt: "۱۴۰۴/۱۱/۲۰", type: "SS", lag: 30 },
+    ],
+    members,
+    milestones: [
+      { id: "m1", title: "آغاز دوره", due: "۱۴۰۴/۱۲/۰۶", status: "انجام‌شده", owner: "تیم آموزش", taskIds: ["t1", "t2"] },
+      { id: "m2", title: "فارغ‌التحصیلی و صدور گواهی", due: "۱۴۰۵/۰۲/۱۵", status: "انجام‌شده", owner: "وحید خاوئی", taskIds: ["t3", "t5"] },
+    ],
+    risks: [{ id: "r1", title: "افت حضور شرکت‌کنندگان در ماه رمضان", severity: "متوسط", probability: "متوسط", impact: "متوسط", status: "بسته", owner: "تیم آموزش", mitigation: "جابه‌جایی ساعت کلاس‌ها به صبح" }],
+    issues: [],
+    expenses: [
+      { id: "e1", title: "خرید ۲۰ دستگاه رایانه", category: "تجهیزات", amount: 760_000_000, date: "۱۴۰۴/۱۲/۰۳", status: "پرداخت‌شده", taskId: "t2", createdBy: "واحد مالی" },
+      { id: "e2", title: "حق‌التدریس مدرسان", category: "آموزش", amount: 430_000_000, date: "۱۴۰۵/۰۲/۰۸", status: "پرداخت‌شده", taskId: "t3", createdBy: "واحد مالی" },
+      { id: "e3", title: "طراحی فروشگاه برخط", category: "نرم‌افزار", amount: 100_000_000, date: "۱۴۰۵/۰۲/۱۴", status: "پرداخت‌شده", taskId: "t4", createdBy: "واحد مالی" },
+    ],
+    budget: { total: 1_200_000_000, lines: [{ category: "تجهیزات", allocated: 700_000_000 }, { category: "آموزش", allocated: 400_000_000 }, { category: "نرم‌افزار", allocated: 100_000_000 }], revenue: 0, thresholds: [80, 100], firedThresholds: [80, 100] },
+    timeLogs: [
+      { id: "tl1", member: "تیم آموزش", taskId: "t3", hours: 336, date: "۱۴۰۵/۰۲/۰۵", note: "۸ هفته کلاس" },
+      { id: "tl2", member: "وحید خاوئی", taskId: "t1", hours: 44, date: "۱۴۰۴/۱۱/۱۵", note: "" },
+    ],
+    meetings: [{ id: "mt1", title: "جلسه‌ی اختتامیه و ارزیابی", date: "۱۴۰۵/۰۲/۲۸", time: "۱۰:۰۰", duration: 60, mode: "حضوری", participants: ["وحید خاوئی", "تیم آموزش", "پایگاه اطلاع‌رسانی بنیاد", "تعاونی بانوان کارآفرین"], description: "", taskIds: [], status: "برگزارشده" }],
+    minutes: [{ id: "mn1", title: "جلسه‌ی اختتامیه و ارزیابی", date: "۱۴۰۵/۰۲/۲۸", attendees: 4, decisions: 2, followUps: 1, meetingId: "mt1", participants: ["وحید خاوئی", "تیم آموزش", "پایگاه اطلاع‌رسانی بنیاد", "تعاونی بانوان کارآفرین"], topics: ["نتایج ارزیابی پایانی", "تحویل فروشگاه برخط به تعاونی"], decisionList: ["پروژه با تحقق ۸۵٪ اهداف بسته شود", "دوره‌ی دوم برای ۴۰ نفر در طرح صندوق نوآوری پیشنهاد شود"], actions: [{ id: "ac1", text: "ارسال گزارش نهایی به بنیاد علوی", owner: "وحید خاوئی", due: "۱۴۰۵/۰۳/۰۵" }], published: true }],
+    documents: [
+      { id: "dc1", name: "گزارش نیازسنجی مهارتی.pdf", type: "گزارش", size: "۷۲۰ کیلوبایت", uploadedBy: "وحید خاوئی", date: "۱۴۰۴/۱۱/۱۵", version: 1, taskId: "t1" },
+      { id: "dc2", name: "فهرست فارغ‌التحصیلان و نمرات.xlsx", type: "گزارش", size: "۹۰ کیلوبایت", uploadedBy: "تیم آموزش", date: "۱۴۰۵/۰۲/۱۵", version: 1, taskId: "t5" },
+    ],
+    channels: [
+      { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [] },
+      { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
+    ],
+    announcements: [],
+    automation: defaultAutomation(),
+    notifRules: {},
+    logs: [
+      L("PROJECT_CREATED", "پروژه «توانمندسازی دیجیتال بانوان سرپرست خانوار — لنده» ایجاد شد.", "پایگاه اطلاع‌رسانی بنیاد", "۱۴۰۴/۱۰/۲۵", "۰۹:۰۰", { type: "project", id: "pr4" }),
+      L("PROJECT_PHASE_CHANGED", "پروژه از مرحله‌ی «تکمیل» وارد مرحله‌ی «اختتام» شد.", "وحید خاوئی", "۱۴۰۵/۰۲/۲۸", "۱۲:۰۰", { type: "project", id: "pr4" }, { old_phase: "تکمیل", new_phase: "اختتام" }),
+      L("PROJECT_CLOSED", "پروژه بسته شد: تحقق اهداف ۸۵٪، کیفیت ۴ از ۵، تأخیر ۹ روز، اضافه‌هزینه ۷٫۵٪.", "وحید خاوئی", "۱۴۰۵/۰۲/۲۸", "۱۲:۰۵", { type: "project", id: "pr4" }),
+    ],
+    firedReminders: [],
+    stageGates: [{ id: "sg1", date: "۱۴۰۵/۰۱/۲۰", decision: "ادامه", reason: "نیمه‌ی دوره با حضور ۹۲٪ برگزار شد.", nextReview: "۱۴۰۵/۰۲/۱۵", by: "پایگاه اطلاع‌رسانی بنیاد", phase: "اجرا", snapshot: { progress: 62, budgetUsage: 70, health: "سبز", openRisks: 1 } }],
+    closure: {
+      closedAt: "۱۴۰۵/۰۲/۲۸",
+      closedBy: "وحید خاوئی",
+      goalsAchieved: 85,
+      qualityScore: 4,
+      scheduleVarianceDays: 9,
+      scheduleVariancePct: 9,
+      costVariance: 90_000_000,
+      costVariancePct: 7.5,
+      summary: "۵۲ نفر از ۶۰ نفر دوره را با موفقیت گذراندند و فروشگاه برخط تعاونی با ۳۴ محصول راه‌اندازی شد.",
+      outcomes: "۵۲ گواهی‌نامه، ۳۴ محصول در فروشگاه برخط، ۱۱ سفارش در ماه نخست.",
+      lessons: ["تجهیزات را دست‌کم یک ماه پیش از آغاز دوره سفارش دهید؛ تأخیر رایانه‌ها شروع را عقب انداخت.", "ساعت کلاس در ماه رمضان باید از پیش جابه‌جا شود.", "فروشگاه برخط از روز اول با یک عضو تعاونی به‌عنوان مسئول راه‌اندازی شود."],
+      memberEvals: [
+        { memberId: "tm1", name: "وحید خاوئی", score: 5, note: "هماهنگی عالی با تعاونی و کارفرما." },
+        { memberId: "tm2", name: "تیم آموزش", score: 4, note: "کیفیت آموزش خوب؛ ۸ نفر ریزش داشت." },
+        { memberId: "tm4", name: "واحد مالی", score: 3, note: "تأخیر در پرداخت پیش‌خرید تجهیزات." },
+      ],
+    },
+  };
+}
+
+/** ساخت کلید یکتای پروژه‌ی جدید: PR4، PR5، … */
+export function nextProjectKey(existing: (string | undefined)[]): string {
+  const used = new Set(existing.filter(Boolean));
+  for (let n = existing.length + 1; ; n++) if (!used.has(`PR${n}`)) return `PR${n}`;
+}
+

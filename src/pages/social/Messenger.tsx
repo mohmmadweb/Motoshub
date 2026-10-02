@@ -140,6 +140,11 @@ export default function Messenger({ mode }: { mode: MessengerMode }) {
     { label: "فوروارد پیام", ep: endpoints.messageForward("{id}") },
     { label: "ذخیره‌ی پیام", ep: endpoints.messageSave("{id}") },
     { label: "بلادرنگ (WebSocket)", ep: endpoints.realtime() },
+    { label: "واکنش اموجی به پیام", ep: endpoints.messageReact("{id}") },
+    { label: "رشته‌ی گفتگو (thread)", ep: endpoints.messageThread("{id}") },
+    { label: "سنجاق پیام (حداکثر ۵)", ep: endpoints.messagePin("{id}") },
+    { label: "پیام‌های سنجاق‌شده", ep: endpoints.chatPinned(seg, pid) },
+    { label: "جستجو داخل گفتگو", ep: endpoints.chatSearch(seg, pid) },
   ];
 
   const Icon = modeIcon[mode];

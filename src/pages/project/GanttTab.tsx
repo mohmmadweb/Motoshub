@@ -3,9 +3,10 @@ import { Diamond, Save, Trash2 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { criticalPath, dependencyConflicts, isDone, isOverdue, kindOf, taskLoggedHours } from "../../pm/selectors";
+import { criticalPath, dependencyConflicts, depIsDefault, depShort, depType, depTypeLabel, isDone, isOverdue, kindOf, taskLoggedHours } from "../../pm/selectors";
 import { dayNum, fa, fromDayNum, monthNames, parseJalali } from "../../pm/jalali";
 import { kindColor, useProjectPage } from "./shared";
+import { TypeIcon } from "./taskTypes";
 
 const ROW = 38;
 const LABEL_W = 230;
@@ -116,6 +117,9 @@ export default function GanttTab() {
           <span className="flex items-center gap-1">
             <span className="w-0.5 h-3 bg-rose-500" /> امروز ({refDate})
           </span>
+          <span className="font-mono text-[10px]" dir="ltr" title="پیکان بدون برچسب = پایان‌به‌شروع (FS) بدون تأخیر">
+            FS · SS · FF · SF ±lag
+          </span>
         </div>
       </div>
 
@@ -129,7 +133,10 @@ export default function GanttTab() {
             </div>
             {tasks.map((t) => (
               <button key={t.id} onClick={() => openTask(t.id)} style={{ height: ROW }} className="w-full text-right px-3 border-b border-ink-100 hover:bg-ink-50 flex flex-col justify-center">
-                <span className="text-xs font-medium text-ink-800 truncate">{t.title}</span>
+                <span className="text-xs font-medium text-ink-800 truncate flex items-center gap-1">
+                  <TypeIcon type={t.type} size={11} />
+                  {t.title}
+                </span>
                 <span className="text-[10.5px] text-ink-400 truncate">
                   {t.assignee}
                   {(() => {
@@ -203,17 +210,32 @@ export default function GanttTab() {
                     const a = p.tasks.find((t) => t.id === d.predecessor);
                     const b = p.tasks.find((t) => t.id === d.successor);
                     if (ra === undefined || rb === undefined || !a || !b) return null;
-                    // مختصات SVG از چپ: left = width − right
-                    const sx = width - (xr(dayNum(a.due)!) + dw);
+                    // مختصات SVG از چپ: left = width − right — نقطه‌ی اتصال بر اساس نوع وابستگی (FS/SS/FF/SF)
+                    const ty = depType(d);
+                    const fromStart = ty === "SS" || ty === "SF";
+                    const toEnd = ty === "FF" || ty === "SF";
+                    const sx = fromStart ? width - xr(dayNum(a.start)!) : width - (xr(dayNum(a.due)!) + dw);
                     const sy = (ra + msTop) * ROW + ROW / 2;
-                    const ex = width - xr(dayNum(b.start)!);
+                    const ex = toEnd ? width - (xr(dayNum(b.due)!) + dw) : width - xr(dayNum(b.start)!);
                     const ey = (rb + msTop) * ROW + ROW / 2;
                     const bad = conflicts.has(d.id);
                     const onCrit = crit?.edges.has(`${d.predecessor}>${d.successor}`);
-                    // پیکان باید از سمت راست وارد ابتدای نوار تسک وابسته شود (جهت زمان راست‌به‌چپ است)
-                    const turnX = Math.max(ex + 10, sx - 8);
-                    const path = `M ${sx} ${sy} H ${turnX} V ${ey} H ${ex + 2}`;
-                    return <path key={d.id} d={path} fill="none" stroke={bad ? "#e11d48" : onCrit ? "var(--color-navy-700)" : "var(--color-ink-400)"} strokeWidth={bad || onCrit ? 2 : 1.2} markerEnd={`url(#${bad ? "g-arr-bad" : "g-arr"})`} opacity={0.85} />;
+                    // پیکان به ابتدای نوار وابسته از راست وارد می‌شود (زمان راست‌به‌چپ) و به انتهای نوار از چپ
+                    const turnX = toEnd ? Math.min(ex, sx) - 10 : Math.max(ex + 10, sx - 8);
+                    const path = `M ${sx} ${sy} H ${turnX} V ${ey} H ${toEnd ? ex - 2 : ex + 2}`;
+                    const label = !depIsDefault(d);
+                    return (
+                      <g key={d.id}>
+                        <path d={path} fill="none" stroke={bad ? "#e11d48" : onCrit ? "var(--color-navy-700)" : "var(--color-ink-400)"} strokeWidth={bad || onCrit ? 2 : 1.2} markerEnd={`url(#${bad ? "g-arr-bad" : "g-arr"})`} opacity={0.85}>
+                          <title>{`${depTypeLabel[ty]}${d.lag ? ` · تأخیر ${fa(d.lag)} روز` : ""}`}</title>
+                        </path>
+                        {label && (
+                          <text x={turnX} y={(sy + ey) / 2} dy={3} textAnchor="middle" fontSize="9" fontFamily="monospace" fill={bad ? "#e11d48" : "var(--color-ink-600)"} stroke="var(--color-ink-50)" strokeWidth={3} paintOrder="stroke" direction="ltr">
+                            {depShort(d)}
+                          </text>
+                        )}
+                      </g>
+                    );
                   })}
                 </svg>
               )}

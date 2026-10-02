@@ -85,7 +85,7 @@ export default function TopicsHub() {
 
   return (
     <div>
-      <PageHeader title="هشتگ‌ها و موضوعات" description="هر هشتگ همه‌ی مطالب مرتبط را در همه‌ی بخش‌ها کنار هم می‌آورد؛ موضوع‌ها دسته‌بندی هر بخش‌اند." icon={<Hash size={20} />} actions={<ApiChip items={apiItems} />} />
+      <PageHeader title="هشتگ‌ها" description="هر هشتگ همه‌ی مطالب مرتبط را در همه‌ی بخش‌ها کنار هم می‌آورد؛ موضوع‌ها دسته‌بندی هر بخش‌اند." icon={<Hash size={20} />} actions={<ApiChip items={apiItems} />} />
       <Tabs<TabId>
         tabs={[
           { id: "tags", label: "هشتگ‌ها", count: tags.length },

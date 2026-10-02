@@ -6,7 +6,9 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { addDays, diffDays } from "../../pm/jalali";
 import { defaultLabels } from "../../pm/seed";
-import type { PMPriority, Recurrence } from "../../pm/types";
+import type { PMPriority, Recurrence, TaskType } from "../../pm/types";
+import { typeLabel } from "../../pm/selectors";
+import { taskTypes } from "./taskTypes";
 import { Field, MemberSelect, numIn, priorities, useProjectPage } from "./shared";
 
 export default function TaskCreateModal({ open, onClose, defaultStatus }: { open: boolean; onClose: () => void; defaultStatus?: string }) {
@@ -28,6 +30,9 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
   const [sprintId, setSprintId] = useState("");
   const [points, setPoints] = useState(0);
   const [recurrence, setRecurrence] = useState<Recurrence | "">("");
+  const [type, setType] = useState<TaskType>("task");
+  const [epicId, setEpicId] = useState("");
+  const epics = p.tasks.filter((t) => t.type === "epic" && !t.archived);
   const sprints = (p.sprints ?? []).filter((x) => x.status !== "تکمیل‌شده");
 
   useEffect(() => {
@@ -52,12 +57,14 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
     setSprintId("");
     setPoints(0);
     setRecurrence("");
+    setType("task");
+    setEpicId("");
   };
 
   const submit = () => {
     if (!title.trim()) return notify("عنوان تسک الزامی است.", "warning");
     if (diffDays(start, due) < 0) return notify("سررسید نمی‌تواند قبل از شروع باشد.", "warning");
-    pm.createTask(pid, { title: title.trim(), description, assignee, priority, start, due, status, labels, predecessors: preds, estBudget: numIn(estBudget), estHours: numIn(estHours), milestoneId: milestoneId || undefined, sprintId: sprintId || undefined, storyPoints: points || undefined, recurrence: recurrence || undefined });
+    pm.createTask(pid, { title: title.trim(), description, assignee, priority, start, due, status, labels, predecessors: preds, estBudget: numIn(estBudget), estHours: numIn(estHours), milestoneId: milestoneId || undefined, sprintId: sprintId || undefined, storyPoints: points || undefined, recurrence: recurrence || undefined, type, epicId: type === "epic" ? undefined : epicId || undefined });
     notify(`تسک «${title.trim()}» ایجاد شد${assignee ? ` و به «${assignee}» اعلان رفت` : ""}.`);
     reset();
     onClose();
@@ -73,6 +80,27 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input-field min-h-[60px]" />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="نوع کار">
+            <select value={type} onChange={(e) => setType(e.target.value as TaskType)} className="input-field">
+              {taskTypes.filter((x) => x !== "subtask").map((x) => (
+                <option key={x} value={x}>
+                  {typeLabel[x]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {epics.length > 0 && type !== "epic" && (
+            <Field label="اپیک">
+              <select value={epicId} onChange={(e) => setEpicId(e.target.value)} className="input-field">
+                <option value="">—</option>
+                {epics.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.title}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="مسئول">
             <MemberSelect p={p} value={assignee} onChange={setAssignee} />
           </Field>

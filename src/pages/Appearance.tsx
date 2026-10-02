@@ -18,15 +18,15 @@ const fontOptions: { id: FontScale; label: string; desc: string }[] = [
   { id: "large", label: "بزرگ", desc: "متن‌های درشت‌تر برای خوانایی بیشتر" },
 ];
 
-export default function Appearance() {
+export default function Appearance({ embedded = false }: { embedded?: boolean } = {}) {
   const [tab, setTab] = useTabParam<"me" | "org">("me", ["me", "org"]);
   return (
     <div>
-      <PageHeader
+      {!embedded && <PageHeader
         title="ظاهر و برندسازی"
         description="تنظیمات ظاهری شخصی شما، و برندسازی سطح سازمان (ویژه راهبر) — همه در یک‌جا"
         icon={<Palette size={18} />}
-      />
+      />}
       <Tabs
         tabs={[
           { id: "me", label: "ظاهر من (شخصی)" },

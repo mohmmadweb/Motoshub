@@ -3,6 +3,7 @@
 // شبکه‌ی کاشی‌های تصویر/ویدیو/آلبوم با فیلتر نوع، موضوع، وضعیت و جستجو در کپشن؛
 // فرم بارگذاری هم‌شکل MediaPostStoreRequest. MediaEditor در صفحه‌ی جزئیات هم استفاده می‌شود.
 // ---------------------------------------------------------------------------
+import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Image as ImageIcon, Film, Layers, Play, Plus, Search, Upload, SmilePlus, MessageSquare } from "lucide-react";
@@ -205,6 +206,7 @@ export default function MediaPage() {
         icon={<ImageIcon size={20} />}
         actions={
           <>
+            <ModuleReportsButton module="social" defaultSourceId="social.media" />
             <ApiChip
               items={[
                 { label: "پست‌های منتشرشده", ep: endpoints.mediaList() },

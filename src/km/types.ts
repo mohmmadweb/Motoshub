@@ -11,13 +11,47 @@ export const accessLevels: AccessLevel[] = ["عمومی", "داخلی", "محر�
 export type DocStatus = "پیش‌نویس" | "در بررسی" | "ارجاع برای اصلاح" | "تأییدشده" | "منتشرشده" | "آرشیو";
 export const docStatuses: DocStatus[] = ["پیش‌نویس", "در بررسی", "ارجاع برای اصلاح", "تأییدشده", "منتشرشده", "آرشیو"];
 
-export type KFile = { id: string; name: string; size: string; ext: string };
-export type KVersion = { version: number; date: string; by: string; note: string; files: KFile[] };
+export type KFile = {
+  id: string;
+  name: string;
+  size: string;
+  ext: string;
+  /** متن استخراج‌شده از فایل (نمایه‌ی تمام‌متن). صفحه‌ها با \f از هم جدا می‌شوند. */
+  text?: string;
+  /** تعداد صفحه/بخش برای پیش‌نمایش */
+  pages?: number;
+};
+/** body = متن مقاله (Markdown) در همان نسخه؛ برای مقایسه‌ی متنی نسخه‌ها */
+export type KVersion = { version: number; date: string; by: string; note: string; files: KFile[]; body?: string };
 export type KWorkflowStep = { id: string; action: string; from: DocStatus; to: DocStatus; by: string; at: string; note?: string };
 export type KComment = { id: string; author: string; text: string; at: string; kind: "نظر" | "پیشنهاد اصلاح" | "پرسش" | "پاسخ"; replyTo?: string };
 export type KFeedback = { by: string; helpful: boolean; reason?: string };
 export type RelationType = "doc" | "process" | "registry" | "expert" | "project" | "lesson" | "glossary";
 export type KRelation = { type: RelationType; id: string };
+
+// ------------------------------------------------------------- بند ۸: فهرست کنترل دسترسی (ACL)
+/** user = شناسه‌ی کاربر · scope = هلدینگ/شرکت/واحد IAM (با زیرمجموعه) · role = نقش IAM · title = سمت (عنوان عضویت) */
+export type AclKind = "user" | "scope" | "role" | "title";
+export type KAclEntry = { kind: AclKind; id: string; /** اجازه‌ی دانلود علاوه بر مشاهده */ download: boolean };
+export type KAcl = {
+  /** خالی = فقط قاعده‌ی سطح دسترسی؛ پر = سطح دسترسی «و» یکی از این ردیف‌ها */
+  entries: KAclEntry[];
+  /** «فقط مشاهده»: دانلود برای همه به‌جز مالک بسته است */
+  viewOnly: boolean;
+};
+export const aclKindLabel: Record<AclKind, string> = { user: "کاربر", scope: "واحد سازمانی", role: "نقش", title: "سمت" };
+
+// ------------------------------------------------------------- بند ۹: گردش کار چندمرحله‌ای
+export type WfStepKind = "review" | "approve" | "publish";
+export const wfStepKindLabel: Record<WfStepKind, string> = { review: "بررسی", approve: "تأیید", publish: "انتشار" };
+/** user = نام کاربر · role = شناسه‌ی نقش IAM · scopeManager = مدیرِ واحد/شرکت/هلدینگِ سند · owner = مالک سند */
+export type WfApprover = { kind: "user" | "role" | "scopeManager" | "owner"; id?: string };
+export type KWfStep = { id: string; name: string; kind: WfStepKind; approver: WfApprover; slaDays: number; /** جانشین ثابت این مرحله (نام کاربر) */ substitute?: string };
+export type KWfTemplate = { id: string; name: string; /** نام نوع‌های سند؛ خالی = قالب پیش‌فرض */ docTypes: string[]; steps: KWfStep[] };
+export type KFlowEvent = { stepId: string; stepName: string; by: string; decision: "submit" | "approve" | "return" | "publish" | "remind" | "escalate"; at: string; note?: string; onBehalfOf?: string };
+/** وضعیت سند در گردش کار قالب‌دار */
+export type KDocFlow = { templateId: string; stepIdx: number; /** تاریخ شروع مرحله‌ی جاری (برای SLA) */ stepStartedAt: string; history: KFlowEvent[] };
+export type KDelegation = { id: string; from: string; to: string; until: string; note?: string };
 
 export type KDoc = {
   id: string;
@@ -51,6 +85,14 @@ export type KDoc = {
   /** اهمیت (بند ۱۴) */
   importance: "عادی" | "مهم" | "حیاتی";
   reported?: { by: string; reason: string; at: string }[];
+  /** «file» = سند فایل‌محور (پیش‌فرض) · «article» = مقاله‌ی نوشته‌شده در سامانه */
+  format?: "file" | "article";
+  /** متن مقاله (Markdown) */
+  body?: string;
+  /** بند ۸: فهرست کنترل دسترسی */
+  acl?: KAcl;
+  /** بند ۹: گردش کار قالب‌دار */
+  flow?: KDocFlow;
 } & Scoped;
 
 export type KCategory = { id: string; name: string; parentId?: string };
@@ -147,7 +189,33 @@ export type Expert = {
 /** بند ۲۲: واژه‌نامه */
 export type GlossaryTerm = { id: string; term: string; abbr?: string; english?: string; definition: string; unit: string; relations: KRelation[] };
 
-export type KLog = { id: string; at: string; seq: number; actor: string; action: string; entity: { type: string; id: string; title: string } };
+/** کد اقدام برای فیلتر لاگ ممیزی (بند ۸ و ۱۱) */
+export type KLogCode = "view" | "preview" | "download" | "create" | "edit" | "delete" | "version" | "workflow" | "archive" | "restore" | "access" | "feedback" | "comment" | "settings" | "other";
+export const logCodeLabel: Record<KLogCode, string> = {
+  view: "مشاهده",
+  preview: "پیش‌نمایش فایل",
+  download: "دانلود",
+  create: "ایجاد",
+  edit: "ویرایش",
+  delete: "حذف",
+  version: "نسخه‌ی جدید",
+  workflow: "گردش کار",
+  archive: "آرشیو",
+  restore: "بازیابی",
+  access: "تغییر دسترسی",
+  feedback: "بازخورد",
+  comment: "نظر",
+  settings: "تنظیمات",
+  other: "سایر",
+};
+export type KLog = { id: string; at: string; seq: number; actor: string; action: string; entity: { type: string; id: string; title: string }; code?: KLogCode; detail?: string; access?: AccessLevel };
+
+/** بند ۷: جستجوی ذخیره‌شده */
+export type KSearchFilters = { kinds: string[]; types: string[]; units: string[]; statuses: string[]; access: string[]; tags: string[]; inContent: boolean };
+export type KSavedSearch = { id: string; owner: string; name: string; query: string; filters: KSearchFilters; notify: boolean; createdAt: string };
+
+/** ماتریس سطح دسترسی: دانلود مجاز است؟ واترمارک روی پیش‌نمایش؟ */
+export type AccessPolicy = { download: boolean; watermark: boolean };
 
 export type KSettings = {
   units: string[];
@@ -158,4 +226,10 @@ export type KSettings = {
   reviewPeriodDays: number;
   /** حوزه‌های مورد علاقه‌ی هر کاربر (برای اعلان دانش جدید) */
   interests: Record<string, string[]>;
+  /** بند ۹: قالب‌های گردش کار به تفکیک نوع سند */
+  workflows?: KWfTemplate[];
+  /** جانشینی تأییدکنندگان */
+  delegations?: KDelegation[];
+  /** بند ۸: سیاست مشاهده/دانلود هر سطح */
+  accessPolicy?: Record<AccessLevel, AccessPolicy>;
 };

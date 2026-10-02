@@ -3,7 +3,8 @@ import { FileText, Upload, FolderTree, Search, SlidersHorizontal, Paperclip, Eye
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { useTenancy } from "../../context/TenancyContext";
-import { useKnowledge, accessTone, statusTone } from "../../context/KnowledgeContext";
+import { useKnowledge, accessTone, statusTone, docSearchText } from "../../context/KnowledgeContext";
+import { matchesAll, queryTerms } from "../../km/text";
 import { dayNum, fa } from "../../pm/jalali";
 import { accessLevels, docStatuses } from "../../km/types";
 import { SectionHead, avg } from "./shared";
@@ -30,10 +31,8 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
     const q = f.q.trim();
     let ds = visible.filter((d) => {
       if (catIds.length && !catIds.includes(d.categoryId)) return false;
-      if (q) {
-        const hay = [d.title, d.code, d.description, d.tags.join(" "), d.owner, d.unit, ...(f.content ? d.files.map((x) => x.name) : [])].join(" ");
-        if (!hay.includes(q)) return false;
-      }
+      // نرمال‌سازی فارسی: ی/ي، ک/ك، نیم‌فاصله، ارقام و اعراب
+      if (q && !matchesAll(docSearchText(d, f.content), queryTerms(q))) return false;
       if (f.code && !d.code.includes(f.code)) return false;
       if (f.type && d.type !== f.type) return false;
       if (f.category && d.categoryId !== f.category && km.categories.find((c) => c.id === d.categoryId)?.parentId !== f.category) return false;
@@ -93,7 +92,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[240px] max-w-xl">
           <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input className="input-field !pr-9" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} onBlur={commitSearch} onKeyDown={(e) => e.key === "Enter" && commitSearch()} placeholder="جستجو در عنوان، کد، توضیحات، برچسب و مالک…" />
+          <input className="input-field !pr-9" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} onBlur={commitSearch} onKeyDown={(e) => e.key === "Enter" && commitSearch()} placeholder="جستجو در عنوان، کد، توضیحات، برچسب، مالک…" />
         </div>
         <button onClick={() => setShowAdv((v) => !v)} className={`text-xs px-3 py-2 rounded-lg border flex items-center gap-1 ${showAdv || activeCount ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
           <SlidersHorizontal size={13} /> جستجوی پیشرفته{activeCount ? ` (${fa(activeCount)})` : ""}
@@ -154,7 +153,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
             ))}
           </select>
           <label className="flex items-center gap-1.5 text-xs text-ink-600 col-span-2">
-            <input type="checkbox" checked={f.content} onChange={(e) => setF({ ...f, content: e.target.checked })} className="accent-[var(--color-brand-600)]" /> جستجو در محتوای PDF و Word (نمایه‌ی متن فایل‌ها)
+            <input type="checkbox" checked={f.content} onChange={(e) => setF({ ...f, content: e.target.checked })} className="accent-[var(--color-brand-600)]" /> جستجو در متن مقاله و محتوای PDF و Word (نمایه‌ی متن فایل‌ها)
           </label>
           {activeCount > 0 && (
             <button onClick={() => setF({ ...empty, q: f.q })} className="text-xs text-brand-700 hover:underline flex items-center gap-1">
@@ -211,6 +210,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
                     <td className="p-3">
                       <p className="font-medium text-ink-900 flex items-center gap-1.5">
                         <FileText size={13} className="text-ink-400 shrink-0" /> {d.title}
+                        {d.format === "article" && <span className="text-[10px] text-brand-700 bg-brand-50 rounded px-1">مقاله</span>}
                         {d.importance === "حیاتی" && <Star size={11} className="text-rose-500 shrink-0" fill="currentColor" />}
                       </p>
                       <p className="text-[11px] text-ink-400 mt-0.5 flex items-center gap-2">

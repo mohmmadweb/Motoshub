@@ -5,6 +5,7 @@
 // (اعلان‌ها، پیام‌ها و منشن‌ها، منتظر تصمیم من).
 // کارت نقش: مدیر سامانه / مدیر محتوا / مدیر پروژه / مدیر گروه هر کدام میز کار خودشان را دارند.
 // ---------------------------------------------------------------------------
+import PinnedReports from "../../reports/PinnedReports";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -47,7 +48,7 @@ import { personalFor } from "../../data/personal";
 import { users } from "../../data/mock";
 import { myWork, bucketOf } from "../../pm/myWork";
 import { isDone, isOverdue, projectProgress } from "../../pm/selectors";
-import { dayNum, fa } from "../../pm/jalali";
+import { dayNum, fa, addDays as addDaysJ } from "../../pm/jalali";
 import { priorityTone } from "../project/shared";
 import { ProjectIcon } from "../project/projectIcons";
 import { dateOf } from "../social/kit";
@@ -133,10 +134,15 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const myProjects = pm.projects.filter((p) => !p.meta.archived && (p.members.some((m) => m.name === me || m.userId === meId) || p.meta.manager === me));
 
   // اعلان‌های مهم سازمان: آخرین اخبار و مجله‌ی منتشرشده + اطلاعیه‌های سراسری
-  const important = s.content
-    .filter((c) => c.is_public && !c.is_draft && (c.kind === "news" || c.kind === "magazines") && s.canView(c))
-    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
-    .slice(0, 4);
+  // اطلاعیه‌های رسمیِ سنجاق‌شده همیشه اول می‌آیند
+  const pinned = s.pinnedAnnouncements();
+  const important = [
+    ...pinned,
+    ...s.content
+      .filter((c) => c.is_public && !c.is_draft && (c.kind === "news" || c.kind === "magazines") && s.canView(c) && !pinned.includes(c))
+      .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? "")),
+  ].slice(0, Math.max(4, pinned.length));
+  const needsAck = (c: (typeof important)[number]) => !!c.announcement?.requires_ack && !c.announcement.acks[meId] && c.user_id !== meId;
 
   // محتوای پیشنهادی: هم‌پوشانی برچسب با مهارت‌های کاربر و برچسب‌هایی که با آن‌ها تعامل داشته
   const interest = new Set<string>([
@@ -145,7 +151,7 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   ]);
   const score = (tags: string[], at: string | null) => tags.reduce((a, t) => a + ([...interest].some((k) => k && (t.includes(k) || k.includes(t))) ? 3 : 0), 0) + (at ? (dayNum(dateOf(at)) ?? 0) / 10000 : 0);
   const suggested = [
-    ...s.content.filter((c) => c.is_public && !c.is_draft && c.user_id !== meId && s.canView(c)).map((c) => ({ id: c.id, title: c.title, tags: c.tags, at: c.published_at, to: `/dashboard/${c.kind === "news" ? "news" : "magazines"}/${c.id}`, icon: c.kind === "news" ? Newspaper : BookMarked, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله" })),
+    ...s.content.filter((c) => c.is_public && !c.is_draft && c.user_id !== meId && s.canView(c)).map((c) => ({ id: c.id, title: c.title, tags: c.tags, at: c.published_at, to: `/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}`, icon: c.kind === "news" ? Newspaper : BookMarked, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله" })),
     ...s.topics.filter((t) => t.is_public && !t.is_draft && t.user_id !== meId && s.canView(t)).map((t) => ({ id: t.id, title: t.title, tags: t.tags, at: t.published_at, to: `/dashboard/forum/${t.id}`, icon: MessagesSquare, type: "پرسش" })),
     ...s.media.filter((m) => m.is_public && !m.is_draft && m.user_id !== meId && s.canView(m)).map((m) => ({ id: m.id, title: m.caption, tags: m.tags, at: m.published_at, to: `/dashboard/media/${m.id}`, icon: ImageIcon, type: "رسانه" })),
   ]
@@ -218,6 +224,8 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
 
       <RolePanel roleId={role.id} roleTitle={role.title} />
 
+      <PinnedReports hideWhenEmpty />
+
       <div className="card p-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* ۱) کارهای من */}
         <Panel title="کارهای من" icon={<ListTodo size={14} className="text-navy-600" />} to="/dashboard/my-work" count={w.open.length + personal.tasks.length}>
@@ -266,8 +274,8 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
         {/* ۳) اعلان‌های مهم سازمان */}
         <Panel title="اعلان‌های مهم سازمان" icon={<Megaphone size={14} className="text-rose-600" />} to="/dashboard/news" linkLabel="اخبار">
           {important.map((c) => (
-            <Row key={c.id} to={`/dashboard/${c.kind === "news" ? "news" : "magazines"}/${c.id}`} icon={c.kind === "news" ? <Newspaper size={12} className="text-rose-500" /> : <BookMarked size={12} className="text-brand-500" />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{dateOf(c.published_at)}</span>}>
-              <Two a={c.title} b={c.kind === "news" ? "خبر سازمان" : "مجله"} />
+            <Row key={c.id} to={`/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}`} icon={c.kind === "news" ? <Newspaper size={12} className="text-rose-500" /> : <BookMarked size={12} className="text-brand-500" />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{dateOf(c.published_at)}</span>}>
+              <Two a={c.title} b={c.announcement ? (needsAck(c) ? "اطلاعیه‌ی رسمی · منتظر تأیید شما" : "اطلاعیه‌ی رسمی") : c.kind === "news" ? "خبر سازمان" : "مجله"} />
             </Row>
           ))}
           {important.length === 0 && <Empty>اعلان تازه‌ای نیست.</Empty>}
@@ -425,11 +433,74 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
 // ---------------------------------------------------------------------------
 // کارت نقش — هر نقش میز کار مخصوص خودش را دارد
 // ---------------------------------------------------------------------------
-function RolePanel({ roleId, roleTitle }: { roleId: string; roleTitle: string }) {
+function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
   const s = useSocial();
   const pm = useProjectsPM();
-  const { actingUser } = useTenancy();
+  const t = useTenancy();
+  const { actingUser } = t;
   const me = actingUser.name;
+  // کارت نقش از روی «مجوزها» انتخاب می‌شود، نه نام نقش — تا با نقش‌های سفارشی هم کار کند
+  const roleId = t.hasPermission("settings.system")
+    ? "r1"
+    : t.hasPermission("iam.members.manage") || t.hasPermission("roles.assign")
+      ? "org"
+      : t.hasPermission("comments.moderate") && t.hasPermission("news.manage")
+        ? "r2"
+        : t.hasPermission("projects.create")
+          ? "r3"
+          : t.hasPermission("groups.create")
+            ? "r5"
+            : "";
+
+  if (roleId === "org") {
+    const node = t.contextNode;
+    const sub = t.iam.scopes.filter((x) => x.active && t.scopePath(x.id).startsWith(t.scopePath(node.id)));
+    const subIds = new Set(sub.map((x) => x.id));
+    const members = t.iam.memberships.filter((m) => subIds.has(m.scopeId));
+    const live = t.iam.bindings.filter((b) => b.active && subIds.has(b.scopeId));
+    const expiring = live.filter((b) => b.validUntil && b.validUntil >= t.today && b.validUntil <= addDaysJ(t.today, 45));
+    const suspended = members.filter((m) => m.status === "suspended");
+    const roles = t.iam.roles.filter((r) => subIds.has(r.createdIn));
+    const audits = t.iam.audits.filter((a) => subIds.has(a.scopeId)).slice(0, 4);
+    const tiles = [
+      { label: "زیرمجموعه‌ها", value: sub.length - 1, to: "/dashboard/settings?section=structure" },
+      { label: "عضویت‌ها", value: members.length, to: "/dashboard/settings?section=members" },
+      { label: "نقش‌های تعریف‌شده", value: roles.length, to: "/dashboard/settings?section=roles" },
+      { label: "تخصیص‌های فعال", value: live.length, to: "/dashboard/settings?section=bindings" },
+      { label: "دسترسی رو به انقضا", value: expiring.length, to: "/dashboard/settings?section=review" },
+      { label: "عضویت معلق", value: suspended.length, to: "/dashboard/settings?section=members" },
+    ];
+    return (
+      <div className="card p-4">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <Gauge size={15} className="text-brand-600" /> میز کار {roleTitle} — {node.name}
+          </p>
+          <Link to="/dashboard/settings" className="text-[11px] text-brand-700 hover:underline flex items-center">
+            تنظیمات سامانه <ChevronLeft size={12} />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {tiles.map((x) => (
+            <Link key={x.label} to={x.to} className="rounded-lg border border-ink-100 p-2.5 hover:border-brand-300">
+              <p className="text-[11px] text-ink-500">{x.label}</p>
+              <p className="text-lg font-bold text-ink-900">{fa(x.value)}</p>
+            </Link>
+          ))}
+        </div>
+        {audits.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {audits.map((a) => (
+              <p key={a.id} className="text-[11.5px] text-ink-600 truncate">
+                <span className="text-ink-400">{a.at} · </span>
+                {a.summary}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (roleId === "r1") {
     const mods: { m: SocialModule; label: string; to: string }[] = [
@@ -478,7 +549,7 @@ function RolePanel({ roleId, roleTitle }: { roleId: string; roleTitle: string })
 
   if (roleId === "r2") {
     const drafts = [
-      ...s.content.filter((c) => c.is_draft).map((c) => ({ id: c.id, title: c.title, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله", to: `/dashboard/${c.kind === "news" ? "news" : "magazines"}/${c.id}` })),
+      ...s.content.filter((c) => c.is_draft).map((c) => ({ id: c.id, title: c.title, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله", to: `/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}` })),
       ...s.media.filter((m) => m.is_draft).map((m) => ({ id: m.id, title: m.caption, type: "رسانه", to: `/dashboard/media/${m.id}` })),
       ...s.events.filter((e) => e.is_draft).map((e) => ({ id: e.id, title: e.title, type: "رویداد", to: `/dashboard/events/${e.id}` })),
     ];

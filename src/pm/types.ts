@@ -15,8 +15,20 @@ export type PMPriority = "کم" | "متوسط" | "زیاد" | "بحرانی";
 export type ChecklistItem = { id: string; text: string; done: boolean };
 export type TaskComment = { id: string; author: string; text: string; at: string };
 
+/** نوع کار (هم‌تراز Jira issue type) — پیش‌فرض «task» */
+export type TaskType = "task" | "bug" | "story" | "epic" | "subtask";
+
 export type PMTask = {
   id: string;
+  /** کلید خوانا مثل «QGJ-12» — با کلید پروژه و شماره‌ی ترتیبی ساخته می‌شود */
+  key?: string;
+  /** نوع کار؛ نبودِ فیلد یعنی «تسک» */
+  type?: TaskType;
+  /** اپیکی که این کار زیرمجموعه‌ی آن است */
+  epicId?: string;
+  /** زمان و عامل بایگانی */
+  archivedAt?: string;
+  archivedBy?: string;
   title: string;
   description: string;
   /** شناسه‌ی ستون بورد */
@@ -87,8 +99,10 @@ export type CustomRuleAction =
   | { type: "checklist"; text: string };
 export type CustomRule = { id: string; name: string; trigger: CustomRuleTrigger; action: CustomRuleAction; enabled: boolean; runs: number };
 
-/** وابستگی «پایان به شروع»: successor تا پایان predecessor نمی‌تواند شروع شود */
-export type Dependency = { id: string; predecessor: string; successor: string; createdAt: string };
+/** نوع وابستگی (MS Project): FS پایان‌به‌شروع، SS شروع‌به‌شروع، FF پایان‌به‌پایان، SF شروع‌به‌پایان */
+export type DepType = "FS" | "SS" | "FF" | "SF";
+/** وابستگی بین دو تسک — نبودِ type یعنی FS؛ lag فاصله‌ی روز (منفی = هم‌پوشانی مجاز) */
+export type Dependency = { id: string; predecessor: string; successor: string; createdAt: string; type?: DepType; lag?: number };
 
 export type ProjectRole = "مالک" | "مدیر پروژه" | "مدیر سیستم" | "عضو" | "مشاهده‌گر";
 export type PMMember = { id: string; name: string; title: string; role: ProjectRole; allocation: number; userId?: string };
@@ -158,7 +172,7 @@ export type PMMeeting = {
   date: string;
   time: string;
   duration: number;
-  mode: "حضوری" | "ویدیویی";
+  mode: "حضوری" | "ویدیویی" | "صوتی";
   participants: string[];
   description: string;
   taskIds: string[];
@@ -180,6 +194,8 @@ export type PMMinute = {
   decisionList?: string[];
   actions?: ActionItem[];
   published?: boolean;
+  /** فایل‌های مرتبط صورت‌جلسه (شناسه‌ی اسناد پروژه) */
+  fileIds?: string[];
 };
 
 export type DocType = "قرارداد" | "پروپوزال" | "گزارش" | "فایل طراحی" | "مستندات فنی" | "فایل مالی" | "صورت‌جلسه" | "ارائه" | "سایر";
@@ -194,6 +210,8 @@ export type PMDocument = {
   taskId?: string;
   meetingId?: string;
   channelId?: string;
+  /** صورت‌جلسه‌ای که این فایل پیوست آن است */
+  minuteId?: string;
 };
 
 export type ChatMessage = {
@@ -249,6 +267,17 @@ export type ProjectMeta = {
   /** گروه پروژه (پورتفولیو) — مثلاً «تحول دیجیتال» */
   groupId?: string;
   createdAt: string;
+  /** کلید پروژه (۲ تا ۵ حرف لاتین بزرگ) برای ساخت کلید تسک‌ها — مثل QGJ */
+  key?: string;
+  /** شماره‌ی تسک بعدی */
+  nextTaskNo?: number;
+  /** فضای کاری = یک واحد ساختار سازمانی IAM (هلدینگ/شرکت/واحد)؛ workspace برچسب آن است */
+  scopeId?: string;
+  /** پیوند به موجودیت‌های نوآوری (اختیاری) */
+  fundId?: string;
+  contractId?: string;
+  opportunityId?: string;
+  companyName?: string;
 } & Scoped;
 
 /** رکورد تاریخچه — شکل API: ProjectActivityLog {user_id, event_category, description, metadata, created_at} */
@@ -333,6 +362,121 @@ export type PlaybookExecution = {
 /** گروه‌بندی پروژه‌ها (پورتفولیو) */
 export type ProjectGroup = { id: string; name: string; description: string; color: string };
 
+// ------------------------- قابلیت‌های تکمیلی نسخه‌ی ۷ -------------------------
+
+/** نمای ذخیره‌شده‌ی بورد/فهرست (Saved view / Saved filter) */
+export type ViewFilters = {
+  q?: string;
+  member?: string;
+  priority?: string;
+  label?: string;
+  sprint?: string;
+  epic?: string;
+  type?: string;
+  onlyWaiting?: boolean;
+  mine?: boolean;
+  overdue?: boolean;
+  archived?: boolean;
+};
+export type SavedView = {
+  id: string;
+  name: string;
+  /** نام سازنده */
+  owner: string;
+  /** اشتراک با همه‌ی اعضای پروژه؛ در غیر این صورت شخصی */
+  shared: boolean;
+  layout: "kanban" | "list";
+  filters: ViewFilters;
+  sort: string;
+  lane: string;
+  /** ستون‌های نمای فهرست */
+  columns?: string[];
+  createdAt: string;
+};
+
+/** بازبینی دوره‌ای (Stage-gate) */
+export type GateDecision = "ادامه" | "اصلاح" | "توقف";
+export type StageGate = {
+  id: string;
+  date: string;
+  decision: GateDecision;
+  reason: string;
+  nextReview?: string;
+  by: string;
+  phase: LifecyclePhase;
+  /** عکس لحظه‌ای شاخص‌ها هنگام تصمیم */
+  snapshot: { progress: number; budgetUsage: number; health: ProjectMeta["health"]; openRisks: number };
+  /** اقدام اصلاحی (برای «اصلاح») */
+  actions?: string;
+};
+
+/** ارزیابی پایان پروژه — داده‌ی «عملکرد واقعی» برای اعتبارسنجی */
+export type MemberEvaluation = { memberId: string; name: string; score: number; note: string };
+export type ProjectClosure = {
+  closedAt: string;
+  closedBy: string;
+  /** درصد تحقق اهداف */
+  goalsAchieved: number;
+  /** کیفیت خروجی ۱ تا ۵ */
+  qualityScore: number;
+  /** انحراف زمان (روز، مثبت = تأخیر) و درصد آن نسبت به مدت برنامه */
+  scheduleVarianceDays: number;
+  scheduleVariancePct: number;
+  /** انحراف هزینه (ریال، مثبت = بیش از بودجه) و درصد */
+  costVariance: number;
+  costVariancePct: number;
+  summary: string;
+  outcomes: string;
+  lessons: string[];
+  memberEvals: MemberEvaluation[];
+  /** درس‌آموخته‌ها به مدیریت دانش منتقل شده‌اند */
+  transferredToKm?: boolean;
+};
+
+/** دفتر تصمیمات — تصمیم دستی یا تکمیل جزئیات یک مصوبه‌ی صورت‌جلسه */
+export type DecisionLink = { type: "task" | "risk" | "milestone" | "meeting" | "issue" | "fund" | "contract" | "opportunity"; id: string; label: string };
+export type DecisionRecord = {
+  id: string;
+  title: string;
+  reason: string;
+  owner: string;
+  date: string;
+  /** گزینه‌های بررسی‌شده و ردشده */
+  alternatives?: string;
+  link?: DecisionLink;
+  /** اگر جزئیات مصوبه‌ی صورت‌جلسه است */
+  minuteId?: string;
+  minuteIndex?: number;
+  createdBy: string;
+};
+
+/** فرم درخواست (Intake) و صف بررسی */
+export type IntakeStatus = "جدید" | "پذیرفته" | "ردشده";
+export type IntakeRequest = {
+  id: string;
+  title: string;
+  type: TaskType;
+  priority: PMPriority;
+  description: string;
+  requester: string;
+  date: string;
+  /** سررسید پیشنهادی درخواست‌کننده */
+  wantedBy?: string;
+  status: IntakeStatus;
+  taskId?: string;
+  rejectReason?: string;
+  decidedBy?: string;
+  decidedAt?: string;
+};
+
+export type MeetingSettings = {
+  defaultDuration: number;
+  /** یادآوری چند دقیقه پیش از جلسه */
+  reminderMinutes: number;
+  recordingAllowed: boolean;
+  defaultMode: PMMeeting["mode"];
+};
+
 export type ProjectState = {
   meta: ProjectMeta;
   columns: BoardColumn[];
@@ -360,4 +504,13 @@ export type ProjectState = {
   customFields?: CustomFieldDef[];
   baseline?: Baseline;
   customRules?: CustomRule[];
+  // ---- نسخه‌ی ۷ ----
+  savedViews?: SavedView[];
+  stageGates?: StageGate[];
+  closure?: ProjectClosure;
+  decisions?: DecisionRecord[];
+  intake?: IntakeRequest[];
+  /** فرم درخواست برای اعضا باز است */
+  intakeOpen?: boolean;
+  meetingSettings?: MeetingSettings;
 };

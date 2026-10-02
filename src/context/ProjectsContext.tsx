@@ -10,9 +10,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
 import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa } from "../pm/jalali";
-import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
+import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, nextProjectKey, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
-import { budgetUsage, columnLabel, isDone, kindOf, openPredecessors, successorsOf, taskActualCost } from "../pm/selectors";
+import { budgetUsage, columnLabel, depShort, depTypeLabel, defaultMeetingSettings, depViolation, isDone, kindOf, openPredecessors, projectProgress, typeLabel, successorsOf, taskActualCost } from "../pm/selectors";
 import type {
   ActionItem,
   BoardColumn,
@@ -43,10 +43,18 @@ import type {
   CustomFieldDef,
   CustomRule,
   Recurrence,
+  TaskType,
+  DepType,
+  SavedView,
+  StageGate,
+  ProjectClosure,
+  DecisionRecord,
+  IntakeRequest,
+  MeetingSettings,
 } from "../pm/types";
 
 const STORAGE_KEY = "motoshub.pm.v1";
-const STORE_VERSION = 6;
+const STORE_VERSION = 7;
 
 type StoreState = {
   version: number;
@@ -205,7 +213,7 @@ function route(p: ProjectState, ev: Emitted, actor: string, s: StoreState): PMNo
       time,
       seq: s.seq,
       read: false,
-      link: { tab: tabOfCategory[def?.category ?? "project"] ?? "overview", entityId: ev.entity?.id },
+      link: { tab: ev.entity?.type === "intake" ? "intake" : ev.code === "DECISION_RECORDED" ? "decisions" : tabOfCategory[def?.category ?? "project"] ?? "overview", entityId: ev.entity?.id },
     }));
 }
 
@@ -334,14 +342,13 @@ function runScheduler(store: StoreState): StoreState {
           p.deps.forEach((dp) => {
             const a = p.tasks.find((t) => t.id === dp.predecessor);
             const b = p.tasks.find((t) => t.id === dp.successor);
-            if (!a || !b || isDone(p, a) || isDone(p, b)) return;
-            const da = dayNum(a.due);
-            const db = dayNum(b.start);
-            if (da !== null && db !== null && db < da && once(`conflict:${dp.id}:${b.start}:${a.due}`)) {
-              emit("DEPENDENCY_CONFLICT", `تسک «${b.title}» (شروع ${b.start}) قبل از پایان پیش‌نیاز «${a.title}» (${a.due}) زمان‌بندی شده است.`, {
+            if (!a || !b || isDone(p, a) || isDone(p, b) || a.archived || b.archived) return;
+            const v = depViolation(p, dp);
+            if (v > 0 && once(`conflict:${dp.id}:${b.start}:${b.due}:${a.start}:${a.due}`)) {
+              emit("DEPENDENCY_CONFLICT", `برنامه‌ی تسک «${b.title}» قید وابستگی «${depTypeLabel[dp.type ?? "FS"]}${dp.lag ? ` با ${fa(dp.lag)} روز تأخیر` : ""}» نسبت به «${a.title}» را ${fa(v)} روز نقض می‌کند.`, {
                 entity: { type: "task", id: b.id },
                 ctx: { taskId: b.id, assignee: b.assignee },
-                meta: { predecessor: a.id, successor: b.id, overlap_days: da - db },
+                meta: { predecessor: a.id, successor: b.id, overlap_days: v, type: dp.type ?? "FS" },
               });
             }
           });
@@ -402,6 +409,9 @@ export type NewTaskInput = {
   sprintId?: string;
   recurrence?: Recurrence;
   watchers?: string[];
+  /** نوع کار — پیش‌فرض «task» (زیرتسک اگر والد داشته باشد) */
+  type?: TaskType;
+  epicId?: string;
 };
 
 export type NewProjectInput = Omit<ProjectMeta, "id" | "health" | "phase" | "starred" | "archived" | "createdAt"> & {
@@ -452,6 +462,24 @@ type Ctx = {
   stopTimer: (pid: string, taskId: string) => number;
   bulkUpdate: (pid: string, taskIds: string[], patch: Partial<Pick<PMTask, "status" | "assignee" | "priority" | "sprintId">> & { addLabel?: string }) => void;
   bulkDelete: (pid: string, taskIds: string[]) => void;
+  /** بایگانی/بازیابی تسک‌ها (زیرتسک‌ها هم با والد بایگانی می‌شوند) */
+  archiveTasks: (pid: string, taskIds: string[], archived: boolean) => void;
+  /** درون‌ریزی گروهی تسک‌ها (CSV) — تعداد ساخته‌شده را برمی‌گرداند */
+  importTasks: (pid: string, rows: NewTaskInput[], source?: string) => number;
+  // --- نماهای ذخیره‌شده ---
+  saveView: (pid: string, v: Omit<SavedView, "id" | "createdAt" | "owner"> & { id?: string }) => string;
+  removeView: (pid: string, id: string) => void;
+  // --- بازبینی دوره‌ای، اختتام، دفتر تصمیمات ---
+  recordStageGate: (pid: string, g: Omit<StageGate, "id" | "by" | "snapshot" | "phase" | "date"> & { date?: string }) => void;
+  closeProject: (pid: string, c: Omit<ProjectClosure, "closedAt" | "closedBy">) => void;
+  updateClosure: (pid: string, patch: Partial<ProjectClosure>) => void;
+  saveDecision: (pid: string, d: Omit<DecisionRecord, "id" | "createdBy"> & { id?: string }) => void;
+  removeDecision: (pid: string, id: string) => void;
+  // --- فرم درخواست ---
+  submitIntake: (pid: string, r: Pick<IntakeRequest, "title" | "type" | "priority" | "description" | "requester" | "wantedBy">) => void;
+  decideIntake: (pid: string, id: string, accept: boolean, opts?: { reason?: string; assignee?: string; status?: string; due?: string }) => void;
+  setIntakeOpen: (pid: string, open: boolean) => void;
+  saveMeetingSettings: (pid: string, s: MeetingSettings) => void;
   // --- اسپرینت، فیلد سفارشی، خط مبنا، قاعده‌ی سفارشی ---
   saveSprint: (pid: string, sp: Omit<Sprint, "id" | "status"> & { id?: string }) => void;
   deleteSprint: (pid: string, id: string) => void;
@@ -464,7 +492,8 @@ type Ctx = {
   saveCustomRule: (pid: string, r: Omit<CustomRule, "id" | "runs"> & { id?: string }) => void;
   removeCustomRule: (pid: string, id: string) => void;
   // --- وابستگی ---
-  addDependency: (pid: string, pred: string, succ: string) => void;
+  addDependency: (pid: string, pred: string, succ: string, opts?: { type?: DepType; lag?: number }) => void;
+  updateDependency: (pid: string, depId: string, patch: { type?: DepType; lag?: number }) => void;
   removeDependency: (pid: string, depId: string) => void;
   // --- مایل‌ستون/ریسک/مشکل ---
   saveMilestone: (pid: string, m: Omit<PMMilestone, "id"> & { id?: string }) => void;
@@ -482,7 +511,7 @@ type Ctx = {
   // --- جلسات ---
   saveMeeting: (pid: string, m: Omit<PMMeeting, "id" | "status"> & { id?: string }) => void;
   setMeetingStatus: (pid: string, id: string, status: PMMeeting["status"]) => void;
-  saveMinutes: (pid: string, m: Omit<PMMinute, "id"> & { id?: string }, publish: boolean) => void;
+  saveMinutes: (pid: string, m: Omit<PMMinute, "id"> & { id?: string }, publish: boolean, newFiles?: { name: string; type: PMDocument["type"]; size: string }[]) => void;
   convertAction: (pid: string, minuteId: string, action: ActionItem) => void;
   // --- اسناد و ارتباطات ---
   addDocument: (pid: string, d: Omit<PMDocument, "id" | "uploadedBy" | "date" | "version">) => void;
@@ -591,32 +620,31 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
   const conflictCheck = (p: ProjectState, emit: Emit, t: PMTask) => {
     if (!ruleOn(p, "a8")) return;
-    const due = dayNum(t.due);
-    const start = dayNum(t.start);
-    successorsOf(p, t.id).forEach((b) => {
-      const bs = dayNum(b.start);
-      if (!isDone(p, t) && due !== null && bs !== null && bs < due) {
+    p.deps
+      .filter((d) => d.predecessor === t.id || d.successor === t.id)
+      .forEach((d) => {
+        const a = p.tasks.find((x) => x.id === d.predecessor);
+        const b = p.tasks.find((x) => x.id === d.successor);
+        if (!a || !b || isDone(p, a) || a.archived || b.archived) return;
+        const v = depViolation(p, d);
+        if (!v) return;
         bumpRule(p, "a8");
-        emit("DEPENDENCY_CONFLICT", `با تغییر زمان «${t.title}» (پایان ${t.due})، تسک وابسته‌ی «${b.title}» (شروع ${b.start}) قبل از پایان پیش‌نیازش شروع می‌شود.`, {
-          entity: { type: "task", id: b.id },
-          ctx: { taskId: b.id, assignee: b.assignee },
-          meta: { predecessor: t.id, successor: b.id, overlap_days: due - bs },
-          actor: SYSTEM_ACTOR,
-        });
-      }
-    });
-    openPredecessors(p, t.id).forEach((a) => {
-      const ad = dayNum(a.due);
-      if (ad !== null && start !== null && start < ad) {
-        bumpRule(p, "a8");
-        emit("DEPENDENCY_CONFLICT", `تسک «${t.title}» (شروع ${t.start}) قبل از پایان پیش‌نیاز «${a.title}» (${a.due}) زمان‌بندی شده است.`, {
-          entity: { type: "task", id: t.id },
-          ctx: { taskId: t.id, assignee: t.assignee },
-          meta: { predecessor: a.id, successor: t.id, overlap_days: ad - start },
-          actor: SYSTEM_ACTOR,
-        });
-      }
-    });
+        emit(
+          "DEPENDENCY_CONFLICT",
+          d.predecessor === t.id
+            ? `با تغییر زمان «${a.title}» (${a.start} تا ${a.due})، تسک وابسته‌ی «${b.title}» قید «${depShort(d)}» را ${fa(v)} روز نقض می‌کند.`
+            : `تسک «${b.title}» (${b.start} تا ${b.due}) قید «${depShort(d)}» نسبت به پیش‌نیاز «${a.title}» (${a.due}) را ${fa(v)} روز نقض می‌کند.`,
+          { entity: { type: "task", id: b.id }, ctx: { taskId: b.id, assignee: b.assignee }, meta: { predecessor: a.id, successor: b.id, overlap_days: v, type: d.type ?? "FS" }, actor: d.predecessor === t.id ? SYSTEM_ACTOR : undefined }
+        );
+      });
+  };
+
+  /** کلید بعدی تسک: «QGJ-34» */
+  const nextKey = (p: ProjectState) => {
+    if (!p.meta.key) return undefined;
+    const n = p.meta.nextTaskNo ?? p.tasks.length + 1;
+    p.meta.nextTaskNo = n + 1;
+    return `${p.meta.key}-${n}`;
   };
 
   /** قواعد سفارشی «وقتی … آنگاه …» */
@@ -662,6 +690,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     const next: PMTask = {
       ...structuredClone(t),
       id: nid(s, "t"),
+      key: nextKey(p),
       status: firstOpen.id,
       progress: 0,
       start: addDays(t.start, step),
@@ -679,6 +708,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const insertTask = (p: ProjectState, emit: Emit, s: StoreState, input: NewTaskInput): PMTask => {
     const t: PMTask = {
       id: nid(s, "t"),
+      key: nextKey(p),
+      type: input.type ?? (input.parentId ? "subtask" : "task"),
+      epicId: input.epicId,
       title: input.title,
       description: input.description ?? "",
       status: input.status ?? p.columns[0]?.id ?? "backlog",
@@ -758,6 +790,13 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
             financeOfficer: input.financeOfficer,
             groupId: input.groupId,
             createdAt: prev.refDate,
+            key: input.key && !prev.projects.some((x) => x.meta.key === input.key) ? input.key : nextProjectKey(prev.projects.map((x) => x.meta.key)),
+            nextTaskNo: 1,
+            scopeId: input.scopeId,
+            fundId: input.fundId,
+            contractId: input.contractId,
+            opportunityId: input.opportunityId,
+            companyName: input.companyName,
             scope: input.scope,
             holdingId: input.holdingId,
             companyId: input.companyId,
@@ -788,6 +827,12 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           sprints: [],
           customFields: [],
           customRules: [],
+          savedViews: [],
+          stageGates: [],
+          decisions: [],
+          intake: [],
+          intakeOpen: true,
+          meetingSettings: { ...defaultMeetingSettings },
         };
         let s: StoreState = { ...prev, projects: [blank, ...prev.projects] };
         s = apply(s, id, actor, (p, emit, st) => {
@@ -856,12 +901,19 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           });
         }
         if (patch.archived !== undefined && patch.archived !== m.archived) emit(patch.archived ? "PROJECT_ARCHIVED" : "PROJECT_RESTORED", patch.archived ? "پروژه بایگانی شد؛ اطلاعات آن حذف نشده و قابل بازیابی است." : "پروژه از بایگانی بازیابی شد.", e);
-        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer", "groupId"];
+        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer", "groupId", "key", "scopeId", "fundId", "contractId", "opportunityId", "companyName"];
         const changed = settingKeys.filter((k) => patch[k] !== undefined && patch[k] !== m[k]);
         if (patch.tags && patch.tags.join("،") !== m.tags.join("،")) changed.push("tags");
         if (changed.length) {
-          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها", groupId: "گروه پروژه" };
-          emit("PROJECT_SETTINGS_UPDATED", `تنظیمات پروژه تغییر کرد: ${changed.map((k) => names[k]).join("، ")}.`, { ...e, meta: Object.fromEntries(changed.map((k) => [k, String(patch[k])])) });
+          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها", groupId: "گروه پروژه", key: "کلید پروژه", scopeId: "واحد سازمانی", fundId: "صندوق", contractId: "قرارداد", opportunityId: "فرصت پژوهشی", companyName: "شرکت" };
+          emit("PROJECT_SETTINGS_UPDATED", `تنظیمات پروژه تغییر کرد: ${[...new Set(changed.map((k) => names[k]))].join("، ")}.`, { ...e, meta: Object.fromEntries(changed.map((k) => [k, String(patch[k] ?? "")])) });
+        }
+        // تغییر کلید پروژه: کلید تسک‌های موجود هم با پیشوند جدید بازنویسی می‌شود
+        if (patch.key && m.key && patch.key !== m.key) {
+          const oldKey = m.key;
+          p.tasks.forEach((t) => {
+            if (t.key?.startsWith(`${oldKey}-`)) t.key = `${patch.key}-${t.key.slice(oldKey.length + 1)}`;
+          });
         }
         Object.assign(m, patch);
       }),
@@ -1060,6 +1112,19 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           extra.push(par ? `زیرتسکِ «${par.title}»` : "تسک مستقل");
           t.parentId = patch.parentId || undefined;
         }
+        if ((patch.type !== undefined && patch.type !== (t.type ?? "task")) || (patch.epicId !== undefined && (patch.epicId || undefined) !== t.epicId)) {
+          const parts: string[] = [];
+          if (patch.type !== undefined && patch.type !== (t.type ?? "task")) {
+            parts.push(`نوع از «${typeLabel[t.type ?? "task"]}» به «${typeLabel[patch.type]}»`);
+            t.type = patch.type;
+          }
+          if (patch.epicId !== undefined && (patch.epicId || undefined) !== t.epicId) {
+            const ep = p.tasks.find((x) => x.id === patch.epicId);
+            parts.push(ep ? `اپیک «${ep.title}»` : "خروج از اپیک");
+            t.epicId = patch.epicId || undefined;
+          }
+          emit("TASK_TYPE_CHANGED", `تسک «${t.title}» تغییر کرد: ${parts.join("، ")}.`, { ...e, meta: { type: t.type ?? "task", epic: t.epicId ?? "" } });
+        }
         if (extra.length) emit("TASK_ESTIMATE_UPDATED", `تسک «${t.title}» به‌روزرسانی شد: ${extra.join("، ")}.`, { ...e, meta: { fields: extra.join(" | ") } });
         if ((patch.estBudget !== undefined && patch.estBudget !== t.estBudget) || (patch.estHours !== undefined && patch.estHours !== t.estHours)) {
           const parts: string[] = [];
@@ -1225,6 +1290,152 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         emit("TASK_DELETED", `${fa(gone.size)} تسک به‌صورت گروهی حذف شد: ${titles.slice(0, 4).join("، ")}${titles.length > 4 ? "، …" : ""}.`, { entity: { type: "project", id: pid }, meta: { count: gone.size } });
       }),
 
+    archiveTasks: (pid, taskIds, archived) =>
+      on(pid, (p, emit, s) => {
+        const ids = new Set([...taskIds, ...p.tasks.filter((x) => x.parentId && taskIds.includes(x.parentId)).map((x) => x.id)]);
+        const ts = p.tasks.filter((t) => ids.has(t.id) && !!t.archived !== archived);
+        if (!ts.length) return;
+        ts.forEach((t) => {
+          t.archived = archived || undefined;
+          t.archivedAt = archived ? s.refDate : undefined;
+          t.archivedBy = archived ? actor : undefined;
+          if (archived && t.timer) t.timer = undefined;
+        });
+        const one = ts.length === 1 ? ts[0] : undefined;
+        const name = (t: PMTask) => `«${t.key ? `${t.key} ` : ""}${t.title}»`;
+        emit(
+          archived ? "TASK_ARCHIVED" : "TASK_RESTORED",
+          one
+            ? `تسک ${name(one)} ${archived ? "بایگانی شد؛ حذف نشده و قابل بازیابی است" : "از بایگانی بازیابی شد"}.`
+            : `${fa(ts.length)} تسک ${archived ? "بایگانی" : "از بایگانی بازیابی"} شد: ${ts.slice(0, 4).map(name).join("، ")}${ts.length > 4 ? "، …" : ""}.`,
+          { entity: one ? { type: "task", id: one.id } : { type: "project", id: pid }, ctx: one ? { taskId: one.id } : {}, meta: { count: ts.length, tasks: ts.map((t) => t.id).join(",") } }
+        );
+      }),
+    importTasks: (pid, rows, source = "CSV") => {
+      if (!rows.length) return 0;
+      on(pid, (p, emit, s) => {
+        rows.forEach((r) => insertTask(p, emit, s, r));
+        emit("TASKS_IMPORTED", `${fa(rows.length)} تسک از فایل ${source} درون‌ریزی شد.`, { entity: { type: "project", id: pid }, meta: { count: rows.length, source } });
+      });
+      return rows.length;
+    },
+
+    // ============================================================ نماهای ذخیره‌شده
+    saveView: (pid, v) => {
+      const id = v.id ?? `sv-${Date.now().toString(36)}`;
+      setStore((prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) => {
+          if (p.meta.id !== pid) return p;
+          const views = p.savedViews ?? [];
+          const exists = views.some((x) => x.id === id);
+          const next: SavedView = { ...(views.find((x) => x.id === id) ?? { owner: actor, createdAt: prev.refDate }), ...v, id } as SavedView;
+          return { ...p, savedViews: exists ? views.map((x) => (x.id === id ? next : x)) : [...views, next] };
+        }),
+      }));
+      return id;
+    },
+    removeView: (pid, id) => setStore((prev) => ({ ...prev, projects: prev.projects.map((p) => (p.meta.id !== pid ? p : { ...p, savedViews: (p.savedViews ?? []).filter((x) => x.id !== id) })) })),
+
+    // ============================================================ بازبینی دوره‌ای و اختتام
+    recordStageGate: (pid, g) =>
+      on(pid, (p, emit, s) => {
+        const gate: StageGate = {
+          id: nid(s, "sg"),
+          date: g.date ?? s.refDate,
+          decision: g.decision,
+          reason: g.reason,
+          nextReview: g.nextReview,
+          actions: g.actions,
+          by: actor,
+          phase: p.meta.phase,
+          snapshot: { progress: projectProgress(p), budgetUsage: budgetUsage(p), health: p.meta.health, openRisks: p.risks.filter((r) => r.status !== "بسته").length },
+        };
+        p.stageGates = [...(p.stageGates ?? []), gate];
+        emit("STAGE_GATE_RECORDED", `بازبینی دوره‌ای پروژه: تصمیم «${gate.decision}» — ${gate.reason}${gate.nextReview ? ` (بازبینی بعدی ${gate.nextReview})` : ""}.`, { entity: { type: "project", id: pid }, meta: { decision: gate.decision, next_review: gate.nextReview ?? "", progress: gate.snapshot.progress } });
+        if (gate.decision === "توقف" && p.meta.health !== "قرمز") {
+          emit("PROJECT_STATUS_CHANGED", `با تصمیم «توقف» در بازبینی دوره‌ای، وضعیت پروژه از «${p.meta.health}» به «قرمز» تغییر کرد.`, { entity: { type: "project", id: pid }, meta: { old_status: p.meta.health, new_status: "قرمز" } });
+          p.meta.health = "قرمز";
+        }
+      }),
+    closeProject: (pid, c) =>
+      on(pid, (p, emit, s) => {
+        p.closure = { ...c, closedAt: s.refDate, closedBy: actor };
+        if (p.meta.phase !== "اختتام") {
+          emit("PROJECT_PHASE_CHANGED", `پروژه از مرحله‌ی «${p.meta.phase}» وارد مرحله‌ی «اختتام» شد.`, { entity: { type: "project", id: pid }, meta: { old_phase: p.meta.phase, new_phase: "اختتام" } });
+          p.meta.phase = "اختتام";
+        }
+        const cv = c.costVariancePct;
+        emit(
+          "PROJECT_CLOSED",
+          `پروژه بسته شد: تحقق اهداف ${fa(c.goalsAchieved)}٪، کیفیت ${fa(c.qualityScore)} از ۵، ${c.scheduleVarianceDays > 0 ? `تأخیر ${fa(c.scheduleVarianceDays)} روز` : c.scheduleVarianceDays < 0 ? `${fa(-c.scheduleVarianceDays)} روز زودتر` : "سر موعد"}، ${cv > 0 ? `اضافه‌هزینه ${fa(cv)}٪` : cv < 0 ? `${fa(-cv)}٪ کمتر از بودجه` : "مطابق بودجه"}.`,
+          { entity: { type: "project", id: pid }, meta: { goals: c.goalsAchieved, quality: c.qualityScore, schedule_days: c.scheduleVarianceDays, cost_pct: cv, evaluated_members: c.memberEvals.length } }
+        );
+      }),
+    updateClosure: (pid, patch) =>
+      setStore((prev) => ({ ...prev, projects: prev.projects.map((p) => (p.meta.id !== pid || !p.closure ? p : { ...p, closure: { ...p.closure, ...patch } })) })),
+
+    // ============================================================ دفتر تصمیمات
+    saveDecision: (pid, d) =>
+      on(pid, (p, emit, s) => {
+        p.decisions = p.decisions ?? [];
+        const ex = d.id ? p.decisions.find((x) => x.id === d.id) : undefined;
+        if (ex) {
+          Object.assign(ex, d);
+          return;
+        }
+        const rec: DecisionRecord = { ...d, id: nid(s, "dcs"), createdBy: actor };
+        p.decisions.unshift(rec);
+        emit("DECISION_RECORDED", `تصمیم «${rec.title}» با مسئولیت «${rec.owner}» در دفتر تصمیمات ثبت شد${rec.reason ? ` — دلیل: ${rec.reason.length > 70 ? `${rec.reason.slice(0, 70)}…` : rec.reason}` : ""}.`, { entity: { type: "project", id: pid }, meta: { decision: rec.id, link: rec.link ? `${rec.link.type}:${rec.link.id}` : "" } });
+      }),
+    removeDecision: (pid, id) => setStore((prev) => ({ ...prev, projects: prev.projects.map((p) => (p.meta.id !== pid ? p : { ...p, decisions: (p.decisions ?? []).filter((x) => x.id !== id) })) })),
+
+    // ============================================================ فرم درخواست (Intake)
+    submitIntake: (pid, r) =>
+      on(pid, (p, emit, s) => {
+        const req: IntakeRequest = { ...r, id: nid(s, "ir"), date: s.refDate, status: "جدید" };
+        p.intake = [req, ...(p.intake ?? [])];
+        emit("INTAKE_SUBMITTED", `درخواست «${req.title}» (${typeLabel[req.type]}، اولویت ${req.priority}) از «${req.requester}» ثبت شد و منتظر بررسی است.`, { entity: { type: "intake", id: req.id }, ctx: { requester: req.requester }, meta: { type: req.type, priority: req.priority } });
+      }),
+    decideIntake: (pid, id, accept, opts = {}) =>
+      on(pid, (p, emit, s) => {
+        const req = (p.intake ?? []).find((x) => x.id === id);
+        if (!req || req.status !== "جدید") return;
+        req.decidedBy = actor;
+        req.decidedAt = s.refDate;
+        if (accept) {
+          const t = insertTask(p, emit, s, {
+            title: req.title,
+            description: `${req.description}\n\n— ایجادشده از فرم درخواست پروژه؛ درخواست‌کننده: «${req.requester}» (${req.date}).`,
+            assignee: opts.assignee ?? "",
+            priority: req.priority,
+            start: s.refDate,
+            due: opts.due ?? req.wantedBy ?? addDays(s.refDate, 7),
+            status: opts.status ?? p.columns.find((c) => c.kind === "todo")?.id ?? p.columns[0]?.id,
+            labels: ["درخواست"],
+            type: req.type,
+            watchers: [req.requester].filter((n) => p.members.some((m) => m.name === n)),
+          });
+          req.status = "پذیرفته";
+          req.taskId = t.id;
+          emit("INTAKE_ACCEPTED", `درخواست «${req.title}» از «${req.requester}» پذیرفته شد و به تسک ${t.key ?? ""} تبدیل شد.`, { entity: { type: "task", id: t.id }, ctx: { requester: req.requester, taskId: t.id }, meta: { intake: req.id } });
+        } else {
+          req.status = "ردشده";
+          req.rejectReason = opts.reason || "—";
+          emit("INTAKE_REJECTED", `درخواست «${req.title}» از «${req.requester}» رد شد: «${req.rejectReason}».`, { entity: { type: "intake", id: req.id }, ctx: { requester: req.requester }, meta: { reason: req.rejectReason } });
+        }
+      }),
+    setIntakeOpen: (pid, open) =>
+      on(pid, (p, emit) => {
+        p.intakeOpen = open;
+        emit("PROJECT_SETTINGS_UPDATED", `فرم درخواست پروژه ${open ? "برای اعضا باز شد" : "بسته شد"}.`, { entity: { type: "project", id: pid } });
+      }),
+    saveMeetingSettings: (pid, ms) =>
+      on(pid, (p, emit) => {
+        p.meetingSettings = ms;
+        emit("PROJECT_SETTINGS_UPDATED", `تنظیمات جلسات به‌روزرسانی شد: مدت پیش‌فرض ${fa(ms.defaultDuration)} دقیقه، یادآوری ${fa(ms.reminderMinutes)} دقیقه قبل، ضبط ${ms.recordingAllowed ? "مجاز" : "غیرمجاز"}، حالت پیش‌فرض «${ms.defaultMode}».`, { entity: { type: "project", id: pid } });
+      }),
+
     // ============================================================ اسپرینت
     saveSprint: (pid, input) =>
       on(pid, (p, emit, s) => {
@@ -1317,15 +1528,29 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       }),
 
     // ============================================================ وابستگی
-    addDependency: (pid, pred, succ) =>
+    addDependency: (pid, pred, succ, opts = {}) =>
       on(pid, (p, emit, s) => {
         const a = p.tasks.find((x) => x.id === pred);
         const b = p.tasks.find((x) => x.id === succ);
         if (!a || !b || p.deps.some((d) => d.predecessor === pred && d.successor === succ)) return;
-        const dep = { id: nid(s, "dp"), predecessor: pred, successor: succ, createdAt: s.refDate };
+        const dep = { id: nid(s, "dp"), predecessor: pred, successor: succ, createdAt: s.refDate, ...(opts.type && opts.type !== "FS" ? { type: opts.type } : {}), ...(opts.lag ? { lag: opts.lag } : {}) };
         p.deps.push(dep);
-        emit("TASK_DEPENDENCY_ADDED", `تسک «${b.title}» به تسک «${a.title}» وابسته شد (پایان به شروع).`, { entity: { type: "dependency", id: dep.id }, ctx: { taskId: succ, assignee: b.assignee, predecessorNames: [a.assignee] }, meta: { predecessor: pred, successor: succ, type: "finish_to_start" } });
+        emit("TASK_DEPENDENCY_ADDED", `تسک «${b.title}» به تسک «${a.title}» وابسته شد (${depTypeLabel[dep.type ?? "FS"]}${dep.lag ? `، ${fa(dep.lag)} روز تأخیر` : ""}).`, { entity: { type: "dependency", id: dep.id }, ctx: { taskId: succ, assignee: b.assignee, predecessorNames: [a.assignee] }, meta: { predecessor: pred, successor: succ, type: dep.type ?? "FS", lag: dep.lag ?? 0 } });
         conflictCheck(p, emit, b);
+      }),
+    updateDependency: (pid, depId, patch) =>
+      on(pid, (p, emit) => {
+        const d = p.deps.find((x) => x.id === depId);
+        if (!d) return;
+        const before = depShort(d);
+        if (patch.type !== undefined) d.type = patch.type === "FS" ? undefined : patch.type;
+        if (patch.lag !== undefined) d.lag = patch.lag || undefined;
+        const after = depShort(d);
+        if (before === after) return;
+        const a = p.tasks.find((x) => x.id === d.predecessor);
+        const b = p.tasks.find((x) => x.id === d.successor);
+        emit("TASK_DEPENDENCY_UPDATED", `وابستگی «${b?.title}» ← «${a?.title}» از «${before}» به «${after}» (${depTypeLabel[d.type ?? "FS"]}) تغییر کرد.`, { entity: { type: "dependency", id: d.id }, ctx: { taskId: b?.id, assignee: b?.assignee }, meta: { old: before, new: after } });
+        if (b) conflictCheck(p, emit, b);
       }),
     removeDependency: (pid, depId) =>
       on(pid, (p, emit) => {
@@ -1519,7 +1744,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         if (status === "لغوشده") emit("MEETING_CANCELLED", `جلسه‌ی «${m.title}» (${m.date} ساعت ${m.time}) لغو شد.`, { entity: { type: "meeting", id }, ctx: { participants: m.participants } });
         if (status === "برگزارشده") emit("MEETING_HELD", `جلسه‌ی «${m.title}» برگزار شد.`, { entity: { type: "meeting", id }, ctx: { participants: m.participants } });
       }),
-    saveMinutes: (pid, input, publish) =>
+    saveMinutes: (pid, input, publish, newFiles = []) =>
       on(pid, (p, emit, s) => {
         const data = { ...input, attendees: input.participants?.length ?? input.attendees, decisions: input.decisionList?.length ?? input.decisions, followUps: input.actions?.length ?? input.followUps, published: publish || input.published };
         let mn: PMMinute;
@@ -1534,6 +1759,17 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           p.minutes.unshift(mn);
           if (publish) emit("MINUTES_PUBLISHED", `صورت‌جلسه‌ی «${mn.title}» با ${fa(mn.decisions)} مصوبه و ${fa(mn.followUps)} اقدام منتشر شد.`, { entity: { type: "minute", id: mn.id }, ctx: { participants: mn.participants } });
         }
+        // فایل‌های مرتبط صورت‌جلسه: اسناد موجود + فایل‌های تازه (در اسناد پروژه هم ثبت می‌شوند)
+        newFiles.forEach((f) => {
+          const doc: PMDocument = { id: nid(s, "dc"), name: f.name, type: f.type, size: f.size, uploadedBy: actor, date: s.refDate, version: 1, meetingId: mn.meetingId, minuteId: mn.id };
+          p.documents.unshift(doc);
+          mn.fileIds = [...(mn.fileIds ?? []), doc.id];
+          emit("DOCUMENT_UPLOADED", `فایل «${doc.name}» به صورت‌جلسه‌ی «${mn.title}» پیوست شد.`, { entity: { type: "document", id: doc.id }, meta: { type: doc.type, minute: mn.id } });
+        });
+        (mn.fileIds ?? []).forEach((fid) => {
+          const d = p.documents.find((x) => x.id === fid);
+          if (d && !d.minuteId) d.minuteId = mn.id;
+        });
         if (mn.meetingId) {
           const m = p.meetings.find((x) => x.id === mn.meetingId);
           if (m && m.status === "برنامه‌ریزی‌شده") {

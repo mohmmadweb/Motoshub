@@ -31,11 +31,12 @@ function renderText(text: string) {
 }
 
 export default function CommunicationTab() {
-  const { p, pid, canEdit } = useProjectPage();
+  const { p, pid, canEdit, focusId } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
   const confirm = useConfirm();
-  const [chId, setChId] = useState(p.channels[0]?.id ?? "");
+  // پرش از جستجوی پروژه به یک پیام: کانالِ همان پیام باز و پیام برجسته می‌شود
+  const [chId, setChId] = useState((focusId && p.channels.find((c) => c.messages.some((m) => m.id === focusId))?.id) || p.channels[0]?.id || "");
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -168,7 +169,7 @@ export default function CommunicationTab() {
               {msgs.map((m) => {
                 const parent = m.replyTo ? ch.messages.find((x) => x.id === m.replyTo) : undefined;
                 return (
-                  <div key={m.id} className="group bg-white rounded-lg p-3 border border-ink-100 shadow-sm max-w-2xl">
+                  <div key={m.id} className={`group bg-white rounded-lg p-3 border shadow-sm max-w-2xl ${focusId === m.id ? "border-brand-400 ring-2 ring-brand-200" : "border-ink-100"}`}>
                     <div className="flex items-center justify-between text-[11px] text-ink-400 mb-1">
                       <span className="font-medium text-ink-800 text-xs">{m.author}</span>
                       <span className="flex items-center gap-1.5">

@@ -14,7 +14,7 @@ export const modeConf: Record<
   MessengerMode,
   { base: string; title: string; types: ChatType[]; listPerm: string; createPerm: string; managePerm: string; entity: EntityName | null; owner: OwnerType | null; noun: string; subNoun: string; rootChip: string }
 > = {
-  chat: { base: "/dashboard/chat", title: "گفتگوها", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
+  chat: { base: "/dashboard/chat", title: "گفتگو", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
   groups: { base: "/dashboard/groups", title: "گروه‌ها", types: ["group"], listPerm: "groups.list", createPerm: "groups.create", managePerm: "groups.manage", entity: "group", owner: "group", noun: "گروه", subNoun: "تاپیک", rootChip: "عمومی" },
   channels: { base: "/dashboard/channels", title: "کانال‌ها", types: ["channel"], listPerm: "channels.list", createPerm: "channels.create", managePerm: "channels.manage", entity: "channel", owner: "channel", noun: "کانال", subNoun: "زیرکانال", rootChip: "کانال اصلی" },
 };
@@ -73,7 +73,28 @@ export const shortWhen = (s: string, today: string) => {
 const TOKEN = /(@[^\s،.,!؟?]+|#[^\s،.,!؟?#]+)/g;
 export const tagsIn = (text: string) => [...new Set((text.match(/#[^\s،.,!؟?#]+/g) ?? []).map((t) => t.slice(1)))];
 
-export function RichText({ text }: { text: string }) {
+/** هایلایت عبارت جستجو در متن ساده */
+function Marked({ text, term }: { text: string; term?: string }) {
+  const t = term?.trim();
+  if (!t) return <>{text}</>;
+  const esc = t.replace(/[.*+?^$|()[\]{}\\]/g, "\\$&");
+  const re = new RegExp("(" + esc + ")", "gi");
+  return (
+    <>
+      {text.split(re).map((p, i) =>
+        i % 2 ? (
+          <mark key={i} className="bg-amber-50 text-inherit rounded-sm border-b-2 border-amber-400 px-0.5">
+            {p}
+          </mark>
+        ) : (
+          <Fragment key={i}>{p}</Fragment>
+        )
+      )}
+    </>
+  );
+}
+
+export function RichText({ text, highlight }: { text: string; highlight?: string }) {
   const parts = text.split(TOKEN);
   return (
     <>
@@ -97,7 +118,7 @@ export function RichText({ text }: { text: string }) {
               {p}
             </Link>
           );
-        return <Fragment key={i}>{p}</Fragment>;
+        return <Marked key={i} text={p} term={highlight} />;
       })}
     </>
   );

@@ -27,7 +27,10 @@ export type TabId =
   | "notifications"
   | "playbooks"
   | "knowledge"
-  | "settings";
+  | "settings"
+  | "flow"
+  | "decisions"
+  | "intake";
 
 /** تب مقصد برای هر دسته‌ی رویداد (کلیک روی لاگ یا اعلان) */
 export const tabForCategory: Record<string, TabId> = {

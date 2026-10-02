@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Clock, Video, MapPin, Users, Repeat, Pencil, Trash2, Eye, EyeOff, Check, X, UserPlus, Send, LogOut, ShieldCheck, ShieldOff, CalendarPlus, ExternalLink, Crown } from "lucide-react";
+import { CalendarDays, Clock, Video, MapPin, Users, Repeat, Pencil, Trash2, Eye, EyeOff, Check, X, UserPlus, Send, LogOut, ShieldCheck, ShieldOff, CalendarPlus, ExternalLink, Crown, Download } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -21,6 +21,7 @@ import { eventStatusLabel, memberTypeLabel } from "../../social/types";
 import { dayNum, weekDayNames, fa } from "../../pm/jalali";
 import { ApiChip, UserLine, UserPicker, PrivacyBadge, PublishBadge, CategoryBadges, TagList, AttachmentList, ReactionBar, CommentsPanel, Poster } from "./kit";
 import { EventEditor, useEventVisibility } from "./EventsCalendar";
+import { buildIcs, downloadIcs, socialEventToIcs } from "../calendar/ics";
 
 const statusTone: Record<EventMemberStatus, "warning" | "success" | "neutral" | "brand"> = { invited: "warning", accepted: "success", declined: "neutral", joined: "brand" };
 const statusOrder: EventMemberStatus[] = ["joined", "accepted", "invited", "declined"];
@@ -40,7 +41,7 @@ export default function EventDetail() {
   if (!ev || !visible(ev))
     return (
       <div>
-        <PageHeader title="رویداد" breadcrumb={[{ label: "تقویم", to: "/dashboard/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
+        <PageHeader title="رویداد" breadcrumb={[{ label: "تعامل و همکاری" }, { label: "رویداد و جلسات", to: "/dashboard/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
         <EmptyState icon={<CalendarDays size={22} />} title="رویداد پیدا نشد" description="این رویداد حذف شده یا اجازه‌ی دیدن آن را ندارید (privacy)." />
       </div>
     );
@@ -63,6 +64,10 @@ export default function EventDetail() {
     s.publishEvent(ev.id, !ev.is_public);
     notify(ev.is_public ? "انتشار رویداد لغو شد." : "رویداد منتشر شد.", "success");
   };
+  const addToMyCalendar = () => {
+    downloadIcs(`event-${ev.id}.ics`, buildIcs([socialEventToIcs(ev)], ev.title));
+    notify("فایل ‎.ics‎ دانلود شد — آن را در تقویم گوشی یا Outlook باز کنید.", "success");
+  };
   const remove = () =>
     confirm({
       title: "حذف رویداد",
@@ -80,7 +85,7 @@ export default function EventDetail() {
       <PageHeader
         title={ev.title}
         icon={<CalendarDays size={18} />}
-        breadcrumb={[{ label: "تقویم", to: "/dashboard/events" }, { label: ev.title }]}
+        breadcrumb={[{ label: "تعامل و همکاری" }, { label: "رویداد و جلسات", to: "/dashboard/events" }, { label: ev.title }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <ApiChip
@@ -219,6 +224,9 @@ export default function EventDetail() {
                 {available !== null ? ` · ${fa(available)} جای خالی (available_capacity)` : " · بدون محدودیت ظرفیت"}
               </p>
             </div>
+            <Button variant="primary" className="w-full justify-center" icon={<Download size={14} />} onClick={addToMyCalendar}>
+              افزودن به تقویم من (‎.ics‎)
+            </Button>
             <Button variant="secondary" className="w-full justify-center" icon={<CalendarPlus size={14} />} onClick={() => notify(ev.google_calendar_event_id ? `این رویداد با شناسه‌ی google_calendar_event_id «${ev.google_calendar_event_id}» در تقویم گوگل ثبت است.` : "در نسخه‌ی متصل، رویداد به تقویم گوگل اضافه و شناسه‌ی آن در google_calendar_event_id ذخیره می‌شود.", "info")}>
               افزودن به تقویم گوگل
             </Button>

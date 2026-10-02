@@ -12,6 +12,7 @@ import { columnLabel, isDone, kindOf } from "../pm/selectors";
 import { fa } from "../pm/jalali";
 import { kindTone, priorityTone } from "./project/shared";
 import { ProjectIcon } from "./project/projectIcons";
+import { TaskKey, TypeIcon } from "./project/taskTypes";
 
 type Tab = "mine" | "approvals" | "watching" | "done";
 const bucketOrder: Bucket[] = ["overdue", "today", "week", "later", "nodate"];
@@ -49,8 +50,12 @@ export default function MyWork() {
             className="accent-[var(--color-brand-600)] w-4 h-4 shrink-0"
           />
         )}
-        <Link to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.id}`} className="flex-1 min-w-0">
-          <p className={`text-sm truncate ${dn ? "line-through text-ink-400" : "text-ink-900 hover:text-brand-700"}`}>{x.t.title}</p>
+        <Link to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.key ?? x.t.id}`} className="flex-1 min-w-0">
+          <p className={`text-sm truncate flex items-center gap-1.5 ${dn ? "line-through text-ink-400" : "text-ink-900 hover:text-brand-700"}`}>
+            <TypeIcon type={x.t.type} />
+            <TaskKey t={x.t} />
+            <span className="truncate">{x.t.title}</span>
+          </p>
           <p className="text-[11px] text-ink-400 flex items-center gap-1.5 mt-0.5 truncate">
             <span style={{ color: x.p.meta.color }} className="shrink-0">
               <ProjectIcon name={x.p.meta.icon} size={11} />
@@ -85,7 +90,7 @@ export default function MyWork() {
 
   return (
     <div>
-      <PageHeader title="فعالیت‌ها و وظایف" description={`همه‌ی تسک‌های «${me}» در همه‌ی پروژه‌ها — بر اساس سررسید مرتب شده‌اند`} icon={<ListTodo size={18} />} />
+      <PageHeader title="فعالیت و وظایف من" description={`همه‌ی تسک‌های «${me}» در همه‌ی پروژه‌ها — بر اساس سررسید مرتب شده‌اند`} icon={<ListTodo size={18} />} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="تسک‌های باز من" value={fa(w.open.length)} tone="brand" icon={<ListTodo size={16} />} />
         <StatCard label="عقب‌افتاده" value={fa(overdue)} tone={overdue ? "danger" : "success"} icon={<AlertTriangle size={16} />} />

@@ -7,7 +7,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
-import { activeTasks, budgetUsage, paidTotal, projectProgress } from "../pm/selectors";
+import { activeTasks, budgetUsage, findTask, paidTotal, projectProgress } from "../pm/selectors";
 import { fa, fmtRial } from "../pm/jalali";
 import { ProjectPageContext, type TabId } from "./project/shared";
 import { ProjectIcon } from "./project/projectIcons";
@@ -35,8 +35,12 @@ import WorkloadTab from "./project/WorkloadTab";
 import TaskDrawer from "./project/TaskDrawer";
 import TaskCreateModal from "./project/TaskCreateModal";
 import { ProjectKnowledgeFile } from "./knowledge/ProjectKnowledge";
+import FlowTab from "./project/FlowTab";
+import DecisionsTab from "./project/DecisionsTab";
+import IntakeTab from "./project/IntakeTab";
+import ProjectSearch from "./project/ProjectSearch";
 
-const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings"];
+const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings", "flow", "decisions", "intake"];
 
 export default function ProjectBoard() {
   const { id } = useParams();
@@ -55,9 +59,10 @@ export default function ProjectBoard() {
   const myRole = p?.members.find((m) => m.name === actingUser.name || m.userId === actingUser.id)?.role;
   const canManage = !!p && hasPermission("projects.tasks") && myRole !== "مشاهده‌گر";
   const canEdit = canManage && !p.meta.archived;
-  // لینک مستقیم به یک تسک (مثلاً از اعلان): ?tab=board&focus=t2 ← جزئیات تسک باز می‌شود
+  // لینک مستقیم به یک تسک (مثلاً از اعلان): ?tab=board&focus=t2 یا با کلید ?focus=QGJ-12 ← جزئیات تسک باز می‌شود
   useEffect(() => {
-    if (focusId && (view === "board" || view === "overview") && p?.tasks.some((t) => t.id === focusId)) setTaskId(focusId);
+    const hit = p ? findTask(p, focusId) : undefined;
+    if (hit && (view === "board" || view === "overview")) setTaskId(hit.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId, view]);
   const unreadHere = useMemo(() => pm.store.notifications.filter((n) => n.projectId === id && !n.read).length, [pm.store.notifications, id]);
@@ -79,6 +84,7 @@ export default function ProjectBoard() {
   const ts = activeTasks(p);
   const openRisks = p.risks.filter((r) => r.status !== "بسته").length;
   const openIssues = p.issues.filter((i) => i.status === "باز" || i.status === "در حال بررسی").length;
+  const newRequests = (p.intake ?? []).filter((r) => r.status === "جدید").length;
 
   // تب‌های اصلی همیشه دیده می‌شوند؛ بقیه در منوی «بیشتر» — تا نوار شلوغ نشود
   type TabDef = { id: TabId; label: string; count?: number };
@@ -99,7 +105,10 @@ export default function ProjectBoard() {
     { id: "time", label: "ثبت زمان" },
     { id: "workload", label: "بار کاری تیم" },
     { id: "issues", label: "مشکلات", count: openIssues || undefined },
+    { id: "intake", label: "درخواست‌ها", count: newRequests || undefined },
+    { id: "decisions", label: "دفتر تصمیمات" },
     { id: "reports", label: "گزارش‌ها" },
+    { id: "flow", label: "تحلیل جریان" },
     { id: "communication", label: "کانال‌ها و گفتگو" },
     { id: "documents", label: "اسناد" },
     { id: "playbooks", label: "Playbook" },
@@ -153,6 +162,7 @@ export default function ProjectBoard() {
           breadcrumb={[{ label: "پروژه‌های من", to: "/dashboard/projects" }, { label: p.meta.name }]}
           actions={
             <div className="flex items-center gap-2">
+              <ProjectSearch />
               {iconAction("history", "تاریخچه رویدادها", History)}
               {iconAction("notifications", "اعلان‌ها و خودکارسازی", Bell, unreadHere)}
               {canManage && iconAction("settings", "تنظیمات پروژه", Settings)}
@@ -275,6 +285,9 @@ export default function ProjectBoard() {
         {view === "playbooks" && <PlaybooksTab />}
         {view === "settings" && <SettingsTab />}
         {view === "knowledge" && <ProjectKnowledgeFile projectId={id} inProjectPage />}
+        {view === "flow" && <FlowTab />}
+        {view === "decisions" && <DecisionsTab />}
+        {view === "intake" && <IntakeTab />}
 
         {canEdit && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
         <TaskDrawer taskId={taskId} onClose={() => setTaskId(null)} />

@@ -12,6 +12,8 @@ import { Field, MemberSelect, SectionTitle, useProjectPage } from "./shared";
 import { phases } from "./OverviewTab";
 import CustomFieldsCard from "./CustomFieldsCard";
 import { ProjectIcon, projectColors, projectIconNames } from "./projectIcons";
+import { InnovationLinksCard, MeetingSettingsCard, ScopePicker } from "./SettingsExtras";
+import ClosureWizard from "./ClosureWizard";
 
 export default function SettingsTab() {
   const { p, pid, canEdit, canManage, hasPerm, refDate, goTab } = useProjectPage();
@@ -22,6 +24,7 @@ export default function SettingsTab() {
   const [d, setD] = useState<ProjectMeta>(p.meta);
   const [tags, setTags] = useState(p.meta.tags.join("، "));
   const [tplName, setTplName] = useState(`قالب ${p.meta.name}`);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     setD(p.meta);
@@ -31,7 +34,16 @@ export default function SettingsTab() {
 
   const save = () => {
     if (!d.name.trim()) return notify("نام پروژه الزامی است.", "warning");
-    pm.updateMeta(pid, { ...d, tags: tags.split(/[،,]/).map((x) => x.trim()).filter(Boolean) });
+    const key = (d.key ?? "").trim().toUpperCase();
+    if (key && !/^[A-Z][A-Z0-9]{1,4}$/.test(key)) return notify("کلید پروژه باید ۲ تا ۵ حرف/رقم لاتین باشد و با حرف شروع شود (مثل QGJ).", "warning");
+    if (key && pm.projects.some((x) => x.meta.id !== pid && x.meta.key === key)) return notify(`کلید «${key}» برای پروژه‌ی دیگری استفاده شده است.`, "warning");
+    // ورود به «اختتام» فقط از مسیر ارزیابی پایان پروژه
+    const toClose = d.phase === "اختتام" && p.meta.phase !== "اختتام" && !p.closure;
+    pm.updateMeta(pid, { ...d, key: key || p.meta.key, phase: toClose ? p.meta.phase : d.phase, tags: tags.split(/[،,]/).map((x) => x.trim()).filter(Boolean) });
+    if (toClose) {
+      setClosing(true);
+      return notify("سایر تنظیمات ذخیره شد؛ برای ورود به «اختتام» ارزیابی پایان پروژه را تکمیل کنید.", "info");
+    }
     notify("تنظیمات ذخیره شد؛ هر تغییر با کد رویداد خودش در تاریخچه ثبت شد.");
   };
 
@@ -63,8 +75,11 @@ export default function SettingsTab() {
           <Field label="مسئول مالی (گیرنده‌ی هشدارهای بودجه)">
             <MemberSelect p={p} value={d.financeOfficer} onChange={(v) => setD({ ...d, financeOfficer: v })} allowEmpty={false} />
           </Field>
-          <Field label="فضای کاری">
-            <input className="input-field" value={d.workspace} onChange={(e) => setD({ ...d, workspace: e.target.value })} />
+          <Field label="فضای کاری (واحد سازمانی)" hint="هلدینگ، شرکت یا واحدی از ساختار سازمانی که پروژه زیر آن تعریف می‌شود.">
+            <ScopePicker value={d.scopeId} onChange={(id, label) => setD({ ...d, scopeId: id || undefined, workspace: label })} />
+          </Field>
+          <Field label="کلید پروژه" hint={`پیشوند کلید تسک‌ها — مثل ${d.key ?? "QGJ"}-۱۲؛ با تغییر، کلید تسک‌های موجود هم به‌روز می‌شود.`}>
+            <input className="input-field font-mono" dir="ltr" maxLength={5} value={d.key ?? ""} onChange={(e) => setD({ ...d, key: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} placeholder="QGJ" />
           </Field>
           <Field label="تاریخ شروع">
             <JalaliDatePicker value={d.start} onChange={(v) => setD({ ...d, start: v })} />
@@ -159,6 +174,8 @@ export default function SettingsTab() {
         </button>
       </div>
 
+      <InnovationLinksCard />
+      <MeetingSettingsCard />
       <CustomFieldsCard />
 
       <div className="card p-4 space-y-4">
@@ -200,6 +217,7 @@ export default function SettingsTab() {
         </div>
       </div>
 
+      {closing && <ClosureWizard onClose={() => setClosing(false)} />}
       <div className="card p-4 border-dashed">
         <SectionTitle title="ابزار دمو" hint="فقط در پروتوتایپ — برای نمایش اعلان‌های زمان‌محور و بازگرداندن داده‌ی نمونه." />
         <div className="flex gap-2 flex-wrap items-center">

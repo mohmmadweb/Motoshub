@@ -16,24 +16,22 @@ import {
   BookOpen,
   KanbanSquare,
   ListTodo,
-  FolderKanban,
   FolderOpen,
   FileSignature,
   PiggyBank,
   FlaskConical,
-  BarChart3,
-  Gauge,
   Settings,
-  HelpCircle,
   GraduationCap,
   Bot,
-  Palette,
   LifeBuoy,
   Award,
   KeyRound,
   Network,
   Lightbulb,
   ChevronDown,
+  NotebookPen,
+  CalendarRange,
+  Timer,
 } from "lucide-react";
 import { useTenancy } from "../context/TenancyContext";
 
@@ -45,17 +43,19 @@ import { useTenancy } from "../context/TenancyContext";
  * هر نقش فقط آیتم‌های مجاز خودش را می‌بیند؛ کلاستر یا گروهِ خالی نمایش داده نمی‌شود.
  */
 type Item = { to: string; label: string; icon: typeof Users; end?: boolean; adminOnly?: boolean; viewPerm?: string };
-export type ClusterId = "home" | "social" | "pm" | "knowledge" | "admin";
+export type ClusterId = "home" | "people" | "content" | "files" | "collab" | "work" | "innovation" | "admin";
 export const navClusters: Record<ClusterId, { title: string; icon: typeof Users }> = {
   home: { title: "نمای کلی", icon: LayoutDashboard },
-  social: { title: "شبکه اجتماعی", icon: Network },
-  pm: { title: "مدیریت پروژه", icon: KanbanSquare },
-  knowledge: { title: "دانش و نوآوری", icon: Lightbulb },
+  people: { title: "همکاران", icon: Users },
+  content: { title: "دانش و محتوا", icon: BookMarked },
+  files: { title: "اسناد و فایل‌ها", icon: FolderOpen },
+  collab: { title: "تعامل و همکاری", icon: Network },
+  work: { title: "پروژه و فعالیت‌ها", icon: KanbanSquare },
+  innovation: { title: "دانش و نوآوری", icon: Lightbulb },
   admin: { title: "مدیریت سامانه", icon: Settings },
 };
 
 export const navSections: { cluster: ClusterId; title: string; items: Item[] }[] = [
-  // ------------------------------------------------ نمای کلی
   {
     cluster: "home",
     title: "",
@@ -64,63 +64,53 @@ export const navSections: { cluster: ClusterId; title: string; items: Item[] }[]
       { to: "/dashboard/assistant", label: "دستیار هوشمند", icon: Bot, viewPerm: "assistant.chat" },
     ],
   },
-  // ------------------------------------------------ شبکه اجتماعی (منطبق بر Motoshub Social API)
   {
-    cluster: "social",
-    title: "همکاران",
+    cluster: "people",
+    title: "",
     items: [
       { to: "/dashboard/members", label: "اعضای سازمان", icon: Users, viewPerm: "members.view" },
       { to: "/dashboard/connections", label: "ارتباطات من", icon: UserPlus, viewPerm: "relations.use" },
     ],
   },
   {
-    cluster: "social",
-    title: "دانش و محتوا",
+    cluster: "content",
+    title: "",
     items: [
+      { to: "/dashboard/blog", label: "وبلاگ", icon: NotebookPen, viewPerm: "blog.list" },
       { to: "/dashboard/magazines", label: "مجلات", icon: BookMarked, viewPerm: "magazines.list" },
       { to: "/dashboard/news", label: "اخبار سازمان", icon: Newspaper, viewPerm: "news.list" },
       { to: "/dashboard/media", label: "رسانه", icon: Image, viewPerm: "media.list" },
       { to: "/dashboard/forum", label: "پرسش و پاسخ", icon: MessagesSquare, viewPerm: "forum.list" },
-      { to: "/dashboard/topics", label: "هشتگ‌ها و موضوعات", icon: Hash },
+      { to: "/dashboard/topics", label: "هشتگ‌ها", icon: Hash },
     ],
   },
   {
-    cluster: "social",
-    title: "تعامل و همکاری",
+    cluster: "files",
+    title: "",
+    items: [{ to: "/dashboard/files", label: "مدیریت اسناد و فایل‌ها", icon: FolderOpen, viewPerm: "files.use" }],
+  },
+  {
+    cluster: "collab",
+    title: "",
     items: [
-      { to: "/dashboard/chat", label: "گفتگوها", icon: MessageCircle, viewPerm: "chat.view" },
+      { to: "/dashboard/calendar", label: "تقویم", icon: CalendarRange, viewPerm: "calendar.view" },
+      { to: "/dashboard/chat", label: "گفتگو", icon: MessageCircle, viewPerm: "chat.view" },
       { to: "/dashboard/groups", label: "گروه‌ها", icon: UsersRound, viewPerm: "groups.list" },
       { to: "/dashboard/channels", label: "کانال‌ها", icon: Megaphone, viewPerm: "channels.list" },
+      { to: "/dashboard/events", label: "رویداد و جلسات", icon: CalendarDays, viewPerm: "events.list" },
     ],
   },
   {
-    cluster: "social",
-    title: "رویدادها و جلسات",
-    items: [{ to: "/dashboard/events", label: "تقویم", icon: CalendarDays, viewPerm: "events.list" }],
-  },
-  {
-    cluster: "social",
-    title: "اسناد و فایل‌ها",
-    items: [{ to: "/dashboard/files", label: "اسناد و فایل‌ها", icon: FolderOpen, viewPerm: "files.use" }],
-  },
-  {
-    cluster: "social",
-    title: "بخش‌های ویژه مدیران",
-    items: [{ to: "/dashboard/social-admin", label: "داشبورد مدیریتی شبکه", icon: Gauge, viewPerm: "social.dashboards" }],
-  },
-  // ------------------------------------------------ مدیریت پروژه
-  {
-    cluster: "pm",
-    title: "پروژه‌ها و فعالیت‌ها",
+    cluster: "work",
+    title: "",
     items: [
       { to: "/dashboard/projects", label: "پروژه‌های من", icon: KanbanSquare, viewPerm: "projects.list" },
-      { to: "/dashboard/my-work", label: "فعالیت‌ها و وظایف", icon: ListTodo, viewPerm: "projects.list" },
-      { to: "/dashboard/project-teams", label: "تیم‌ها و مستندات پروژه", icon: FolderKanban, viewPerm: "projects.list" },
+      { to: "/dashboard/my-work", label: "فعالیت و وظایف من", icon: ListTodo, viewPerm: "projects.list" },
+      { to: "/dashboard/activity", label: "گزارش فعالیت‌های من", icon: Timer, viewPerm: "timesheet.log" },
     ],
   },
-  // ------------------------------------------------ دانش و نوآوری
   {
-    cluster: "knowledge",
+    cluster: "innovation",
     title: "",
     items: [
       { to: "/dashboard/knowledge", label: "مدیریت دانش", icon: BookOpen, viewPerm: "knowledge.list" },
@@ -131,17 +121,13 @@ export const navSections: { cluster: ClusterId; title: string; items: Item[] }[]
       { to: "/dashboard/training", label: "آموزش و توانمندسازی", icon: GraduationCap, viewPerm: "training.list" },
     ],
   },
-  // ------------------------------------------------ مدیریت سامانه
   {
     cluster: "admin",
     title: "",
     items: [
-      { to: "/dashboard/admin", label: "پنل راهبری", icon: Settings, adminOnly: true },
-      { to: "/dashboard/reports", label: "گزارش‌گیری پیشرفته", icon: BarChart3, viewPerm: "reports.view" },
+      { to: "/dashboard/settings", label: "تنظیمات سامانه", icon: Settings },
       { to: "/dashboard/access", label: "نقش و دسترسی من", icon: KeyRound },
-      { to: "/dashboard/appearance", label: "ظاهر و برندسازی", icon: Palette },
-      { to: "/dashboard/tickets", label: "تیکت پشتیبانی", icon: LifeBuoy },
-      { to: "/dashboard/help", label: "راهنما", icon: HelpCircle },
+      { to: "/dashboard/tickets", label: "تیکت پشتیبانی", icon: LifeBuoy, viewPerm: "tickets.create" },
     ],
   },
 ];

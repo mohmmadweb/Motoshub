@@ -1314,6 +1314,18 @@ export type PermissionGroup = {
 
 export const permissionCatalog: PermissionGroup[] = [
   {
+    id: "iam",
+    label: "ساختار سازمانی و دسترسی‌ها",
+    actions: [
+      { id: "iam.structure.view", label: "مشاهده‌ی ساختار سازمانی" },
+      { id: "iam.structure.manage", label: "ایجاد، ویرایش و غیرفعال‌سازی واحدهای زیرمجموعه" },
+      { id: "iam.members.manage", label: "افزودن، تعلیق و فعال‌سازی عضویت‌ها" },
+      { id: "iam.audit.view", label: "مشاهده‌ی تاریخچه‌ی تغییرات دسترسی" },
+      { id: "iam.review.manage", label: "بازبینی دوره‌ای دسترسی‌ها" },
+      { id: "iam.impersonate", label: "مشاهده‌ی سامانه از دید کاربر دیگر" },
+    ],
+  },
+  {
     id: "users",
     label: "کاربران",
     actions: [
@@ -1455,6 +1467,8 @@ export const permissionCatalog: PermissionGroup[] = [
       { id: "knowledge.glossary", label: "مدیریت واژه‌نامه" },
       { id: "knowledge.reports", label: "گزارش‌ها و تحلیل دانش" },
       { id: "knowledge.settings", label: "تنظیمات مدیریت دانش" },
+      { id: "knowledge.download", label: "دانلود اسناد محرمانه (فراتر از سطح دسترسی)" },
+      { id: "knowledge.audit", label: "مشاهده‌ی لاگ ممیزی دانش" },
     ],
   },
   {
@@ -1567,6 +1581,53 @@ export const permissionCatalog: PermissionGroup[] = [
       { id: "settings.storage", label: "مدیریت فضای ذخیره‌سازی" },
     ],
   },
+  {
+    id: "blog",
+    label: "وبلاگ",
+    actions: [
+      { id: "blog.list", label: "مشاهده‌ی وبلاگ" },
+      { id: "blog.create", label: "نوشتن پست وبلاگ" },
+      { id: "blog.manage", label: "ویرایش، انتشار و حذف پست‌های دیگران" },
+    ],
+  },
+  {
+    id: "calendar",
+    label: "تقویم",
+    actions: [
+      { id: "calendar.view", label: "مشاهده‌ی تقویم یکپارچه" },
+      { id: "calendar.team", label: "مشاهده‌ی تقویم همکاران و تیم" },
+    ],
+  },
+  {
+    id: "timesheet",
+    label: "گزارش فعالیت و زمان کاری",
+    actions: [
+      { id: "timesheet.log", label: "ثبت زمان کاری و مرخصی خود" },
+      { id: "timesheet.integrations", label: "اتصال ابزارهای بیرونی (GitLab، GitHub، Jira …)" },
+      { id: "timesheet.team", label: "مشاهده‌ی زمان کاری اعضای زیرمجموعه" },
+      { id: "timesheet.approve", label: "تأیید یا برگشت کارکرد ماهانه" },
+      { id: "timesheet.finance", label: "خلاصه‌ی مالی و خروجی حقوق" },
+    ],
+  },
+  {
+    id: "tickets",
+    label: "تیکت پشتیبانی",
+    actions: [
+      { id: "tickets.create", label: "ثبت تیکت و پیگیری تیکت‌های خود" },
+      { id: "tickets.view-org", label: "مشاهده‌ی تیکت‌های همه‌ی اعضای زیرمجموعه" },
+      { id: "tickets.vendor", label: "پاسخ‌گویی به‌عنوان تیم سازنده (پشتیبانی)" },
+    ],
+  },
+  {
+    id: "award",
+    label: "جایزه نوآوری و فناوری",
+    actions: [
+      { id: "award.list", label: "مشاهده‌ی دوره‌ها و آثار جایزه" },
+      { id: "award.submit", label: "ارسال اثر به جایزه" },
+      { id: "award.judge", label: "داوری آثار" },
+      { id: "award.manage", label: "مدیریت دوره‌ها، داوران و نتایج" },
+    ],
+  },
 ];
 
 export const allPermissionIds: string[] = permissionCatalog.flatMap((g) => g.actions.map((a) => a.id));
@@ -1605,7 +1666,7 @@ export const roles: RoleDef[] = [
       "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
       "magazines.manage", "news.create", "news.manage", "media.manage", "forum.moderate", "taxonomy.manage", "comments.moderate",
       "channels.create", "events.create", "social.dashboards",
-      "knowledge.edit", "knowledge.delete", "knowledge.categories", "knowledge.approve", "knowledge.archive", "knowledge.glossary", "knowledge.experiences", "knowledge.reports",
+      "knowledge.edit", "knowledge.delete", "knowledge.categories", "knowledge.approve", "knowledge.archive", "knowledge.glossary", "knowledge.experiences", "knowledge.reports", "knowledge.audit",
       "training.create", "reports.export",
     ],
     system: true,
@@ -1685,11 +1746,14 @@ export const initialRoleAssignments: RoleAssignment = {
  * ترتیب: از بیشترین دسترسی تا کمترین.
  */
 export const demoPersonas: { id: string; summary: string }[] = [
-  { id: "u1", summary: "مدیر سامانه — همه‌ی منوها، پنل راهبری، داشبورد مدیریتی شبکه و تنظیمات ماژول‌ها." },
-  { id: "u2", summary: "مدیر محتوا — انتشار مجلات، اخبار و رسانه، تأیید نظرها، مدیریت هشتگ‌ها و موضوعات و مدیریت دانش." },
-  { id: "u5", summary: "مدیر پروژه — ساخت و مدیریت پروژه، تیم، بودجه و اسناد؛ رویداد و گروه برای تیم." },
-  { id: "u7", summary: "مدیر گروه — ساخت و اداره‌ی گروه‌ها و کانال‌ها، تاپیک‌ها و فایل‌های گروه، برگزاری رویداد." },
-  { id: "u3", summary: "کاربر عادی — ارتباط با همکاران، گفتگو، گروه و کانال، پرسش و پاسخ، رسانه، رویداد و تسک‌های خودش." },
+  { id: "u1", summary: "مدیر سامانه — همه‌ی واحدها؛ ساخت هلدینگ و تعیین مدیران هلدینگ." },
+  { id: "u2", summary: "دو نقش هم‌زمان: مدیر محتوای کل سامانه + مدیر هلدینگ صنایع غذایی سینا (اجتماع دسترسی‌ها)." },
+  { id: "u4", summary: "مدیر هلدینگ کشاورزی فردوس پارس — ساخت شرکت، تعریف نقش برای هلدینگ، تعیین مدیر شرکت‌ها." },
+  { id: "u13", summary: "مدیر شرکت بانک سینا — ساخت واحد داخلی و نقش سفارشی برای شرکت خودش." },
+  { id: "u5", summary: "مدیر پروژه در نیروگاه‌های صبا." },
+  { id: "u12", summary: "کاربر عادی با یک نقش زمان‌دار (کارشناس مالی هلدینگ سینا تا ۴۰ روز دیگر)." },
+  { id: "u7", summary: "مدیر گروه در موسسه تحقیقات کشاورزی." },
+  { id: "u3", summary: "کاربر عادی در بهنوش ایران." },
 ];
 
 export const allowedFileExtensions = ["jpg", "png", "gif", "mp4", "avi", "pdf", "docx", "xlsx", "pptx", "zip"];

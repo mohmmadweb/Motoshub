@@ -1,329 +1,465 @@
-import { useState } from "react";
-import { LifeBuoy, Plus, Send, Clock3, CheckCircle2, MessageSquareText } from "lucide-react";
+// ---------------------------------------------------------------------------
+// تیکت پشتیبانی — هر کاربرِ سامانه (در هر لایه‌ی سازمان) می‌تواند خطا، درخواست قابلیت یا
+// پرسش خود را برای تیم سازنده‌ی موتوشاب ثبت کند و تا بسته شدن، تاریخچه‌ی کامل را ببیند.
+//   «تیکت‌های من»       — tickets.create
+//   «تیکت‌های سازمان»   — tickets.view-org (تیکت‌های اعضای واحد فعلی و زیرمجموعه‌ها)
+//   «میز پشتیبانی»      — tickets.vendor (صف تیم سازنده با فیلتر، ارجاع گروهی و پاسخ آماده)
+// پارامترها: ?view=mine|org|desk  ?id=MSH-1024 (باز کردن جزئیات)  ?new=1 (فرم ثبت)  &from=/مسیر
+// ---------------------------------------------------------------------------
+import ModuleReportsButton from "../reports/ModuleReportsButton";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { LifeBuoy, Plus, Search, SlidersHorizontal, AlertTriangle, Timer, Smile, Inbox, MessageSquareText, Paperclip, X, UserCheck, Building2, Headset } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
-import Badge, { type BadgeTone } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
-import RowActions from "../components/ui/RowActions";
-import { useConfirm } from "../components/ui/ConfirmProvider";
 import Drawer from "../components/ui/Drawer";
-import DataTable, { type Column } from "../components/ui/DataTable";
+import StatCard from "../components/ui/StatCard";
+import EmptyState from "../components/ui/EmptyState";
+import Badge from "../components/ui/Badge";
+import Avatar from "../components/Avatar";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTenancy } from "../context/TenancyContext";
-import { ScopeBadge } from "../components/ui/ScopeControl";
-import { withDemoScopes, type Scoped } from "../data/tenancy";
+import { useTickets } from "../context/TicketsContext";
+import { descendantsOrSelf } from "../iam/model";
+import { fa } from "../pm/jalali";
+import {
+  fmtDur,
+  isBreached,
+  isFinal,
+  modules,
+  priorities,
+  priorityTone,
+  relTs,
+  slaFirst,
+  slaResolve,
+  statusOrder,
+  statusShort,
+  vendorById,
+  vendorTeam,
+  type Ticket,
+  type TicketPriority,
+  type TicketStatus,
+} from "./tickets/model";
+import { SlaPill, StatusBadge } from "./tickets/parts";
+import TicketForm, { typeIcon } from "./tickets/TicketForm";
+import TicketDetail from "./tickets/TicketDetail";
 
-// تیکت پشتیبانی — معادل iisticketing (تیکت + دسته + پاسخ‌گویی)
-type TicketMsg = { from: "me" | "support"; text: string; time: string };
-type Ticket = {
-  id: string;
-  no: string;
-  subject: string;
-  category: string;
-  priority: "کم" | "متوسط" | "فوری";
-  status: "باز" | "در حال بررسی" | "پاسخ داده شد" | "بسته";
-  updated: string;
-  messages: TicketMsg[];
-} & Scoped;
-
-const categories = ["فنی و سامانه", "دسترسی و نقش‌ها", "مالی و پرداخت", "پیشنهاد و انتقاد"];
-
-const initialTickets: Ticket[] = [
-  {
-    id: "tk1",
-    no: "TK-1405-0214",
-    subject: "خطای بارگذاری فایل بزرگ‌تر از ۵۰ مگابایت در بانک دانش",
-    category: "فنی و سامانه",
-    priority: "فوری",
-    status: "در حال بررسی",
-    updated: "۲ ساعت پیش",
-    messages: [
-      { from: "me", text: "هنگام بارگذاری گزارش ۸۰ مگابایتی خطای ۴۱۳ می‌گیرم.", time: "دیروز ۱۴:۲۰" },
-      { from: "support", text: "سلام، در حال بررسی محدودیت آپلود سرور شما هستیم؛ تا امروز عصر نتیجه را اعلام می‌کنیم.", time: "دیروز ۱۶:۰۵" },
-    ],
-  },
-  {
-    id: "tk2",
-    no: "TK-1405-0198",
-    subject: "درخواست دسترسی «امتیازدهی داوری» برای دو کارشناس جدید",
-    category: "دسترسی و نقش‌ها",
-    priority: "متوسط",
-    status: "پاسخ داده شد",
-    updated: "دیروز",
-    messages: [
-      { from: "me", text: "لطفاً نقش «کارشناس داوری صندوق» به خانم‌ها احمدی و رضوی تخصیص یابد.", time: "۱۴۰۵/۰۴/۲۹" },
-      { from: "support", text: "انجام شد؛ هر دو کاربر اکنون نقش موردنظر را دارند. لطفاً تایید بفرمایید.", time: "۱۴۰۵/۰۴/۲۹" },
-    ],
-  },
-  {
-    id: "tk3",
-    no: "TK-1405-0175",
-    subject: "مغایرت مبلغ پرداختی مرحله ۱ پروژه NF-1404-1004",
-    category: "مالی و پرداخت",
-    priority: "متوسط",
-    status: "بسته",
-    updated: "۱۴۰۵/۰۴/۲۵",
-    messages: [
-      { from: "me", text: "مبلغ واریزی با دستور پرداخت ۱۰ میلیون ریال اختلاف دارد.", time: "۱۴۰۵/۰۴/۲۲" },
-      { from: "support", text: "اختلاف مربوط به کسر حسن انجام کار است؛ ریز محاسبه پیوست شد.", time: "۱۴۰۵/۰۴/۲۴" },
-      { from: "me", text: "ممنون، تایید می‌کنم.", time: "۱۴۰۵/۰۴/۲۵" },
-    ],
-  },
-];
-
-const statusTone: Record<Ticket["status"], BadgeTone> = { باز: "brand", "در حال بررسی": "warning", "پاسخ داده شد": "success", بسته: "neutral" };
-const prioTone: Record<Ticket["priority"], BadgeTone> = { کم: "neutral", متوسط: "warning", فوری: "danger" };
+type View = "mine" | "org" | "desk";
+type StatusFilter = "all" | "open" | TicketStatus;
+const prioRank: Record<TicketPriority, number> = { بحرانی: 0, زیاد: 1, متوسط: 2, کم: 3 };
 
 export default function Tickets() {
-  const [tickets, setTickets] = useState<Ticket[]>(() => withDemoScopes(initialTickets, 10));
-  const [selected, setSelected] = useState<Ticket | null>(null);
-  const [open, setOpen] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [category, setCategory] = useState(categories[0]);
-  const [priority, setPriority] = useState<Ticket["priority"]>("متوسط");
-  const [body, setBody] = useState("");
-  const [reply, setReply] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const tk = useTickets();
+  const { actingUser, hasPermission, iam, contextId, contextNode } = useTenancy();
   const { notify } = useToast();
-  const confirm = useConfirm();
-  const { filterScoped, defaultScopeForNew, canManageItem, actingUser } = useTenancy();
-  const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
+  const [params, setParams] = useSearchParams();
 
-  const openCount = tickets.filter((t) => t.status === "باز" || t.status === "در حال بررسی").length;
-
-  const startEdit = (tk: Ticket) => {
-    setEditingId(tk.id);
-    setSubject(tk.subject);
-    setCategory(tk.category);
-    setPriority(tk.priority);
-    setItemScope({ scope: tk.scope, holdingId: tk.holdingId, companyId: tk.companyId });
-    setBody(tk.messages[0]?.text ?? "");
-    setOpen(true);
-  };
-
-  const remove = (tk: Ticket) =>
-    confirm({
-      title: `حذف تیکت «${tk.no}»؟`,
-      message: "کل گفتگوی این تیکت حذف می‌شود و قابل بازیابی نیست.",
-      onConfirm: () => {
-        setTickets((prev) => prev.filter((x) => x.id !== tk.id));
-        if (selected?.id === tk.id) setSelected(null);
-        notify(`تیکت «${tk.no}» حذف شد.`, "info");
-      },
-    });
-
-  const removeMessage = (idx: number) => {
-    if (!selected) return;
-    confirm({
-      title: "حذف این پیام؟",
-      message: "پیام از گفتگوی تیکت حذف می‌شود.",
-      onConfirm: () => {
-        const updated: Ticket = { ...selected, messages: selected.messages.filter((_, i) => i !== idx) };
-        setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
-        setSelected(updated);
-        notify("پیام حذف شد.", "info");
-      },
-    });
-  };
-
-  const reopenTicket = () => {
-    if (!selected) return;
-    const updated: Ticket = { ...selected, status: "باز", updated: "هم‌اکنون" };
-    setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
-    setSelected(updated);
-    notify("تیکت دوباره باز شد.", "info");
-  };
-
-  const closeModal = () => {
-    setOpen(false);
-    setEditingId(null);
-    setSubject("");
-    setBody("");
-    setPriority("متوسط");
-  };
-
-  const submit = () => {
-    if (!subject.trim() || !body.trim()) {
-      notify("موضوع و شرح تیکت الزامی است.", "warning");
-      return;
-    }
-    if (editingId) {
-      setTickets((prev) =>
-        prev.map((tk) =>
-          tk.id === editingId
-            ? {
-                ...tk,
-                subject: subject.trim(),
-                category,
-                priority,
-                updated: "هم‌اکنون",
-                messages: tk.messages.map((m, i) => (i === 0 ? { ...m, text: body.trim() } : m)),
-                ...itemScope,
-              }
-            : tk
-        )
-      );
-      setSelected((s) => (s && s.id === editingId ? { ...s, subject: subject.trim(), category, priority } : s));
-      notify("تیکت ویرایش شد.");
-      closeModal();
-      return;
-    }
-    const t: Ticket = {
-      id: `tk-${Date.now()}`,
-      no: `TK-1405-${String(Math.floor(200 + tickets.length)).padStart(4, "0")}`,
-      subject: subject.trim(),
-      category,
-      priority,
-      status: "باز",
-      updated: "هم‌اکنون",
-      messages: [{ from: "me", text: body.trim(), time: "هم‌اکنون" }],
-      ...itemScope,
-      authorId: actingUser.id,
-    };
-    setTickets((prev) => [t, ...prev]);
-    notify(`تیکت «${t.no}» ثبت شد؛ پاسخ از طریق اعلان به شما اطلاع داده می‌شود.`);
-    closeModal();
-  };
-
-  const sendReply = () => {
-    if (!reply.trim() || !selected) return;
-    const updated: Ticket = {
-      ...selected,
-      status: "در حال بررسی",
-      updated: "هم‌اکنون",
-      messages: [...selected.messages, { from: "me", text: reply.trim(), time: "هم‌اکنون" }],
-    };
-    setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
-    setSelected(updated);
-    setReply("");
-    notify("پاسخ شما ثبت شد.");
-  };
-
-  const closeTicket = () => {
-    if (!selected) return;
-    const updated: Ticket = { ...selected, status: "بسته", updated: "هم‌اکنون" };
-    setTickets((prev) => prev.map((t) => (t.id === selected.id ? updated : t)));
-    setSelected(updated);
-    notify("تیکت بسته شد. در صورت نیاز می‌توانید تیکت جدیدی ثبت کنید.", "info");
-  };
-
-  const columns: Column<Ticket>[] = [
-    { key: "no", label: "شماره", render: (t) => <span className="font-mono text-[11px] text-ink-700" dir="ltr">{t.no}</span> },
-    { key: "subject", label: "موضوع", render: (t) => <span className="font-medium text-ink-900">{t.subject}</span> },
-    { key: "category", label: "دسته" },
-    { key: "priority", label: "اولویت", render: (t) => <Badge tone={prioTone[t.priority]}>{t.priority}</Badge> },
-    { key: "status", label: "وضعیت", render: (t) => <Badge tone={statusTone[t.status]}>{t.status}</Badge> },
-    { key: "updated", label: "آخرین به‌روزرسانی" },
-    { key: "owner", label: "دامنه", render: (t) => <ScopeBadge item={t} /> },
-    {
-      key: "actions",
-      label: "",
-      render: (t) => <RowActions onEdit={canManageItem(t) ? () => startEdit(t) : undefined} onDelete={canManageItem(t) ? () => remove(t) : undefined} />,
-    },
+  const canCreate = hasPermission("tickets.create");
+  const canOrg = hasPermission("tickets.view-org");
+  const canDesk = tk.isVendor;
+  const views: { id: View; label: string; icon: typeof Inbox }[] = [
+    { id: "mine", label: "تیکت‌های من", icon: Inbox },
+    ...(canOrg ? [{ id: "org" as View, label: "تیکت‌های سازمان", icon: Building2 }] : []),
+    ...(canDesk ? [{ id: "desk" as View, label: "میز پشتیبانی", icon: Headset }] : []),
   ];
+  const requested = params.get("view") as View | null;
+  const view: View = views.some((v) => v.id === requested) ? requested! : "mine";
+  const openId = params.get("id");
+  const newOpen = params.get("new") === "1" && canCreate;
+
+  const patchParams = (patch: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    Object.entries(patch).forEach(([k, v]) => (v === null ? next.delete(k) : next.set(k, v)));
+    setParams(next, { replace: true });
+  };
+
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [prio, setPrio] = useState<TicketPriority | "">("");
+  const [mod, setMod] = useState("");
+  const [sla, setSla] = useState<"" | "breached" | "risk">("");
+  const [assignee, setAssignee] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const orgIds = useMemo(() => new Set(descendantsOrSelf(iam, contextId).map((s) => s.id)), [iam, contextId]);
+  const lists = useMemo(
+    () => ({
+      mine: tk.tickets.filter((t) => t.reporterId === actingUser.id),
+      org: tk.tickets.filter((t) => orgIds.has(t.reporterScopeId)),
+      desk: tk.tickets,
+    }),
+    [tk.tickets, actingUser.id, orgIds],
+  );
+  const base = lists[view];
+  const now = tk.now;
+
+  const slaState = (t: Ticket) => {
+    if (isFinal(t.status) || t.status === "resolved") return "";
+    if (isBreached(t, now)) return "breached";
+    return slaFirst(t, now).state === "risk" || slaResolve(t, now).state === "risk" ? "risk" : "";
+  };
+
+  const filtered = base
+    .filter((t) => {
+      if (status === "open" ? isFinal(t.status) : status !== "all" && t.status !== status) return false;
+      if (prio && t.priority !== prio) return false;
+      if (mod && t.module !== mod) return false;
+      if (sla && slaState(t) !== sla) return false;
+      if (assignee === "none" ? !!t.assigneeId : assignee && t.assigneeId !== assignee) return false;
+      const s = q.trim();
+      return !s || t.id.toLowerCase().includes(s.toLowerCase()) || t.title.includes(s) || t.reporterName.includes(s) || t.labels.some((l) => l.includes(s));
+    })
+    .sort((a, b) => {
+      if (view === "desk") {
+        const ba = isBreached(a, now) ? 0 : 1;
+        const bb = isBreached(b, now) ? 0 : 1;
+        const fa_ = isFinal(a.status) ? 1 : 0;
+        const fb_ = isFinal(b.status) ? 1 : 0;
+        return fa_ - fb_ || ba - bb || prioRank[a.priority] - prioRank[b.priority] || b.updatedAt - a.updatedAt;
+      }
+      return b.updatedAt - a.updatedAt;
+    });
+
+  // آمار نمای فعلی
+  const open = base.filter((t) => !isFinal(t.status));
+  const breached = base.filter((t) => isBreached(t, now)).length;
+  const responded = base.filter((t) => t.firstResponseAt !== undefined);
+  const avgFirst = responded.length ? responded.reduce((s, t) => s + (t.firstResponseAt! - t.createdAt), 0) / responded.length : 0;
+  const rated = base.filter((t) => t.rating);
+  const csat = rated.length ? rated.reduce((s, t) => s + t.rating!.score, 0) / rated.length : 0;
+  const awaitingMe = lists.mine.filter((t) => t.status === "resolved" || t.status === "need-info").length;
+  const unassigned = open.filter((t) => !t.assigneeId).length;
+
+  const extraFilters = [prio, mod, sla, assignee].filter(Boolean).length;
+  const allowed = (id: string) => lists.mine.some((t) => t.id === id) || (canOrg && lists.org.some((t) => t.id === id)) || canDesk;
+  const openTicket = openId ? tk.get(openId) : undefined;
+
+  const switchView = (v: View) => {
+    setSelected(new Set());
+    setStatus(v === "mine" ? "all" : "open");
+    setPrio("");
+    setMod("");
+    setSla("");
+    setAssignee("");
+    patchParams({ view: v === "mine" ? null : v });
+  };
+
+  const toggleSel = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const allSelected = filtered.length > 0 && filtered.every((t) => selected.has(t.id));
 
   return (
     <div>
       <PageHeader
         title="تیکت پشتیبانی"
-        description={`ثبت و پیگیری درخواست‌های پشتیبانی — ${openCount.toLocaleString("fa-IR")} تیکت باز`}
+        description="گزارش خطا، درخواست قابلیت و پرسش به تیم سازنده‌ی موتوشاب — با تاریخچه‌ی کامل و پیگیری SLA"
         icon={<LifeBuoy size={18} />}
         actions={
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>تیکت جدید</Button>
+          <>
+          <ModuleReportsButton module="tickets" />
+          {canCreate && (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => patchParams({ new: "1" })}>
+              تیکت جدید
+            </Button>
+          )}
+          </>
         }
       />
 
-      <DataTable
-        columns={columns}
-        rows={filterScoped(tickets)}
-        searchKeys={["subject", "no"]}
-        searchPlaceholder="جستجو در موضوع یا شماره تیکت…"
-        onRowClick={(t) => setSelected(t)}
-      />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <StatCard
+          label="تیکت‌های باز"
+          value={fa(open.length)}
+          tone="brand"
+          icon={<Inbox size={16} />}
+          hint={view === "desk" ? `${fa(unassigned)} بدون مسئول` : view === "mine" && awaitingMe ? `${fa(awaitingMe)} منتظر اقدام شما` : `از ${fa(base.length)} تیکت`}
+        />
+        <StatCard label="نقض SLA" value={fa(breached)} tone={breached ? "danger" : "success"} icon={<AlertTriangle size={16} />} hint="تیکت‌های باز خارج از مهلت" />
+        <StatCard label="میانگین اولین پاسخ" value={responded.length ? fmtDur(avgFirst) : "—"} tone="warning" icon={<Timer size={16} />} hint={`${fa(responded.length)} تیکت پاسخ‌گرفته`} />
+        <StatCard label="رضایت کاربران" value={rated.length ? `${fa(Math.round(csat * 10) / 10)} از ۵` : "—"} tone="success" icon={<Smile size={16} />} hint={`${fa(rated.length)} نظر ثبت‌شده`} />
+      </div>
 
-      <Modal open={open} onClose={closeModal} title={editingId ? "ویرایش تیکت" : "ثبت تیکت پشتیبانی جدید"}>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">موضوع <span className="text-rose-500">*</span></label>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="خلاصه‌ی یک‌خطی مشکل یا درخواست" className="input-field" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">دسته</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
-                {categories.map((c) => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">اولویت</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as Ticket["priority"])} className="input-field">
-                <option>کم</option><option>متوسط</option><option>فوری</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">شرح کامل <span className="text-rose-500">*</span></label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} className="input-field min-h-24" placeholder="جزئیات، مراحل بازتولید مشکل، اسکرین‌شات…" />
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>{editingId ? "ذخیره تغییرات" : "ثبت تیکت"}</Button>
-            <Button variant="secondary" onClick={closeModal}>انصراف</Button>
-          </div>
+      {views.length > 1 && (
+        <div className="flex items-center gap-1 border-b border-ink-200 mb-4 overflow-x-auto" role="tablist">
+          {views.map((v) => (
+            <button
+              key={v.id}
+              role="tab"
+              aria-selected={view === v.id}
+              onClick={() => switchView(v.id)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px whitespace-nowrap ${view === v.id ? "border-brand-600 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-800"}`}
+            >
+              <v.icon size={14} /> {v.label}
+              <span className="text-[10px] rounded-full px-1.5 bg-ink-100 text-ink-500">{fa(lists[v.id].filter((t) => !isFinal(t.status)).length)}</span>
+            </button>
+          ))}
         </div>
+      )}
+
+      {/* نوار ابزار */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative flex-1 min-w-0">
+          <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی شماره، عنوان، برچسب…" className="input-field w-full pr-8" />
+        </div>
+        <select value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} className="input-field w-auto max-w-[150px]" aria-label="وضعیت">
+          <option value="all">همه‌ی وضعیت‌ها</option>
+          <option value="open">باز</option>
+          {statusOrder.map((s) => (
+            <option key={s} value={s}>
+              {statusShort[s]}
+            </option>
+          ))}
+        </select>
+        {view !== "mine" && (
+          <Button icon={<SlidersHorizontal size={14} />} onClick={() => setShowFilters((v) => !v)} className={showFilters || extraFilters ? "!border-brand-400 !text-brand-700" : ""} aria-label="فیلترهای بیشتر">
+            <span className="hidden sm:inline">فیلتر</span>
+            {extraFilters > 0 && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">{fa(extraFilters)}</span>}
+          </Button>
+        )}
+      </div>
+
+      {view !== "mine" && showFilters && (
+        <div className="card p-3 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <select value={prio} onChange={(e) => setPrio(e.target.value as TicketPriority | "")} className="input-field" aria-label="اولویت">
+            <option value="">همه‌ی اولویت‌ها</option>
+            {priorities.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
+          </select>
+          <select value={mod} onChange={(e) => setMod(e.target.value)} className="input-field" aria-label="بخش">
+            <option value="">همه‌ی بخش‌ها</option>
+            {modules.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+          <select value={sla} onChange={(e) => setSla(e.target.value as "" | "breached" | "risk")} className="input-field" aria-label="SLA">
+            <option value="">همه (SLA)</option>
+            <option value="breached">نقض SLA</option>
+            <option value="risk">در آستانه‌ی نقض</option>
+          </select>
+          <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="input-field" aria-label="مسئول">
+            <option value="">همه‌ی مسئولان</option>
+            <option value="none">بدون مسئول</option>
+            {vendorTeam.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          {extraFilters > 0 && (
+            <button
+              onClick={() => {
+                setPrio("");
+                setMod("");
+                setSla("");
+                setAssignee("");
+              }}
+              className="col-span-2 sm:col-span-4 text-[11.5px] text-brand-700 hover:underline text-right"
+            >
+              پاک کردن فیلترها
+            </button>
+          )}
+        </div>
+      )}
+
+      {view === "org" && (
+        <p className="text-[11.5px] text-ink-500 mb-2">
+          تیکت‌های اعضای «{contextNode.name}» و همه‌ی زیرمجموعه‌هایش — برای دیدن واحد دیگر، از سربرگ سازمان را عوض کنید.
+        </p>
+      )}
+      {view === "desk" && (
+        <div className="flex items-center gap-2 flex-wrap text-[11.5px] text-ink-500 mb-2">
+          <span>صف تیم سازنده — تیکت‌های همه‌ی سازمان‌ها؛ نقض‌شده‌ها و اولویت بالاتر در ابتدا.</span>
+          <span className="flex items-center gap-1 mr-auto">
+            پاسخ با هویت
+            <select value={tk.agent.id} onChange={(e) => tk.setAgentId(e.target.value)} className="input-field !py-0.5 !px-2 text-[11.5px] w-auto">
+              {vendorTeam.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        </div>
+      )}
+
+      {view === "desk" && selected.size > 0 && (
+        <div className="sticky top-2 z-10 mb-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 flex items-center gap-2 flex-wrap text-[12px] text-brand-800">
+          <span className="font-medium">{fa(selected.size)} تیکت انتخاب شد</span>
+          <select
+            value=""
+            onChange={(e) => {
+              if (!e.target.value) return;
+              const id = e.target.value === "none" ? undefined : e.target.value;
+              tk.bulkAssign([...selected], id);
+              notify(`${fa(selected.size)} تیکت به «${vendorById(id)?.name ?? "بدون مسئول"}» ارجاع شد.`);
+              setSelected(new Set());
+            }}
+            className="input-field !py-1 text-[12px] w-auto"
+            aria-label="ارجاع گروهی"
+          >
+            <option value="">ارجاع به…</option>
+            {vendorTeam.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+            <option value="none">بدون مسئول</option>
+          </select>
+          <Button
+            size="sm"
+            onClick={() => {
+              const ids = [...selected].filter((id) => tk.get(id)?.status === "new");
+              tk.bulkStatus(ids, "triage");
+              notify(`${fa(ids.length)} تیکت جدید به «در حال بررسی» رفت.`);
+              setSelected(new Set());
+            }}
+          >
+            شروع بررسی
+          </Button>
+          <button onClick={() => setSelected(new Set())} className="mr-auto text-brand-700 hover:underline flex items-center gap-1">
+            <X size={12} /> لغو انتخاب
+          </button>
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={<LifeBuoy size={22} />}
+          title={base.length === 0 ? (view === "mine" ? "هنوز تیکتی ثبت نکرده‌اید" : "تیکتی در این بخش نیست") : "تیکتی با این فیلترها پیدا نشد"}
+          description={view === "mine" && base.length === 0 ? "هر جا مشکلی دیدید از دکمه‌ی «گزارش مشکل» یا «تیکت جدید» استفاده کنید؛ مسیر صفحه و مرورگر خودکار ثبت می‌شود." : undefined}
+        />
+      ) : (
+        <div className="card overflow-hidden divide-y divide-ink-100">
+          {view === "desk" && (
+            <label className="flex items-center gap-2 px-3 py-2 text-[11.5px] text-ink-500 bg-ink-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={() => setSelected(allSelected ? new Set() : new Set(filtered.map((t) => t.id)))}
+                className="accent-[var(--color-brand-600)] w-4 h-4"
+              />
+              انتخاب همه ({fa(filtered.length)})
+            </label>
+          )}
+          {filtered.map((t) => (
+            <TicketRow
+              key={t.id}
+              t={t}
+              now={now}
+              showReporter={view !== "mine"}
+              selectable={view === "desk"}
+              selected={selected.has(t.id)}
+              onToggle={() => toggleSel(t.id)}
+              onOpen={() => patchParams({ id: t.id })}
+              internalVisible={tk.isVendor}
+            />
+          ))}
+        </div>
+      )}
+
+      <Modal open={newOpen} onClose={() => patchParams({ new: null, from: null })} title="تیکت پشتیبانی جدید" description="تیکت مستقیم به صف تیم سازنده‌ی موتوشاب می‌رود" width="max-w-2xl">
+        {newOpen && (
+          <TicketForm
+            route={params.get("from") ?? undefined}
+            onCancel={() => patchParams({ new: null, from: null })}
+            onCreated={(t) => {
+              notify(`تیکت ${t.id} ثبت شد؛ نتیجه از همین صفحه و صندوق اعلان‌ها اطلاع‌رسانی می‌شود.`);
+              patchParams({ new: null, from: null, id: t.id, view: null });
+            }}
+          />
+        )}
       </Modal>
 
-      <Drawer open={selected !== null} onClose={() => setSelected(null)} title={selected ? `تیکت ${selected.no}` : ""}>
-        {selected && (
-          <div className="flex flex-col h-full">
-            <div className="pb-3 border-b border-ink-100">
-              <p className="text-sm font-bold text-ink-900 leading-6">{selected.subject}</p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge tone={statusTone[selected.status]}>{selected.status}</Badge>
-                <Badge tone={prioTone[selected.priority]}>{selected.priority}</Badge>
-                <Badge tone="neutral">{selected.category}</Badge>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto py-4 space-y-3">
-              {selected.messages.map((m, i) => (
-                <div key={i} className={`flex items-center gap-1 group ${m.from === "me" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12.5px] leading-6 ${m.from === "me" ? "bg-brand-600 text-white" : "bg-ink-50 border border-ink-100 text-ink-800"}`}>
-                    {m.from === "support" && <p className="text-[10.5px] font-bold text-brand-600 mb-0.5 flex items-center gap-1"><MessageSquareText size={11} /> پشتیبانی</p>}
-                    <p>{m.text}</p>
-                    <p className={`text-[10px] mt-1 flex items-center gap-1 ${m.from === "me" ? "text-white/70" : "text-ink-400"}`}><Clock3 size={10} /> {m.time}</p>
-                  </div>
-                  {m.from === "me" && selected.status !== "بسته" && (
-                    <span className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <RowActions onDelete={() => removeMessage(i)} size={12} />
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            {selected.status !== "بسته" ? (
-              <div className="pt-3 border-t border-ink-100 space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && sendReply()}
-                    placeholder="پاسخ خود را بنویسید…"
-                    className="input-field flex-1"
-                  />
-                  <Button variant="primary" icon={<Send size={14} />} onClick={sendReply}>ارسال</Button>
-                </div>
-                <button onClick={closeTicket} className="text-[11.5px] text-ink-500 hover:text-emerald-600 flex items-center gap-1.5">
-                  <CheckCircle2 size={13} /> مشکل حل شد — بستن تیکت
-                </button>
-              </div>
-            ) : (
-              <div className="pt-3 border-t border-ink-100 flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-[11.5px] text-ink-400">این تیکت بسته شده است.</p>
-                <Button variant="secondary" size="sm" onClick={reopenTicket}>بازگشایی تیکت</Button>
-              </div>
-            )}
-          </div>
+      <Drawer open={!!openId} onClose={() => patchParams({ id: null })} title={openTicket ? `تیکت ${openTicket.id}` : "تیکت"} width="max-w-2xl">
+        {openTicket && allowed(openTicket.id) ? (
+          <TicketDetail key={openTicket.id} ticket={openTicket} onOpen={(id) => patchParams({ id })} />
+        ) : (
+          <EmptyState icon={<LifeBuoy size={22} />} title="این تیکت در دسترس شما نیست" description="یا شماره‌ی تیکت اشتباه است یا مجوز دیدن آن را در این سازمان ندارید." />
         )}
       </Drawer>
+    </div>
+  );
+}
+
+function TicketRow({
+  t,
+  now,
+  showReporter,
+  selectable,
+  selected,
+  onToggle,
+  onOpen,
+  internalVisible,
+}: {
+  t: Ticket;
+  now: number;
+  showReporter: boolean;
+  selectable: boolean;
+  selected: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  internalVisible: boolean;
+}) {
+  const Icon = typeIcon[t.type];
+  const msgs = t.events.filter((e) => e.kind === "comment" || (internalVisible && e.kind === "note")).length;
+  const assignee = vendorById(t.assigneeId);
+  return (
+    <div className={`flex items-start gap-2.5 px-3 py-3 hover:bg-ink-50 cursor-pointer ${selected ? "bg-brand-50/50" : ""}`} onClick={onOpen}>
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onClick={(e) => e.stopPropagation()}
+          onChange={onToggle}
+          aria-label={`انتخاب ${t.id}`}
+          className="accent-[var(--color-brand-600)] w-4 h-4 mt-2 shrink-0"
+        />
+      )}
+      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${t.type === "خطا" || t.type === "کندی و کارایی" ? "bg-rose-50 text-rose-600" : "bg-brand-50 text-brand-700"}`}>
+        <Icon size={15} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-[13.5px] font-medium truncate ${isFinal(t.status) ? "text-ink-500" : "text-ink-900"}`}>{t.title}</p>
+        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap text-[11px] text-ink-500 mt-1">
+          <span className="font-mono" dir="ltr">
+            {t.id}
+          </span>
+          <Badge tone={priorityTone[t.priority]}>{t.priority}</Badge>
+          <span className="truncate max-w-[140px]">{t.module}</span>
+          {showReporter && <span className="truncate max-w-[140px]">· {t.reporterName}</span>}
+          <span>· {relTs(t.updatedAt, now)}</span>
+          {msgs > 0 && (
+            <span className="flex items-center gap-0.5">
+              <MessageSquareText size={11} /> {fa(msgs)}
+            </span>
+          )}
+          {t.attachments.length > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Paperclip size={11} /> {fa(t.attachments.length)}
+            </span>
+          )}
+          {t.rating && <span className="text-amber-600">★ {fa(t.rating.score)}</span>}
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <StatusBadge status={t.status} />
+        <SlaPill t={t} now={now} />
+        {selectable && (
+          <span className="flex items-center gap-1 text-[10.5px] text-ink-400" title={assignee ? `مسئول: ${assignee.name}` : "بدون مسئول"}>
+            {assignee ? <Avatar name={assignee.name} color={assignee.color} size={18} /> : <UserCheck size={12} />}
+            <span className="hidden sm:inline">{assignee ? assignee.name.replace("مهندس ", "") : "بدون مسئول"}</span>
+          </span>
+        )}
+      </div>
     </div>
   );
 }

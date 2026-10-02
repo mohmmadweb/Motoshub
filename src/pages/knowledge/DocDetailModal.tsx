@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, History, GitCompare, Paperclip } from "lucide-react";
+import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, EyeOff, History, GitCompare, Paperclip, ShieldCheck, ScrollText, ListTree } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
@@ -8,16 +8,23 @@ import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge, accessTone, statusTone, type WorkflowAction } from "../../context/KnowledgeContext";
 import { dayNum, fa } from "../../pm/jalali";
-import type { KComment, KDoc, KFile, KRelation } from "../../km/types";
+import { versionText } from "../../km/text";
+import { logCodeLabel, type KComment, type KDoc, type KFile, type KRelation } from "../../km/types";
 import { Field, FilePicker, RelationsEditor, Stars, avg } from "./shared";
+import { MarkdownView, DiffView, mdHeadings } from "./Markdown";
+import FilePreview, { useMockDownload } from "./FilePreview";
+import { AclEditor, AccessSummary } from "./AccessEditor";
+import { FlowStepper, FlowHistory, OverdueBadge } from "./WorkflowEditor";
+import { codeOf } from "./AuditSection";
 
-type Tab = "info" | "files" | "workflow" | "relations" | "comments";
+type Tab = "body" | "info" | "files" | "workflow" | "access" | "relations" | "comments";
 
 export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: { docId: string | null; onClose: () => void; onEdit: (d: KDoc) => void; onNavigate: (r: KRelation) => void }) {
   const km = useKnowledge();
   const { hasPermission } = useTenancy();
   const { notify } = useToast();
   const confirm = useConfirm();
+  const download = useMockDownload();
   const d = km.docs.find((x) => x.id === docId);
   const [tab, setTab] = useState<Tab>("info");
   const [verOpen, setVerOpen] = useState(false);
@@ -31,12 +38,18 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
   const [cmpB, setCmpB] = useState(0);
   const [fbMode, setFbMode] = useState<null | "unhelpful" | "report">(null);
   const [fbText, setFbText] = useState("");
+  const [preview, setPreview] = useState<KFile | null>(null);
 
   useEffect(() => {
     if (!docId) return;
-    setTab("info");
+    const doc = km.docs.find((x) => x.id === docId);
+    setTab(doc?.format === "article" ? "body" : "info");
     setPending(null);
-    km.viewDoc(docId);
+    setPreview(null);
+    const n = doc?.versions.length ?? 1;
+    setCmpA(Math.max(0, n - 2));
+    setCmpB(Math.max(0, n - 1));
+    if (doc && km.canSee(doc)) km.viewDoc(docId);
     // فقط با باز شدن سند
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId]);
@@ -45,14 +58,21 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
   if (!km.canSee(d))
     return (
       <Modal open onClose={onClose} title="دسترسی محدود">
-        <p className="text-sm text-ink-600 leading-7">سطح دسترسی این سند «{d.access}» است و فقط مالک، تأییدکنندگان و افراد دارای مجوز «مشاهده‌ی اسناد محرمانه» می‌توانند آن را ببینند.</p>
+        <p className="text-sm text-ink-600 leading-7">
+          سطح دسترسی این سند «{d.access}» است{d.acl?.entries.length ? " و فهرست دسترسی آن محدود شده است" : ""}؛ فقط مالک، تأییدکنندگان و افراد مجاز در فهرست دسترسی می‌توانند آن را ببینند.
+        </p>
       </Modal>
     );
 
+  const isArticle = d.format === "article";
   const mine = d.owner === km.me || d.author === km.me;
   const canEdit = mine || hasPermission("knowledge.edit");
   const approver = km.isApprover(d);
   const canArchive = hasPermission("knowledge.archive") || mine;
+  const canRestore = hasPermission("knowledge.archive");
+  const canDl = km.canDownload(d);
+  const canAudit = mine || hasPermission("knowledge.settings") || hasPermission("knowledge.reports");
+  const flow = km.flowInfo(d);
   const rating = avg(d.ratings.map((r) => r.score));
   const helpfulYes = d.feedback.filter((f) => f.helpful).length;
   const helpfulNo = d.feedback.length - helpfulYes;
@@ -61,44 +81,39 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
 
   const actions: { a: WorkflowAction; label: string; icon: typeof Send; show: boolean; needsNote?: boolean; variant?: "primary" | "secondary" | "danger" }[] = [
     { a: "submit", label: "ارسال برای بررسی", icon: Send, show: canEdit && (d.status === "پیش‌نویس" || d.status === "ارجاع برای اصلاح"), variant: "primary" },
-    { a: "approve", label: "تأیید", icon: CheckCircle2, show: approver && d.status === "در بررسی", variant: "primary" },
-    { a: "return", label: "ارجاع برای اصلاح", icon: Undo2, show: approver && d.status === "در بررسی", needsNote: true },
+    { a: "approve", label: flow ? `تأیید «${flow.step.name}»` : "تأیید", icon: CheckCircle2, show: approver && d.status === "در بررسی", variant: "primary" },
+    { a: "return", label: "ارجاع برای اصلاح", icon: Undo2, show: approver && (d.status === "در بررسی" || (!!flow && d.status === "تأییدشده")), needsNote: true },
     { a: "publish", label: "انتشار", icon: Megaphone, show: approver && d.status === "تأییدشده", variant: "primary" },
     { a: "archive", label: "آرشیو", icon: Archive, show: canArchive && d.status !== "آرشیو", needsNote: true },
-    { a: "restore", label: "بازیابی از آرشیو", icon: ArchiveRestore, show: canArchive && d.status === "آرشیو" },
+    { a: "restore", label: "بازیابی از آرشیو", icon: ArchiveRestore, show: canRestore && d.status === "آرشیو", needsNote: true },
   ];
 
   const run = (a: WorkflowAction, n?: string) => {
-    km.workflow(d.id, a, n);
+    if (a === "restore") {
+      if (!km.restoreDoc(d.id, n ?? "")) return notify("بازیابی فقط با مجوز «آرشیو و بازیابی اسناد» و ثبت دلیل ممکن است.", "warning");
+    } else km.workflow(d.id, a, n);
     setPending(null);
     setNote("");
-    notify("گردش کار ثبت شد و افراد مرتبط مطلع شدند.");
+    notify(a === "restore" ? "سند با ثبت دلیل از آرشیو بازیابی شد." : "گردش کار ثبت شد و افراد مرتبط مطلع شدند.");
   };
+  const notePh: Partial<Record<WorkflowAction, string>> = { archive: "دلیل آرشیو (مثلاً: جایگزین با نسخه‌ی جدید)", restore: "دلیل بازیابی (الزامی، در لاگ ممیزی ثبت می‌شود)", return: "چه چیزی باید اصلاح شود؟" };
 
-  const download = (f?: KFile) => {
-    km.downloadDoc(d.id);
-    const files = f ? [f] : d.files;
-    files.forEach((file) => {
-      const blob = new Blob([`${d.title}\nکد: ${d.code}\nنسخه: ${d.version}\nفایل: ${file.name}\n\n(نمونه‌ی نمایشی پروتوتایپ)`], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const el = document.createElement("a");
-      el.href = url;
-      el.download = `${file.name}.txt`;
-      el.click();
-      setTimeout(() => URL.revokeObjectURL(url), 800);
-    });
-  };
+  const docLogs = km.logs.filter((l) => l.entity.type === "doc" && l.entity.id === d.id);
+  const accessLogs = docLogs.filter((l) => ["view", "preview", "download", "access"].includes(codeOf(l)));
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
+    ...(isArticle ? [{ id: "body" as Tab, label: "متن" }] : []),
     { id: "info", label: "مشخصات" },
-    { id: "files", label: "فایل‌ها و نسخه‌ها", count: d.versions.length },
+    { id: "files", label: isArticle ? "پیوست‌ها و نسخه‌ها" : "فایل‌ها و نسخه‌ها", count: d.versions.length },
     { id: "workflow", label: "گردش کار", count: d.workflow.length },
+    { id: "access", label: "دسترسی", count: d.acl?.entries.length || undefined },
     { id: "relations", label: "ارتباطات", count: d.relations.length },
     { id: "comments", label: "نظرات و بازخورد", count: d.comments.length },
   ];
 
   const va = d.versions[cmpA] ?? d.versions[0];
   const vb = d.versions[cmpB] ?? d.versions[d.versions.length - 1];
+  const heads = isArticle ? mdHeadings(d.body ?? "") : [];
 
   return (
     <Modal open onClose={onClose} title={d.title} description={`${d.code} · ${d.type} · ${km.categoryPath(d.categoryId)}`} width="max-w-4xl">
@@ -106,7 +121,9 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
         <div className="flex items-center gap-2 flex-wrap">
           <Badge tone={statusTone[d.status]}>{d.status}</Badge>
           <Badge tone={accessTone[d.access]}>دسترسی: {d.access}</Badge>
+          {!canDl && <Badge tone="warning" icon={<EyeOff size={11} />}>فقط مشاهده</Badge>}
           {d.importance !== "عادی" && <Badge tone={d.importance === "حیاتی" ? "danger" : "warning"}>{d.importance}</Badge>}
+          {flow && <OverdueBadge f={flow} />}
           <span className="text-xs text-ink-500">نسخه‌ی {fa(d.version)}</span>
           <span className="text-xs text-ink-400 flex items-center gap-1">
             <Eye size={12} /> {fa(d.views)} · <Download size={12} /> {fa(d.downloads)}
@@ -117,9 +134,11 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
             </span>
           )}
           <span className="mr-auto flex items-center gap-1.5 flex-wrap">
-            <Button size="sm" variant="secondary" icon={<Download size={13} />} onClick={() => download()}>
-              دانلود{d.files.length > 1 ? ` (${fa(d.files.length)} فایل)` : ""}
-            </Button>
+            {d.files.length > 0 && (
+              <Button size="sm" variant="secondary" icon={<Download size={13} />} disabled={!canDl} title={canDl ? undefined : "این سند برای شما فقط قابل مشاهده است"} onClick={() => download(d)}>
+                دانلود{d.files.length > 1 ? ` (${fa(d.files.length)} فایل)` : ""}
+              </Button>
+            )}
             <Button size="sm" variant="ghost" icon={d.followers.includes(km.me) ? <BellOff size={13} /> : <Bell size={13} />} onClick={() => km.toggleFollow(d.id)}>
               {d.followers.includes(km.me) ? "لغو دنبال‌کردن" : "دنبال‌کردن"}
             </Button>
@@ -145,8 +164,8 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
             </div>
             {pending && (
               <div className="flex gap-2 mt-2 flex-wrap">
-                <input className="input-field flex-1 min-w-[220px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder={pending === "archive" ? "دلیل آرشیو (مثلاً: جایگزین با نسخه‌ی جدید)" : "توضیح برای اصلاح"} autoFocus />
-                <Button size="sm" variant="primary" onClick={() => (note.trim() ? run(pending, note.trim()) : notify(pending === "archive" ? "دلیل آرشیو الزامی است." : "توضیح اصلاح الزامی است.", "warning"))}>
+                <input className="input-field flex-1 min-w-[220px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePh[pending] ?? "توضیح"} autoFocus />
+                <Button size="sm" variant="primary" onClick={() => (note.trim() ? run(pending, note.trim()) : notify("ثبت دلیل/توضیح الزامی است.", "warning"))}>
                   ثبت
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setPending(null)}>
@@ -166,6 +185,26 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
           ))}
         </div>
 
+        {tab === "body" && isArticle && (
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-5">
+            <div className={`min-w-0 ${canDl ? "" : "select-none"}`} onCopy={canDl ? undefined : (e) => e.preventDefault()}>
+              <MarkdownView md={d.body ?? ""} />
+            </div>
+            {heads.length > 1 && (
+              <nav className="hidden md:block self-start sticky top-0 border-r border-ink-100 pr-3" aria-label="فهرست مطالب">
+                <p className="text-[11px] font-bold text-ink-500 mb-1.5 flex items-center gap-1">
+                  <ListTree size={12} /> فهرست مطالب
+                </p>
+                {heads.map((h) => (
+                  <button key={h.id} onClick={() => document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" })} className={`block w-full text-right text-[11.5px] py-0.5 text-ink-600 hover:text-brand-700 truncate ${h.level > 2 ? "pr-3" : ""}`}>
+                    {h.text.replace(/[*`]/g, "")}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+        )}
+
         {tab === "info" && (
           <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-5">
             <div className="space-y-3">
@@ -179,26 +218,18 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                   ))}
                 </div>
               )}
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-1.5">فایل‌های پیوست</p>
-                <ul className="space-y-1">
-                  {d.files.map((f) => (
-                    <li key={f.id} className="flex items-center gap-2 text-xs bg-ink-50 rounded-md px-2.5 py-1.5">
-                      <Paperclip size={12} className="text-ink-400" />
-                      <span className="flex-1 truncate">{f.name}</span>
-                      <span className="text-ink-400">{f.size}</span>
-                      <button onClick={() => download(f)} className="text-brand-700 hover:underline">
-                        دانلود
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {d.files.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-ink-700 mb-1.5">{isArticle ? "پیوست‌ها" : "فایل‌های پیوست"}</p>
+                  <FileList d={d} canDl={canDl} onPreview={setPreview} onDownload={(f) => download(d, [f])} />
+                </div>
+              )}
               {d.archiveReason && <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">دلیل آرشیو: {d.archiveReason}</p>}
             </div>
             <dl className="text-xs space-y-2.5 md:border-r md:border-ink-100 md:pr-5">
               {[
                 ["کد سند", d.code],
+                ["قالب", isArticle ? "مقاله‌ی نوشته‌شده در سامانه" : "فایل"],
                 ["واحد سازمانی", d.unit],
                 ["مالک / مسئول", d.owner],
                 ["ثبت‌کننده", d.author],
@@ -223,9 +254,14 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
 
         {tab === "files" && (
           <div className="space-y-4">
+            {d.files.length > 0 && <FileList d={d} canDl={canDl} onPreview={setPreview} onDownload={(f) => download(d, [f])} />}
             {canEdit && d.status !== "آرشیو" && (
               <div>
-                {!verOpen ? (
+                {isArticle ? (
+                  <Button size="sm" variant="secondary" icon={<Pencil size={13} />} onClick={() => onEdit(d)}>
+                    ویرایش متن (نسخه‌ی جدید)
+                  </Button>
+                ) : !verOpen ? (
                   <Button size="sm" variant="secondary" icon={<Upload size={13} />} onClick={() => { setVerOpen(true); setVerFiles([]); setVerNote(""); }}>
                     بارگذاری نسخه‌ی جدید
                   </Button>
@@ -266,19 +302,19 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                     <span className="text-ink-400">
                       {v.by} · {v.date}
                     </span>
-                    <span className="text-ink-400">{fa(v.files.length)} فایل</span>
+                    {!isArticle && <span className="text-ink-400">{fa(v.files.length)} فایل</span>}
                   </div>
                 ))}
               </div>
             </div>
             {d.versions.length > 1 && (
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-ink-700 flex items-center gap-1">
                   <GitCompare size={13} /> مقایسه‌ی نسخه‌ها
                 </p>
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-2 items-center">
                   {[cmpA, cmpB].map((val, k) => (
-                    <select key={k} className="input-field !py-1.5 !text-xs !w-auto" value={val} onChange={(e) => (k ? setCmpB(Number(e.target.value)) : setCmpA(Number(e.target.value)))}>
+                    <select key={k} className="input-field !py-1.5 !text-xs !w-auto" value={val} onChange={(e) => (k ? setCmpB(Number(e.target.value)) : setCmpA(Number(e.target.value)))} aria-label={k ? "نسخه‌ی جدیدتر" : "نسخه‌ی قدیمی‌تر"}>
                       {d.versions.map((v, i) => (
                         <option key={v.version} value={i}>
                           نسخه‌ی {fa(v.version)}
@@ -293,7 +329,7 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                       ["تاریخ", va.date, vb.date],
                       ["ثبت‌کننده", va.by, vb.by],
                       ["شرح تغییرات", va.note, vb.note],
-                      ["فایل‌ها", va.files.map((f) => f.name).join("، "), vb.files.map((f) => f.name).join("، ")],
+                      ...(isArticle ? [] : [["فایل‌ها", va.files.map((f) => f.name).join("، "), vb.files.map((f) => f.name).join("، ")]]),
                     ].map(([k, a, b]) => (
                       <tr key={k} className="border-b border-ink-100 last:border-0">
                         <td className="p-2 text-ink-400 w-24">{k}</td>
@@ -303,27 +339,83 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                     ))}
                   </tbody>
                 </table>
+                <DiffView a={versionText(va)} b={versionText(vb)} labelA={`نسخه‌ی ${fa(va.version)}`} labelB={`نسخه‌ی ${fa(vb.version)}`} />
               </div>
             )}
           </div>
         )}
 
         {tab === "workflow" && (
-          <ol className="relative border-r-2 border-ink-100 pr-4 space-y-3">
-            {[...d.workflow].reverse().map((w) => (
-              <li key={w.id} className="relative">
-                <span className="absolute -right-[23px] top-1 w-3 h-3 rounded-full bg-brand-500 border-2 border-white" />
-                <p className="text-xs text-ink-800">
-                  <b>{w.action}</b> · {w.from} ← {w.to}
+          <div className="space-y-4">
+            {d.flow && (
+              <div className="rounded-lg border border-ink-200 p-3 space-y-3">
+                <p className="text-xs font-bold text-ink-700">{km.templates.find((t) => t.id === d.flow?.templateId)?.name ?? "گردش کار"}</p>
+                <FlowStepper doc={d} />
+                <FlowHistory doc={d} />
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-bold text-ink-700 mb-2">تاریخچه‌ی وضعیت سند</p>
+              <ol className="relative border-r-2 border-ink-100 pr-4 space-y-3">
+                {[...d.workflow].reverse().map((w) => (
+                  <li key={w.id} className="relative">
+                    <span className="absolute -right-[23px] top-1 w-3 h-3 rounded-full bg-brand-500 border-2 border-white" />
+                    <p className="text-xs text-ink-800">
+                      <b>{w.action}</b> · {w.from} ← {w.to}
+                    </p>
+                    <p className="text-[11px] text-ink-400">
+                      {w.by} · {w.at}
+                    </p>
+                    {w.note && <p className="text-[11px] text-ink-600 bg-ink-50 rounded px-2 py-1 mt-1">{w.note}</p>}
+                  </li>
+                ))}
+                <li className="text-[11px] text-ink-400">ایجاد سند — {d.author} · {d.createdAt}</li>
+              </ol>
+            </div>
+          </div>
+        )}
+
+        {tab === "access" && (
+          <div className="space-y-4">
+            <AccessSummary doc={d} />
+            {canEdit ? (
+              <div className="rounded-lg border border-ink-200 p-3">
+                <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
+                  <ShieldCheck size={13} /> فهرست دسترسی
                 </p>
-                <p className="text-[11px] text-ink-400">
-                  {w.by} · {w.at}
+                <AclEditor
+                  value={d.acl}
+                  access={d.access}
+                  onChange={(acl) => {
+                    km.updateAcl(d.id, acl);
+                  }}
+                />
+              </div>
+            ) : (
+              <p className="text-[11px] text-ink-400">فقط مالک سند و دارندگان مجوز ویرایش می‌توانند فهرست دسترسی را تغییر دهند.</p>
+            )}
+            {canAudit && (
+              <div>
+                <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
+                  <ScrollText size={13} /> تاریخچه‌ی دسترسی (مشاهده، پیش‌نمایش، دانلود)
                 </p>
-                {w.note && <p className="text-[11px] text-ink-600 bg-ink-50 rounded px-2 py-1 mt-1">{w.note}</p>}
-              </li>
-            ))}
-            <li className="text-[11px] text-ink-400">ایجاد سند — {d.author} · {d.createdAt}</li>
-          </ol>
+                {accessLogs.length ? (
+                  <ul className="border border-ink-100 rounded-lg divide-y divide-ink-100 max-h-56 overflow-y-auto">
+                    {accessLogs.map((l) => (
+                      <li key={l.id} className="flex items-center gap-2 px-3 py-1.5 text-xs flex-wrap">
+                        <Badge tone={codeOf(l) === "download" ? "warning" : codeOf(l) === "access" ? "danger" : "neutral"}>{logCodeLabel[codeOf(l)]}</Badge>
+                        <span className="text-ink-800">{l.actor}</span>
+                        {l.detail && <span className="text-ink-400 truncate max-w-[240px]">{l.detail}</span>}
+                        <span className="mr-auto text-ink-400">{l.at}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-ink-400">هنوز ثبت نشده است.</p>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {tab === "relations" && <RelationsEditor kind="doc" id={d.id} relations={d.relations} canEdit={canEdit} onOpen={onNavigate} />}
@@ -449,6 +541,34 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
           </div>
         )}
       </div>
+      <FilePreview doc={preview ? d : null} file={preview} onClose={() => setPreview(null)} />
     </Modal>
+  );
+}
+
+/** فهرست فایل‌ها با «پیش‌نمایش» و «دانلود» (یا «فقط مشاهده») */
+function FileList({ d, canDl, onPreview, onDownload }: { d: KDoc; canDl: boolean; onPreview: (f: KFile) => void; onDownload: (f: KFile) => void }) {
+  return (
+    <ul className="space-y-1">
+      {d.files.map((f) => (
+        <li key={f.id} className="flex items-center gap-2 text-xs bg-ink-50 rounded-md px-2.5 py-1.5">
+          <Paperclip size={12} className="text-ink-400 shrink-0" />
+          <span className="flex-1 truncate">{f.name}</span>
+          <span className="text-ink-400 shrink-0 hidden sm:inline">{f.size}</span>
+          <button onClick={() => onPreview(f)} className="text-brand-700 hover:underline flex items-center gap-0.5 shrink-0">
+            <Eye size={12} /> پیش‌نمایش
+          </button>
+          {canDl ? (
+            <button onClick={() => onDownload(f)} className="text-brand-700 hover:underline shrink-0">
+              دانلود
+            </button>
+          ) : (
+            <span className="text-amber-700 flex items-center gap-0.5 shrink-0" title="دانلود برای شما مجاز نیست">
+              <EyeOff size={12} /> فقط مشاهده
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

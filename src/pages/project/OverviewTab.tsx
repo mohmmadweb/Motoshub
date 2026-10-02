@@ -1,4 +1,9 @@
-import { CalendarClock, CheckCircle2, Flag, History, ListChecks, Lock, ShieldAlert, Wallet, AlertTriangle, PiggyBank, Video } from "lucide-react";
+import { useState } from "react";
+import { CalendarClock, CheckCircle2, Flag, History, ListChecks, Lock, ShieldAlert, Wallet, AlertTriangle, PiggyBank, Video, Link2 } from "lucide-react";
+import Button from "../../components/ui/Button";
+import StageGateCard from "./StageGateCard";
+import ClosureWizard, { ClosureSummary, FinalReportModal } from "./ClosureWizard";
+import { ProjectLinks, TagLinks } from "./SettingsExtras";
 import Badge from "../../components/ui/Badge";
 import StatCard from "../../components/ui/StatCard";
 import { useProjectsPM } from "../../context/ProjectsContext";
@@ -19,7 +24,9 @@ export const phases: { id: LifecyclePhase; hint: string }[] = [
 ];
 
 export default function OverviewTab() {
-  const { p, pid, canEdit, refDate, openTask, goTab } = useProjectPage();
+  const { p, pid, canEdit, canManage, refDate, openTask, goTab } = useProjectPage();
+  const [closing, setClosing] = useState(false);
+  const [report, setReport] = useState(false);
   const pm = useProjectsPM();
   const ts = activeTasks(p);
   const done = ts.filter((t) => isDone(p, t)).length;
@@ -37,7 +44,14 @@ export default function OverviewTab() {
   const phaseIdx = phases.findIndex((x) => x.id === p.meta.phase);
   const group = pm.store.groups.find((g) => g.id === p.meta.groupId);
   const activeSprint = (p.sprints ?? []).find((x) => x.status === "فعال");
-  const { ownerLabel } = useTenancy();
+  const { ownerLabel, scopePath } = useTenancy();
+  const ts2 = ts.filter((t) => t.type !== "epic");
+  const readyToClose = !p.closure && (p.meta.phase === "تکمیل" || (ts2.length > 0 && ts2.every((t) => isDone(p, t))));
+  const setPhase = (ph: LifecyclePhase) => {
+    // ورود به «اختتام» از مسیر ارزیابی پایان پروژه — گزارش نهایی و ارزیابی اعضا الزامی است
+    if (ph === "اختتام" && !p.closure) return setClosing(true);
+    pm.updateMeta(pid, { phase: ph });
+  };
 
   return (
     <div className="space-y-5">
@@ -47,7 +61,7 @@ export default function OverviewTab() {
           <button
             key={ph.id}
             disabled={!canEdit}
-            onClick={() => pm.updateMeta(pid, { phase: ph.id })}
+            onClick={() => setPhase(ph.id)}
             title={canEdit ? `${ph.hint} — برای تغییر مرحله کلیک کنید` : ph.hint}
             className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors ${i === phaseIdx ? "bg-brand-600 text-white font-medium" : i < phaseIdx ? "text-emerald-700 hover:bg-emerald-50" : "text-ink-400 hover:bg-ink-50"}`}
           >
@@ -56,6 +70,16 @@ export default function OverviewTab() {
           </button>
         ))}
       </div>
+
+      {readyToClose && canEdit && canManage && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs p-3 flex items-center gap-2 flex-wrap">
+          <Flag size={14} /> {p.meta.phase === "تکمیل" ? "پروژه در مرحله‌ی «تکمیل» است." : "همه‌ی کارهای پروژه انجام شده است."} برای اختتام، ارزیابی نهایی (تحقق اهداف، کیفیت، انحراف زمان/هزینه، درس‌آموخته‌ها و ارزیابی اعضا) را ثبت کنید.
+          <Button size="sm" variant="primary" className="mr-auto" icon={<Flag size={13} />} onClick={() => setClosing(true)}>
+            شروع اختتام پروژه
+          </Button>
+        </div>
+      )}
+      {p.closure && <ClosureSummary onOpen={() => setReport(true)} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="تسک‌ها (انجام‌شده از کل)" value={`${fa(done)} از ${fa(ts.length)}`} hint={`${fa(doing)} در حال انجام`} icon={<ListChecks size={16} />} tone="brand" />
@@ -101,11 +125,7 @@ export default function OverviewTab() {
                   گروه: {group.name}
                 </span>
               )}
-              {p.meta.tags.map((t) => (
-                <Badge key={t} tone="neutral">
-                  #{t}
-                </Badge>
-              ))}
+              <TagLinks tags={p.meta.tags} />
             </div>
             <dl className="text-[11.5px] mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
               {(
@@ -115,7 +135,8 @@ export default function OverviewTab() {
                   ["مدیر پروژه", p.meta.manager],
                   ["مسئول مالی", p.meta.financeOfficer],
                   ["مالک محتوا", ownerLabel(p.meta)],
-                  ["فضای کاری", p.meta.workspace],
+                  ["فضای کاری", p.meta.scopeId ? scopePath(p.meta.scopeId) : p.meta.workspace],
+                  ["کلید پروژه", p.meta.key ?? "—"],
                   ["بازه", `${p.meta.start} تا ${p.meta.deadline}`],
                   ["اولویت", p.meta.priority],
                   ["سطح دسترسی", p.meta.visibility],
@@ -132,6 +153,15 @@ export default function OverviewTab() {
               ))}
             </dl>
           </div>
+
+          {(p.meta.fundId || p.meta.contractId || p.meta.opportunityId || p.meta.companyName) && (
+            <div className="card p-4">
+              <p className="text-xs font-bold text-ink-900 flex items-center gap-1 mb-2">
+                <Link2 size={13} className="text-brand-600" /> پیوند به دانش و نوآوری
+              </p>
+              <ProjectLinks meta={p.meta} />
+            </div>
+          )}
 
           {nextMs && (
             <button onClick={() => goTab("milestones")} className="card p-4 w-full text-right hover:border-brand-300">
@@ -159,6 +189,8 @@ export default function OverviewTab() {
           </div>
         </div>
       </div>
+
+      <StageGateCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-4">
@@ -209,6 +241,8 @@ export default function OverviewTab() {
           </div>
         </div>
       </div>
+      {closing && <ClosureWizard onClose={() => setClosing(false)} />}
+      {report && <FinalReportModal onClose={() => setReport(false)} />}
     </div>
   );
 }

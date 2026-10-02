@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat, Archive, ArchiveRestore, Zap } from "lucide-react";
 import { useTenancy } from "../../context/TenancyContext";
 import Modal from "../../components/ui/Modal";
 import TaskCostItems from "./TaskCostItems";
@@ -9,10 +9,12 @@ import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { createsCycle, isDone, openPredecessors, predecessorsOf, successorsOf, taskActualCost, taskLoggedHours, columnLabel, kindOf } from "../../pm/selectors";
-import { fa, fmtRial, fmtHours, diffDays } from "../../pm/jalali";
+import { createsCycle, isDone, openPredecessors, predecessorsOf, successorsOf, taskActualCost, taskLoggedHours, columnLabel, kindOf, depTypeLabel, depShort, depType, depViolation, epicChildren, epicProgress, typeLabel } from "../../pm/selectors";
+import { fa, fmtRial, fmtHours, diffDays, dayNum } from "../../pm/jalali";
+import { statusIntervals } from "../../pm/flow";
+import { TaskKey, TypeIcon, taskTypes } from "./taskTypes";
 import { defaultLabels } from "../../pm/seed";
-import type { PMTask, Recurrence } from "../../pm/types";
+import type { DepType, PMTask, Recurrence, TaskType, ColumnKind } from "../../pm/types";
 import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindColor, kindTone, numIn, priorities, priorityTone, useProjectPage } from "./shared";
 
 type Section = "details" | "subtasks" | "checklist" | "deps" | "cost" | "comments" | "history";
@@ -40,6 +42,8 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const [comment, setComment] = useState("");
   const [newPred, setNewPred] = useState("");
   const [newSucc, setNewSucc] = useState("");
+  const [newType, setNewType] = useState<DepType>("FS");
+  const [newLag, setNewLag] = useState("");
   const [hours, setHours] = useState("");
   const [hoursWho, setHoursWho] = useState("");
   const [subTitle, setSubTitle] = useState("");
@@ -76,6 +80,14 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const subtasks = p.tasks.filter((x) => x.parentId === t.id && !x.archived);
   const subDone = subtasks.filter((x) => isDone(p, x)).length;
   const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
+  const epic = t.epicId ? p.tasks.find((x) => x.id === t.epicId) : undefined;
+  const epicKids = t.type === "epic" ? epicChildren(p, t.id) : [];
+  const epicStat = t.type === "epic" ? epicProgress(p, t.id) : null;
+  const epics = p.tasks.filter((x) => x.type === "epic" && !x.archived && x.id !== t.id);
+  const ref = dayNum(refDate)!;
+  const intervals = statusIntervals(p, t, ref);
+  const timeIn = intervals.reduce<Partial<Record<ColumnKind, number>>>((acc, iv) => ((acc[iv.kind] = (acc[iv.kind] ?? 0) + Math.max(0, iv.to - iv.from)), acc), {});
+  const kindName: Record<ColumnKind, string> = { backlog: "برنامه‌ریزی", todo: "برای انجام", doing: "در حال انجام", review: "بازبینی", blocked: "متوقف", done: "انجام‌شده" };
   const watching = (t.watchers ?? []).includes(me);
   const sprints = (p.sprints ?? []).filter((x) => x.status !== "تکمیل‌شده" || x.id === t.sprintId);
   const fields = p.customFields ?? [];
@@ -112,10 +124,12 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
     if (!pred || !succ) return;
     if (p.deps.some((d) => d.predecessor === pred && d.successor === succ)) return notify("این وابستگی از قبل وجود دارد.", "warning");
     if (createsCycle(p, pred, succ)) return notify("این وابستگی حلقه ایجاد می‌کند (A به B و B به A) و مجاز نیست.", "warning");
-    pm.addDependency(pid, pred, succ);
-    notify("وابستگی اضافه شد.");
+    const lag = Number(String(newLag).replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace("−", "-")) || 0;
+    pm.addDependency(pid, pred, succ, { type: newType, lag });
+    notify(`وابستگی «${depTypeLabel[newType]}${lag ? ` + ${fa(lag)} روز` : ""}» اضافه شد.`);
     setNewPred("");
     setNewSucc("");
+    setNewLag("");
   };
 
   const sections: { id: Section; label: string; icon: typeof Clock; count?: number }[] = [
@@ -129,6 +143,43 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   ];
 
   const docs = p.documents.filter((d) => d.taskId === t.id);
+
+  const lagIn = (v: string) => Number(v.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace("−", "-")) || 0;
+  /** ویرایش نوع و تأخیر یک وابستگی */
+  const depEditor = (d: (typeof p.deps)[number]) => {
+    const v = depViolation(p, d);
+    return (
+      <span className="flex items-center gap-1 shrink-0" title={`${depTypeLabel[depType(d)]}${d.lag ? ` · تأخیر ${fa(d.lag)} روز` : ""}`}>
+        {v > 0 && <span className="text-[10px] text-amber-700 bg-amber-50 rounded px-1">تعارض {fa(v)} روز</span>}
+        {canEdit ? (
+          <>
+            <select value={depType(d)} onChange={(e) => pm.updateDependency(pid, d.id, { type: e.target.value as DepType })} className="input-field !py-0.5 !px-1 !text-[11px] !w-auto font-mono" aria-label="نوع وابستگی">
+              {(["FS", "SS", "FF", "SF"] as DepType[]).map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <input defaultValue={d.lag ? fa(d.lag) : ""} key={`${d.id}-${d.lag ?? 0}`} onBlur={(e) => lagIn(e.target.value) !== (d.lag ?? 0) && pm.updateDependency(pid, d.id, { lag: lagIn(e.target.value) })} placeholder="تأخیر" className="input-field !py-0.5 !px-1 !text-[11px] !w-14" aria-label="تأخیر (روز)" />
+          </>
+        ) : (
+          <span className="font-mono text-[10.5px] bg-ink-100 rounded px-1">{depShort(d)}</span>
+        )}
+      </span>
+    );
+  };
+  const newTypeSel = (
+    <>
+      <select value={newType} onChange={(e) => setNewType(e.target.value as DepType)} className="input-field !w-auto font-mono" aria-label="نوع وابستگی جدید" title={depTypeLabel[newType]}>
+        {(["FS", "SS", "FF", "SF"] as DepType[]).map((k) => (
+          <option key={k} value={k}>
+            {k} — {depTypeLabel[k]}
+          </option>
+        ))}
+      </select>
+      <input value={newLag} onChange={(e) => setNewLag(e.target.value)} placeholder="تأخیر (روز)" className="input-field !w-24" aria-label="تأخیر (روز)" />
+    </>
+  );
 
   const statusSelect = (
     <select
@@ -150,6 +201,26 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   return (
     <Modal open onClose={onClose} title={t.title} width="max-w-4xl">
       <div className="space-y-4">
+        <div className="-mt-2 flex items-center gap-2 text-[11.5px] text-ink-500 flex-wrap">
+          <TypeIcon type={t.type} size={13} />
+          <span>{typeLabel[t.type ?? "task"]}</span>
+          <TaskKey t={t} pid={pid} copy />
+          {epic && (
+            <button onClick={() => openTask(epic.id)} className="flex items-center gap-1 text-violet-600 hover:underline">
+              <Zap size={12} /> اپیک: {epic.title}
+            </button>
+          )}
+        </div>
+        {t.archived && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs p-2.5 flex items-center gap-2 flex-wrap">
+            <Archive size={14} /> این تسک در {t.archivedAt ?? "—"}{t.archivedBy ? ` توسط «${t.archivedBy}»` : ""} بایگانی شده و در بورد، گانت و گزارش‌ها حساب نمی‌شود.
+            {canEdit && (
+              <Button size="sm" variant="secondary" className="mr-auto" icon={<ArchiveRestore size={13} />} onClick={() => { pm.archiveTasks(pid, [t.id], false); notify("تسک از بایگانی بازیابی شد."); }}>
+                بازیابی
+              </Button>
+            )}
+          </div>
+        )}
         {parent && (
           <button onClick={() => openTask(parent.id)} className="-mt-2 text-[11.5px] text-ink-500 hover:text-brand-700 flex items-center gap-1">
             <CornerDownLeft size={12} /> زیرتسکِ «{parent.title}»
@@ -221,6 +292,25 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               <Field label="توضیحات">
                 <textarea className="input-field min-h-[120px]" value={draft.description} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="شرح کار، معیار پذیرش، …" />
               </Field>
+              {epicStat && (
+                <div className="rounded-lg border border-violet-500/30 bg-violet-500/100/5 p-3">
+                  <p className="text-xs font-bold text-violet-600 flex items-center gap-1.5 mb-2">
+                    <Zap size={13} /> کارهای این اپیک — {fa(epicStat.done)} از {fa(epicStat.total)} انجام‌شده ({fa(epicStat.pct)}٪)
+                  </p>
+                  <Progress value={epicStat.pct} tone="bg-violet-500/100" />
+                  <div className="mt-2 max-h-44 overflow-y-auto divide-y divide-violet-500/10">
+                    {epicKids.map((x) => (
+                      <button key={x.id} onClick={() => openTask(x.id)} className="w-full flex items-center gap-2 py-1.5 text-xs text-right hover:bg-white/60">
+                        <TypeIcon type={x.type} />
+                        <TaskKey t={x} />
+                        <span className={`flex-1 truncate ${isDone(p, x) ? "line-through text-ink-400" : "text-ink-800"}`}>{x.title}</span>
+                        <Badge tone={kindTone[kindOf(p, x.status)]}>{columnLabel(p, x.status)}</Badge>
+                      </button>
+                    ))}
+                    {epicKids.length === 0 && <p className="text-[11px] text-ink-400 py-1">هنوز کاری به این اپیک وصل نشده؛ در جزئیات هر تسک «اپیک» را انتخاب کنید.</p>}
+                  </div>
+                </div>
+              )}
               <Field label="برچسب‌ها">
                 <div className="flex flex-wrap gap-1.5">
                   {[...new Set([...defaultLabels, ...draft.labels])].map((l) => {
@@ -327,6 +417,28 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
             </div>
 
             <div className="space-y-3 md:border-r md:border-ink-100 md:pr-5">
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="نوع کار">
+                  <select className="input-field" value={draft.type ?? "task"} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, type: e.target.value as TaskType, ...(e.target.value === "epic" ? { epicId: undefined } : {}) })}>
+                    {taskTypes.map((x) => (
+                      <option key={x} value={x}>
+                        {typeLabel[x]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="اپیک">
+                  <select className="input-field" value={draft.epicId ?? ""} disabled={!canEdit || draft.type === "epic"} onChange={(e) => setDraft({ ...draft, epicId: e.target.value || undefined })}>
+                    <option value="">—</option>
+                    {epics.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.key ? `${x.key} ` : ""}
+                        {x.title}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
               <Field label="مسئول">
                 <MemberSelect p={p} value={draft.assignee} onChange={(v) => setDraft({ ...draft, assignee: v })} />
               </Field>
@@ -407,10 +519,25 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                     بازگردانی
                   </Button>
                 )}
+                {!t.archived && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mr-auto"
+                    icon={<Archive size={13} />}
+                    onClick={() => {
+                      pm.archiveTasks(pid, [t.id], true);
+                      onClose();
+                      notify(`«${t.title}» بایگانی شد؛ از فیلتر «بایگانی‌شده‌ها» در بورد قابل بازیابی است.`, "info");
+                    }}
+                  >
+                    بایگانی
+                  </Button>
+                )}
                 {can("projects.tasks.delete") && <Button
                   variant="ghost"
                   size="sm"
-                  className="mr-auto text-rose-600"
+                  className={`${t.archived ? "mr-auto " : ""}text-rose-600`}
                   icon={<Trash2 size={13} />}
                   onClick={() =>
                     confirm({
@@ -548,6 +675,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                         {x.title}
                       </button>
                       <span className="text-ink-400">{x.due}</span>
+                      {depEditor(d)}
                       {canEdit && (
                         <button onClick={() => pm.removeDependency(pid, d.id)} className="text-ink-300 hover:text-rose-600" aria-label="حذف وابستگی">
                           <X size={13} />
@@ -559,8 +687,9 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                 {preds.length === 0 && <p className="text-[11px] text-ink-400">—</p>}
               </div>
               {canEdit && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap sm:flex-nowrap">
                   <TaskSelect p={p} value={newPred} onChange={setNewPred} exclude={[t.id, ...preds.map((x) => x.id)]} placeholder="افزودن پیش‌نیاز…" />
+                  {newTypeSel}
                   <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => addDep(newPred, t.id)}>
                     افزودن
                   </Button>
@@ -581,6 +710,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                         {x.title}
                       </button>
                       <span className="text-ink-400">{x.assignee}</span>
+                      {depEditor(d)}
                       {canEdit && (
                         <button onClick={() => pm.removeDependency(pid, d.id)} className="text-ink-300 hover:text-rose-600" aria-label="حذف وابستگی">
                           <X size={13} />
@@ -592,14 +722,18 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                 {succs.length === 0 && <p className="text-[11px] text-ink-400">—</p>}
               </div>
               {canEdit && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap sm:flex-nowrap">
                   <TaskSelect p={p} value={newSucc} onChange={setNewSucc} exclude={[t.id, ...succs.map((x) => x.id)]} placeholder="افزودن تسک وابسته…" />
+                  {newTypeSel}
                   <Button variant="secondary" size="sm" icon={<Plus size={13} />} onClick={() => addDep(t.id, newSucc)}>
                     افزودن
                   </Button>
                 </div>
               )}
             </div>
+            <p className="text-[11px] text-ink-400 leading-5">
+              انواع وابستگی: <b>FS</b> پایان‌به‌شروع · <b>SS</b> شروع‌به‌شروع · <b>FF</b> پایان‌به‌پایان · <b>SF</b> شروع‌به‌پایان؛ «تأخیر» فاصله‌ی روز بین دو قید است (منفی = هم‌پوشانی). فقط FS و SS شروع تسک را نگه می‌دارند.
+            </p>
             <Button variant="ghost" size="sm" icon={<Link2 size={13} />} onClick={() => goTab("graph", t.id)}>
               نمایش در گراف وابستگی
             </Button>
@@ -721,6 +855,24 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
 
         {section === "history" && (
           <div className="space-y-2">
+            {intervals.length > 0 && (
+              <div className="rounded-lg border border-ink-100 p-3 mb-2">
+                <p className="text-xs font-bold text-ink-700 mb-2">زمان در هر وضعیت</p>
+                <div className="flex h-3 rounded-full overflow-hidden bg-ink-100">
+                  {(Object.keys(timeIn) as ColumnKind[]).filter((k) => (timeIn[k] ?? 0) > 0).map((k) => (
+                    <span key={k} title={`${kindName[k]}: ${fa(timeIn[k] ?? 0)} روز`} style={{ flex: timeIn[k], background: kindColor[k] }} />
+                  ))}
+                </div>
+                <p className="text-[11px] text-ink-500 mt-1.5 flex flex-wrap gap-x-3">
+                  {(Object.keys(timeIn) as ColumnKind[]).filter((k) => (timeIn[k] ?? 0) > 0 || k === kindOf(p, t.status)).map((k) => (
+                    <span key={k}>
+                      <span className="inline-block w-2 h-2 rounded-full ml-1" style={{ background: kindColor[k] }} />
+                      {kindName[k]}: {fa(timeIn[k] ?? 0)} روز
+                    </span>
+                  ))}
+                </p>
+              </div>
+            )}
             {history.map((l) => (
               <div key={l.id} className="border-r-2 border-brand-200 pr-3 py-1">
                 <p className="text-xs text-ink-800 leading-6">{l.description}</p>

@@ -9,7 +9,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useTenancy } from "./TenancyContext";
 import { useInbox } from "./InboxContext";
 import { users } from "../data/mock";
-import { nowClock, dayNum } from "../pm/jalali";
+import { nowClock, dayNum, addDays } from "../pm/jalali";
 import {
   SOCIAL_TODAY,
   at,
@@ -55,11 +55,16 @@ import type {
   SocialModule,
   Tag,
   Topic,
+  TrashedFile,
+  FileShare,
+  Vote,
+  Announcement,
 } from "../social/types";
 import { contentKindLabel } from "../social/types";
+import { withDemoScopes, type Scoped as OrgScopedT } from "../data/tenancy";
 
 const KEY = "motoshub.social.v1";
-const VERSION = 1;
+const VERSION = 3;
 
 type Store = {
   version: number;
@@ -80,6 +85,8 @@ type Store = {
   allowedReactions: AllowedReaction[];
   folders: FileFolder[];
   files: FileItem[];
+  /** «پیشنهادی» — سطل بازیافت فایل‌ها */
+  fileTrash: TrashedFile[];
   settings: Setting[];
 };
 
@@ -94,11 +101,11 @@ function initial(): Store {
     seq: 5000,
     categories,
     tags: seedTags(),
-    content: seedContent(categories),
-    media: seedMedia(categories),
-    events: ev.events,
+    content: withDemoScopes(seedContent(categories), 2),
+    media: withDemoScopes(seedMedia(categories), 5),
+    events: withDemoScopes(ev.events, 1),
     eventMembers: ev.members,
-    topics: forum.topics,
+    topics: withDemoScopes(forum.topics, 4),
     posts: forum.posts,
     chats: msg.chats,
     messages: msg.messages,
@@ -108,6 +115,7 @@ function initial(): Store {
     allowedReactions: seedAllowedReactions(),
     folders: files.folders,
     files: files.files,
+    fileTrash: files.trash,
     settings: seedSettings(),
   };
 }
@@ -116,8 +124,17 @@ function load(): Store {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const s = JSON.parse(raw) as Store;
-      if (s.version === VERSION) return s;
+      const s = JSON.parse(raw) as Partial<Store>;
+      // نسخه‌ی هم‌خوان: فیلدهای تازه‌ای که در ذخیره‌ی قدیمی نیستند از داده‌ی نمونه پر می‌شوند
+      if (s && s.version === VERSION) {
+        const base = initial();
+        const out = { ...base } as Record<string, unknown>;
+        (Object.keys(base) as (keyof Store)[]).forEach((k) => {
+          const v = s[k];
+          if (v !== undefined && v !== null && (Array.isArray(base[k]) ? Array.isArray(v) : true)) out[k] = v;
+        });
+        return out as Store;
+      }
     }
   } catch {
     /* ذخیره‌ساز در دسترس نیست */
@@ -127,7 +144,7 @@ function load(): Store {
 
 // ---------------------------------------------------------------- ورودی‌ها (هم‌شکل *StoreRequest)
 export type PublishFields = { privacy: Privacy; category_ids: string[]; tags: string[]; is_draft: boolean; published_date?: string; published_time?: string; uploaded_files?: Attachment[]; send_notification?: boolean };
-export type ContentInput = PublishFields & { id?: string; title: string; excerpt: string; content: string; poster: string | null; add_comment: boolean; show_comment: boolean };
+export type ContentInput = PublishFields & { id?: string; title: string; excerpt: string; content: string; poster: string | null; add_comment: boolean; show_comment: boolean; announcement?: { requires_ack: boolean; pin_until: string | null } | null };
 export type MediaInput = PublishFields & { id?: string; caption: string; post_type: MediaPost["post_type"]; poster: string | null; add_comment: boolean; show_comment: boolean };
 export type EventInput = PublishFields & {
   id?: string;
@@ -149,8 +166,20 @@ export type EventInput = PublishFields & {
 };
 export type TopicInput = PublishFields & { id?: string; title: string; content: string };
 export type ChatInput = { title: string; description: string; is_private: boolean; category_ids: string[]; tags: string[]; slug?: string; member_ids?: string[] };
-export type MessageInput = { content: string; type?: MessageType; parent_message_id?: string | null; uploaded_files?: Attachment[]; tags?: string[] };
+export type MessageInput = { content: string; type?: MessageType; parent_message_id?: string | null; uploaded_files?: Attachment[]; tags?: string[]; in_thread?: boolean };
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
+
+/** جمع رأی‌ها (پیشنهادی) */
+export const voteScore = (v?: Record<string, Vote>) => Object.values(v ?? {}).reduce<number>((a, b) => a + b, 0);
+/** حداکثر پیام سنجاق‌شده در هر گفتگو */
+export const MAX_PINNED = 5;
+/** مهلت بازگردانی از سطل بازیافت (روز) */
+export const TRASH_DAYS = 30;
+/** «۳٫۲ مگابایت» / «۴۸۰ کیلوبایت» → بایت */
+export function parseSize(sz: string): number {
+  const n = Number(sz.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d))).replace(/[٫,]/g, ".").replace(/[^\d.]/g, "")) || 0;
+  return sz.includes("گیگ") ? n * 1024 ** 3 : sz.includes("مگ") ? n * 1024 ** 2 : sz.includes("کیلو") ? n * 1024 : n;
+}
 
 type Ctx = Store & {
   me: string;
@@ -162,7 +191,7 @@ type Ctx = Store & {
   areFriends: (a: string, b: string) => boolean;
   friendIds: (uid?: string) => string[];
   /** قواعد privacy: ME فقط صاحب، FRIENDS صاحب و دوستان، EVERYONE همه */
-  canView: (item: { user_id: string; privacy: Privacy }, override?: boolean) => boolean;
+  canView: (item: { user_id: string; privacy: Privacy } & Partial<OrgScopedT>, override?: boolean) => boolean;
   categoriesOf: (entity: EntityName) => Category[];
   categoryTitle: (id: string) => string;
   setting: (key: string) => Setting["value"] | undefined;
@@ -184,7 +213,17 @@ type Ctx = Store & {
   updateFolder: (id: string, patch: { name?: string; parent_id?: string | null }) => void;
   deleteFolder: (id: string) => void;
   uploadFiles: (owner_type: OwnerType, owner_id: string, folder_id: string | null, files: Attachment[]) => void;
+  /** انتقال به سطل بازیافت (۳۰ روز قابل بازگردانی) */
   deleteFile: (id: string) => void;
+  restoreFile: (id: string) => Result;
+  purgeFile: (id: string) => void;
+  emptyTrash: () => void;
+  toggleStar: (id: string) => void;
+  openFile: (id: string) => void;
+  uploadVersion: (id: string, file: Attachment) => void;
+  restoreVersion: (id: string, versionId: string) => void;
+  createShare: (id: string, days: number, allowDownload: boolean) => FileShare | null;
+  revokeShare: (id: string) => void;
   // ------------------------------------------------ content
   saveContent: (kind: ContentKind, input: ContentInput) => string;
   deleteContent: (id: string) => void;
@@ -192,6 +231,13 @@ type Ctx = Store & {
   addContentAttachments: (id: string, files: Attachment[]) => void;
   removeContentAttachment: (id: string, attachmentId: string) => void;
   viewContent: (id: string) => void;
+  /** «پیشنهادی» — اطلاعیه‌ی رسمی */
+  acknowledge: (id: string) => void;
+  remindUnread: (id: string) => number;
+  /** مخاطبان یک آیتم (بر اساس دامنه‌ی سازمانی و privacy) — بدون نویسنده */
+  audienceOf: (item: { user_id: string; privacy: Privacy } & Partial<OrgScopedT>) => string[];
+  /** اطلاعیه‌های رسمیِ سنجاق‌شده در میز کار که هنوز تاریخشان نگذشته */
+  pinnedAnnouncements: () => ContentItem[];
   // ------------------------------------------------ media
   saveMedia: (input: MediaInput) => string;
   deleteMedia: (id: string) => void;
@@ -220,6 +266,10 @@ type Ctx = Store & {
   createPost: (topicId: string, content: string, parentId?: string | null, files?: Attachment[]) => Result;
   updatePost: (id: string, content: string) => void;
   deletePost: (id: string) => void;
+  voteTopic: (id: string, v: Vote) => Result;
+  votePost: (id: string, v: Vote) => Result;
+  acceptAnswer: (topicId: string, postId: string | null) => Result;
+  markDuplicate: (topicId: string, targetId: string | null) => Result;
   // ------------------------------------------------ messaging
   myChats: (type?: Chat["chat_type"] | Chat["chat_type"][]) => Chat[];
   chatMessages: (chatId: string) => Message[];
@@ -237,6 +287,8 @@ type Ctx = Store & {
   deleteMessage: (id: string) => void;
   forwardMessage: (id: string, chatId: string) => void;
   saveMessage: (id: string) => void;
+  toggleMessageReaction: (id: string, code: string) => void;
+  togglePinMessage: (chatId: string, messageId: string) => Result;
   markRead: (chatId: string) => void;
   toggleMute: (chatId: string) => void;
   joinChat: (chatId: string) => Result;
@@ -271,9 +323,24 @@ function mentionedIds(text: string): string[] {
   return [...out];
 }
 
+const fa = (n: number) => n.toLocaleString("fa-IR");
+/** رأی دوباره با همان جهت = برداشتن رأی */
+function toggleVote(votes: Record<string, Vote> | undefined, v: Vote, me: string): Record<string, Vote> {
+  const next = { ...(votes ?? {}) };
+  if (next[me] === v) delete next[me];
+  else next[me] = v;
+  return next;
+}
+/** چند روز از یک «تاریخ ساعت» شمسی تا امروزِ دمو گذشته است */
+const diffDaysFrom = (stampStr: string) => {
+  const a = dayNum(stampStr.split(" ")[0]);
+  const b = dayNum(SOCIAL_TODAY);
+  return a == null || b == null ? null : b - a;
+};
+
 export function SocialProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<Store>(load);
-  const { actingUser, hasPermission } = useTenancy();
+  const { actingUser, hasPermission, visible: orgVisible, defaultScopeForNew, visibleUserIds, membersOf } = useTenancy();
   const inbox = useInbox();
   const me = actingUser.id;
 
@@ -295,13 +362,27 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const friendIds = (uid = me) =>
     store.friendships.filter((f) => f.status === "accepted" && (f.sender_id === uid || f.receiver_id === uid)).map((f) => (f.sender_id === uid ? f.receiver_id : f.sender_id));
   const areFriends = (a: string, b: string) => store.friendships.some((f) => f.status === "accepted" && ((f.sender_id === a && f.receiver_id === b) || (f.sender_id === b && f.receiver_id === a)));
-  const canView = (item: { user_id: string; privacy: Privacy }, override = false) => override || item.user_id === me || item.privacy === "EVERYONE" || (item.privacy === "FRIENDS" && areFriends(me, item.user_id));
+  // دو لایه: (۱) لایه‌ی سازمانی (پیاز) — محتوای واحد خودم، زیرمجموعه‌ها و اعلان‌های لایه‌های بالاتر؛ (۲) privacy خودِ آیتم
+  const canView = (item: { user_id: string; privacy: Privacy } & Partial<OrgScopedT>, override = false) =>
+    override || item.user_id === me || (orgVisible(item) && (item.privacy === "EVERYONE" || (item.privacy === "FRIENDS" && areFriends(me, item.user_id))));
+  /** گیرندگان اعلان محتوای جدید: فقط کسانی که بر اساس واحد سازمانی و privacy می‌توانند آن را ببینند */
+  const audienceFor = (privacy: Privacy) => {
+    const ids = visibleUserIds().filter((u) => u !== me && (privacy === "EVERYONE" || (privacy === "FRIENDS" && areFriends(me, u))));
+    return ids.map(userName);
+  };
 
   /** برچسب‌های تازه در /core/tags/ ثبت می‌شوند (TagStoreRequest) */
   const withTags = (s: Store, tags: string[]): Store => {
     const missing = tags.map((t) => t.trim().replace(/^#/, "")).filter((t) => t && !s.tags.some((x) => x.name === t));
     if (!missing.length) return s;
     return { ...s, tags: [...s.tags, ...[...new Set(missing)].map((name) => ({ id: nid("tg"), name, created_at: now(), updated_at: now() }))] };
+  };
+  /** مخاطبان واقعی آیتم: اعضای فعال دامنه‌ی مالک (و زیرمجموعه‌ها) + قاعده‌ی privacy */
+  const audienceOf = (item: { user_id: string; privacy: Privacy } & Partial<OrgScopedT>) => {
+    if (item.privacy === "ME") return [];
+    const sid = !item.scope || item.scope === "سراسری" ? null : item.scope === "هلدینگ" ? item.holdingId : item.companyId ?? item.holdingId;
+    const pool = sid ? new Set(membersOf(sid, true).filter((m) => m.status === "active").map((m) => m.userId)) : null;
+    return users.map((u) => u.id).filter((u) => u !== item.user_id && (!pool || pool.has(u)) && (item.privacy === "EVERYONE" || areFriends(item.user_id, u)));
   };
   const publishedAt = (i: PublishFields) => (i.is_draft ? null : i.published_date ? at(i.published_date, i.published_time || "۰۹:۰۰") : now());
   const isAdminish = hasPermission("social.settings");
@@ -427,11 +508,63 @@ export function SocialProvider({ children }: { children: ReactNode }) {
             }
           });
         }
-        return { ...s, folders: s.folders.filter((f) => !gone.has(f.id)), files: s.files.filter((f) => !f.folder_id || !gone.has(f.folder_id)) };
+        // فایل‌های داخل پوشه‌ها به سطل بازیافت می‌روند (۳۰ روز قابل بازگردانی)
+        const inside = s.files.filter((f) => f.folder_id && gone.has(f.folder_id));
+        return { ...s, folders: s.folders.filter((f) => !gone.has(f.id)), files: s.files.filter((f) => !f.folder_id || !gone.has(f.folder_id)), fileTrash: [...inside.map((f) => ({ ...f, trashed_at: now(), trashed_by: me })), ...s.fileTrash] };
       }),
     uploadFiles: (owner_type, owner_id, folder_id, files) =>
       upd((s) => ({ ...s, files: [...s.files, ...files.map((f) => ({ id: nid("fl"), owner_type, owner_id, folder_id, name: f.name, size: f.size, mime: f.mime, created_by_user_id: me, created_at: now() }))] })),
-    deleteFile: (id) => upd((s) => ({ ...s, files: s.files.filter((f) => f.id !== id) })),
+    deleteFile: (id) =>
+      upd((s) => {
+        const f = s.files.find((x) => x.id === id);
+        if (!f) return s;
+        return { ...s, files: s.files.filter((x) => x.id !== id), fileTrash: [{ ...f, trashed_at: now(), trashed_by: me }, ...s.fileTrash] };
+      }),
+    restoreFile: (id) => {
+      const t = store.fileTrash.find((x) => x.id === id);
+      if (!t) return { ok: false, error: "فایل در سطل بازیافت نیست." };
+      if ((diffDaysFrom(t.trashed_at) ?? 0) > TRASH_DAYS) return { ok: false, error: `مهلت ${fa(TRASH_DAYS)} روزه‌ی بازگردانی گذشته است.` };
+      upd((s) => {
+        const { trashed_at: _a, trashed_by: _b, ...file } = t;
+        void _a;
+        void _b;
+        // اگر پوشه‌ی اصلی دیگر نیست، به ریشه‌ی همان درایو برمی‌گردد
+        const folder_id = file.folder_id && s.folders.some((f) => f.id === file.folder_id) ? file.folder_id : null;
+        return { ...s, fileTrash: s.fileTrash.filter((x) => x.id !== id), files: [{ ...file, folder_id }, ...s.files] };
+      });
+      return { ok: true };
+    },
+    purgeFile: (id) => upd((s) => ({ ...s, fileTrash: s.fileTrash.filter((x) => x.id !== id) })),
+    emptyTrash: () => upd((s) => ({ ...s, fileTrash: s.fileTrash.filter((x) => x.trashed_by !== me && x.created_by_user_id !== me) })),
+    toggleStar: (id) => upd((s) => ({ ...s, files: s.files.map((f) => (f.id !== id ? f : { ...f, starred_by: (f.starred_by ?? []).includes(me) ? (f.starred_by ?? []).filter((u) => u !== me) : [...(f.starred_by ?? []), me] })) })),
+    openFile: (id) => upd((s) => ({ ...s, files: s.files.map((f) => (f.id === id ? { ...f, opened_at: { ...(f.opened_at ?? {}), [me]: now() } } : f)) })),
+    uploadVersion: (id, file) =>
+      upd((s) => ({
+        ...s,
+        files: s.files.map((f) => {
+          if (f.id !== id) return f;
+          const v = f.version ?? 1;
+          return { ...f, size: file.size, mime: file.mime || f.mime, version: v + 1, created_at: now(), created_by_user_id: me, versions: [{ id: nid("fv"), version: v, size: f.size, created_at: f.created_at, created_by_user_id: f.created_by_user_id }, ...(f.versions ?? [])] };
+        }),
+      })),
+    restoreVersion: (id, versionId) =>
+      upd((s) => ({
+        ...s,
+        files: s.files.map((f) => {
+          const old = f.id === id ? (f.versions ?? []).find((v) => v.id === versionId) : undefined;
+          if (!old) return f;
+          const v = f.version ?? 1;
+          // بازگردانی = نسخه‌ی تازه با محتوای نسخه‌ی قدیمی؛ نسخه‌ی فعلی در تاریخچه می‌ماند
+          return { ...f, size: old.size, version: v + 1, created_at: now(), created_by_user_id: me, versions: [{ id: nid("fv"), version: v, size: f.size, created_at: f.created_at, created_by_user_id: f.created_by_user_id }, ...(f.versions ?? [])] };
+        }),
+      })),
+    createShare: (id, days, allowDownload) => {
+      if (!store.files.some((f) => f.id === id)) return null;
+      const share: FileShare = { token: Math.random().toString(36).slice(2, 10), expires_on: addDays(SOCIAL_TODAY, days), created_by: me, created_at: now(), allow_download: allowDownload };
+      upd((s) => ({ ...s, files: s.files.map((f) => (f.id === id ? { ...f, share } : f)) }));
+      return share;
+    },
+    revokeShare: (id) => upd((s) => ({ ...s, files: s.files.map((f) => (f.id === id ? { ...f, share: null } : f)) })),
 
     // ---------------------------------------------------------------- content
     saveContent: (kind, input) => {
@@ -453,17 +586,29 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           show_comment: input.show_comment,
           updated_at: now(),
         };
+        const ann = (prev?: Announcement | null): Announcement | null =>
+          kind === "news" && input.announcement ? { requires_ack: input.announcement.requires_ack, pin_until: input.announcement.pin_until, acks: prev?.acks ?? {}, last_reminder_at: prev?.last_reminder_at ?? null } : null;
         if (existing)
           return {
             ...s,
             content: s.content.map((x) =>
-              x.id === id ? { ...x, ...base, is_public: !input.is_draft, published_at: input.is_draft ? null : x.published_at ?? pub, attachments: [...x.attachments, ...(input.uploaded_files ?? [])] } : x
+              x.id === id ? { ...x, ...base, announcement: input.announcement === undefined ? x.announcement : ann(x.announcement), is_public: !input.is_draft, published_at: input.is_draft ? null : x.published_at ?? pub, attachments: [...x.attachments, ...(input.uploaded_files ?? [])] } : x
             ),
           };
-        const item: ContentItem = { ...base, id, kind, user_id: me, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null, views: 0 };
+        const item: ContentItem = { ...defaultScopeForNew(), ...base, announcement: ann(), id, kind, user_id: me, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null, views: 0 };
         return { ...s, content: [item, ...s.content] };
       });
-      if (!input.id && !input.is_draft && input.send_notification) inbox.send("*", "new_content", `${contentKindLabel[kind]} جدید: «${input.title}»`, `/dashboard/${kind === "news" ? "news" : "magazines"}/${id}`);
+      const cLink = `/dashboard/${kind === "news" ? "news" : kind === "blogs" ? "blog" : "magazines"}/${id}`;
+      // اطلاعیه‌ی رسمی همیشه (و «فوری») به همه‌ی مخاطبان دامنه می‌رود
+      if (!input.id && !input.is_draft && kind === "news" && input.announcement)
+        inbox.send(
+          audienceOf({ user_id: me, privacy: input.privacy, ...defaultScopeForNew() }).map(userName),
+          "announcement",
+          `اطلاعیه‌ی رسمی: «${input.title}»${input.announcement.requires_ack ? " — لطفاً پس از مطالعه «خواندم و پذیرفتم» را بزنید." : ""}`,
+          cLink,
+          { urgent: true }
+        );
+      else if (!input.id && !input.is_draft && input.send_notification) inbox.send(audienceFor(input.privacy), "new_content", `${contentKindLabel[kind]} جدید: «${input.title}»`, cLink);
       return id;
     },
     deleteContent: (id) => upd((s) => ({ ...s, content: s.content.filter((x) => x.id !== id), comments: s.comments.filter((c) => c.entity_id !== id) })),
@@ -472,6 +617,21 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     addContentAttachments: (id, files) => upd((s) => ({ ...s, content: s.content.map((x) => (x.id === id ? { ...x, attachments: [...x.attachments, ...files] } : x)) })),
     removeContentAttachment: (id, aid) => upd((s) => ({ ...s, content: s.content.map((x) => (x.id === id ? { ...x, attachments: x.attachments.filter((a) => a.id !== aid) } : x)) })),
     viewContent: (id) => upd((s) => ({ ...s, content: s.content.map((x) => (x.id === id ? { ...x, views: x.views + 1 } : x)) })),
+    acknowledge: (id) => upd((s) => ({ ...s, content: s.content.map((x) => (x.id === id && x.announcement && !x.announcement.acks[me] ? { ...x, announcement: { ...x.announcement, acks: { ...x.announcement.acks, [me]: now() } } } : x)) })),
+    remindUnread: (id) => {
+      const x = store.content.find((c) => c.id === id);
+      if (!x?.announcement) return 0;
+      const pending = audienceOf(x).filter((u) => !x.announcement!.acks[u]);
+      if (!pending.length) return 0;
+      upd((s) => ({ ...s, content: s.content.map((c) => (c.id === id && c.announcement ? { ...c, announcement: { ...c.announcement, last_reminder_at: now() } } : c)) }));
+      inbox.send(pending.map(userName), "announcement", `یادآوری: اطلاعیه‌ی رسمی «${x.title}» را بخوانید و «خواندم و پذیرفتم» را بزنید.`, `/dashboard/news/${id}`, { urgent: true });
+      return pending.length;
+    },
+    audienceOf,
+    pinnedAnnouncements: () =>
+      store.content
+        .filter((x) => x.kind === "news" && x.announcement?.pin_until && x.is_public && !x.is_draft && canView(x) && (dayNum(x.announcement.pin_until) ?? 0) >= (dayNum(SOCIAL_TODAY) ?? 0))
+        .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? "")),
 
     // ---------------------------------------------------------------- media
     saveMedia: (input) => {
@@ -482,10 +642,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         const existing = s.media.find((x) => x.id === id);
         const base = { caption: input.caption, post_type: input.post_type, poster: input.poster, privacy: input.privacy, category_ids: input.category_ids, tags: input.tags, is_draft: input.is_draft, add_comment: input.add_comment, show_comment: input.show_comment, updated_at: now() };
         if (existing) return { ...s, media: s.media.map((x) => (x.id === id ? { ...x, ...base, is_public: input.is_draft ? false : true, published_at: input.is_draft ? null : x.published_at ?? pub, attachments: [...x.attachments, ...(input.uploaded_files ?? [])] } : x)) };
-        const m: MediaPost = { ...base, id, user_id: me, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null };
+        const m: MediaPost = { ...defaultScopeForNew(), ...base, id, user_id: me, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null };
         return { ...s, media: [m, ...s.media] };
       });
-      if (!input.id && !input.is_draft && input.send_notification) inbox.send("*", "new_content", `رسانه‌ی جدید: «${input.caption}»`, `/dashboard/media/${id}`);
+      if (!input.id && !input.is_draft && input.send_notification) inbox.send(audienceFor(input.privacy), "new_content", `رسانه‌ی جدید: «${input.caption}»`, `/dashboard/media/${id}`);
       return id;
     },
     deleteMedia: (id) => upd((s) => ({ ...s, media: s.media.filter((x) => x.id !== id) })),
@@ -503,10 +663,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         void _n;
         const existing = s.events.find((x) => x.id === id);
         if (existing) return { ...s, events: s.events.map((x) => (x.id === id ? { ...x, ...rest, id, is_public: input.is_draft ? false : true, published_at: input.is_draft ? null : x.published_at ?? pub, attachments: [...x.attachments, ...(uploaded_files ?? [])], updated_at: now() } : x)) };
-        const ev: SocialEvent = { ...rest, id, user_id: me, is_active: true, is_public: !input.is_draft, attachments: uploaded_files ?? [], published_at: pub, created_at: now(), updated_at: now(), deleted_at: null };
+        const ev: SocialEvent = { ...defaultScopeForNew(), ...rest, id, user_id: me, is_active: true, is_public: !input.is_draft, attachments: uploaded_files ?? [], published_at: pub, created_at: now(), updated_at: now(), deleted_at: null };
         return { ...s, events: [ev, ...s.events], eventMembers: [...s.eventMembers, { id: nid("em"), event_id: id, user_id: me, status: "joined", member_type: "owner", created_at: now(), updated_at: now() }] };
       });
-      if (!input.id && !input.is_draft && input.send_notification) inbox.send("*", "new_content", `رویداد جدید: «${input.title}» — ${input.start_date}`, `/dashboard/events/${id}`);
+      if (!input.id && !input.is_draft && input.send_notification) inbox.send(audienceFor(input.privacy), "new_content", `رویداد جدید: «${input.title}» — ${input.start_date}`, `/dashboard/events/${id}`);
       return id;
     },
     deleteEvent: (id) => upd((s) => ({ ...s, events: s.events.filter((x) => x.id !== id), eventMembers: s.eventMembers.filter((m) => m.event_id !== id) })),
@@ -570,10 +730,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         const existing = s.topics.find((x) => x.id === id);
         const base = { title: input.title, content: input.content, privacy: input.privacy, category_ids: input.category_ids, tags: input.tags, is_draft: input.is_draft, updated_at: now() };
         if (existing) return { ...s, topics: s.topics.map((x) => (x.id === id ? { ...x, ...base, is_public: !input.is_draft, published_at: input.is_draft ? null : x.published_at ?? pub, attachments: [...x.attachments, ...(input.uploaded_files ?? [])] } : x)) };
-        const t: Topic = { ...base, id, user_id: me, view_count: 0, is_pinned: false, is_locked: false, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null };
+        const t: Topic = { ...defaultScopeForNew(), ...base, id, user_id: me, view_count: 0, is_pinned: false, is_locked: false, is_active: true, is_public: !input.is_draft, attachments: input.uploaded_files ?? [], published_at: pub, created_at: now(), deleted_at: null };
         return { ...s, topics: [t, ...s.topics] };
       });
-      if (!input.id && !input.is_draft && input.send_notification) inbox.send("*", "new_content", `پرسش جدید: «${input.title}»`, `/dashboard/forum/${id}`);
+      if (!input.id && !input.is_draft && input.send_notification) inbox.send(audienceFor(input.privacy), "new_content", `پرسش جدید: «${input.title}»`, `/dashboard/forum/${id}`);
       const ids = mentionedIds(input.content);
       if (ids.length) inbox.send(names(ids), "mention", `«${actingUser.name}» شما را در پرسش «${input.title}» منشن کرد.`, `/dashboard/forum/${id}`);
       return id;
@@ -596,6 +756,41 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       const ids = mentionedIds(content);
       if (ids.length) inbox.send(names(ids), "mention", `«${actingUser.name}» شما را در پرسش «${t.title}» منشن کرد.`, `/dashboard/forum/${topicId}`);
       return { ok: true, id: p.id };
+    },
+    voteTopic: (id, v) => {
+      const t = store.topics.find((x) => x.id === id);
+      if (!t) return { ok: false, error: "پرسش پیدا نشد." };
+      if (t.user_id === me) return { ok: false, error: "به پرسش خودتان نمی‌توانید رأی دهید." };
+      upd((s) => ({ ...s, topics: s.topics.map((x) => (x.id !== id ? x : { ...x, votes: toggleVote(x.votes, v, me) })) }));
+      return { ok: true };
+    },
+    votePost: (id, v) => {
+      const p = store.posts.find((x) => x.id === id);
+      if (!p) return { ok: false, error: "پاسخ پیدا نشد." };
+      if (p.user_id === me) return { ok: false, error: "به پاسخ خودتان نمی‌توانید رأی دهید." };
+      upd((s) => ({ ...s, posts: s.posts.map((x) => (x.id !== id ? x : { ...x, votes: toggleVote(x.votes, v, me) })) }));
+      return { ok: true };
+    },
+    acceptAnswer: (topicId, postId) => {
+      const t = store.topics.find((x) => x.id === topicId);
+      if (!t) return { ok: false, error: "پرسش پیدا نشد." };
+      if (t.user_id !== me && !hasPermission("forum.moderate")) return { ok: false, error: "فقط صاحب پرسش یا ناظر می‌تواند پاسخ را بپذیرد." };
+      const p = postId ? store.posts.find((x) => x.id === postId && x.topic_id === topicId && !x.deleted_at) : undefined;
+      if (postId && !p) return { ok: false, error: "پاسخ پیدا نشد." };
+      upd((s) => ({ ...s, topics: s.topics.map((x) => (x.id === topicId ? { ...x, accepted_post_id: postId, updated_at: now() } : x)) }));
+      if (p && p.user_id !== me) inbox.send([userName(p.user_id)], "reply", `پاسخ شما در پرسش «${t.title}» به‌عنوان پاسخ پذیرفته شد.`, `/dashboard/forum/${topicId}`);
+      return { ok: true };
+    },
+    markDuplicate: (topicId, targetId) => {
+      const t = store.topics.find((x) => x.id === topicId);
+      if (!t) return { ok: false, error: "پرسش پیدا نشد." };
+      if (t.user_id !== me && !hasPermission("forum.moderate")) return { ok: false, error: "فقط صاحب پرسش یا ناظر می‌تواند پرسش را تکراری علامت بزند." };
+      const target = targetId ? store.topics.find((x) => x.id === targetId) : undefined;
+      if (targetId && (!target || targetId === topicId)) return { ok: false, error: "پرسش مقصد معتبر نیست." };
+      if (target?.duplicate_of === topicId) return { ok: false, error: "پرسش مقصد خودش تکراریِ همین پرسش است." };
+      upd((s) => ({ ...s, topics: s.topics.map((x) => (x.id === topicId ? { ...x, duplicate_of: targetId, is_locked: !!targetId, updated_at: now() } : x)) }));
+      if (target && t.user_id !== me) inbox.send([userName(t.user_id)], "reply", `پرسش شما «${t.title}» تکراریِ «${target.title}» علامت خورد و قفل شد.`, `/dashboard/forum/${targetId}`);
+      return { ok: true };
     },
     updatePost: (id, content) => upd((s) => ({ ...s, posts: s.posts.map((p) => (p.id === id ? { ...p, content, updated_at: now() } : p)) })),
     deletePost: (id) =>
@@ -684,16 +879,26 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       upd((s0) => {
         const s = withTags(s0, input.tags ?? []);
         newSeq = s.seq + 1;
-        const m: Message = { id: nid("msg"), chat_id: chatId, user_id: me, content: input.content, type: input.type ?? "text", parent_message_id: input.parent_message_id ?? null, attachments: input.uploaded_files ?? [], tags: input.tags ?? [], forwarded_from: null, seq: newSeq, created_at: now(), updated_at: now(), edited: false };
+        const m: Message = { id: nid("msg"), chat_id: chatId, user_id: me, content: input.content, type: input.type ?? "text", parent_message_id: input.parent_message_id ?? null, attachments: input.uploaded_files ?? [], tags: input.tags ?? [], forwarded_from: null, seq: newSeq, created_at: now(), updated_at: now(), edited: false, ...(input.in_thread && input.parent_message_id ? { in_thread: true } : {}) };
         return { ...s, seq: newSeq, messages: [...s.messages, m], chats: s.chats.map((c) => (c.id === chatId ? { ...c, updated_at: now(), last_read: { ...c.last_read, [me]: newSeq } } : c)) };
       });
       const link = chat.chat_type === "channel" ? `/dashboard/channels/${chat.parent ?? chatId}` : chat.chat_type === "group" ? `/dashboard/groups/${chat.parent ?? chatId}` : `/dashboard/chat/${chatId}`;
       const listeners = chat.members.map((m) => m.user_id).filter((u) => u !== me && !chat.muted_by.includes(u));
       const ids = mentionedIds(input.content).filter((u) => chat.members.some((m) => m.user_id === u));
       const preview = input.content.length > 70 ? `${input.content.slice(0, 70)}…` : input.content;
+      const thread = !!(input.in_thread && input.parent_message_id);
       if (chat.chat_type === "direct_message") inbox.send(names(listeners), "direct_message", `پیام جدید از «${actingUser.name}»: ${preview}`, link);
       if (ids.length) inbox.send(names(ids), "mention", `«${actingUser.name}» شما را در «${chat.title}» منشن کرد: ${preview}`, link);
+      if (thread) {
+        // پاسخ در رشته فقط به شرکت‌کنندگان همان رشته (که گفتگو را بی‌صدا نکرده‌اند) اطلاع داده می‌شود
+        const root = store.messages.find((m) => m.id === input.parent_message_id);
+        const people = new Set([root?.user_id ?? "", ...store.messages.filter((m) => m.in_thread && m.parent_message_id === input.parent_message_id).map((m) => m.user_id)]);
+        const to = [...people].filter((u) => u && u !== me && !ids.includes(u) && (u === root?.user_id || !chat.muted_by.includes(u)));
+        if (to.length) inbox.send(names(to), "reply", `«${actingUser.name}» در رشته‌ی گفتگو در «${chat.title}» پاسخ داد: ${preview}`, link);
+        return { ok: true };
+      }
       if (chat.chat_type === "channel") inbox.send(names(listeners.filter((u) => !ids.includes(u))), "channel_message", `پیام جدید در کانال «${chat.title}»: ${preview}`, link);
+      if (chat.chat_type === "group") inbox.send(names(listeners.filter((u) => !ids.includes(u))), "group_message", `${actingUser.name} در گروه «${chat.title}»: ${preview}`, link);
       if (input.parent_message_id) {
         const parent = store.messages.find((m) => m.id === input.parent_message_id);
         if (parent && parent.user_id !== me && !ids.includes(parent.user_id)) inbox.send([userName(parent.user_id)], "reply", `«${actingUser.name}» به پیام شما در «${chat.title}» پاسخ داد.`, link);
@@ -701,7 +906,32 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     },
     editMessage: (id, content) => upd((s) => ({ ...s, messages: s.messages.map((m) => (m.id === id ? { ...m, content, edited: true, updated_at: now() } : m)) })),
-    deleteMessage: (id) => upd((s) => ({ ...s, messages: s.messages.filter((m) => m.id !== id) })),
+    // حذف پیام ریشه، پاسخ‌های رشته‌اش را هم حذف می‌کند و از سنجاق‌ها برداشته می‌شود
+    deleteMessage: (id) =>
+      upd((s) => ({
+        ...s,
+        messages: s.messages.filter((m) => m.id !== id && !(m.in_thread && m.parent_message_id === id)),
+        chats: s.chats.map((c) => (c.pinned_message_ids?.includes(id) ? { ...c, pinned_message_ids: c.pinned_message_ids.filter((x) => x !== id) } : c)),
+      })),
+    toggleMessageReaction: (id, code) =>
+      upd((s) => ({
+        ...s,
+        messages: s.messages.map((m) => {
+          if (m.id !== id) return m;
+          const cur = m.reactions?.[code] ?? [];
+          const next = { ...(m.reactions ?? {}), [code]: cur.includes(me) ? cur.filter((u) => u !== me) : [...cur, me] };
+          if (!next[code].length) delete next[code];
+          return { ...m, reactions: next };
+        }),
+      })),
+    togglePinMessage: (chatId, messageId) => {
+      const c = store.chats.find((x) => x.id === chatId);
+      if (!c) return { ok: false, error: "گفتگو پیدا نشد." };
+      const pins = c.pinned_message_ids ?? [];
+      if (!pins.includes(messageId) && pins.length >= MAX_PINNED) return { ok: false, error: `حداکثر ${fa(MAX_PINNED)} پیام را می‌توان سنجاق کرد؛ ابتدا یکی را بردارید.` };
+      upd((s) => ({ ...s, chats: s.chats.map((x) => (x.id === chatId ? { ...x, pinned_message_ids: pins.includes(messageId) ? pins.filter((p) => p !== messageId) : [...pins, messageId] } : x)) }));
+      return { ok: true };
+    },
     forwardMessage: (id, chatId) =>
       upd((s) => {
         const src = s.messages.find((m) => m.id === id);

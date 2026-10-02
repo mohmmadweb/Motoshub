@@ -4,7 +4,8 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { chainOf, columnLabel, createsCycle, criticalPath, dependencyConflicts, isDone, isOverdue, isWaiting, kindOf, layerTasks, openPredecessors, predecessorsOf, successorsOf } from "../../pm/selectors";
+import { chainOf, columnLabel, createsCycle, criticalPath, dependencyConflicts, depIsDefault, depShort, depType, depTypeLabel, isDone, isOverdue, isWaiting, kindOf, layerTasks, openPredecessors, predecessorsOf, successorsOf } from "../../pm/selectors";
+import type { DepType } from "../../pm/types";
 import { fa } from "../../pm/jalali";
 import type { PMTask } from "../../pm/types";
 import { Field, TaskSelect, kindColor, kindTone, useProjectPage } from "./shared";
@@ -210,6 +211,11 @@ export default function GraphTab() {
                     return (
                       <g key={d.id} opacity={focused ? 1 : 0.12}>
                         <path d={path} fill="none" stroke={color} strokeWidth={selEdge === d.id ? 3.5 : crit ? 2.6 : 1.8} strokeDasharray={kind === "wait" ? "6 5" : undefined} markerEnd={`url(#arr-${kind})`} />
+                        {!depIsDefault(d) && (
+                          <text x={(sx + ex) / 2} y={(sy + ey) / 2} dy={-4} textAnchor="middle" fontSize="10.5" fontFamily="monospace" fontWeight={700} fill={color} stroke="var(--color-ink-50)" strokeWidth={4} paintOrder="stroke" direction="ltr" style={{ pointerEvents: "none" }}>
+                            {depShort(d)}
+                          </text>
+                        )}
                         <path
                           d={path}
                           fill="none"
@@ -285,9 +291,32 @@ export default function GraphTab() {
                   {p.tasks.find((t) => t.id === edge.successor)?.title}
                 </p>
                 <p>
-                  <span className="text-ink-400">نوع: </span>پایان به شروع (FS) · ثبت {edge.createdAt}
+                  <span className="text-ink-400">نوع: </span>
+                  {depTypeLabel[depType(edge)]} ({depShort(edge)}) · ثبت {edge.createdAt}
                 </p>
-                {conflictSet.has(edge.id) && <p className="text-amber-700 mt-1">تعارض: تسک وابسته قبل از پایان پیش‌نیاز شروع می‌شود.</p>}
+                {canEdit && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <select value={depType(edge)} onChange={(e) => pm.updateDependency(pid, edge.id, { type: e.target.value as DepType })} className="input-field !py-1 !text-xs" aria-label="نوع وابستگی">
+                      {(["FS", "SS", "FF", "SF"] as DepType[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k} — {depTypeLabel[k]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      key={`${edge.id}-${edge.lag ?? 0}`}
+                      defaultValue={edge.lag ? fa(edge.lag) : ""}
+                      onBlur={(e) => {
+                        const v = Number(e.target.value.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace("−", "-")) || 0;
+                        if (v !== (edge.lag ?? 0)) pm.updateDependency(pid, edge.id, { lag: v });
+                      }}
+                      placeholder="تأخیر"
+                      className="input-field !py-1 !text-xs !w-16"
+                      aria-label="تأخیر (روز)"
+                    />
+                  </div>
+                )}
+                {conflictSet.has(edge.id) && <p className="text-amber-700 mt-1">تعارض: برنامه‌ی تسک وابسته قید این وابستگی را نقض می‌کند.</p>}
               </div>
               {canEdit && (
                 <Button
@@ -447,6 +476,7 @@ export default function GraphTab() {
                 <th className="p-2 font-medium" />
                 <th className="p-2 font-medium">تسک وابسته</th>
                 <th className="p-2 font-medium">وضعیت</th>
+                <th className="p-2 font-medium">نوع</th>
                 <th className="p-2 font-medium">هشدار</th>
                 <th className="p-2" />
               </tr>
@@ -466,6 +496,9 @@ export default function GraphTab() {
                     <td className="p-2 text-ink-800">{b.title}</td>
                     <td className="p-2">
                       <Badge tone={kindTone[kindOf(p, b.status)]}>{columnLabel(p, b.status)}</Badge>
+                    </td>
+                    <td className="p-2 font-mono text-[11px] text-ink-600" title={depTypeLabel[depType(d)]} dir="ltr">
+                      {depShort(d)}
                     </td>
                     <td className="p-2">{conflictSet.has(d.id) ? <Badge tone="warning">تعارض زمانی</Badge> : cp.edges.has(`${d.predecessor}>${d.successor}`) ? <Badge tone="danger">بحرانی</Badge> : "—"}</td>
                     <td className="p-2">

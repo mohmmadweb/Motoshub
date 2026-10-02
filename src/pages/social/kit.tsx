@@ -45,14 +45,22 @@ export function ApiChip({ items }: { items: { label: string; ep: Ep }[] }) {
       {open && (
         <>
           <span className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <span className="absolute z-40 top-full mt-1 left-0 w-[420px] max-w-[88vw] bg-white border border-ink-200 rounded-xl shadow-lg p-3 block">
+          <span className="absolute z-40 top-full mt-1 left-0 w-[420px] max-w-[88vw] max-h-[70vh] overflow-y-auto bg-white border border-ink-200 rounded-xl shadow-lg p-3 block">
             <span className="block text-[11px] text-ink-400 mb-2" dir="ltr">
               {API_BASE}
             </span>
+            {items.some((i) => i.ep.proposed) && <span className="block text-[10.5px] text-amber-700 mb-2">موارد «پیشنهادی» در API فعلی نیستند و برای تیم بک‌اند علامت خورده‌اند.</span>}
             {items.map((i) => (
               <span key={i.label} className="flex items-center justify-between gap-3 py-1 border-b border-ink-100 last:border-0">
-                <span className="text-[11.5px] text-ink-700">{i.label}</span>
-                <code dir="ltr" className="text-[10.5px] text-brand-700 bg-brand-50 rounded px-1.5 py-0.5 whitespace-nowrap">
+                <span className="text-[11.5px] text-ink-700 flex items-center gap-1 min-w-0">
+                  <span className="truncate">{i.label}</span>
+                  {i.ep.proposed && (
+                    <span className="shrink-0 text-[9.5px] rounded px-1 py-px bg-amber-50 text-amber-700 border border-amber-200" title="در API فعلی نیست؛ پیشنهاد به تیم بک‌اند">
+                      پیشنهادی
+                    </span>
+                  )}
+                </span>
+                <code dir="ltr" className={`text-[10.5px] rounded px-1.5 py-0.5 whitespace-nowrap ${i.ep.proposed ? "text-amber-700 bg-amber-50" : "text-brand-700 bg-brand-50"}`}>
                   {fmtEndpoint(i.ep)}
                 </code>
               </span>

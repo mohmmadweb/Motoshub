@@ -4,7 +4,10 @@
 // ---------------------------------------------------------------------------
 import type { Project, Task } from "../data/mock";
 import { dayNum, diffDays, fmtShort, fa } from "./jalali";
-import type { ColumnKind, PMTask, ProjectState } from "./types";
+import type { ColumnKind, Dependency, DepType, MeetingSettings, PMTask, ProjectState, TaskType } from "./types";
+
+export const typeLabel: Record<TaskType, string> = { task: "تسک", bug: "باگ", story: "داستان", epic: "اپیک", subtask: "زیرتسک" };
+export const defaultMeetingSettings: MeetingSettings = { defaultDuration: 60, reminderMinutes: 30, recordingAllowed: true, defaultMode: "ویدیویی" };
 
 export const kindOf = (p: ProjectState, status: string): ColumnKind => p.columns.find((c) => c.id === status)?.kind ?? "backlog";
 export const columnLabel = (p: ProjectState, status: string) => p.columns.find((c) => c.id === status)?.label ?? status;
@@ -15,7 +18,63 @@ export const predecessorsOf = (p: ProjectState, taskId: string) =>
   p.deps.filter((d) => d.successor === taskId).map((d) => p.tasks.find((t) => t.id === d.predecessor)).filter(Boolean) as PMTask[];
 export const successorsOf = (p: ProjectState, taskId: string) =>
   p.deps.filter((d) => d.predecessor === taskId).map((d) => p.tasks.find((t) => t.id === d.successor)).filter(Boolean) as PMTask[];
-export const openPredecessors = (p: ProjectState, taskId: string) => predecessorsOf(p, taskId).filter((t) => !isDone(p, t));
+/** شروع شده؟ (از ستون backlog/todo عبور کرده) */
+export const isStarted = (p: ProjectState, t: PMTask) => !["backlog", "todo"].includes(kindOf(p, t.status));
+export const depType = (d: Pick<Dependency, "type">): DepType => d.type ?? "FS";
+/**
+ * پیش‌نیازهایی که شروعِ این تسک را نگه داشته‌اند:
+ * FS ← پیش‌نیاز تمام نشده · SS ← پیش‌نیاز شروع نشده · FF/SF شروع را نگه نمی‌دارند (فقط پایان را)
+ */
+export const openPredecessors = (p: ProjectState, taskId: string) =>
+  p.deps
+    .filter((d) => d.successor === taskId)
+    .map((d) => ({ d, t: p.tasks.find((t) => t.id === d.predecessor) }))
+    .filter((x): x is { d: Dependency; t: PMTask } => !!x.t && !x.t.archived)
+    .filter(({ d, t }) => (depType(d) === "FS" ? !isDone(p, t) : depType(d) === "SS" ? !isStarted(p, t) : false))
+    .map((x) => x.t);
+
+export const depTypeLabel: Record<DepType, string> = { FS: "پایان به شروع", SS: "شروع به شروع", FF: "پایان به پایان", SF: "شروع به پایان" };
+/** برچسب کوتاه روی یال: «FS»، «SS+۲»، «FF−۱» */
+export const depShort = (d: Pick<Dependency, "type" | "lag">) => `${depType(d)}${d.lag ? `${d.lag > 0 ? "+" : "−"}${fa(Math.abs(d.lag))}` : ""}`;
+/** فقط وقتی با پیش‌فرض (FS بدون تأخیر) فرق دارد برچسب لازم است */
+export const depIsDefault = (d: Pick<Dependency, "type" | "lag">) => depType(d) === "FS" && !d.lag;
+
+/** نقض زمان‌بندی یک وابستگی (روز) — ۰ یعنی بدون تعارض */
+export function depViolation(p: ProjectState, d: Dependency): number {
+  const a = p.tasks.find((t) => t.id === d.predecessor);
+  const b = p.tasks.find((t) => t.id === d.successor);
+  if (!a || !b) return 0;
+  const lag = d.lag ?? 0;
+  const as = dayNum(a.start), ae = dayNum(a.due), bs = dayNum(b.start), be = dayNum(b.due);
+  if (as === null || ae === null || bs === null || be === null) return 0;
+  switch (depType(d)) {
+    case "FS":
+      return Math.max(0, ae + lag - bs);
+    case "SS":
+      return Math.max(0, as + lag - bs);
+    case "FF":
+      return Math.max(0, ae + lag - be);
+    case "SF":
+      return Math.max(0, as + lag - be);
+  }
+}
+
+/** کلید نمایشی تسک (اگر کلید ندارد شناسه) */
+export const taskKey = (t: PMTask) => t.key ?? t.id;
+/** پیدا کردن تسک با شناسه یا کلید (برای لینک عمیق ?focus=QGJ-12 و جستجو) */
+export const findTask = (p: ProjectState, idOrKey?: string | null) => (idOrKey ? p.tasks.find((t) => t.id === idOrKey || (t.key && t.key.toUpperCase() === idOrKey.toUpperCase())) : undefined);
+
+/** کارهای زیرمجموعه‌ی یک اپیک و پیشرفت آن */
+export function epicChildren(p: ProjectState, epicId: string) {
+  return p.tasks.filter((t) => t.epicId === epicId && !t.archived);
+}
+export function epicProgress(p: ProjectState, epicId: string) {
+  const ch = epicChildren(p, epicId);
+  if (!ch.length) return { total: 0, done: 0, pct: 0 };
+  const done = ch.filter((t) => isDone(p, t)).length;
+  const pct = Math.round(ch.reduce((s, t) => s + (isDone(p, t) ? 100 : t.progress), 0) / ch.length);
+  return { total: ch.length, done, pct };
+}
 
 /** تسک «منتظر» است اگر پیش‌نیاز انجام‌نشده داشته باشد */
 export const isWaiting = (p: ProjectState, t: PMTask) => !isDone(p, t) && openPredecessors(p, t.id).length > 0;
@@ -27,7 +86,8 @@ export function isOverdue(p: ProjectState, t: PMTask, ref: string) {
 }
 
 export function projectProgress(p: ProjectState): number {
-  const ts = activeTasks(p);
+  // اپیک‌ها ظرف‌اند و پیشرفتشان از فرزندان می‌آید؛ در میانگین حساب نمی‌شوند
+  const ts = activeTasks(p).filter((t) => t.type !== "epic");
   if (!ts.length) return 0;
   return Math.round(ts.reduce((s, t) => s + (isDone(p, t) ? 100 : t.progress), 0) / ts.length);
 }
@@ -114,23 +174,31 @@ export function layerTasks(p: ProjectState, tasks: PMTask[]) {
   return { layers: layers.filter(Boolean), level, deps };
 }
 
-/** مسیر بحرانی: طولانی‌ترین زنجیره بر حسب مدت تسک‌ها (روز) */
+/** مسیر بحرانی: طولانی‌ترین زنجیره بر حسب مدت تسک‌ها (روز) — با نوع وابستگی و تأخیر (lag) */
 export function criticalPath(p: ProjectState, tasks: PMTask[]) {
   const { layers, deps } = layerTasks(p, tasks);
+  // dist = زودترین پایان (EF) نسبی؛ es = زودترین شروع
   const dist = new Map<string, number>();
+  const es = new Map<string, number>();
   const prev = new Map<string, string | undefined>();
   layers.flat().forEach((t) => {
+    const dur = taskDuration(t);
     const preds = deps.filter((d) => d.successor === t.id);
     let best = 0;
     let bestPred: string | undefined;
     preds.forEach((d) => {
-      const v = dist.get(d.predecessor) ?? 0;
-      if (v > best) {
-        best = v;
+      const lag = d.lag ?? 0;
+      const pe = dist.get(d.predecessor) ?? 0;
+      const ps = es.get(d.predecessor) ?? 0;
+      const ty = depType(d);
+      const start = ty === "FS" ? pe + lag : ty === "SS" ? ps + lag : ty === "FF" ? pe + lag - dur : ps + lag - dur;
+      if (start > best) {
+        best = start;
         bestPred = d.predecessor;
       }
     });
-    dist.set(t.id, best + taskDuration(t));
+    es.set(t.id, best);
+    dist.set(t.id, best + dur);
     prev.set(t.id, bestPred);
   });
   let end: string | undefined;
@@ -170,17 +238,16 @@ export function chainOf(p: ProjectState, taskId: string, dir: "up" | "down") {
   return out;
 }
 
-/** تعارض زمان‌بندی: تسک وابسته قبل از پایان پیش‌نیازش شروع می‌شود */
+/** تعارض زمان‌بندی: برنامه‌ی تسک وابسته قید وابستگی (FS/SS/FF/SF + تأخیر) را نقض می‌کند */
 export function dependencyConflicts(p: ProjectState) {
   return p.deps
     .map((d) => {
       const a = p.tasks.find((t) => t.id === d.predecessor);
       const b = p.tasks.find((t) => t.id === d.successor);
-      if (!a || !b || isDone(p, a)) return null;
-      const da = dayNum(a.due);
-      const db = dayNum(b.start);
-      if (da === null || db === null || db >= da) return null;
-      return { dep: d, pred: a, succ: b, overlap: da - db };
+      if (!a || !b || isDone(p, a) || a.archived || b.archived) return null;
+      const overlap = depViolation(p, d);
+      if (!overlap) return null;
+      return { dep: d, pred: a, succ: b, overlap };
     })
     .filter(Boolean) as { dep: ProjectState["deps"][number]; pred: PMTask; succ: PMTask; overlap: number }[];
 }

@@ -58,7 +58,7 @@ function settingEndpoint(key: string): Ep | null {
   }
 }
 
-export default function SocialAdmin() {
+export default function SocialAdmin({ embedded = false }: { embedded?: boolean } = {}) {
   const s = useSocial();
   const { hasPermission } = useTenancy();
   const { notify } = useToast();
@@ -86,7 +86,7 @@ export default function SocialAdmin() {
       case "news":
       case "magazine": {
         const x = s.content.find((i) => i.id === id);
-        return { title: x?.title ?? "مطلب حذف‌شده", to: x ? `/dashboard/${x.kind === "news" ? "news" : "magazines"}/${x.id}` : null };
+        return { title: x?.title ?? "مطلب حذف‌شده", to: x ? `/dashboard/${x.kind === "news" ? "news" : x.kind === "blogs" ? "blog" : "magazines"}/${x.id}` : null };
       }
       case "media": {
         const x = s.media.find((i) => i.id === id);
@@ -135,13 +135,13 @@ export default function SocialAdmin() {
 
   return (
     <div>
-      <PageHeader
+      {!embedded && <PageHeader
         title="داشبورد مدیریتی شبکه"
         description="آمار ماژول‌ها، صف تأیید نظرها، واکنش‌های مجاز و تنظیمات شبکه‌ی اجتماعی."
         icon={<LayoutDashboard size={20} />}
         breadcrumb={[{ label: "بخش‌های ویژه مدیران" }, { label: "داشبورد مدیریتی شبکه" }]}
         actions={<ApiChip items={apiItems} />}
-      />
+      />}
       <Tabs tabs={tabs} active={active} onChange={setTab} />
 
       {active === "dash" && <DashboardTab />}

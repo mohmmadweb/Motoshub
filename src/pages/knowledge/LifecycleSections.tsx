@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Inbox, CalendarClock, Archive, ArchiveRestore, CheckCircle2, Undo2, Megaphone, RefreshCw, AlertTriangle } from "lucide-react";
+import { Inbox, CalendarClock, Archive, ArchiveRestore, CheckCircle2, Undo2, Megaphone, RefreshCw, AlertTriangle, UserCheck } from "lucide-react";
+import Modal from "../../components/ui/Modal";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -9,24 +10,26 @@ import { useKnowledge, statusTone } from "../../context/KnowledgeContext";
 import { dayNum, fa, formatJalali, monthNames, parseJalali } from "../../pm/jalali";
 import { SectionHead } from "./shared";
 import { useKPage } from "./ctx";
+import { OverdueBadge } from "./WorkflowEditor";
 
 /** بند ۹: کارتابل گردش کار */
 export function WorkflowSection() {
   const km = useKnowledge();
   const page = useKPage();
   const { notify } = useToast();
-  const [view, setView] = useState<"mine" | "sent" | "all">("mine");
+  const [view, setView] = useState<"mine" | "sent" | "overdue" | "all">("mine");
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const active = km.docs.filter((d) => d.status === "در بررسی" || d.status === "تأییدشده" || d.status === "ارجاع برای اصلاح" || d.status === "پیش‌نویس");
   const mine = active.filter((d) => km.isApprover(d) && (d.status === "در بررسی" || d.status === "تأییدشده"));
   const sent = active.filter((d) => d.owner === km.me || d.author === km.me);
-  const list = view === "mine" ? mine : view === "sent" ? sent : active;
+  const overdue = active.filter((d) => (km.flowInfo(d)?.overdueDays ?? 0) > 0);
+  const list = view === "mine" ? mine : view === "sent" ? sent : view === "overdue" ? overdue : active;
   const steps = ["ایجاد سند", "بررسی اولیه", "تأیید مسئول", "انتشار", "بازبینی دوره‌ای", "اصلاح / تمدید / آرشیو"];
 
   return (
     <div>
-      <SectionHead icon={<Inbox size={17} className="text-brand-600" />} title="کارتابل گردش کار اسناد" hint="هر سند: ایجاد ← بررسی ← تأیید ← انتشار ← بازبینی دوره‌ای. در هر مرحله به افراد مرتبط اعلان می‌رود و امکان رد و ارجاع برای اصلاح وجود دارد." />
+      <SectionHead icon={<Inbox size={17} className="text-brand-600" />} title="کارتابل گردش کار اسناد" hint="هر نوع سند قالب گردش کار خودش را دارد (تنظیمات ← گردش کار): مراحل مرتب، تأییدکننده و مهلت هر مرحله و جانشین. در هر مرحله به افراد مرتبط اعلان می‌رود، مراحل معوق یادآوری و به مالک تشدید می‌شوند." />
       <div className="card p-3 mb-4 flex items-center gap-1 overflow-x-auto text-xs">
         {steps.map((s, i) => (
           <span key={s} className="flex items-center gap-1 whitespace-nowrap">
@@ -35,15 +38,16 @@ export function WorkflowSection() {
           </span>
         ))}
       </div>
-      <div className="flex rounded-lg border border-ink-200 overflow-hidden w-fit mb-3">
+      <div className="flex rounded-lg border border-ink-200 overflow-x-auto w-fit max-w-full mb-3">
         {(
           [
             ["mine", `منتظر اقدام من (${fa(mine.length)})`],
             ["sent", `ارسالی‌های من (${fa(sent.length)})`],
+            ["overdue", `معوق (${fa(overdue.length)})`],
             ["all", `همه (${fa(active.length)})`],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} onClick={() => setView(id)} className={`px-3 py-1.5 text-xs ${view === id ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`}>
+          <button key={id} onClick={() => setView(id)} className={`px-3 py-1.5 text-xs whitespace-nowrap ${view === id ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`}>
             {label}
           </button>
         ))}
@@ -53,6 +57,7 @@ export function WorkflowSection() {
           {list.map((d) => {
             const last = d.workflow[d.workflow.length - 1];
             const canAct = km.isApprover(d);
+            const f = km.flowInfo(d);
             return (
               <div key={d.id} className="p-4">
                 <div className="flex items-start gap-3 flex-wrap">
@@ -61,16 +66,24 @@ export function WorkflowSection() {
                     <p className="text-[11px] text-ink-400 mt-0.5">
                       {d.code} · {d.owner} · تأییدکنندگان: {d.approvers.join("، ")}
                     </p>
+                    {f && (
+                      <p className="text-[11px] text-ink-600 mt-1 flex items-center gap-1 flex-wrap">
+                        <UserCheck size={12} className="text-brand-600" />
+                        مرحله‌ی {fa(f.stepIdx + 1)} از {fa(f.template.steps.length)}: <b>{f.step.name}</b> — {f.actors.join("، ") || "—"}
+                        {f.deputies.length > 0 && <span className="text-ink-400">(جانشین: {f.deputies.map((x) => x.name).join("، ")})</span>}
+                      </p>
+                    )}
                     {last && (
                       <p className="text-[11px] text-ink-500 mt-1">
                         آخرین اقدام: {last.action} توسط {last.by} ({last.at}){last.note ? ` — «${last.note}»` : ""}
                       </p>
                     )}
                   </button>
+                  {f && <OverdueBadge f={f} />}
                   <Badge tone={statusTone[d.status]}>{d.status}</Badge>
                   {canAct && d.status === "در بررسی" && (
                     <span className="flex gap-1.5">
-                      <Button size="sm" variant="primary" icon={<CheckCircle2 size={13} />} onClick={() => { km.workflow(d.id, "approve"); notify("سند تأیید شد."); }}>
+                      <Button size="sm" variant="primary" icon={<CheckCircle2 size={13} />} onClick={() => { km.workflow(d.id, "approve"); notify(f ? `مرحله‌ی «${f.step.name}» تأیید شد.` : "سند تأیید شد."); }}>
                         تأیید
                       </Button>
                       <Button size="sm" variant="secondary" icon={<Undo2 size={13} />} onClick={() => { setNoteFor(d.id); setNote(""); }}>
@@ -105,7 +118,7 @@ export function WorkflowSection() {
           })}
         </div>
       ) : (
-        <EmptyState icon={<Inbox size={20} />} title="کارتابل خالی است" description={view === "mine" ? "سندی منتظر بررسی یا تأیید شما نیست." : "موردی نیست."} />
+        <EmptyState icon={<Inbox size={20} />} title="کارتابل خالی است" description={view === "mine" ? "سندی منتظر بررسی یا تأیید شما نیست." : view === "overdue" ? "مرحله‌ی معوقی نیست." : "موردی نیست."} />
       )}
     </div>
   );
@@ -216,13 +229,15 @@ export function ArchiveSection() {
   const { hasPermission } = useTenancy();
   const { notify } = useToast();
   const [kind, setKind] = useState("");
+  const [restoreFor, setRestoreFor] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const archived = km.docs.filter((d) => d.status === "آرشیو" && km.canSee(d));
   const reasonKind = (r = "") => (r.includes("جایگزین") ? "جایگزین‌شده" : r.includes("منقضی") || r.includes("اعتبار") ? "منقضی" : r.includes("تاریخی") ? "تاریخی" : "سایر");
   const list = archived.filter((d) => !kind || reasonKind(d.archiveReason) === kind);
   const olderVersions = km.docs.filter((d) => d.versions.length > 1 && km.canSee(d));
   return (
     <div className="space-y-4">
-      <SectionHead icon={<Archive size={17} className="text-brand-600" />} title="آرشیو" hint="اسناد منقضی، جایگزین‌شده، تاریخی و نسخه‌های قدیمی. آرشیو یعنی حذف نشدن؛ بازیابی کنترل‌شده و با ثبت دلیل انجام می‌شود." />
+      <SectionHead icon={<Archive size={17} className="text-brand-600" />} title="آرشیو" hint="اسناد منقضی، جایگزین‌شده، تاریخی و نسخه‌های قدیمی. آرشیو یعنی حذف نشدن؛ بازیابی فقط با مجوز «آرشیو و بازیابی اسناد» و با ثبت دلیل انجام می‌شود." />
       <div className="flex gap-1.5 flex-wrap">
         {["", "منقضی", "جایگزین‌شده", "تاریخی", "سایر"].map((k) => (
           <button key={k} onClick={() => setKind(k)} className={`text-xs px-3 py-1.5 rounded-md border ${kind === k ? "bg-navy-900 text-white border-navy-900" : "bg-white border-ink-200 text-ink-600"}`}>
@@ -241,10 +256,12 @@ export function ArchiveSection() {
                 </p>
               </button>
               <Badge tone="navy">{reasonKind(d.archiveReason)}</Badge>
-              {(hasPermission("knowledge.archive") || d.owner === km.me) && (
-                <Button size="sm" variant="secondary" icon={<ArchiveRestore size={13} />} onClick={() => { km.workflow(d.id, "restore", "بازیابی از آرشیو"); notify("سند بازیابی و دوباره منتشر شد."); }}>
+              {hasPermission("knowledge.archive") ? (
+                <Button size="sm" variant="secondary" icon={<ArchiveRestore size={13} />} onClick={() => { setRestoreFor(d.id); setReason(""); }}>
                   بازیابی
                 </Button>
+              ) : (
+                <span className="text-[10.5px] text-ink-400" title="نیازمند مجوز «آرشیو و بازیابی اسناد»">بازیابی با مجوز آرشیو</span>
               )}
             </div>
           ))}
@@ -252,6 +269,30 @@ export function ArchiveSection() {
       ) : (
         <EmptyState icon={<Archive size={20} />} title="سند آرشیوشده‌ای نیست" />
       )}
+      <Modal open={!!restoreFor} onClose={() => setRestoreFor(null)} title="بازیابی کنترل‌شده از آرشیو" description={km.docs.find((x) => x.id === restoreFor)?.title}>
+        <div className="space-y-3">
+          <p className="text-xs text-ink-500 leading-6">سند بازیابی‌شده دوباره «منتشرشده» می‌شود. دلیل بازیابی در تاریخچه‌ی سند و لاگ ممیزی ثبت و به مالک و دنبال‌کنندگان اعلان می‌شود.</p>
+          <textarea className="input-field min-h-[80px]" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="دلیل بازیابی (الزامی) — مثلاً: نیاز به استناد در قرارداد جدید" autoFocus />
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              icon={<ArchiveRestore size={14} />}
+              onClick={() => {
+                if (!reason.trim()) return notify("دلیل بازیابی الزامی است.", "warning");
+                if (restoreFor && km.restoreDoc(restoreFor, reason)) {
+                  notify("سند با ثبت دلیل بازیابی و دوباره منتشر شد.");
+                  setRestoreFor(null);
+                } else notify("بازیابی نیازمند مجوز «آرشیو و بازیابی اسناد» است.", "warning");
+              }}
+            >
+              بازیابی
+            </Button>
+            <Button variant="ghost" onClick={() => setRestoreFor(null)}>
+              انصراف
+            </Button>
+          </div>
+        </div>
+      </Modal>
       <div className="card p-4">
         <p className="text-xs font-bold text-ink-900 mb-2">نسخه‌های قدیمی اسناد جاری</p>
         {olderVersions.map((d) => (

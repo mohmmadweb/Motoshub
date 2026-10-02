@@ -22,7 +22,13 @@ export type KSection =
   | "map"
   | "reports"
   | "assistant"
-  | "settings";
+  | "settings"
+  | "help"
+  | "notifications"
+  | "feedback"
+  | "relations"
+  | "versions"
+  | "audit";
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (

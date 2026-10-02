@@ -41,6 +41,7 @@ import type {
   Setting,
   SocialEvent,
   Tag,
+  TrashedFile,
 } from "./types";
 
 export const SOCIAL_TODAY = DEMO_REF_DATE;
@@ -157,7 +158,53 @@ export function seedContent(all: Category[]): ContentItem[] {
   }));
   // یک پیش‌نویس خبر برای نمایش گردش «پیش‌نویس ← انتشار»
   news.push({ ...news[0], id: "news-draft1", title: "پیش‌نویس: برنامه‌ی بازدید هیئت‌مدیره از چالدران", excerpt: "زمان‌بندی و فهرست بازدیدها در حال نهایی‌شدن است.", is_draft: true, is_public: false, published_at: null, created_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), updated_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), views: 0, attachments: [] });
-  return [...magazines, ...news, ...blogs];
+  // اطلاعیه‌های رسمی با تأیید خواندن («پیشنهادی» — announcement)
+  const ann = (id: string, by: string, title: string, excerpt: string, body: string, daysAgo: number, pinDays: number, acks: string[]): ContentItem => {
+    const d = addDays(SOCIAL_TODAY, -daysAgo);
+    return {
+      ...base,
+      id,
+      kind: "news",
+      user_id: by,
+      title,
+      excerpt,
+      content: body,
+      poster: "#be123c",
+      privacy: "EVERYONE",
+      scope: "سراسری",
+      category_ids: [catId(all, "news", "اطلاعیه") ?? "cn5"],
+      tags: ["اطلاعیه"],
+      published_at: at(d, "۰۸:۰۰:۰۰"),
+      created_at: at(d, "۰۷:۴۵:۰۰"),
+      updated_at: at(d, "۰۸:۰۰:۰۰"),
+      views: 180 + acks.length * 23,
+      add_comment: false,
+      announcement: { requires_ack: true, pin_until: addDays(SOCIAL_TODAY, pinDays), acks: Object.fromEntries(acks.map((u, k) => [u, at(d, `۰${(k % 8) + 1}:۳۰:۰۰`)])), last_reminder_at: null },
+    };
+  };
+  const announcements = [
+    ann(
+      "news-ann1",
+      "u1",
+      "اطلاعیه‌ی رسمی: دستورالعمل جدید امنیت اطلاعات و رمز عبور",
+      "از ۱۵ خرداد ورود دومرحله‌ای برای همه‌ی کاربران سامانه‌ها الزامی است؛ لطفاً دستورالعمل را بخوانید و تأیید کنید.",
+      "همکاران گرامی،\n\nبر اساس مصوبه‌ی کمیته‌ی امنیت اطلاعات، از ۱۵ خرداد ۱۴۰۵:\n۱. ورود دومرحله‌ای برای همه‌ی حساب‌ها الزامی است.\n۲. رمز عبور باید دست‌کم ۱۲ نویسه و هر ۹۰ روز یک‌بار تغییر کند.\n۳. ارسال اسناد طبقه‌بندی‌شده از طریق پیام‌رسان‌های عمومی ممنوع است.\n\nلطفاً پس از مطالعه، دکمه‌ی «خواندم و پذیرفتم» را بزنید.",
+      2,
+      12,
+      ["u2", "u4", "u5", "u7", "u9"]
+    ),
+    ann(
+      "news-ann2",
+      "u2",
+      "ابلاغیه: ساعات کاری ادارات و شرکت‌ها در تابستان",
+      "ساعات کاری از ۱ تیر تا ۳۱ مرداد از ۷ تا ۱۴ است؛ مدیران واحدها برنامه‌ی پاسخ‌گویی را تنظیم کنند.",
+      "به استناد مصوبه‌ی هیئت عامل، ساعات کاری همه‌ی ادارات ستادی، هلدینگ‌ها و شرکت‌های تابعه از ۱ تیر تا ۳۱ مرداد از ساعت ۷ تا ۱۴ خواهد بود.\n\nمدیران واحدها موظف‌اند برنامه‌ی پاسخ‌گویی به ذی‌نفعان را متناسب با این تغییر تنظیم و اعلام کنند.",
+      1,
+      6,
+      ["u3", "u4", "u6"]
+    ),
+  ];
+  return [...announcements, ...magazines, ...news, ...blogs];
 }
 
 // ------------------------------------------------------------------ رسانه
@@ -320,6 +367,10 @@ export function seedForum(all: Category[]): { topics: import("./types").Topic[];
       privacy: priv(t.visibility),
       category_ids: [catId(all, "topic", t.category) ?? "ct1"],
       tags: i % 3 === 0 ? ["نوآوری"] : i % 3 === 1 ? ["محرومیت‌زدایی"] : ["تحول‌دیجیتال"],
+      // «پیشنهادی» — رأی و پاسخ پذیرفته‌شده
+      votes: Object.fromEntries(["u2", "u4", "u5", "u6", "u7", "u9", "u12"].filter((u, k) => u !== author && k < (t.views % 5) + 1).map((u, k) => [u, (k === 3 ? -1 : 1) as 1 | -1])),
+      accepted_post_id: i === 0 ? `${id}-p2` : i === 5 ? `${id}-p1` : null,
+      duplicate_of: null as string | null,
       attachments: [],
       published_at: at(d),
       created_at: at(d),
@@ -327,6 +378,33 @@ export function seedForum(all: Category[]): { topics: import("./types").Topic[];
       deleted_at: null,
     };
   });
+  // رأی روی پاسخ‌ها
+  posts.forEach((p, k) => {
+    if (p.parent_id) return;
+    const voters = ["u1", "u3", "u4", "u7", "u8", "u10"].filter((u) => u !== p.user_id).slice(0, (k * 7) % 5);
+    p.votes = Object.fromEntries(voters.map((u, j) => [u, (j === 2 && k % 3 === 0 ? -1 : 1) as 1 | -1]));
+  });
+  // یک پرسش تکراری (قفل و پیوند به پرسش اصلی)
+  const orig = topics[5];
+  if (orig) {
+    const d = addDays(SOCIAL_TODAY, -1);
+    topics.push({
+      ...orig,
+      id: "tp-dup1",
+      user_id: "u5",
+      title: "مصوبات هیات عامل را چطور مستند کنیم که بعداً سریع پیدا شوند؟",
+      content: "برای پیگیری مصوبات جلسات هیات عامل، روش مشخصی برای مستندسازی و جستجو داریم؟ الان هر واحد به شکل خودش ثبت می‌کند.",
+      view_count: 12,
+      is_pinned: false,
+      is_locked: true,
+      votes: {},
+      accepted_post_id: null,
+      duplicate_of: orig.id,
+      published_at: at(d),
+      created_at: at(d),
+      updated_at: at(d),
+    });
+  }
   return { topics, posts };
 }
 
@@ -426,6 +504,22 @@ export function seedMessaging(all: Category[]): { chats: Chat[]; messages: Messa
   chats.push(baseChat({ id: "bot-system", chat_type: "bot", title: "بات اعلان‌های سامانه", description: "اعلان‌های خودکار سامانه", owner_id: "u1", is_private: true, is_public: false, members: pool.map((u) => ({ user_id: u, role: u === "u1" ? "admin" : "member", joined_at: at("۱۴۰۵/۰۱/۲۰") })) }));
   pushMsg("bot-system", "u1", "🤖 به‌روزرسانی امنیتی سامانه امشب ساعت ۲۳ انجام می‌شود.", "۰۷:۳۰");
 
+  // «پیشنهادی» — واکنش، رشته‌ی گفتگو و سنجاق در گروه g1 و کانال ch1
+  const rootG = messages.find((m) => m.chat_id === "g1");
+  if (rootG) {
+    rootG.reactions = { like: ["u4", "u5", "u7"], insight: ["u1"] };
+    pushMsg("g1", "u4", "برای کارگاه رمشک هم همین برنامه را پیاده کنیم؟ هزینه‌ی تجهیز را دارم برآورد می‌کنم.", "۱۰:۴۰", SOCIAL_TODAY, { parent_message_id: rootG.id, in_thread: true });
+    pushMsg("g1", rootG.user_id === "u1" ? "u7" : rootG.user_id, "بله؛ برآورد را تا پنجشنبه در پوشه‌ی «مستندات ستاد» بگذارید.", "۱۰:۵۲", SOCIAL_TODAY, { parent_message_id: rootG.id, in_thread: true });
+    const g1 = chats.find((c) => c.id === "g1");
+    if (g1) g1.pinned_message_ids = [rootG.id];
+  }
+  const rootC = messages.find((m) => m.chat_id === "ch1");
+  if (rootC) {
+    rootC.reactions = { clap: ["u2", "u3", "u6", "u9"], love: ["u5"] };
+    const ch1 = chats.find((c) => c.id === "ch1");
+    if (ch1) ch1.pinned_message_ids = [rootC.id];
+  }
+
   // «خوانده‌شده» تا یکی مانده به آخر برای u1 — تا شمارنده‌ی نخوانده واقعی باشد
   chats.forEach((c) => {
     const ms = messages.filter((m) => m.chat_id === c.id);
@@ -495,7 +589,7 @@ export function seedReactions(): ReactionRecord[] {
 }
 
 // ------------------------------------------------------------------ مدیر فایل
-export function seedFiles(): { folders: FileFolder[]; files: FileItem[] } {
+export function seedFiles(): { folders: FileFolder[]; files: FileItem[]; trash: TrashedFile[] } {
   const d = at("۱۴۰۵/۰۲/۱۵");
   const folders: FileFolder[] = [
     { id: "fd1", owner_type: "user", owner_id: "u1", name: "گزارش‌ها", parent_id: null, created_by_user_id: "u1", created_at: d, updated_at: d },
@@ -512,8 +606,27 @@ export function seedFiles(): { folders: FileFolder[]; files: FileItem[] } {
     f("fl4", "user", "u1", null, "لوگو-بنیاد.png", "۹۰ کیلوبایت", "image/png"),
     f("fl5", "group", "g1", "fd4", "برنامه‌ی-عملیاتی-ستاد.pdf", "۱٫۱ مگابایت", "application/pdf", "u7"),
     f("fl6", "channel", "ch2", "fd5", "بازدید-مدرسه-رمشک.jpg", "۲٫۷ مگابایت", "image/jpeg", "u4"),
+    f("fl7", "user", "u1", "fd3", "یادداشت-جلسه-هماهنگی.txt", "۶ کیلوبایت", "text/plain"),
   ];
-  return { folders, files };
+  // «پیشنهادی» — نسخه‌ها، ستاره، اخیر و لینک اشتراک
+  const fl1 = files[0];
+  fl1.version = 3;
+  fl1.created_at = at("۱۴۰۵/۰۳/۰۵", "۱۱:۲۰:۰۰");
+  fl1.versions = [
+    { id: "fv1", version: 2, size: "۳٫۰ مگابایت", created_at: at("۱۴۰۵/۰۲/۲۸", "۰۹:۱۰:۰۰"), created_by_user_id: "u4" },
+    { id: "fv2", version: 1, size: "۲٫۶ مگابایت", created_at: d, created_by_user_id: "u1" },
+  ];
+  fl1.starred_by = ["u1"];
+  files[4].starred_by = ["u1", "u7"];
+  files[2].opened_at = { u1: at(addDays(SOCIAL_TODAY, -1), "۱۶:۰۵:۰۰") };
+  files[3].opened_at = { u1: at(SOCIAL_TODAY, "۰۸:۴۰:۰۰") };
+  files[6].opened_at = { u1: at(SOCIAL_TODAY, "۰۹:۱۵:۰۰") };
+  files[1].share = { token: "q7m2kx9a", expires_on: addDays(SOCIAL_TODAY, 5), created_by: "u1", created_at: at(addDays(SOCIAL_TODAY, -2)), allow_download: true };
+  const trash: TrashedFile[] = [
+    { ...f("fl-t1", "user", "u1", "fd1", "پیش‌نویس-قدیمی-بودجه.xlsx", "۳۲۰ کیلوبایت", "application/vnd.ms-excel"), trashed_at: at(addDays(SOCIAL_TODAY, -4), "۱۴:۰۰:۰۰"), trashed_by: "u1" },
+    { ...f("fl-t2", "user", "u1", null, "اسکن-نامه‌ی-۱۲۴.pdf", "۱٫۸ مگابایت", "application/pdf"), trashed_at: at(addDays(SOCIAL_TODAY, -26), "۱۰:۰۰:۰۰"), trashed_by: "u1" },
+  ];
+  return { folders, files, trash };
 }
 
 // ------------------------------------------------------------------ تنظیمات (کلیدها هم‌شکل /core/settings/all/)

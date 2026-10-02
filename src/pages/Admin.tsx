@@ -70,7 +70,7 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
+export type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "system-identity", label: "سیستم و ورود یکپارچه", icon: KeyRound },
@@ -91,9 +91,10 @@ const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
 
 const tenantPalette = ["#1f4f99", "#2a66bd", "#0d9488", "#7c3aed", "#b45309", "#0f172a"];
 
-export default function Admin() {
+export default function Admin({ section: forced }: { section?: SectionId } = {}) {
   const { canAccessAdmin } = useTenancy();
-  const [section, setSection] = useState<SectionId>("system-identity");
+  const [chosen, setSection] = useState<SectionId>("system-identity");
+  const section = forced ?? chosen;
   // یک نصب = یک مشتری؛ این رکورد فقط برای بخش‌هایی مثل «کاربران» نگه داشته می‌شود
   const tenant = initialTenants[0];
   const [enabledModules, setEnabledModules] = useState<string[]>(["social", "knowledge", "projects", "reports"]);
@@ -124,6 +125,33 @@ export default function Admin() {
       </div>
     );
   }
+
+  const content = (
+        <div className="space-y-5">
+          {section === "system-identity" && <SystemIdentitySection notify={notify} />}
+          {section === "holdings" && <HoldingsSection notify={notify} />}
+          {section === "modules" && <ModulesSection enabledModules={enabledModules} toggleModule={toggleModule} />}
+          {section === "branding" && <BrandingPanel />}
+          {section === "roles" && <RolesSection roles={roles} setRoles={setRoles} notify={notify} />}
+          {section === "pages" && <PagesSection pages={pages} setPages={setPages} extensions={extensions} setExtensions={setExtensions} notify={notify} />}
+          {section === "users" && <UsersSection tenant={tenant} roles={roles} notify={notify} />}
+          {section === "integrations" && <IntegrationsSection integrations={integrations} setIntegrations={setIntegrations} notify={notify} />}
+          {section === "security" && <SecuritySection guestAccounts={guestAccounts} setGuestAccounts={setGuestAccounts} notify={notify} />}
+          {section === "network" && <NetworkSection crossTenant={crossTenant} setCrossTenant={setCrossTenant} />}
+          {section === "workflow" && <WorkflowParamsSection notify={notify} />}
+          {section === "monitor" && (
+            <div className="space-y-4">
+              <LiveUsagePanel />
+              <p className="text-[11px] text-ink-400 leading-5">
+                این متریک‌ها مربوط به کل سامانه است و فقط برای راهبران نمایش داده می‌شود. جزئیات دیسک در بخش «فضای ذخیره‌سازی» و محدودیت نرخ درخواست در «پارامترهای گردش کار» قابل مدیریت است.
+              </p>
+            </div>
+          )}
+          {section === "system" && <SystemSection notify={notify} />}
+          {section === "storage" && <StorageSection notify={notify} />}
+        </div>
+  );
+  if (forced) return content;
 
   return (
     <div>

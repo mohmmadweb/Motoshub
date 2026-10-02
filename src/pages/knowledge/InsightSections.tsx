@@ -15,6 +15,7 @@ import { dayNum, fa, monthNames, parseJalali } from "../../pm/jalali";
 import { accessLevels } from "../../km/types";
 import { Field, SectionHead, avg } from "./shared";
 import { TaxonomyManager } from "./TaxonomyManager";
+import { WorkflowSettings } from "./WorkflowEditor";
 import { useKPage } from "./ctx";
 
 /** بند ۲۳: آموزش و یادگیری — از ماژول «آموزش و توانمندسازی» استفاده می‌شود */
@@ -453,29 +454,25 @@ export function SettingsSection() {
   const accessDesc: Record<string, string> = {
     عمومی: "همه‌ی کاربران سامانه (و در صورت انتشار عمومی، بازدیدکنندگان).",
     داخلی: "همه‌ی کارکنان وارد شده به سامانه.",
-    محرمانه: "مالک، تأییدکنندگان و نقش‌های دارای مجوز «مشاهده‌ی اسناد محرمانه».",
-    "خیلی محرمانه": "فقط مالک، تأییدکنندگان و نقش‌هایی که هم مجوز محرمانه و هم مجوز تأیید دارند.",
+    محرمانه: "مالک، تأییدکنندگان، فهرست دسترسی سند و نقش‌های دارای مجوز «اسناد محرمانه».",
+    "خیلی محرمانه": "مالک، تأییدکنندگان، فهرست دسترسی سند و نقش‌هایی که مجوز محرمانه و تأیید دارند.",
   };
   return (
     <div className="space-y-5">
       <SectionHead icon={<Settings size={17} className="text-brand-600" />} title="تنظیمات و دسترسی‌ها" hint="طبقه‌بندی، گردش کار، بازبینی، واحدها، برچسب‌ها و سطوح دسترسی. نقش‌ها و مجوزهای دقیق در «پنل راهبری ← نقش‌ها» تعریف می‌شوند (گروه مجوز «مدیریت دانش»)." />
       <TaxonomyManager />
+      <div>
+        <p className="text-sm font-bold text-ink-900 mb-2">گردش کار به تفکیک نوع سند</p>
+        <WorkflowSettings />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-4 space-y-3">
-          <p className="text-sm font-bold text-ink-900">گردش کار اسناد</p>
-          {(
-            [
-              ["review", "مرحله‌ی بررسی اولیه"],
-              ["approve", "تأیید مسئول"],
-              ["publish", "انتشار جداگانه پس از تأیید"],
-            ] as const
-          ).map(([k, label]) => (
-            <div key={k} className="flex items-center justify-between text-xs">
-              <span className="text-ink-700">{label}</span>
-              <Toggle on={s.workflowSteps[k]} onChange={() => km.updateSettings({ workflowSteps: { ...s.workflowSteps, [k]: !s.workflowSteps[k] } })} label={label} />
-            </div>
-          ))}
-          <Field label="تأییدکنندگان پیش‌فرض (با ، جدا کنید)">
+          <p className="text-sm font-bold text-ink-900">قواعد عمومی گردش کار</p>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-ink-700">ارسال اسناد جدید و نسخه‌های جدید به گردش کار</span>
+            <Toggle on={s.workflowSteps.review} onChange={() => km.updateSettings({ workflowSteps: { ...s.workflowSteps, review: !s.workflowSteps.review } })} label="گردش کار" />
+          </div>
+          <Field label="تأییدکنندگان پیش‌فرض سند (با ، جدا کنید)" hint="علاوه بر تأییدکنندگان مراحل قالب؛ با تغییر فهرست، به افراد جدید اعلان «شما تأییدکننده شدید» می‌رود.">
             <input className="input-field" defaultValue={s.defaultApprovers.join("، ")} onBlur={(e) => km.updateSettings({ defaultApprovers: e.target.value.split(/[،,]/).map((x) => x.trim()).filter(Boolean) })} />
           </Field>
           <Field label="دوره‌ی بازبینی پیش‌فرض (روز)">
@@ -483,14 +480,34 @@ export function SettingsSection() {
           </Field>
         </div>
         <div className="card p-4 space-y-3">
-          <p className="text-sm font-bold text-ink-900">سطوح دسترسی</p>
-          {accessLevels.map((a) => (
-            <div key={a} className="text-xs">
-              <Badge tone={a === "عمومی" ? "success" : a === "داخلی" ? "brand" : a === "محرمانه" ? "warning" : "danger"}>{a}</Badge>
-              <p className="text-ink-500 mt-1 leading-5">{accessDesc[a]}</p>
-            </div>
-          ))}
-          <p className="text-[11px] text-ink-400">کنترل مشاهده، دانلود، ویرایش، حذف و انتشار بر اساس نقش، گروه، سمت و واحد سازمانی؛ همه‌ی عملیات مهم در تاریخچه‌ی دانش ثبت می‌شود.</p>
+          <p className="text-sm font-bold text-ink-900">سطوح دسترسی، مشاهده و دانلود</p>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-ink-400 text-right">
+                <th className="font-medium pb-1.5">سطح</th>
+                <th className="font-medium pb-1.5">دانلود</th>
+                <th className="font-medium pb-1.5">واترمارک</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accessLevels.map((a) => (
+                <tr key={a} className="border-t border-ink-100 align-top">
+                  <td className="py-2 pl-2">
+                    <Badge tone={a === "عمومی" ? "success" : a === "داخلی" ? "brand" : a === "محرمانه" ? "warning" : "danger"}>{a}</Badge>
+                    <p className="text-[10.5px] text-ink-400 mt-1 leading-4">{accessDesc[a]}</p>
+                  </td>
+                  <td className="py-2">
+                    <Toggle on={km.policy[a].download} onChange={() => km.setAccessPolicy(a, { download: !km.policy[a].download })} label={`دانلود ${a}`} />
+                    <p className="text-[10px] text-ink-400 mt-0.5">{km.policy[a].download ? "مجاز" : "فقط مشاهده"}</p>
+                  </td>
+                  <td className="py-2">
+                    <Toggle on={km.policy[a].watermark} onChange={() => km.setAccessPolicy(a, { watermark: !km.policy[a].watermark })} label={`واترمارک ${a}`} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[11px] text-ink-400 leading-5">هر سند می‌تواند فهرست دسترسی (کاربر، واحد، نقش، سمت) و حالت «فقط مشاهده» خودش را داشته باشد. هر مشاهده، پیش‌نمایش و دانلود در لاگ ممیزی ثبت می‌شود.</p>
         </div>
         <div className="card p-4">
           <p className="text-sm font-bold text-ink-900 mb-2">واحدهای سازمانی</p>

@@ -20,7 +20,9 @@ export type InboxKind =
   | "event_invite"
   | "reply"
   | "knowledge"
-  | "chat_added";
+  | "chat_added"
+  | "group_message"
+  | "announcement";
 
 export const inboxKindLabel: Record<InboxKind, string> = {
   friend_request: "درخواست دوستی",
@@ -34,7 +36,14 @@ export const inboxKindLabel: Record<InboxKind, string> = {
   reply: "پاسخ به شما",
   knowledge: "مدیریت دانش",
   chat_added: "عضویت در گروه/کانال",
+  group_message: "پیام گروه",
+  announcement: "اطلاعیه‌ی رسمی",
 };
+
+/** نوع‌هایی که همیشه تحویل می‌شوند (بی‌صدا، ساعات سکوت و خلاصه‌ی روزانه رویشان اثر ندارد) */
+export const urgentKinds: InboxKind[] = ["announcement"];
+/** نوع‌های کم‌اهمیت که در «خلاصه‌ی روزانه» جمع می‌شوند */
+export const digestKinds: InboxKind[] = ["new_content", "channel_message", "group_message", "chat_added"];
 
 export type InboxItem = {
   id: string;
@@ -51,13 +60,22 @@ export type InboxItem = {
   readBy: string[];
   /** کاربرانی که از فهرست خودشان حذف کرده‌اند */
   hiddenFor: string[];
+  /** فوری — همیشه تحویل می‌شود (بی‌صدا/ساعات سکوت/خلاصه رویش اثر ندارد) */
+  urgent?: boolean;
 };
 
-type Store = { seq: number; items: InboxItem[]; channelSubs: Record<string, string[]> };
+type Store = {
+  seq: number;
+  items: InboxItem[];
+  channelSubs: Record<string, string[]>;
+  /** نوع‌های اعلانی که هر کاربر خاموش کرده است (نام کاربر ← نوع‌ها) */
+  kindOff: Record<string, InboxKind[]>;
+};
 const KEY = "motoshub.inbox.v1";
 
 const seed = (): Store => ({
   seq: 100,
+  kindOff: {},
   channelSubs: { "محسن مردعلی": ["ch2"], "وحید خاوئی": ["ch1", "ch2"], "پایگاه اطلاع‌رسانی بنیاد": ["ch1"] },
   items: [
     { id: "ib1", kind: "friend_request", recipient: "پایگاه اطلاع‌رسانی بنیاد", actor: "دکتر نگین فرهمند", text: "«دکتر نگین فرهمند» برای شما درخواست دوستی فرستاد.", link: "/dashboard/friends", time: "۲ ساعت پیش", seq: 1, readBy: [], hiddenFor: [] },
@@ -68,7 +86,12 @@ const seed = (): Store => ({
 function load(): Store {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as Store;
+    if (raw) {
+      const s = JSON.parse(raw) as Partial<Store>;
+      const base = seed();
+      // ذخیره‌ی قدیمی‌تر ممکن است فیلدهای تازه را نداشته باشد
+      return { seq: s.seq ?? base.seq, items: Array.isArray(s.items) ? s.items : base.items, channelSubs: s.channelSubs ?? base.channelSubs, kindOff: s.kindOff ?? {} };
+    }
   } catch {
     /* ذخیره‌ساز در دسترس نیست */
   }
@@ -81,7 +104,12 @@ type Ctx = {
   unread: number;
   all: InboxItem[];
   /** ارسال اعلان؛ انجام‌دهنده خودش اعلان نمی‌گیرد */
-  send: (recipients: string[] | "*", kind: InboxKind, text: string, link: string) => void;
+  send: (recipients: string[] | "*", kind: InboxKind, text: string, link: string, opts?: { urgent?: boolean }) => void;
+  /** همه‌ی اعلان‌های کاربر جاری، حتی نوع‌های خاموش‌شده (برای صفحه‌ی تنظیمات) */
+  mineAll: InboxItem[];
+  isKindOn: (kind: InboxKind) => boolean;
+  toggleKind: (kind: InboxKind) => void;
+  isUrgent: (item: InboxItem) => boolean;
   markRead: (id: string, read?: boolean) => void;
   markAllRead: () => void;
   hide: (id: string) => void;
@@ -113,20 +141,31 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     }
   }, [store]);
 
-  const mine = store.items.filter((i) => (i.recipient === me || i.recipient === "*") && i.actor !== me && !i.hiddenFor.includes(me)).sort((a, b) => b.seq - a.seq);
+  const isUrgent = (i: InboxItem) => !!i.urgent || urgentKinds.includes(i.kind);
+  const off = store.kindOff[me] ?? [];
+  const mineAll = store.items.filter((i) => (i.recipient === me || i.recipient === "*") && i.actor !== me && !i.hiddenFor.includes(me)).sort((a, b) => b.seq - a.seq);
+  // ترجیح کاربر: نوع‌های خاموش‌شده نمایش داده نمی‌شوند — مگر اعلان فوری
+  const mine = mineAll.filter((i) => isUrgent(i) || !off.includes(i.kind));
   const isRead = (i: InboxItem) => i.readBy.includes(me);
 
   const value: Ctx = {
     mine,
+    mineAll,
+    isUrgent,
+    isKindOn: (k) => !off.includes(k),
+    toggleKind: (k) => setStore((prev) => {
+      const cur = prev.kindOff[me] ?? [];
+      return { ...prev, kindOff: { ...prev.kindOff, [me]: cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k] } };
+    }),
     all: [...store.items].sort((a, b) => b.seq - a.seq),
     unread: mine.filter((i) => !isRead(i)).length,
     isRead,
-    send: (recipients, kind, text, link) =>
+    send: (recipients, kind, text, link, opts) =>
       setStore((prev) => {
         const list = recipients === "*" ? ["*"] : [...new Set(recipients.filter((r) => r && r !== me))];
         let seq = prev.seq;
         const time = clock();
-        const fresh: InboxItem[] = list.map((recipient) => ({ id: `ib${++seq}`, kind, recipient, actor: me, text, link, time, seq, readBy: [], hiddenFor: [] }));
+        const fresh: InboxItem[] = list.map((recipient) => ({ id: `ib${++seq}`, kind, recipient, actor: me, text, link, time, seq, readBy: [], hiddenFor: [], ...(opts?.urgent ? { urgent: true } : {}) }));
         return { ...prev, seq, items: [...fresh, ...prev.items] };
       }),
     markRead: (id, read = true) =>

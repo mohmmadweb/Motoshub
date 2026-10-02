@@ -2,6 +2,7 @@
 // «اعضای سازمان» — فهرست اعضا + ارتباط (relations) و پیام مستقیم (messaging).
 // هر دکمه معادل یک endpoint در src/social/endpoints.ts است.
 // ---------------------------------------------------------------------------
+import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Users, Search, UserPlus, Check, X, MessageSquare, ShieldOff, MoreHorizontal, User, Ban, Clock } from "lucide-react";
@@ -62,7 +63,8 @@ function MoreMenu({ items }: { items: { label: string; icon: ReactNode; onClick?
 
 export default function Members() {
   const s = useSocial();
-  const { hasPermission } = useTenancy();
+  const { hasPermission, visibleUserIds, contextNode, membershipsOf, primaryRoleOf } = useTenancy();
+  const inScope = visibleUserIds();
   const { notify } = useToast();
   const confirm = useConfirm();
   const navigate = useNavigate();
@@ -75,7 +77,8 @@ export default function Members() {
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [sort, setSort] = useState<"name" | "org">("name");
 
-  const others = useMemo(() => users.filter((u) => u.id !== s.me), [s.me]);
+  // «اعضای سازمان» = اعضای دامنه‌ای که کاربر در آن ایستاده (واحد خودش، زیرمجموعه‌ها و لایه‌های بالاتر)
+  const others = useMemo(() => users.filter((u) => u.id !== s.me && inScope.includes(u.id)), [s.me, inScope.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const orgs = useMemo(() => [...new Set(others.map((u) => u.org))].sort((a, b) => a.localeCompare(b, "fa")), [others]);
 
   const list = useMemo(() => {
@@ -214,9 +217,11 @@ export default function Members() {
     <div>
       <PageHeader
         title="اعضای سازمان"
-        description={`${fa(others.length)} عضو · ${fa(others.filter(isOnline).length)} نفر آنلاین`}
+        description={`${contextNode.type === "system" ? "کل سامانه" : contextNode.name} — ${fa(others.length)} عضو · ${fa(others.filter(isOnline).length)} نفر آنلاین`}
         icon={<Users size={20} />}
         actions={
+          <>
+          <ModuleReportsButton module="members" />
           <ApiChip
             items={[
               { label: "ارسال درخواست ارتباط", ep: endpoints.friendSend() },
@@ -227,6 +232,7 @@ export default function Members() {
               { label: "شروع پیام مستقیم", ep: endpoints.chatCreate("direct-messages") },
             ]}
           />
+          </>
         }
       />
 
@@ -271,7 +277,8 @@ export default function Members() {
                       {u.name}
                     </Link>
                     <p className="text-[11.5px] text-ink-500 truncate">{u.role}</p>
-                    <p className="text-[11px] text-ink-400 truncate">{u.org}</p>
+                    <p className="text-[11px] text-ink-400 truncate">{membershipsOf(u.id).filter((m) => m.status === "active").map((m) => m.scope.name).join("، ") || u.org}</p>
+                    {primaryRoleOf(u.id) && <p className="text-[10.5px] text-brand-700 truncate">{primaryRoleOf(u.id)!.name}</p>}
                   </div>
                   <MoreMenu items={menuFor(u)} />
                 </div>

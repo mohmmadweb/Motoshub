@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, CheckCircle2, Phone, Paperclip, BellRing, Upload } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -10,14 +10,19 @@ import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { dayNum, fa } from "../../pm/jalali";
-import type { ActionItem, PMMeeting, PMMinute } from "../../pm/types";
+import type { ActionItem, DocType, PMMeeting, PMMinute } from "../../pm/types";
+import { defaultMeetingSettings } from "../../pm/selectors";
 import { Field, MemberSelect, SectionTitle, taskTitle, useProjectPage } from "./shared";
 
 type MeetDraft = Omit<PMMeeting, "id" | "status"> & { id?: string };
-type MinDraft = Omit<PMMinute, "id"> & { id?: string; publish: boolean };
+type MinDraft = Omit<PMMinute, "id"> & { id?: string; publish: boolean; newFiles: { name: string; type: DocType; size: string }[] };
+
+const modeIcon = (mode: PMMeeting["mode"], size = 16) => (mode === "ویدیویی" ? <Video size={size} /> : mode === "صوتی" ? <Phone size={size} /> : <Users size={size} />);
+const kb = (bytes: number) => (bytes > 1_000_000 ? `${(bytes / 1_000_000).toLocaleString("fa-IR", { maximumFractionDigits: 1 })} مگابایت` : `${Math.max(1, Math.round(bytes / 1000)).toLocaleString("fa-IR")} کیلوبایت`);
+const docTypeOf = (name: string): DocType => (/\.(xlsx?|csv)$/i.test(name) ? "فایل مالی" : /\.(pptx?|key)$/i.test(name) ? "ارائه" : /\.(dwg|fig|psd|ai)$/i.test(name) ? "فایل طراحی" : /صورت/.test(name) ? "صورت‌جلسه" : "گزارش");
 
 export default function MeetingsTab() {
-  const { p, pid, can, refDate, openTask, focusId } = useProjectPage();
+  const { p, pid, can, refDate, openTask, focusId, goTab } = useProjectPage();
   const canEdit = can("projects.meetings");
   const pm = useProjectsPM();
   const confirm = useConfirm();
@@ -26,6 +31,12 @@ export default function MeetingsTab() {
   const [room, setRoom] = useState<PMMeeting | null>(null);
   const [minute, setMinute] = useState<MinDraft | null>(null);
   const [viewMin, setViewMin] = useState<string | null>(null);
+  const ms = p.meetingSettings ?? defaultMeetingSettings;
+  // پرش از جستجو/اعلان به یک صورت‌جلسه
+  useEffect(() => {
+    if (focusId && p.minutes.some((m) => m.id === focusId)) setViewMin(focusId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
   const ref = dayNum(refDate)!;
   const upcoming = p.meetings.filter((m) => m.status === "برنامه‌ریزی‌شده").sort((a, b) => (dayNum(a.date) ?? 0) - (dayNum(b.date) ?? 0));
   const past = p.meetings.filter((m) => m.status !== "برنامه‌ریزی‌شده");
@@ -53,13 +64,15 @@ export default function MeetingsTab() {
       decisionList: [""],
       actions: [],
       publish: true,
+      fileIds: m ? p.documents.filter((d) => d.meetingId === m.id).map((d) => d.id) : [],
+      newFiles: [],
     });
 
   const saveMinute = () => {
     if (!minute) return;
     if (!minute.title.trim()) return notify("موضوع جلسه الزامی است.", "warning");
-    const { publish, ...rest } = minute;
-    pm.saveMinutes(pid, { ...rest, topics: rest.topics?.filter((x) => x.trim()), decisionList: rest.decisionList?.filter((x) => x.trim()), actions: rest.actions?.filter((a) => a.text.trim()) }, publish);
+    const { publish, newFiles, ...rest } = minute;
+    pm.saveMinutes(pid, { ...rest, topics: rest.topics?.filter((x) => x.trim()), decisionList: rest.decisionList?.filter((x) => x.trim()), actions: rest.actions?.filter((a) => a.text.trim()) }, publish, newFiles);
     notify(publish ? "صورت‌جلسه منتشر شد و برای شرکت‌کنندگان ارسال شد." : "صورت‌جلسه به‌صورت پیش‌نویس ذخیره شد.");
     setMinute(null);
   };
@@ -72,12 +85,17 @@ export default function MeetingsTab() {
     return (
       <div className={`card p-4 flex items-center justify-between gap-3 flex-wrap ${focusId === m.id ? "ring-2 ring-brand-300" : ""}`}>
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${m.mode === "ویدیویی" ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-600"}`}>{m.mode === "ویدیویی" ? <Video size={16} /> : <Users size={16} />}</span>
+          <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${m.mode === "ویدیویی" ? "bg-brand-50 text-brand-700" : m.mode === "صوتی" ? "bg-emerald-50 text-emerald-700" : "bg-ink-100 text-ink-600"}`}>{modeIcon(m.mode)}</span>
           <div className="min-w-0">
             <p className="text-sm font-medium text-ink-900">{m.title}</p>
             <p className="text-xs text-ink-400 mt-0.5">
               {m.date} ساعت {m.time} · {fa(m.duration)} دقیقه · {m.mode} · {fa(m.participants.length)} شرکت‌کننده
               {m.status === "برنامه‌ریزی‌شده" && d - ref >= 0 && d - ref <= 1 && <span className="text-amber-600"> · {d === ref ? "امروز" : "فردا"}</span>}
+              {m.status === "برنامه‌ریزی‌شده" && d >= ref && (
+                <span className="inline-flex items-center gap-0.5 mr-1" title="یادآوری خودکار به شرکت‌کنندگان">
+                  · <BellRing size={10} /> {fa(ms.reminderMinutes)} دقیقه قبل
+                </span>
+              )}
             </p>
             {m.taskIds.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
@@ -93,9 +111,9 @@ export default function MeetingsTab() {
         <div className="flex items-center gap-1.5 flex-wrap">
           {m.status === "برنامه‌ریزی‌شده" ? (
             <>
-              {m.mode === "ویدیویی" && (
-                <Button size="sm" variant="primary" icon={<Video size={13} />} onClick={() => setRoom(m)}>
-                  ورود به جلسه
+              {m.mode !== "حضوری" && (
+                <Button size="sm" variant="primary" icon={m.mode === "صوتی" ? <Phone size={13} /> : <Video size={13} />} onClick={() => setRoom(m)}>
+                  {m.mode === "صوتی" ? "پیوستن به تماس" : "ورود به جلسه"}
                 </Button>
               )}
               {canEdit && (
@@ -131,10 +149,10 @@ export default function MeetingsTab() {
         <SectionTitle
           icon={<CalendarPlus size={15} className="text-brand-600" />}
           title="جلسات پیش‌رو"
-          hint="ایجاد جلسه: عنوان، تاریخ، ساعت، شرکت‌کنندگان، توضیحات و تسک‌های مرتبط — جلسه‌ی ویدیویی بدون خروج از سامانه برگزار می‌شود."
+          hint="ایجاد جلسه: عنوان، تاریخ، ساعت، شرکت‌کنندگان، توضیحات و تسک‌های مرتبط — جلسه‌ی ویدیویی یا تماس صوتی بدون خروج از سامانه برگزار می‌شود."
           action={
             canEdit && (
-              <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => setMeet({ title: "", date: refDate, time: "۱۰:۰۰", duration: 60, mode: "ویدیویی", participants: [p.meta.manager], description: "", taskIds: [] })}>
+              <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => setMeet({ title: "", date: refDate, time: "۱۰:۰۰", duration: ms.defaultDuration, mode: ms.defaultMode, participants: [p.meta.manager], description: "", taskIds: [] })}>
                 جلسه‌ی جدید
               </Button>
             )
@@ -181,6 +199,11 @@ export default function MeetingsTab() {
                     {fa(mn.decisions)} مصوبه
                   </Badge>
                   <Badge tone="warning">{fa(mn.followUps)} پیگیری</Badge>
+                  {(mn.fileIds ?? []).length > 0 && (
+                    <Badge tone="neutral" icon={<Paperclip size={11} />}>
+                      {fa((mn.fileIds ?? []).length)} فایل
+                    </Badge>
+                  )}
                   {mn.actions && mn.actions.length > 0 && (
                     <Badge tone="success">
                       {fa(mn.actions.filter((a) => a.taskId).length)}/{fa(mn.actions.length)} به تسک تبدیل شده
@@ -226,6 +249,7 @@ export default function MeetingsTab() {
               <Field label="نوع">
                 <select className="input-field" value={meet.mode} onChange={(e) => setMeet({ ...meet, mode: e.target.value as PMMeeting["mode"] })}>
                   <option>ویدیویی</option>
+                  <option>صوتی</option>
                   <option>حضوری</option>
                 </select>
               </Field>
@@ -322,6 +346,48 @@ export default function MeetingsTab() {
                 </Button>
               </div>
             </Field>
+            <Field label="فایل‌های مرتبط صورت‌جلسه">
+              <div className="space-y-2">
+                {p.documents.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto border border-ink-200 rounded-lg p-2 space-y-1">
+                    {p.documents.map((d) => {
+                      const on = (minute.fileIds ?? []).includes(d.id);
+                      return (
+                        <label key={d.id} className="flex items-center gap-2 text-xs text-ink-700">
+                          <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={on} onChange={() => setMinute({ ...minute, fileIds: on ? (minute.fileIds ?? []).filter((x) => x !== d.id) : [...(minute.fileIds ?? []), d.id] })} />
+                          <Paperclip size={11} className="text-ink-400" />
+                          <span className="flex-1 truncate">{d.name}</span>
+                          <span className="text-ink-400 shrink-0">{d.type}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {minute.newFiles.map((nf, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-brand-50 text-brand-800 rounded-md px-2 py-1.5">
+                    <Upload size={12} /> <span className="flex-1 truncate">{nf.name}</span>
+                    <span className="text-brand-600/70">{nf.size} · بارگذاری با ثبت</span>
+                    <button onClick={() => setMinute({ ...minute, newFiles: minute.newFiles.filter((_, j) => j !== i) })} aria-label="حذف فایل">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label className="inline-flex items-center gap-1.5 text-xs text-brand-700 cursor-pointer hover:underline">
+                  <Upload size={13} /> بارگذاری فایل جدید
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = [...(e.target.files ?? [])].map((f) => ({ name: f.name, type: docTypeOf(f.name), size: kb(f.size) }));
+                      setMinute({ ...minute, newFiles: [...minute.newFiles, ...files] });
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <p className="text-[11px] text-ink-400">فایل‌های تازه در «اسناد» پروژه هم با پیوند به این جلسه ثبت می‌شوند.</p>
+              </div>
+            </Field>
             <label className="flex items-center gap-2 text-xs text-ink-700">
               <input type="checkbox" checked={minute.publish} onChange={(e) => setMinute({ ...minute, publish: e.target.checked })} className="accent-[var(--color-brand-600)]" />
               انتشار و ارسال برای شرکت‌کنندگان (رویداد MINUTES_PUBLISHED)
@@ -368,6 +434,29 @@ export default function MeetingsTab() {
                 </ul>
               </div>
             )}
+            {(mv.fileIds ?? []).length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-ink-700 mb-1 flex items-center gap-1">
+                  <Paperclip size={13} /> فایل‌های مرتبط
+                </p>
+                <div className="space-y-1">
+                  {(mv.fileIds ?? []).map((fid) => {
+                    const d = p.documents.find((x) => x.id === fid);
+                    if (!d) return null;
+                    return (
+                      <button key={fid} onClick={() => { setViewMin(null); goTab("documents", d.id); }} className="flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
+                        <FileText size={12} /> {d.name} <span className="text-ink-400">({d.type} · نسخه‌ی {fa(d.version)})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {canEdit && (
+              <Button size="sm" variant="ghost" onClick={() => { const { id, ...rest } = mv; setViewMin(null); setMinute({ ...rest, id, publish: !!mv.published, newFiles: [], topics: mv.topics ?? [""], decisionList: mv.decisionList ?? [""], actions: mv.actions ?? [], participants: mv.participants ?? [] }); }}>
+                ویرایش صورت‌جلسه / افزودن فایل
+              </Button>
+            )}
             <div>
               <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
                 <ListChecks size={13} /> اقدامات
@@ -405,17 +494,18 @@ export default function MeetingsTab() {
         )}
       </Modal>
 
-      {room && <VideoRoom meeting={room} onLeave={() => { const r = room; setRoom(null); if (canEdit) confirm({ title: "جلسه تمام شد؛ صورت‌جلسه ثبت شود؟", message: "تصمیمات و اقدامات را همین حالا ثبت کنید تا به تسک تبدیل شوند.", confirmLabel: "ثبت صورت‌جلسه", onConfirm: () => newMinuteFor(r) }); }} />}
+      {room && <VideoRoom meeting={room} recordingAllowed={ms.recordingAllowed} onLeave={() => { const r = room; setRoom(null); if (canEdit) confirm({ title: "جلسه تمام شد؛ صورت‌جلسه ثبت شود؟", message: "تصمیمات و اقدامات را همین حالا ثبت کنید تا به تسک تبدیل شوند.", confirmLabel: "ثبت صورت‌جلسه", onConfirm: () => newMinuteFor(r) }); }} />}
     </div>
   );
 }
 
 /** اتاق جلسه‌ی صوتی/تصویری (نمای دمو) */
-function VideoRoom({ meeting, onLeave }: { meeting: PMMeeting; onLeave: () => void }) {
+function VideoRoom({ meeting, onLeave, recordingAllowed }: { meeting: PMMeeting; onLeave: () => void; recordingAllowed: boolean }) {
+  const audio = meeting.mode === "صوتی";
   const { canEdit } = useProjectPage();
   const { actor } = useProjectsPM();
   const [mic, setMic] = useState(true);
-  const [cam, setCam] = useState(true);
+  const [cam, setCam] = useState(!audio);
   const [share, setShare] = useState(false);
   const [rec, setRec] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -431,7 +521,7 @@ function VideoRoom({ meeting, onLeave }: { meeting: PMMeeting; onLeave: () => vo
             {fa(people.length)} شرکت‌کننده {rec && <span className="text-rose-400">· در حال ضبط</span>}
           </p>
         </div>
-        <Badge tone="navy">جلسه‌ی ویدیویی درون‌سامانه</Badge>
+        <Badge tone="navy">{audio ? "تماس صوتی درون‌سامانه" : "جلسه‌ی ویدیویی درون‌سامانه"}</Badge>
       </div>
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 p-4 grid gap-3 content-start" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(220px, 1fr))` }}>
@@ -441,13 +531,14 @@ function VideoRoom({ meeting, onLeave }: { meeting: PMMeeting; onLeave: () => vo
             </div>
           )}
           {people.map((n, i) => (
-            <div key={n} className="aspect-video rounded-xl bg-white/5 border border-white/10 relative flex items-center justify-center">
+            <div key={n} className={`${audio ? "aspect-[4/3]" : "aspect-video"} rounded-xl bg-white/5 border border-white/10 relative flex items-center justify-center`}>
+              {audio && i === 0 && mic && <span className="absolute inset-3 rounded-xl border-2 border-emerald-400/60 animate-pulse" />}
               <span className="w-14 h-14 rounded-full bg-brand-600 flex items-center justify-center text-lg font-bold">{n.replace(/^(دکتر|مهندس) /, "").slice(0, 1)}</span>
               <span className="absolute bottom-2 right-2 text-[11px] bg-black/40 rounded px-1.5 py-0.5 flex items-center gap-1">
                 {i === 0 && !mic ? <MicOff size={11} className="text-rose-400" /> : <Mic size={11} />} {n}
                 {i === 0 && " (شما)"}
               </span>
-              {i === 0 && !cam && <VideoOff size={14} className="absolute top-2 left-2 text-rose-400" />}
+              {!audio && i === 0 && !cam && <VideoOff size={14} className="absolute top-2 left-2 text-rose-400" />}
             </div>
           ))}
         </div>
@@ -478,15 +569,19 @@ function VideoRoom({ meeting, onLeave }: { meeting: PMMeeting; onLeave: () => vo
       <div className="flex items-center justify-center gap-2 py-4 border-t border-white/10 flex-wrap">
         {[
           { on: mic, set: setMic, icon: mic ? <Mic size={18} /> : <MicOff size={18} />, label: mic ? "قطع میکروفون" : "وصل میکروفون" },
-          { on: cam, set: setCam, icon: cam ? <Video size={18} /> : <VideoOff size={18} />, label: cam ? "خاموش‌کردن دوربین" : "روشن‌کردن دوربین" },
-          { on: share, set: setShare, icon: <MonitorUp size={18} />, label: "اشتراک صفحه" },
+          ...(audio
+            ? []
+            : [
+                { on: cam, set: setCam, icon: cam ? <Video size={18} /> : <VideoOff size={18} />, label: cam ? "خاموش‌کردن دوربین" : "روشن‌کردن دوربین" },
+                { on: share, set: setShare, icon: <MonitorUp size={18} />, label: "اشتراک صفحه" },
+              ]),
           { on: chatOpen, set: setChatOpen, icon: <MessageSquare size={18} />, label: "چت جلسه" },
         ].map((b) => (
           <button key={b.label} onClick={() => b.set(!b.on)} title={b.label} aria-label={b.label} className={`w-11 h-11 rounded-full flex items-center justify-center ${b.on ? "bg-white/15" : "bg-white/5 text-white/60"}`}>
             {b.icon}
           </button>
         ))}
-        <button disabled={!canEdit} onClick={() => setRec(!rec)} title={canEdit ? "ضبط جلسه" : "ضبط فقط با مجوز مدیر پروژه"} aria-label="ضبط جلسه" className={`w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-40 ${rec ? "bg-rose-600" : "bg-white/15"}`}>
+        <button disabled={!canEdit || !recordingAllowed} onClick={() => setRec(!rec)} title={!recordingAllowed ? "ضبط در تنظیمات جلسات این پروژه غیرفعال است" : canEdit ? "ضبط جلسه" : "ضبط فقط با مجوز مدیر پروژه"} aria-label="ضبط جلسه" className={`w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-40 ${rec ? "bg-rose-600" : "bg-white/15"}`}>
           <Circle size={16} fill={rec ? "white" : "none"} />
         </button>
         <button onClick={() => navigator.clipboard?.writeText(`${location.href}#join-${meeting.id}`)} title="دعوت اعضا (کپی لینک)" aria-label="دعوت اعضا" className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center">

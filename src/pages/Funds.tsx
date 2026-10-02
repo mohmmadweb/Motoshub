@@ -1,3 +1,4 @@
+import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useMemo, useState } from "react";
 import { useTabParam } from "../lib/useTabParam";
 import {
@@ -17,14 +18,16 @@ import {
   GitBranch,
   BellRing,
   Send,
+  Gavel,
+  ClipboardCheck,
+  CircleDollarSign,
 } from "lucide-react";
-import { funds as initialFunds, type FundRecord } from "../data/mock";
+import type { FundRecord } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import { ScopeBadge } from "../components/ui/ScopeControl";
-import { withDemoScopes, type Scoped } from "../data/tenancy";
-import { fundDetails, fundOverview, reviewSessions } from "../data/mockDetails";
+import type { Scoped } from "../data/tenancy";
+import { fundOverview, reviewSessions } from "../data/mockDetails";
 import {
-  nfProjects as initialNfProjects,
   nfStages,
   type NfProject,
   type NfStage,
@@ -50,6 +53,12 @@ import Modal from "../components/ui/Modal";
 import Drawer from "../components/ui/Drawer";
 import Tabs from "../components/ui/Tabs";
 import { useToast } from "../components/ui/ToastProvider";
+import { useInnovation } from "../context/InnovationContext";
+import type { EmploymentFund } from "../innovation/types";
+import { faN, rialShort, toRial } from "../innovation/util";
+import { ActivityLogButton, DecisionModal, DecisionsOf, EntityLink, OutcomeModal, OutcomeSummary } from "./innovation/shared";
+import AllocationView from "./innovation/AllocationView";
+import DecisionLog from "./innovation/DecisionLog";
 
 const stageTone: Record<FundRecord["stage"], BadgeTone> = {
   "ثبت‌شده": "neutral",
@@ -92,23 +101,31 @@ const paymentTone: Record<string, BadgeTone> = {
 };
 
 export default function Funds() {
-  const [tab, setTab] = useTabParam<"nf" | "allFunds" | "employment">("nf", ["nf", "allFunds", "employment"]);
+  const [tab, setTab] = useTabParam<"nf" | "allFunds" | "employment" | "allocation" | "decisions">("nf", ["nf", "allFunds", "employment", "allocation", "decisions"]);
   const { filterScoped } = useTenancy();
-  // شمار تب‌ها با همان دامنه‌ای که فهرست داخل هر تب فیلتر می‌شود (salt nf=19، employment=?)
-  const nfCount = filterScoped(withDemoScopes(initialNfProjects, 19)).length;
-  const employmentCount = filterScoped(withDemoScopes(initialFunds, 20)).length;
+  const inn = useInnovation();
+  const nfCount = filterScoped(inn.nfProjects).length;
+  const employmentCount = filterScoped(inn.employment).length;
   return (
     <div>
       <PageHeader
         title="صندوق نوآوری و شتاب‌دهی"
         description="روند کامل صندوق نوآور، شبکه‌ی صندوق‌های بنیاد (باور، فرصت، CVC و…) و طرح‌های اشتغال‌زایی"
         icon={<PiggyBank size={18} />}
+        actions={
+          <>
+            <ModuleReportsButton module="innovation" />
+            <ActivityLogButton module="funds" />
+          </>
+        }
       />
       <Tabs
         tabs={[
           { id: "nf", label: "صندوق نوآور — روند کامل", count: nfCount },
           { id: "allFunds", label: "شبکه صندوق‌ها و بذرمایه باور", count: fundCatalog.length },
           { id: "employment", label: "طرح‌های اشتغال‌زایی", count: employmentCount },
+          { id: "allocation", label: "منابع به کجا رفته" },
+          { id: "decisions", label: "دفتر تصمیمات", count: inn.decisions.length },
         ]}
         active={tab}
         onChange={setTab}
@@ -116,6 +133,8 @@ export default function Funds() {
       {tab === "nf" && <InnovationFundTab />}
       {tab === "allFunds" && <AllFundsTab />}
       {tab === "employment" && <EmploymentFundTab />}
+      {tab === "allocation" && <AllocationView />}
+      {tab === "decisions" && <DecisionLog />}
     </div>
   );
 }
@@ -217,8 +236,17 @@ function nfRules(s: WorkflowSettings) {
 }
 
 function InnovationFundTab() {
-  const [projects, setProjects] = useState<NfProject[]>(() => withDemoScopes(initialNfProjects, 19));
-  const [selected, setSelected] = useState<NfProject | null>(null);
+  const inn = useInnovation();
+  const projects = inn.nfProjects;
+  const setProjects = (fn: (prev: NfProject[]) => NfProject[], action = "پرونده‌ی طرح را به‌روز کرد", subject?: { id: string; title: string }) =>
+    inn.commit("funds", action, subject, (s) => ({ ...s, nfProjects: fn(s.nfProjects) }));
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = selectedId ? projects.find((p) => p.id === selectedId) ?? null : null;
+  const setSelected = (p: NfProject | null | ((prev: NfProject | null) => NfProject | null)) => {
+    const v = typeof p === "function" ? p(selected) : p;
+    setSelectedId(v ? v.id : null);
+  };
+  const [councilOpen, setCouncilOpen] = useState(false);
   const [stageFilter, setStageFilter] = useState<"همه" | NfStage>("همه");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -237,7 +265,7 @@ function InnovationFundTab() {
   const scopedProjects = filterScoped(projects);
 
   const updateProject = (updated: NfProject) => {
-    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)), updated.stage !== projects.find((p) => p.id === updated.id)?.stage ? `طرح را به گام «${updated.stage}» برد` : "پرونده‌ی طرح را به‌روز کرد", { id: updated.id, title: updated.titleFa });
     setSelected((prev) => (prev && prev.id === updated.id ? updated : prev));
   };
 
@@ -247,12 +275,16 @@ function InnovationFundTab() {
       title: `حذف پروژه ${p.id}؟`,
       message: `«${p.titleFa}» به همراه گام‌نما و سوابق مالی از فهرست فعال خارج و بایگانی می‌شود.`,
       onConfirm: () => {
-        setProjects((prev) => prev.filter((x) => x.id !== p.id));
+        setProjects((prev) => prev.filter((x) => x.id !== p.id), "طرح را حذف کرد", { id: p.id, title: p.titleFa });
         setSelected((prev) => (prev && prev.id === p.id ? null : prev));
         notify(`پروژه «${p.id}» حذف شد و در تاریخچه سامانه بایگانی گردید.`, "info");
       },
     });
 
+  const councilCandidates = scopedProjects
+    .filter((p) => p.stage === "ارزیابی موشکافانه" || p.stage === "تصویب طرح")
+    .map((p) => ({ p, score: nfEvaluations[p.id]?.jury?.total ?? nfEvaluations[p.id]?.screening.total }))
+    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   const pendingReports = scopedProjects.flatMap((p) => p.reports).filter((r) => r.status === "در حال بررسی").length;
   const pendingPayments = projects.flatMap((p) => p.payments).filter((p) => p.status !== "اسناد به تیم مجری ارسال شد" && p.status !== "اسناد تحویل صندوق شد").length;
   const lateReviews = scopedProjects.flatMap((p) => p.reports).flatMap((r) => r.chain).filter((c) => c.late).length;
@@ -290,7 +322,7 @@ function InnovationFundTab() {
       ...itemScope,
       authorId: actingUser.id,
     };
-    setProjects((prev) => [newProject, ...prev]);
+    setProjects((prev) => [newProject, ...prev], "پروپوزال جدید ثبت کرد", { id: newProject.id, title: newProject.titleFa });
     notify(`پروپوزال با کد یکتا «${newProject.id}» ثبت شد و شناسنامه پروژه ایجاد گردید. پس از تایید شکلی، ارزیابی اولیه هوشمند اجرا می‌شود.`);
     setOpen(false);
     setTitle("");
@@ -350,11 +382,16 @@ function InnovationFundTab() {
           <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
             <Workflow size={15} className="text-brand-600" /> گام‌های اصلی روند صندوق
           </h3>
-          {hasPermission("funds.submit") && (
-            <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
-              ثبت پروپوزال جدید
-            </Button>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {hasPermission("funds.allocate") && councilCandidates.length > 0 && (
+              <Button variant="secondary" size="sm" icon={<Gavel size={14} />} onClick={() => setCouncilOpen(true)}>مصوبه‌ی شورا</Button>
+            )}
+            {hasPermission("funds.submit") && (
+              <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setOpen(true); }}>
+                ثبت پروپوزال جدید
+              </Button>
+            )}
+          </div>
         </div>
         <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1">
           {nfStages.map((s, i) => {
@@ -472,8 +509,28 @@ function InnovationFundTab() {
       </Modal>
 
       <Drawer open={selected !== null} onClose={() => setSelected(null)} title="پرونده پروژه صندوق نوآور">
-        {selected && <NfProjectFile project={selected} onUpdate={updateProject} onDelete={deleteProject} />}
+        {selected && (
+          <>
+            <NfProjectFile project={selected} onUpdate={updateProject} onDelete={deleteProject} />
+            <NfOutcomeBlock p={selected} onUpdate={updateProject} />
+          </>
+        )}
       </Drawer>
+      <DecisionModal
+        open={councilOpen}
+        onClose={() => setCouncilOpen(false)}
+        module="funds"
+        subjectId="nf-council"
+        subjectTitle="شورای صندوق نوآور — تصویب طرح"
+        question="تصویب طرح در شورای صندوق"
+        committee="شورای صندوق نوآور"
+        options={councilCandidates.map((c, i) => ({ id: c.p.id, label: `${c.p.id} — ${c.p.titleFa}`, score: c.score, rank: i + 1, entityId: inn.resolveEntity(undefined, c.p.team.name)?.id }))}
+        confirmLabel="ثبت مصوبه و انتقال به تنظیم قرارداد"
+        onDecided={(o) => {
+          const p = projects.find((x) => x.id === o.id);
+          if (p) updateProject({ ...p, stage: "تنظیم قرارداد", subStatus: nfSubStatuses["تنظیم قرارداد"]?.[0] ?? "", timeline: [...p.timeline, { date: inn.today, time: "هم‌اکنون", step: "تصویب طرح", text: "مصوبه‌ی شورای صندوق ثبت و طرح برای تنظیم قرارداد ارجاع شد" }] });
+        }}
+      />
     </div>
   );
 }
@@ -772,140 +829,133 @@ function NfProjectFile({ project: p, onUpdate, onDelete }: { project: NfProject;
 }
 
 // ---------------------------------------------------------------------------
-// طرح‌های اشتغال‌زایی (محتوای قبلی صفحه — بدون تغییر)
+// خروج از صندوق نوآور — ثبت نتیجه‌ی واقعی (TRL قبل/بعد، تحقق اهداف)
+// ---------------------------------------------------------------------------
+function NfOutcomeBlock({ p, onUpdate }: { p: NfProject; onUpdate: (p: NfProject) => void }) {
+  const inn = useInnovation();
+  const { hasPermission } = useTenancy();
+  const [open, setOpen] = useState(false);
+  const ent = inn.resolveEntity(undefined, p.team.name);
+  return (
+    <div className="mt-5 border-t border-ink-100 pt-4 space-y-2">
+      <h4 className="text-xs font-bold text-ink-900 flex items-center gap-1.5"><ClipboardCheck size={13} className="text-ink-400" /> مجری در بانک زیست‌بوم و نتیجه‌ی واقعی</h4>
+      <p className="text-xs text-ink-600">مجری: <EntityLink name={p.team.name} />{!ent && <span className="text-[10.5px] text-amber-700"> (ثبت‌نشده در بانک)</span>}</p>
+      <DecisionsOf subjectId={p.id} />
+      <OutcomeSummary module="funds" subjectId={p.id} />
+      {hasPermission("funds.monitor") && p.stage === "نظارت و راهبری" && (
+        <Button size="sm" variant="primary" icon={<ClipboardCheck size={12} />} onClick={() => setOpen(true)}>خروج از صندوق و ثبت نتیجه</Button>
+      )}
+      {open && (
+        <OutcomeModal
+          open
+          onClose={() => setOpen(false)}
+          module="funds"
+          subjectId={p.id}
+          subjectTitle={p.titleFa}
+          entityIds={ent ? [ent.id] : []}
+          trlBefore={ent?.trl}
+          withTrl
+          title="خروج از صندوق و ثبت نتیجه‌ی واقعی"
+          onSaved={(o) => onUpdate({ ...p, stage: "خروج از صندوق", subStatus: nfSubStatuses["خروج از صندوق"]?.[0] ?? "", progress: Math.max(p.progress, o.successPct), timeline: [...p.timeline, { date: inn.today, time: "هم‌اکنون", step: "خروج از صندوق", text: `خروج از صندوق با ${faN(o.successPct)}٪ تحقق اهداف (${o.delivered})` }] })}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// طرح‌های اشتغال‌زایی — ماندگار، با مصوبه‌ی کارگروه (ثبت تصمیم) و پرداخت قسط
 // ---------------------------------------------------------------------------
 function EmploymentFundTab() {
-  const [funds, setFunds] = useState<FundRecord[]>(() => withDemoScopes(initialFunds, 20));
+  const inn = useInnovation();
+  const funds = inn.employment;
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [applicant, setApplicant] = useState("");
+  const [applicantId, setApplicantId] = useState<string | undefined>();
   const [amount, setAmount] = useState("");
   const [region, setRegion] = useState("");
   const [field, setField] = useState("");
   const [stageFilter, setStageFilter] = useState<"همه" | FundRecord["stage"]>("همه");
-  const [selected, setSelected] = useState<FundRecord | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deciding, setDeciding] = useState(false);
+  const [closing, setClosing] = useState(false);
   const { notify } = useToast();
   const { filterScoped: filterScopedF, defaultScopeForNew: defaultScopeF, hasPermission } = useTenancy();
   const [fundScope, setFundScope] = useState<Scoped>({ scope: "سراسری" });
-
-  const selectedDetail = selected ? fundDetails[selected.id] : undefined;
+  const selected = selectedId ? funds.find((f) => f.id === selectedId) ?? null : null;
+  const upd = (id: string, action: string, fn: (f: EmploymentFund) => EmploymentFund) => {
+    const f = funds.find((x) => x.id === id);
+    inn.commit("funds", action, f ? { id, title: f.title } : undefined, (s) => ({ ...s, employment: s.employment.map((x) => (x.id === id ? fn(x) : x)) }));
+  };
 
   const submit = () => {
     if (!title.trim() || !applicant.trim()) {
       notify("عنوان طرح و نام متقاضی الزامی است.", "warning");
       return;
     }
-    const newItem: FundRecord = {
-      id: `fd-${Date.now()}`,
-      title: title.trim(),
-      applicant: applicant.trim(),
-      stage: "ثبت‌شده",
-      amount: amount.trim() || "در انتظار ارزیابی",
-      roi: "—",
-      ...fundScope,
+    const req = toRial(amount);
+    const newItem: EmploymentFund = {
+      id: `fd-${Date.now()}`, title: title.trim(), applicant: applicant.trim(), entityId: applicantId, stage: "ثبت‌شده", amount: req ? rialShort(req) : "در انتظار ارزیابی", roi: "—",
+      requested: req, approved: 0, committee: "کارگروه اشتغال روستایی", region: region.trim() || "—", field: field.trim() || "—", tranches: [], kpis: [], notes: "", ...fundScope,
     };
-    setFunds((prev) => [newItem, ...prev]);
-    notify(`طرح «${newItem.title}»${region ? ` (${region})` : ""} ثبت شد و برای انتخاب اولیه به کارگروه ارجاع داده شد.`);
+    inn.commit("funds", "طرح اشتغال‌زایی جدید ثبت کرد", { id: newItem.id, title: newItem.title }, (s) => ({ ...s, employment: [newItem, ...s.employment] }));
+    notify(`طرح «${newItem.title}» ثبت شد و برای انتخاب اولیه به کارگروه ارجاع داده شد.`);
     setOpen(false);
-    setTitle("");
-    setApplicant("");
-    setAmount("");
-    setRegion("");
-    setField("");
-  };
-
-  const referToReview = (fund: FundRecord) => {
-    setFunds((prev) => prev.map((f) => (f.id === fund.id ? { ...f, stage: "داوری" } : f)));
-    setSelected((prev) => (prev && prev.id === fund.id ? { ...prev, stage: "داوری" } : prev));
-    notify(`طرح «${fund.title}» به جلسه داوری کارگروه ارجاع شد.`, "info");
+    setTitle(""); setApplicant(""); setApplicantId(undefined); setAmount(""); setRegion(""); setField("");
   };
 
   const scopedFunds = filterScopedF(funds);
-  const filtered = useMemo(
-    () => (stageFilter === "همه" ? scopedFunds : scopedFunds.filter((f) => f.stage === stageFilter)),
-    [scopedFunds, stageFilter]
-  );
+  const filtered = useMemo(() => (stageFilter === "همه" ? scopedFunds : scopedFunds.filter((f) => f.stage === stageFilter)), [scopedFunds, stageFilter]);
+  const inReview = scopedFunds.filter((f) => f.stage === "داوری").sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  const allocated = scopedFunds.reduce((s, f) => s + f.approved, 0);
 
-  const columns: Column<FundRecord>[] = [
+  const columns: Column<EmploymentFund>[] = [
     { key: "title", label: "عنوان طرح", render: (f) => <span className="font-medium text-ink-900">{f.title}</span> },
-    { key: "applicant", label: "متقاضی" },
+    { key: "applicant", label: "متقاضی", render: (f) => <EntityLink id={f.entityId} name={f.applicant} /> },
     { key: "stage", label: "وضعیت", render: (f) => <Badge tone={stageTone[f.stage]}>{f.stage}</Badge> },
-    { key: "amount", label: "میزان تخصیص" },
-    {
-      key: "score",
-      label: "امتیاز داوری",
-      render: (f) => {
-        const d = fundDetails[f.id];
-        return d ? <span className="font-medium text-ink-800">{d.score.toLocaleString("fa-IR")} / ۱۰۰</span> : <span className="text-ink-400">—</span>;
-      },
-    },
+    { key: "amount", label: "میزان تخصیص", render: (f) => (f.approved ? rialShort(f.approved) : f.requested ? `درخواستی ${rialShort(f.requested)}` : "—") },
+    { key: "score", label: "امتیاز داوری", render: (f) => (f.score !== undefined ? <span className="font-medium text-ink-800">{faN(f.score)} / ۱۰۰</span> : <span className="text-ink-400">—</span>) },
     { key: "roi", label: "بازگشت سرمایه", render: (f) => <span className="flex items-center gap-1 text-emerald-600 font-medium"><TrendingUp size={12} /> {f.roi}</span> },
     { key: "scopeOwner", label: "دامنه", render: (f) => <ScopeBadge item={f} /> },
   ];
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-4">
+      <div className="flex items-center justify-end gap-2 mb-4 flex-wrap">
+        {hasPermission("funds.allocate") && inReview.length > 0 && <Button variant="secondary" icon={<Gavel size={15} />} onClick={() => setDeciding(true)}>مصوبه‌ی کارگروه</Button>}
         {hasPermission("funds.submit") && (
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFundScope(defaultScopeF()); setOpen(true); }}>
-          ثبت طرح جدید
-        </Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFundScope(defaultScopeF()); setOpen(true); }}>ثبت طرح جدید</Button>
         )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="سرمایه صندوق" value={fundOverview.totalCapital} tone="brand" icon={<Landmark size={16} />} />
-        <StatCard label="تخصیص‌یافته" value={fundOverview.allocated} tone="success" icon={<PiggyBank size={16} />} />
-        <StatCard label="طرح‌های فعال" value={scopedFunds.length.toLocaleString("fa-IR")} icon={<Target size={16} />} />
-        <StatCard label="نرخ موفقیت طرح‌ها" value={fundOverview.successRate} tone="success" icon={<Gauge size={16} />} />
-        <StatCard label="میانگین زمان داوری" value={`${fundOverview.avgReviewDays.toLocaleString("fa-IR")} روز`} tone="warning" icon={<CalendarClock size={16} />} />
+        <StatCard label="تخصیص‌یافته" value={rialShort(allocated)} tone="success" icon={<PiggyBank size={16} />} />
+        <StatCard label="طرح‌های فعال" value={faN(scopedFunds.length)} icon={<Target size={16} />} />
+        <StatCard label="نتیجه‌ی ثبت‌شده" value={faN(inn.outcomes.filter((o) => o.module === "funds").length)} tone="success" icon={<Gauge size={16} />} />
+        <StatCard label="میانگین زمان داوری" value={`${faN(fundOverview.avgReviewDays)} روز`} tone="warning" icon={<CalendarClock size={16} />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <ListFilter size={14} className="text-ink-400" />
-            <button
-              onClick={() => setStageFilter("همه")}
-              className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
-                stageFilter === "همه" ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
-              }`}
-            >
-              همه ({scopedFunds.length.toLocaleString("fa-IR")})
-            </button>
-            {stages.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStageFilter(s)}
-                className={`text-xs font-medium px-3 py-1.5 rounded-md border ${
-                  stageFilter === s ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"
-                }`}
-              >
-                {s} ({scopedFunds.filter((f) => f.stage === s).length.toLocaleString("fa-IR")})
+        <div className="lg:col-span-2 min-w-0">
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+            <ListFilter size={14} className="text-ink-400 shrink-0" />
+            {(["همه", ...stages] as const).map((s) => (
+              <button key={s} onClick={() => setStageFilter(s)} className={`text-xs font-medium px-3 py-1.5 rounded-md border whitespace-nowrap ${stageFilter === s ? "bg-navy-900 text-white border-navy-900" : "bg-white text-ink-600 border-ink-200 hover:bg-ink-50"}`}>
+                {s} ({faN(s === "همه" ? scopedFunds.length : scopedFunds.filter((f) => f.stage === s).length)})
               </button>
             ))}
           </div>
-          <DataTable
-            columns={columns}
-            rows={filtered}
-            searchKeys={["title", "applicant"]}
-            searchPlaceholder="جستجو در عنوان طرح یا متقاضی…"
-            onRowClick={(f) => setSelected(f)}
-          />
+          <DataTable columns={columns} rows={filtered} searchKeys={["title", "applicant"]} searchPlaceholder="جستجو در عنوان طرح یا متقاضی…" onRowClick={(f) => setSelectedId(f.id)} />
         </div>
-
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <CalendarClock size={15} className="text-brand-600" /> جلسات داوری پیش رو
-          </h3>
+          <h3 className="text-sm font-bold text-ink-900 flex items-center gap-1.5"><CalendarClock size={15} className="text-brand-600" /> جلسات داوری پیش رو</h3>
           {reviewSessions.map((rv) => (
             <div key={rv.id} className="card p-4">
               <p className="text-sm font-medium text-ink-900 leading-6">{rv.title}</p>
               <p className="text-xs text-ink-400 mt-1">{rv.committee}</p>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-xs">
-                <Badge tone="brand">{rv.items.toLocaleString("fa-IR")} طرح در دستور</Badge>
-                <span className="text-ink-400">{rv.date}</span>
-              </div>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-xs"><Badge tone="brand">{faN(rv.items)} طرح در دستور</Badge><span className="text-ink-400">{rv.date}</span></div>
             </div>
           ))}
         </div>
@@ -913,122 +963,97 @@ function EmploymentFundTab() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="ثبت طرح سرمایه‌گذاری جدید" description="طرح ثبت‌شده ابتدا وارد فاز «انتخاب اولیه» می‌شود.">
         <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: کارگاه فرآوری خرما — جنوب کرمان" className="input-field" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام متقاضی / تیم</label>
-            <input value={applicant} onChange={(e) => setApplicant(e.target.value)} placeholder="مثلاً: تعاونی روستایی نخل‌داران" className="input-field" />
-          </div>
+          <div><label className="text-xs font-medium text-ink-600 block mb-1.5">عنوان طرح</label><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: کارگاه فرآوری خرما — جنوب کرمان" className="input-field" /></div>
+          <div><label className="text-xs font-medium text-ink-600 block mb-1.5">نام متقاضی / تیم</label><input value={applicant} onChange={(e) => { setApplicant(e.target.value); setApplicantId(inn.entities.find((x) => x.name === e.target.value.trim())?.id); }} placeholder="مثلاً: تعاونی روستایی نخل‌داران" className="input-field" list="emp-ents" /><datalist id="emp-ents">{inn.entities.map((e) => <option key={e.id} value={e.name} />)}</datalist></div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">حوزه طرح</label>
-              <input value={field} onChange={(e) => setField(e.target.value)} placeholder="کشاورزی / پوشاک / دامپروری" className="input-field" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-ink-600 block mb-1.5">منطقه اجرا</label>
-              <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="استان — شهرستان" className="input-field" />
-            </div>
+            <div><label className="text-xs font-medium text-ink-600 block mb-1.5">حوزه طرح</label><input value={field} onChange={(e) => setField(e.target.value)} placeholder="کشاورزی / پوشاک" className="input-field" /></div>
+            <div><label className="text-xs font-medium text-ink-600 block mb-1.5">منطقه اجرا</label><input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="استان — شهرستان" className="input-field" /></div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">میزان درخواستی (ریال)</label>
-            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="۲۵۰٬۰۰۰٬۰۰۰" className="input-field" />
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت طرح</Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button>
-          </div>
+          <div><label className="text-xs font-medium text-ink-600 block mb-1.5">میزان درخواستی (ریال)</label><input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="۲۵۰٬۰۰۰٬۰۰۰" className="input-field" /></div>
+          <div className="flex items-center gap-2 pt-2"><Button variant="primary" className="flex-1 justify-center" onClick={submit}>ثبت طرح</Button><Button variant="secondary" onClick={() => setOpen(false)}>انصراف</Button></div>
         </div>
       </Modal>
 
-      <Drawer open={selected !== null} onClose={() => setSelected(null)} title="پرونده طرح">
+      <Drawer open={selected !== null} onClose={() => setSelectedId(null)} title="پرونده طرح">
         {selected && (
           <div className="space-y-5">
             <div>
               <p className="text-sm font-bold text-ink-900 leading-6">{selected.title}</p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge tone={stageTone[selected.stage]}>{selected.stage}</Badge>
-                {selectedDetail && <Badge tone="neutral">{selectedDetail.field}</Badge>}
-              </div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap"><Badge tone={stageTone[selected.stage]}>{selected.stage}</Badge><Badge tone="neutral">{selected.field}</Badge></div>
               <div className="text-xs text-ink-600 space-y-1.5 mt-3">
-                <p><span className="text-ink-400">متقاضی:</span> {selected.applicant}</p>
-                {selectedDetail && (
-                  <>
-                    <p><span className="text-ink-400">منطقه اجرا:</span> {selectedDetail.region}</p>
-                    <p><span className="text-ink-400">مبلغ درخواستی:</span> {selectedDetail.requested}</p>
-                    <p><span className="text-ink-400">مبلغ مصوب:</span> {selectedDetail.approved}</p>
-                    <p><span className="text-ink-400">کارگروه بررسی‌کننده:</span> {selectedDetail.committee}</p>
-                  </>
-                )}
+                <p><span className="text-ink-400">متقاضی:</span> <EntityLink id={selected.entityId} name={selected.applicant} /></p>
+                <p><span className="text-ink-400">منطقه اجرا:</span> {selected.region}</p>
+                <p><span className="text-ink-400">مبلغ درخواستی:</span> {selected.requested ? rialShort(selected.requested) : "—"}</p>
+                <p><span className="text-ink-400">مبلغ مصوب:</span> {selected.approved ? rialShort(selected.approved) : "—"}</p>
+                <p><span className="text-ink-400">کارگروه بررسی‌کننده:</span> {selected.committee}</p>
               </div>
             </div>
-
-            {selectedDetail && (
-              <>
-                <div className="border-t border-ink-100 pt-4">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-bold text-ink-900">امتیاز داوری</span>
-                    <span className="text-ink-500">{selectedDetail.score.toLocaleString("fa-IR")} از ۱۰۰</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${selectedDetail.score >= 75 ? "bg-emerald-500" : selectedDetail.score >= 60 ? "bg-amber-500" : "bg-rose-500"}`}
-                      style={{ width: `${selectedDetail.score}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-ink-100 pt-4">
-                  <h4 className="text-xs font-bold text-ink-900 mb-2">پرداخت مرحله‌ای (اقساط)</h4>
-                  {selectedDetail.tranches.length === 0 && <p className="text-xs text-ink-400">تخصیصی انجام نشده است.</p>}
-                  <div className="space-y-2">
-                    {selectedDetail.tranches.map((t) => (
-                      <div key={t.id} className="text-xs bg-ink-50 rounded-lg p-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium text-ink-800">{t.title}</p>
-                          <Badge tone={trancheTone[t.status]}>{t.status}</Badge>
-                        </div>
-                        <p className="text-ink-400 mt-1">{t.amount}</p>
-                        <p className="text-ink-500 mt-1">شرط پرداخت: {t.condition}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-ink-100 pt-4">
-                  <h4 className="text-xs font-bold text-ink-900 mb-2">شاخص‌های پایش (KPI)</h4>
-                  {selectedDetail.kpis.length === 0 && <p className="text-xs text-ink-400">پایش پس از تخصیص آغاز می‌شود.</p>}
-                  <div className="space-y-2">
-                    {selectedDetail.kpis.map((k) => (
-                      <div key={k.label} className="flex items-center justify-between gap-2 text-xs">
-                        <div>
-                          <p className="font-medium text-ink-800">{k.label}</p>
-                          <p className="text-ink-400 mt-0.5">هدف: {k.target}</p>
-                        </div>
-                        <Badge tone={k.onTrack ? "success" : "danger"}>{k.value}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-ink-100 pt-4">
-                  <h4 className="text-xs font-bold text-ink-900 mb-1">جمع‌بندی کارگروه</h4>
-                  <p className="text-xs text-ink-500 leading-6">{selectedDetail.notes}</p>
-                </div>
-              </>
+            {selected.score !== undefined && (
+              <div className="border-t border-ink-100 pt-4">
+                <div className="flex items-center justify-between text-xs mb-1"><span className="font-bold text-ink-900">امتیاز داوری</span><span className="text-ink-500">{faN(selected.score)} از ۱۰۰</span></div>
+                <div className="h-2 rounded-full bg-ink-100 overflow-hidden"><div className={`h-full rounded-full ${selected.score >= 75 ? "bg-emerald-500" : selected.score >= 60 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${selected.score}%` }} /></div>
+              </div>
             )}
-
+            <div className="border-t border-ink-100 pt-4">
+              <h4 className="text-xs font-bold text-ink-900 mb-2">پرداخت مرحله‌ای (اقساط)</h4>
+              {selected.tranches.length === 0 && <p className="text-xs text-ink-400">تخصیصی انجام نشده است.</p>}
+              <div className="space-y-2">
+                {selected.tranches.map((t) => (
+                  <div key={t.id} className="text-xs bg-ink-50 rounded-lg p-2.5">
+                    <div className="flex items-center justify-between gap-2"><p className="font-medium text-ink-800">{t.title}</p><Badge tone={trancheTone[t.status]}>{t.status}</Badge></div>
+                    <p className="text-ink-400 mt-1">{rialShort(t.amount)}</p>
+                    <p className="text-ink-500 mt-1">شرط پرداخت: {t.condition}</p>
+                    {t.status !== "پرداخت‌شده" && hasPermission("funds.allocate") && (
+                      <Button size="sm" variant="ghost" icon={<CircleDollarSign size={12} />} className="mt-1.5" onClick={() => upd(selected.id, `قسط «${t.title}» را پرداخت کرد`, (f) => ({ ...f, tranches: f.tranches.map((x) => (x.id === t.id ? { ...x, status: "پرداخت‌شده" } : x)), stage: f.stage === "تخصیص‌یافته" ? "در حال پایش" : f.stage }))}>
+                        تحقق شرط و پرداخت
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-ink-100 pt-4">
+              <h4 className="text-xs font-bold text-ink-900 mb-2">شاخص‌های پایش (KPI)</h4>
+              {selected.kpis.length === 0 && <p className="text-xs text-ink-400">پایش پس از تخصیص آغاز می‌شود.</p>}
+              <div className="space-y-2">
+                {selected.kpis.map((k) => (
+                  <div key={k.label} className="flex items-center justify-between gap-2 text-xs"><div><p className="font-medium text-ink-800">{k.label}</p><p className="text-ink-400 mt-0.5">هدف: {k.target}</p></div><Badge tone={k.onTrack ? "success" : "danger"}>{k.value}</Badge></div>
+                ))}
+              </div>
+            </div>
+            {selected.notes && <div className="border-t border-ink-100 pt-4"><h4 className="text-xs font-bold text-ink-900 mb-1">جمع‌بندی کارگروه</h4><p className="text-xs text-ink-500 leading-6">{selected.notes}</p></div>}
+            <DecisionsOf subjectId={selected.id} />
+            <OutcomeSummary module="funds" subjectId={selected.id} />
             {(selected.stage === "ثبت‌شده" || selected.stage === "انتخاب اولیه") && hasPermission("funds.refer") && (
               <div className="border-t border-ink-100 pt-4">
-                <Button variant="primary" className="w-full justify-center" onClick={() => referToReview(selected)}>
-                  ارجاع به جلسه داوری
-                </Button>
+                <Button variant="primary" className="w-full justify-center" onClick={() => { upd(selected.id, "طرح را به جلسه‌ی داوری ارجاع داد", (f) => ({ ...f, stage: "داوری" })); notify(`طرح «${selected.title}» به جلسه داوری کارگروه ارجاع شد.`, "info"); }}>ارجاع به جلسه داوری</Button>
               </div>
+            )}
+            {selected.stage === "در حال پایش" && hasPermission("funds.monitor") && (
+              <Button variant="primary" className="w-full justify-center" icon={<ClipboardCheck size={14} />} onClick={() => setClosing(true)}>اختتام طرح و ثبت نتیجه‌ی واقعی</Button>
             )}
           </div>
         )}
       </Drawer>
+
+      <DecisionModal
+        open={deciding}
+        onClose={() => setDeciding(false)}
+        module="funds"
+        subjectId="employment-committee"
+        subjectTitle="کارگروه اشتغال — تخصیص منابع"
+        question="مصوبه‌ی تخصیص طرح اشتغال‌زایی"
+        committee="کارگروه اشتغال روستایی"
+        options={inReview.map((f, i) => ({ id: f.id, label: f.title, score: f.score, rank: i + 1, entityId: f.entityId }))}
+        confirmLabel="ثبت مصوبه و تخصیص"
+        onDecided={(o) => upd(o.id, "مصوبه‌ی تخصیص طرح را ثبت کرد", (f) => {
+          const approved = f.approved || f.requested;
+          return { ...f, stage: "تخصیص‌یافته", approved, amount: rialShort(approved), tranches: f.tranches.length ? f.tranches : [{ id: "t1", title: "قسط اول (۵۰٪)", amount: Math.round(approved / 2), condition: "عقد قرارداد", status: "در انتظار" }, { id: "t2", title: "قسط دوم (۵۰٪)", amount: approved - Math.round(approved / 2), condition: "تأیید بازدید میدانی ناظر", status: "مشروط" }] };
+        })}
+      />
+      {closing && selected && (
+        <OutcomeModal open onClose={() => setClosing(false)} module="funds" subjectId={selected.id} subjectTitle={selected.title} entityIds={selected.entityId ? [selected.entityId] : []} title="اختتام طرح اشتغال‌زایی و ثبت نتیجه" />
+      )}
     </div>
   );
 }

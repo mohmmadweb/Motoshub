@@ -6,13 +6,14 @@ import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge, statusTone } from "../../context/KnowledgeContext";
 import { dayNum, fa } from "../../pm/jalali";
 import { SectionHead } from "./shared";
+import { matchesAll, queryTerms } from "../../km/text";
 import { useKPage } from "./ctx";
 
 /** بند ۱: داشبورد مدیریت دانش */
 export default function DashboardSection() {
   const km = useKnowledge();
   const page = useKPage();
-  const { filterScoped } = useTenancy();
+  const { filterScoped, hasPermission } = useTenancy();
   const [q, setQ] = useState("");
   const today = dayNum(km.today)!;
   const docs = filterScoped(km.docs).filter((d) => km.canSee(d));
@@ -25,12 +26,14 @@ export default function DashboardSection() {
   const roots = km.categories.filter((c) => !c.parentId);
   const catCount = (id: string) => live.filter((d) => d.categoryId === id || km.categories.find((c) => c.id === d.categoryId)?.parentId === id).length;
   const maxCat = Math.max(1, ...roots.map((r) => catCount(r.id)));
+  const terms = queryTerms(q);
+  const has = (...xs: (string | undefined)[]) => matchesAll(xs.filter(Boolean).join(" "), terms);
   const hits = q.trim()
     ? [
-        ...live.filter((d) => d.title.includes(q) || d.tags.some((t) => t.includes(q))).map((d) => ({ key: d.id, label: d.title, kind: "سند", go: () => page.openDoc(d.id) })),
-        ...km.experiences.filter((e) => e.title.includes(q) || e.body.includes(q)).map((e) => ({ key: e.id, label: e.title, kind: e.kind, go: () => page.go(e.projectId ? "projects" : "experience", e.id) })),
-        ...km.glossary.filter((g) => g.term.includes(q) || (g.abbr ?? "").includes(q.toUpperCase())).map((g) => ({ key: g.id, label: `${g.term}${g.abbr ? ` (${g.abbr})` : ""}`, kind: "واژه", go: () => page.go("glossary", g.id) })),
-        ...km.experts.filter((x) => x.name.includes(q) || x.areas.some((a) => a.includes(q))).map((x) => ({ key: x.id, label: x.name, kind: "خبره", go: () => page.go("experts", x.id) })),
+        ...live.filter((d) => has(d.title, d.code, d.tags.join(" "))).map((d) => ({ key: d.id, label: d.title, kind: "سند", go: () => page.openDoc(d.id) })),
+        ...km.experiences.filter((e) => has(e.title, e.body)).map((e) => ({ key: e.id, label: e.title, kind: e.kind, go: () => page.go(e.projectId ? "projects" : "experience", e.id) })),
+        ...km.glossary.filter((g) => has(g.term, g.abbr, g.english)).map((g) => ({ key: g.id, label: `${g.term}${g.abbr ? ` (${g.abbr})` : ""}`, kind: "واژه", go: () => page.go("glossary", g.id) })),
+        ...km.experts.filter((x) => has(x.name, x.areas.join(" "))).map((x) => ({ key: x.id, label: x.name, kind: "خبره", go: () => page.go("experts", x.id) })),
       ].slice(0, 8)
     : [];
 
@@ -140,9 +143,17 @@ export default function DashboardSection() {
         <div className="card p-4">
           <p className="text-xs font-bold text-ink-900 mb-3 flex items-center gap-1">
             <Activity size={13} /> فعالیت‌های اخیر کاربران
+            {(hasPermission("knowledge.settings") || hasPermission("knowledge.reports")) && (
+              <button onClick={() => page.go("audit")} className="mr-auto text-[11px] text-brand-700 hover:underline font-normal">
+                لاگ کامل
+              </button>
+            )}
           </p>
           <div className="space-y-2">
-            {km.logs.slice(0, 7).map((l) => (
+            {km.logs
+              .filter((l) => l.code !== "view" && l.code !== "preview" && (l.entity.type !== "doc" || (() => { const x = km.docs.find((y) => y.id === l.entity.id); return !x || km.canSee(x); })()))
+              .slice(0, 7)
+              .map((l) => (
               <div key={l.id} className="text-xs flex gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0" />
                 <p className="text-ink-700 leading-5">

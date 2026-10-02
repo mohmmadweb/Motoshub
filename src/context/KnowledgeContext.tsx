@@ -1,14 +1,16 @@
 // ---------------------------------------------------------------------------
-// انبار ماژول مدیریت دانش. همه‌ی تغییرات از اکشن‌ها عبور می‌کنند، در تاریخچه‌ی دانش
+// انبار ماژول مدیریت دانش. همه‌ی تغییرات از اکشن‌ها عبور می‌کنند، در لاگ ممیزی دانش
 // ثبت می‌شوند و در صورت لزوم برای افراد مرتبط اعلان (صندوق شخصی) صادر می‌کنند.
 // اسناد مخزن با ContentContext همگام می‌شوند تا جستجوی سراسری و صفحات عمومی کار کنند.
+// قواعد دسترسی (ACL، مشاهده/دانلود) و گردش کار چندمرحله‌ای در src/km/access.ts است.
+// مدل داده و رویدادها برای بک‌اند: docs/KM_DATA_MODEL.md
 // ---------------------------------------------------------------------------
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTenancy } from "./TenancyContext";
 import { useContent } from "./ContentContext";
 import { useInbox } from "./InboxContext";
 import { addDays, dayNum, nowClock } from "../pm/jalali";
-import type { KnowledgeDoc } from "../data/mock";
+import { users, type KnowledgeDoc } from "../data/mock";
 import {
   KM_TODAY,
   seedCategories,
@@ -17,34 +19,48 @@ import {
   seedExperiences,
   seedExperts,
   seedGlossary,
+  seedLogs,
   seedProcesses,
   seedRegistry,
   seedRegistryTypes,
   seedRnd,
+  seedSavedSearches,
   seedSettings,
+  seedWorkflows,
 } from "../km/seed";
+import { DEFAULT_ACCESS_POLICY, evaluateAccess, stepActors, subjectFor, templateFor, type AccessSubject, type AccessVerdict } from "../km/access";
+import { matchesAll, mdToPlain, queryTerms } from "../km/text";
 import type {
   AccessLevel,
+  AccessPolicy,
   DocStatus,
   Experience,
   Expert,
   GlossaryTerm,
+  KAcl,
   KCategory,
   KComment,
+  KDelegation,
   KDoc,
+  KDocFlow,
   KDocType,
   KFile,
+  KFlowEvent,
   KLog,
+  KLogCode,
   KProcess,
   KRelation,
+  KSavedSearch,
   KSettings,
+  KWfStep,
+  KWfTemplate,
   RegistryItem,
   RegistryType,
   RndDoc,
 } from "../km/types";
 
 const KEY = "motoshub.km.v1";
-const VERSION = 1;
+const VERSION = 2;
 
 type Store = {
   version: number;
@@ -63,6 +79,8 @@ type Store = {
   logs: KLog[];
   searches: { term: string; at: string; results: number }[];
   reminded: string[];
+  /** بند ۷: جستجوهای ذخیره‌شده */
+  savedSearches: KSavedSearch[];
 };
 
 function initial(): Store {
@@ -80,11 +98,7 @@ function initial(): Store {
     experts: seedExperts(),
     glossary: seedGlossary(),
     settings: seedSettings(),
-    logs: [
-      { id: "kl1", at: "۱۴۰۵/۰۳/۰۲ ۱۰:۱۲", seq: 1, actor: "پایگاه اطلاع‌رسانی بنیاد", action: "سند را برای اصلاح ارجاع داد", entity: { type: "doc", id: "d10", title: "تفاهم‌نامه" } },
-      { id: "kl2", at: "۱۴۰۵/۰۳/۰۵ ۰۹:۳۰", seq: 2, actor: "مهندس بردیا کوشا", action: "درس‌آموخته ثبت کرد", entity: { type: "lesson", id: "xp2", title: "کدگذاری فایل‌های قدیمی" } },
-      { id: "kl3", at: "۱۴۰۵/۰۳/۰۷ ۱۴:۰۵", seq: 3, actor: "وحید خاوئی", action: "سند را مشاهده کرد", entity: { type: "doc", id: "d4", title: "گزارش پیشرفت قلعه‌گنج" } },
-    ],
+    logs: seedLogs(),
     searches: [
       { term: "قرارداد", at: "۱۴۰۵/۰۳/۰۱", results: 3 },
       { term: "آیین‌نامه معاملات", at: "۱۴۰۵/۰۳/۰۲", results: 0 },
@@ -96,6 +110,7 @@ function initial(): Store {
       { term: "امنیت اطلاعات", at: "۱۴۰۵/۰۳/۰۷", results: 0 },
     ],
     reminded: [],
+    savedSearches: seedSavedSearches(),
   };
 }
 
@@ -116,6 +131,21 @@ export type NewDocInput = Omit<KDoc, "id" | "code" | "createdAt" | "updatedAt" |
 export type WorkflowAction = "submit" | "approve" | "return" | "publish" | "archive" | "restore";
 export type EntityKind = "doc" | "registry" | "process" | "lesson" | "expert" | "glossary";
 
+/** وضعیت مرحله‌ی جاری گردش کار یک سند */
+export type FlowInfo = {
+  template: KWfTemplate;
+  step: KWfStep;
+  stepIdx: number;
+  /** موعد مرحله‌ی جاری */
+  due: string;
+  /** مثبت = روزهای گذشته از موعد */
+  overdueDays: number;
+  actors: string[];
+  deputies: { name: string; for: string }[];
+};
+
+export type WhoCanSee = AccessVerdict & { userId: string; name: string };
+
 type Ctx = Store & {
   today: string;
   me: string;
@@ -123,20 +153,41 @@ type Ctx = Store & {
   categoryPath: (id?: string) => string;
   canSee: (d: KDoc) => boolean;
   isApprover: (d: KDoc) => boolean;
+  // دسترسی (بند ۸)
+  /** کاربر جاری اجازه‌ی دانلود دارد؟ (در غیر این صورت فقط مشاهده) */
+  canDownload: (d: KDoc) => boolean;
+  /** سیاست سطح دسترسی (دانلود/واترمارک) */
+  policy: Record<AccessLevel, AccessPolicy>;
+  /** فهرست افرادی که سند را می‌بینند/دانلود می‌کنند — برای «چه کسانی می‌بینند» */
+  whoCanSee: (d: KDoc) => WhoCanSee[];
+  updateAcl: (id: string, acl: KAcl | undefined) => void;
+  setAccessPolicy: (level: AccessLevel, patch: Partial<AccessPolicy>) => void;
   // اسناد
   createDoc: (input: NewDocInput) => string;
   updateDoc: (id: string, patch: Partial<KDoc>) => void;
   deleteDoc: (id: string) => void;
-  newVersion: (id: string, files: KFile[], note: string) => void;
+  /** نسخه‌ی جدید؛ برای مقاله `body` و برای سند فایل‌محور `files` */
+  newVersion: (id: string, files: KFile[], note: string, body?: string) => void;
   workflow: (id: string, action: WorkflowAction, note?: string) => void;
+  /** بازیابی کنترل‌شده از آرشیو: دلیل الزامی و مجوز knowledge.archive */
+  restoreDoc: (id: string, reason: string) => boolean;
   addComment: (id: string, text: string, kind: KComment["kind"]) => void;
   rate: (id: string, score: number) => void;
   feedback: (id: string, helpful: boolean, reason?: string) => void;
   reportOutdated: (id: string, reason: string) => void;
   toggleFollow: (id: string) => void;
   viewDoc: (id: string) => void;
-  downloadDoc: (id: string) => void;
+  downloadDoc: (id: string, fileName?: string) => void;
+  /** پیش‌نمایش فایل در مرورگر (لاگ می‌شود) */
+  previewDoc: (id: string, fileName: string, viewOnly: boolean) => void;
   reviewResult: (id: string, result: "تمدید" | "نیاز به اصلاح" | "آرشیو", note: string) => void;
+  // گردش کار چندمرحله‌ای (بند ۹)
+  templates: KWfTemplate[];
+  flowInfo: (d: KDoc) => FlowInfo | null;
+  saveWorkflow: (t: KWfTemplate) => void;
+  deleteWorkflow: (id: string) => void;
+  saveDelegation: (x: Omit<KDelegation, "id">) => void;
+  removeDelegation: (id: string) => void;
   // روابط
   addRelation: (kind: EntityKind, id: string, rel: KRelation) => void;
   removeRelation: (kind: EntityKind, id: string, rel: KRelation) => void;
@@ -168,6 +219,10 @@ type Ctx = Store & {
   /** انتقال دانش پروژه به مخزن سازمانی (بند ۲۰) */
   transferProjectKnowledge: (projectId: string, projectName: string, docs: { name: string; type: string; size: string }[]) => number;
   logSearch: (term: string, results: number) => void;
+  // جستجوی ذخیره‌شده (بند ۷)
+  saveSearch: (s: Omit<KSavedSearch, "id" | "owner" | "createdAt">) => void;
+  deleteSearch: (id: string) => void;
+  toggleSearchNotify: (id: string) => void;
   resetKm: () => void;
 };
 
@@ -190,13 +245,24 @@ const actionLabel: Record<WorkflowAction, string> = {
   restore: "بازیابی از آرشیو",
 };
 
+/** متن قابل جستجوی سند: عنوان، توضیح، برچسب، متن مقاله و متن فایل‌ها */
+export function docSearchText(d: KDoc, inContent = true) {
+  return [d.title, d.code, d.description, d.tags.join(" "), d.owner, d.unit, ...(inContent ? [mdToPlain(d.body ?? ""), ...d.files.map((f) => `${f.name} ${f.text ?? ""}`)] : [])].join(" \n ");
+}
+
 export function KnowledgeProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<Store>(load);
-  const { actingUser, hasPermission } = useTenancy();
+  const { actingUser, hasPermission, iam } = useTenancy();
   const { setKnowledgeDocs } = useContent();
   const inbox = useInbox();
   const me = actingUser.name;
   const stamp = () => `${KM_TODAY} ${nowClock()}`;
+  const templates = store.settings.workflows?.length ? store.settings.workflows : seedWorkflows();
+  const delegations = store.settings.delegations ?? [];
+  const policy = { ...DEFAULT_ACCESS_POLICY, ...(store.settings.accessPolicy ?? {}) };
+
+  // کاربر جاری برای قواعد دسترسی؛ مجوزها از کانتکست فعلی (با «مشاهده به‌عنوان» تغییر می‌کند)
+  const meSubject: AccessSubject = { ...subjectFor(iam, actingUser.id, KM_TODAY), name: me, perm: hasPermission };
 
   useEffect(() => {
     try {
@@ -232,46 +298,99 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.docs, store.categories]);
 
-  // بند ۱۵: یادآوری موعد بازبینی به مالک سند (یک بار برای هر موعد)
+  const flowInfoOf = (d: KDoc): FlowInfo | null => {
+    if (!d.flow || (d.status !== "در بررسی" && d.status !== "تأییدشده")) return null;
+    const template = templates.find((t) => t.id === d.flow!.templateId) ?? templateFor(templates, d.type);
+    const step = template?.steps[d.flow.stepIdx];
+    if (!template || !step) return null;
+    const due = addDays(d.flow.stepStartedAt, step.slaDays);
+    const overdueDays = (dayNum(KM_TODAY) ?? 0) - (dayNum(due) ?? 0);
+    const { primary, deputies } = stepActors(step, d, iam, KM_TODAY, delegations);
+    return { template, step, stepIdx: d.flow.stepIdx, due, overdueDays, actors: primary, deputies };
+  };
+
+  // بند ۱۵: یادآوری موعد بازبینی به مالک سند + بند ۹: یادآوری و تشدید مراحل معوق گردش کار (یک بار برای هر موعد)
   useEffect(() => {
     const today = dayNum(KM_TODAY)!;
     const due = store.docs.filter((d) => d.status !== "آرشیو" && (dayNum(d.reviewDate) ?? 9e9) - today <= 7 && !store.reminded.includes(`${d.id}:${d.reviewDate}`));
-    if (!due.length) return;
     due.forEach((d) => {
       const left = (dayNum(d.reviewDate) ?? today) - today;
       inbox.send([d.owner, ...d.approvers], "knowledge", left < 0 ? `موعد بازبینی سند «${d.title}» ${Math.abs(left).toLocaleString("fa-IR")} روز گذشته است.` : `موعد بازبینی سند «${d.title}» ${left ? `${left.toLocaleString("fa-IR")} روز دیگر` : "امروز"} است.`, `/dashboard/knowledge?tab=review&doc=${d.id}`);
     });
-    setStore((prev) => ({ ...prev, reminded: [...prev.reminded, ...due.map((d) => `${d.id}:${d.reviewDate}`)] }));
+    const late = store.docs
+      .map((d) => ({ d, f: flowInfoOf(d) }))
+      .filter((x): x is { d: KDoc; f: FlowInfo } => !!x.f && x.f.overdueDays > 0 && !store.reminded.includes(`wf:${x.d.id}:${x.f.stepIdx}:${x.d.flow!.stepStartedAt}`));
+    late.forEach(({ d, f }) => {
+      const link = `/dashboard/knowledge?tab=workflow&doc=${d.id}`;
+      inbox.send([...f.actors, ...f.deputies.map((x) => x.name)], "knowledge", `یادآوری: مرحله‌ی «${f.step.name}» سند «${d.title}» ${f.overdueDays.toLocaleString("fa-IR")} روز از مهلت گذشته است.`, link);
+      inbox.send([d.owner], "knowledge", `تشدید: سند «${d.title}» در مرحله‌ی «${f.step.name}» معوق مانده است (${f.overdueDays.toLocaleString("fa-IR")} روز).`, link);
+    });
+    if (!due.length && !late.length) return;
+    const remindEv = (d: KDoc, f: FlowInfo): KFlowEvent => ({ stepId: f.step.id, stepName: f.step.name, by: "سامانه", decision: "remind", at: `${KM_TODAY} ۰۸:۰۰`, note: `یادآوری به ${f.actors.join("، ") || "تأییدکننده"} و تشدید به مالک (${d.owner})` });
+    setStore((prev) => ({
+      ...prev,
+      docs: prev.docs.map((d) => {
+        const x = late.find((l) => l.d.id === d.id);
+        return x && d.flow ? { ...d, flow: { ...d.flow, history: [...d.flow.history, remindEv(d, x.f)] } } : d;
+      }),
+      reminded: [...prev.reminded, ...due.map((d) => `${d.id}:${d.reviewDate}`), ...late.map(({ d, f }) => `wf:${d.id}:${f.stepIdx}:${d.flow!.stepStartedAt}`)],
+    }));
     // فقط در شروع
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const log = (s: Store, action: string, entity: KLog["entity"]): Store => {
+  const log = (s: Store, action: string, entity: KLog["entity"], code?: KLogCode, detail?: string, access?: AccessLevel): Store => {
     const seq = s.seq + 1;
-    return { ...s, seq, logs: [{ id: `kl${seq}`, at: stamp(), seq, actor: me, action, entity }, ...s.logs].slice(0, 400) };
+    return { ...s, seq, logs: [{ id: `kl${seq}`, at: stamp(), seq, actor: me, action, entity, code, detail, access }, ...s.logs].slice(0, 2000) };
   };
   const nid = (s: Store, p: string) => `${p}${s.seq + 1}-${Date.now().toString(36)}`;
 
-  const patchDoc = (id: string, fn: (d: KDoc) => KDoc, action?: string) =>
+  const patchDoc = (id: string, fn: (d: KDoc) => KDoc, action?: string, code?: KLogCode, detail?: string) =>
     setStore((prev) => {
       const d = prev.docs.find((x) => x.id === id);
       if (!d) return prev;
       const next = fn(structuredClone(d));
       const s = { ...prev, docs: prev.docs.map((x) => (x.id === id ? next : x)) };
-      return action ? log(s, action, { type: "doc", id, title: next.title }) : s;
+      return action ? log(s, action, { type: "doc", id, title: next.title }, code, detail, next.access) : s;
     });
 
-  const canSee = (d: KDoc) => {
-    if (d.access === "عمومی" || d.access === "داخلی") return true;
-    if (d.owner === me || d.author === me || d.approvers.includes(me)) return true;
-    if (d.access === "محرمانه") return hasPermission("knowledge.confidential");
-    return hasPermission("knowledge.confidential") && hasPermission("knowledge.approve");
-  };
+  const canSee = (d: KDoc) => evaluateAccess(d, meSubject, iam, policy).view;
 
   const interestedIn = (catId: string) =>
     Object.entries(store.settings.interests)
       .filter(([, cats]) => cats.includes(catId) || cats.includes(store.categories.find((c) => c.id === catId)?.parentId ?? "—"))
       .map(([n]) => n);
+
+  const notifyApprovers = (names: string[], d: { id: string; title: string }, submitted: boolean) => {
+    if (!names.length) return;
+    inbox.send(names, "knowledge", submitted ? `شما به‌عنوان تأییدکننده‌ی سند «${d.title}» انتخاب شدید و سند برای بررسی به شما ارجاع شد.` : `شما به‌عنوان تأییدکننده‌ی سند «${d.title}» انتخاب شدید.`, `/dashboard/knowledge?tab=workflow&doc=${d.id}`);
+  };
+
+  /** شروع گردش کار قالب‌دار از مرحله‌ی اول */
+  const startFlow = (d: KDoc, note?: string): KDocFlow => {
+    const t = templateFor(templates, d.type);
+    return {
+      templateId: t?.id ?? "",
+      stepIdx: 0,
+      stepStartedAt: KM_TODAY,
+      history: [...(d.flow?.history ?? []), { stepId: t?.steps[0]?.id ?? "", stepName: "ارسال برای بررسی", by: me, decision: "submit", at: stamp(), note }],
+    };
+  };
+  const notifyStep = (d: KDoc, flow: KDocFlow) => {
+    const t = templates.find((x) => x.id === flow.templateId);
+    const step = t?.steps[flow.stepIdx];
+    if (!step) return;
+    const { primary, deputies } = stepActors(step, d, iam, KM_TODAY, delegations);
+    inbox.send([...primary, ...deputies.map((x) => x.name)], "knowledge", `نوبت شما در گردش کار: «${step.name}» برای سند «${d.title}» (مهلت ${step.slaDays.toLocaleString("fa-IR")} روز).`, `/dashboard/knowledge?tab=workflow&doc=${d.id}`);
+  };
+
+  /** اعلان «نتیجه‌ی جدید» برای جستجوهای ذخیره‌شده */
+  const notifySavedSearches = (d: KDoc) => {
+    const hay = docSearchText(d, true);
+    store.savedSearches
+      .filter((s) => s.notify && queryTerms(s.query).length && matchesAll(hay, queryTerms(s.query)) && (!s.filters.access.length || s.filters.access.includes(d.access)) && (!s.filters.types.length || s.filters.types.includes(d.type)))
+      .forEach((s) => inbox.send([s.owner], "knowledge", `نتیجه‌ی جدید برای جستجوی ذخیره‌شده‌ی «${s.name}»: «${d.title}»`, `/dashboard/knowledge?tab=search&doc=${d.id}`));
+  };
 
   const crud = <K extends "registry" | "processes" | "experiences" | "experts" | "glossary" | "rnd" | "categories" | "docTypes" | "registryTypes">(key: K, prefix: string, label: string, titleOf: (x: Store[K][number]) => string, type: string) => ({
     save: (item: Partial<Store[K][number]> & { id?: string }) =>
@@ -280,18 +399,18 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
         if (item.id && list.some((x) => x.id === item.id)) {
           const updated = list.map((x) => (x.id === item.id ? { ...x, ...item } : x));
           const it = updated.find((x) => x.id === item.id) as Store[K][number];
-          return log({ ...prev, [key]: updated } as Store, `${label} را ویرایش کرد`, { type, id: item.id, title: titleOf(it) });
+          return log({ ...prev, [key]: updated } as Store, `${label} را ویرایش کرد`, { type, id: item.id, title: titleOf(it) }, "edit");
         }
         const id = nid(prev, prefix);
         const created = { ...item, id } as Store[K][number];
-        return log({ ...prev, [key]: [created, ...list] } as Store, `${label} جدید ثبت کرد`, { type, id, title: titleOf(created) });
+        return log({ ...prev, [key]: [created, ...list] } as Store, `${label} جدید ثبت کرد`, { type, id, title: titleOf(created) }, "create");
       }),
     remove: (id: string) =>
       setStore((prev) => {
         const list = prev[key] as unknown as { id: string }[];
         const it = list.find((x) => x.id === id) as Store[K][number] | undefined;
         if (!it) return prev;
-        return log({ ...prev, [key]: list.filter((x) => x.id !== id) } as Store, `${label} را حذف کرد`, { type, id, title: titleOf(it) });
+        return log({ ...prev, [key]: list.filter((x) => x.id !== id) } as Store, `${label} را حذف کرد`, { type, id, title: titleOf(it) }, "delete");
       }),
   });
 
@@ -305,6 +424,7 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
   const dtype = crud("docTypes", "dt", "نوع سند", (x) => x.name, "doc-type");
 
   const relKey: Record<EntityKind, keyof Store> = { doc: "docs", registry: "registry", process: "processes", lesson: "experiences", expert: "experts", glossary: "glossary" };
+  const aclSummary = (acl?: KAcl) => (acl?.entries.length ? `${acl.entries.length.toLocaleString("fa-IR")} ردیف دسترسی${acl.viewOnly ? " · فقط مشاهده" : ""}` : acl?.viewOnly ? "فقط مشاهده" : "فقط سطح دسترسی");
 
   const value: Ctx = {
     ...store,
@@ -318,108 +438,193 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
       return parent ? `${parent.name} › ${c.name}` : c.name;
     },
     canSee,
-    isApprover: (d) => d.approvers.includes(me) || hasPermission("knowledge.approve"),
+    isApprover: (d) => {
+      if (d.approvers.includes(me) || hasPermission("knowledge.approve")) return true;
+      const f = flowInfoOf(d);
+      return !!f && (f.actors.includes(me) || f.deputies.some((x) => x.name === me));
+    },
+    canDownload: (d) => { const a = evaluateAccess(d, meSubject, iam, policy); return a.download || (a.view && hasPermission("knowledge.download")); },
+    policy,
+    whoCanSee: (d) =>
+      users
+        .map((u) => {
+          const subj = u.id === actingUser.id ? meSubject : subjectFor(iam, u.id, KM_TODAY);
+          return { userId: u.id, name: u.name, ...evaluateAccess(d, subj, iam, policy) };
+        })
+        .filter((x) => x.view),
+    updateAcl: (id, acl) => patchDoc(id, (x) => ({ ...x, acl }), "فهرست دسترسی سند را تغییر داد", "access", aclSummary(acl)),
+    setAccessPolicy: (level, patch) =>
+      setStore((prev) => {
+        const cur = { ...DEFAULT_ACCESS_POLICY, ...(prev.settings.accessPolicy ?? {}) };
+        const next = { ...cur, [level]: { ...cur[level], ...patch } };
+        return log({ ...prev, settings: { ...prev.settings, accessPolicy: next } }, `سیاست مشاهده/دانلود سطح «${level}» را تغییر داد`, { type: "settings", id: "access", title: "سطوح دسترسی" }, "access", `دانلود: ${next[level].download ? "مجاز" : "فقط مشاهده"} · واترمارک: ${next[level].watermark ? "دارد" : "ندارد"}`);
+      }),
 
     createDoc: (input) => {
       const { submit, ...rest } = input;
-      let newId = "";
-      setStore((prev) => {
-        const seq = prev.seq + 1;
-        newId = `kd-${seq}-${Date.now().toString(36)}`;
-        const doc: KDoc = {
-          ...rest,
-          id: newId,
-          code: `KM-1405-${String(seq).padStart(4, "0")}`,
-          author: me,
-          createdAt: KM_TODAY,
-          updatedAt: KM_TODAY,
-          version: 1,
-          status: submit ? "در بررسی" : "پیش‌نویس",
-          versions: [{ version: 1, date: KM_TODAY, by: me, note: "ایجاد سند", files: rest.files }],
-          workflow: submit ? [{ id: `wf${seq}`, action: "ارسال برای بررسی", from: "پیش‌نویس", to: "در بررسی", by: me, at: stamp() }] : [],
-          views: 0,
-          downloads: 0,
-          ratings: [],
-          feedback: [],
-          comments: [],
-          followers: [me],
-        };
-        return log({ ...prev, docs: [doc, ...prev.docs] }, submit ? "سند جدید ثبت و برای بررسی ارسال کرد" : "پیش‌نویس سند جدید ثبت کرد", { type: "doc", id: newId, title: doc.title });
-      });
-      if (submit) inbox.send(input.approvers, "knowledge", `«${me}» سند «${input.title}» را برای بررسی و تأیید به شما ارجاع داد.`, `/dashboard/knowledge?tab=workflow`);
+      const seq = store.seq + 1;
+      const newId = `kd-${seq}-${Date.now().toString(36)}`;
+      const doc: KDoc = {
+        ...rest,
+        id: newId,
+        code: `KM-1405-${String(seq).padStart(4, "0")}`,
+        author: me,
+        createdAt: KM_TODAY,
+        updatedAt: KM_TODAY,
+        version: 1,
+        status: submit ? "در بررسی" : "پیش‌نویس",
+        versions: [{ version: 1, date: KM_TODAY, by: me, note: "ایجاد سند", files: rest.files, body: rest.body }],
+        workflow: submit ? [{ id: `wf${seq}`, action: "ارسال برای بررسی", from: "پیش‌نویس", to: "در بررسی", by: me, at: stamp() }] : [],
+        views: 0,
+        downloads: 0,
+        ratings: [],
+        feedback: [],
+        comments: [],
+        followers: [me],
+      };
+      if (submit) doc.flow = startFlow(doc);
+      setStore((prev) => log({ ...prev, docs: [doc, ...prev.docs] }, submit ? "سند جدید ثبت و برای بررسی ارسال کرد" : "پیش‌نویس سند جدید ثبت کرد", { type: "doc", id: newId, title: doc.title }, "create", rest.acl?.entries.length ? aclSummary(rest.acl) : undefined, doc.access));
+      notifyApprovers(input.approvers, { id: newId, title: input.title }, submit);
+      if (doc.flow) notifyStep(doc, doc.flow);
       return newId;
     },
-    updateDoc: (id, patch) => patchDoc(id, (d) => ({ ...d, ...patch, updatedAt: KM_TODAY }), "اطلاعات سند را ویرایش کرد"),
+    updateDoc: (id, patch) => {
+      const d = store.docs.find((x) => x.id === id);
+      const aclChanged = d && "acl" in patch && JSON.stringify(patch.acl ?? null) !== JSON.stringify(d.acl ?? null);
+      patchDoc(id, (x) => ({ ...x, ...patch, updatedAt: KM_TODAY }), aclChanged ? "اطلاعات و فهرست دسترسی سند را ویرایش کرد" : "اطلاعات سند را ویرایش کرد", aclChanged ? "access" : "edit", aclChanged ? aclSummary(patch.acl) : undefined);
+      if (d && patch.approvers) notifyApprovers(patch.approvers.filter((a) => !d.approvers.includes(a)), d, false);
+    },
     deleteDoc: (id) =>
       setStore((prev) => {
         const d = prev.docs.find((x) => x.id === id);
         if (!d) return prev;
-        return log({ ...prev, docs: prev.docs.filter((x) => x.id !== id) }, "سند را حذف کرد", { type: "doc", id, title: d.title });
+        return log({ ...prev, docs: prev.docs.filter((x) => x.id !== id) }, "سند را حذف کرد", { type: "doc", id, title: d.title }, "delete", undefined, d.access);
       }),
-    newVersion: (id, files, note) => {
+    newVersion: (id, files, note, body) => {
       const d = store.docs.find((x) => x.id === id);
+      const review = store.settings.workflowSteps.review;
       patchDoc(
         id,
-        (x) => ({
-          ...x,
-          version: x.version + 1,
-          files,
-          updatedAt: KM_TODAY,
-          versions: [...x.versions, { version: x.version + 1, date: KM_TODAY, by: me, note, files }],
-          status: store.settings.workflowSteps.review ? "در بررسی" : x.status,
-          workflow: store.settings.workflowSteps.review ? [...x.workflow, { id: `wf${Date.now()}`, action: `نسخه‌ی ${x.version + 1} برای بررسی`, from: x.status, to: "در بررسی", by: me, at: stamp(), note }] : x.workflow,
-        }),
-        `نسخه‌ی جدید سند را بارگذاری کرد`
+        (x) => {
+          const nextFiles = files.length ? files : x.files;
+          const nextBody = body ?? x.body;
+          const y: KDoc = {
+            ...x,
+            version: x.version + 1,
+            files: nextFiles,
+            body: nextBody,
+            updatedAt: KM_TODAY,
+            versions: [...x.versions, { version: x.version + 1, date: KM_TODAY, by: me, note, files: nextFiles, body: nextBody }],
+            status: review ? "در بررسی" : x.status,
+            workflow: review ? [...x.workflow, { id: `wf${Date.now()}`, action: `نسخه‌ی ${x.version + 1} برای بررسی`, from: x.status, to: "در بررسی", by: me, at: stamp(), note }] : x.workflow,
+          };
+          if (review) y.flow = startFlow(x, `نسخه‌ی ${x.version + 1}: ${note}`);
+          return y;
+        },
+        `نسخه‌ی جدید سند را بارگذاری کرد`,
+        "version",
+        note
       );
       if (d) {
         inbox.send(d.followers, "knowledge", `نسخه‌ی ${(d.version + 1).toLocaleString("fa-IR")} سند «${d.title}» که دنبال می‌کنید بارگذاری شد.`, `/dashboard/knowledge?tab=bank&doc=${id}`);
-        if (store.settings.workflowSteps.review) inbox.send(d.approvers, "knowledge", `نسخه‌ی جدید «${d.title}» منتظر بررسی شماست.`, `/dashboard/knowledge?tab=workflow`);
+        if (review) {
+          inbox.send(d.approvers, "knowledge", `نسخه‌ی جدید «${d.title}» منتظر بررسی شماست.`, `/dashboard/knowledge?tab=workflow`);
+          notifyStep(d, startFlow(d));
+        }
       }
     },
     workflow: (id, action, note) => {
       const d = store.docs.find((x) => x.id === id);
       if (!d) return;
+      const link = `/dashboard/knowledge?tab=bank&doc=${id}`;
+      const f = flowInfoOf(d);
+      // گردش کار قالب‌دار: تأیید مرحله‌به‌مرحله
+      if (f && (action === "approve" || action === "publish" || action === "return")) {
+        const onBehalf = f.actors.includes(me) ? undefined : f.deputies.find((x) => x.name === me)?.for;
+        const isLast = f.stepIdx >= f.template.steps.length - 1;
+        const finishing = action === "publish" || (action === "approve" && (f.step.kind === "publish" || isLast));
+        const nextIdx = action === "return" ? 0 : finishing ? f.template.steps.length : f.stepIdx + 1;
+        const nextStep = f.template.steps[nextIdx];
+        const to: DocStatus = action === "return" ? "ارجاع برای اصلاح" : finishing ? "منتشرشده" : nextStep?.kind === "publish" ? "تأییدشده" : "در بررسی";
+        const decision: KFlowEvent["decision"] = action === "return" ? "return" : finishing && f.step.kind === "publish" ? "publish" : "approve";
+        const label = action === "return" ? "ارجاع برای اصلاح" : decision === "publish" ? "انتشار" : "تأیید";
+        const nextFlow: KDocFlow = { ...d.flow!, stepIdx: nextIdx, stepStartedAt: KM_TODAY, history: [...d.flow!.history, { stepId: f.step.id, stepName: f.step.name, by: me, decision, at: stamp(), note, onBehalfOf: onBehalf }] };
+        patchDoc(
+          id,
+          (x) => {
+            return { ...x, status: to, flow: nextFlow, workflow: [...x.workflow, { id: `wf${Date.now()}`, action: `${label}: ${f.step.name}`, from: x.status, to, by: me, at: stamp(), note: onBehalf ? `${note ? `${note} — ` : ""}به جانشینی از ${onBehalf}` : note }] };
+          },
+          `گردش کار: ${f.step.name} — ${label}`,
+          "workflow",
+          note
+        );
+        if (action === "return") inbox.send([d.owner, d.author], "knowledge", `سند «${d.title}» در مرحله‌ی «${f.step.name}» برای اصلاح به شما ارجاع شد${note ? `: «${note}»` : "."}`, link);
+        else if (finishing) {
+          inbox.send([d.owner, d.author, ...d.followers], "knowledge", `سند «${d.title}» منتشر شد.`, link);
+          const interested = interestedIn(d.categoryId);
+          if (interested.length) inbox.send(interested, "knowledge", `دانش جدید در حوزه‌ی مورد علاقه‌ی شما: «${d.title}»`, link);
+          notifySavedSearches(d);
+        } else {
+          inbox.send([d.owner, d.author], "knowledge", `مرحله‌ی «${f.step.name}» سند «${d.title}» توسط «${me}» تأیید شد؛ مرحله‌ی بعد: «${nextStep?.name}».`, link);
+          notifyStep(d, nextFlow);
+        }
+        return;
+      }
       const to = statusAfter[action];
+      const startNew = action === "submit" && templates.length > 0;
       patchDoc(
         id,
         (x) => ({
           ...x,
           status: to,
+          flow: startNew ? startFlow(x, note) : x.flow,
           archiveReason: action === "archive" ? note : action === "restore" ? undefined : x.archiveReason,
           workflow: [...x.workflow, { id: `wf${Date.now()}`, action: actionLabel[action], from: x.status, to, by: me, at: stamp(), note }],
         }),
-        `گردش کار: ${actionLabel[action]}`
+        action === "archive" ? "سند را آرشیو کرد" : action === "restore" ? "سند را از آرشیو بازیابی کرد" : `گردش کار: ${actionLabel[action]}`,
+        action === "archive" ? "archive" : action === "restore" ? "restore" : "workflow",
+        note
       );
-      const link = `/dashboard/knowledge?tab=bank&doc=${id}`;
-      if (action === "submit") inbox.send(d.approvers, "knowledge", `سند «${d.title}» برای بررسی به شما ارجاع شد.`, `/dashboard/knowledge?tab=workflow`);
+      if (action === "submit") {
+        inbox.send(d.approvers, "knowledge", `سند «${d.title}» برای بررسی به شما ارجاع شد.`, `/dashboard/knowledge?tab=workflow`);
+        if (startNew) notifyStep(d, startFlow(d));
+      }
       if (action === "approve") inbox.send([d.owner, d.author], "knowledge", `سند «${d.title}» توسط «${me}» تأیید شد.`, link);
       if (action === "return") inbox.send([d.owner, d.author], "knowledge", `سند «${d.title}» برای اصلاح به شما ارجاع شد${note ? `: «${note}»` : "."}`, link);
       if (action === "publish") {
         inbox.send([d.owner, d.author, ...d.followers], "knowledge", `سند «${d.title}» منتشر شد.`, link);
         const interested = interestedIn(d.categoryId);
         if (interested.length) inbox.send(interested, "knowledge", `دانش جدید در حوزه‌ی مورد علاقه‌ی شما: «${d.title}»`, link);
+        notifySavedSearches(d);
       }
       if (action === "archive") inbox.send([d.owner, ...d.followers], "knowledge", `سند «${d.title}» آرشیو شد${note ? ` (دلیل: ${note})` : ""}.`, link);
+      if (action === "restore") inbox.send([d.owner, ...d.followers], "knowledge", `سند «${d.title}» از آرشیو بازیابی شد${note ? ` (دلیل: ${note})` : ""}.`, link);
+    },
+    restoreDoc: (id, reason) => {
+      if (!hasPermission("knowledge.archive") || !reason.trim()) return false;
+      value.workflow(id, "restore", reason.trim());
+      return true;
     },
     addComment: (id, text, kind) => {
       const d = store.docs.find((x) => x.id === id);
-      patchDoc(id, (x) => ({ ...x, comments: [...x.comments, { id: `kc${Date.now()}`, author: me, text, at: stamp(), kind }] }), kind === "پیشنهاد اصلاح" ? "پیشنهاد اصلاح ثبت کرد" : "نظر ثبت کرد");
+      patchDoc(id, (x) => ({ ...x, comments: [...x.comments, { id: `kc${Date.now()}`, author: me, text, at: stamp(), kind }] }), kind === "پیشنهاد اصلاح" ? "پیشنهاد اصلاح ثبت کرد" : "نظر ثبت کرد", "comment");
       if (d) {
         inbox.send([d.owner, d.author], "knowledge", `«${me}» روی سند «${d.title}» ${kind === "پیشنهاد اصلاح" ? "پیشنهاد اصلاح" : kind === "پرسش" ? "پرسش" : "نظر"} ثبت کرد.`, `/dashboard/knowledge?tab=bank&doc=${id}`);
         const mentioned = (text.match(/@[^\s،.,!؟?]+/g) ?? []).map((t) => t.slice(1).replace(/_/g, " "));
         if (mentioned.length) inbox.send(mentioned, "mention", `«${me}» شما را در سند «${d.title}» منشن کرد.`, `/dashboard/knowledge?tab=bank&doc=${id}`);
       }
     },
-    rate: (id, score) => patchDoc(id, (x) => ({ ...x, ratings: [...x.ratings.filter((r) => r.by !== me), { by: me, score }] }), "به سند امتیاز داد"),
-    feedback: (id, helpful, reason) => patchDoc(id, (x) => ({ ...x, feedback: [...x.feedback.filter((f) => f.by !== me), { by: me, helpful, reason }] }), helpful ? "سند را مفید دانست" : "سند را نامفید دانست"),
+    rate: (id, score) => patchDoc(id, (x) => ({ ...x, ratings: [...x.ratings.filter((r) => r.by !== me), { by: me, score }] }), "به سند امتیاز داد", "feedback", `${score.toLocaleString("fa-IR")} ستاره`),
+    feedback: (id, helpful, reason) => patchDoc(id, (x) => ({ ...x, feedback: [...x.feedback.filter((f) => f.by !== me), { by: me, helpful, reason }] }), helpful ? "سند را مفید دانست" : "سند را نامفید دانست", "feedback", reason),
     reportOutdated: (id, reason) => {
       const d = store.docs.find((x) => x.id === id);
-      patchDoc(id, (x) => ({ ...x, reported: [...(x.reported ?? []), { by: me, reason, at: KM_TODAY }] }), "سند را قدیمی/نادرست گزارش کرد");
+      patchDoc(id, (x) => ({ ...x, reported: [...(x.reported ?? []), { by: me, reason, at: KM_TODAY }] }), "سند را قدیمی/نادرست گزارش کرد", "feedback", reason);
       if (d) inbox.send([d.owner], "knowledge", `«${me}» سند «${d.title}» را قدیمی یا نادرست گزارش کرد: «${reason}»`, `/dashboard/knowledge?tab=bank&doc=${id}`);
     },
     toggleFollow: (id) => patchDoc(id, (x) => ({ ...x, followers: x.followers.includes(me) ? x.followers.filter((f) => f !== me) : [...x.followers, me] })),
-    viewDoc: (id) => patchDoc(id, (x) => ({ ...x, views: x.views + 1 })),
-    downloadDoc: (id) => patchDoc(id, (x) => ({ ...x, downloads: x.downloads + 1 }), "سند را دانلود کرد"),
+    viewDoc: (id) => patchDoc(id, (x) => ({ ...x, views: x.views + 1 }), "سند را مشاهده کرد", "view"),
+    downloadDoc: (id, fileName) => patchDoc(id, (x) => ({ ...x, downloads: x.downloads + 1 }), "سند را دانلود کرد", "download", fileName),
+    previewDoc: (id, fileName, viewOnly) => patchDoc(id, (x) => x, viewOnly ? "پیش‌نمایش فایل را دید (فقط مشاهده)" : "پیش‌نمایش فایل را دید", "preview", fileName),
     reviewResult: (id, result, note) => {
       patchDoc(
         id,
@@ -430,9 +635,41 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
           archiveReason: result === "آرشیو" ? note || "پایان اعتبار در بازبینی دوره‌ای" : x.archiveReason,
           workflow: [...x.workflow, { id: `wf${Date.now()}`, action: `بازبینی دوره‌ای: ${result}`, from: x.status, to: result === "آرشیو" ? "آرشیو" : result === "نیاز به اصلاح" ? "ارجاع برای اصلاح" : x.status, by: me, at: stamp(), note }],
         }),
-        `نتیجه‌ی بازبینی دوره‌ای را ثبت کرد (${result})`
+        `نتیجه‌ی بازبینی دوره‌ای را ثبت کرد (${result})`,
+        result === "آرشیو" ? "archive" : "workflow",
+        note
       );
     },
+
+    templates,
+    flowInfo: flowInfoOf,
+    saveWorkflow: (t) => {
+      const old = templates.find((x) => x.id === t.id);
+      const exists = !!old;
+      setStore((prev) => {
+        const cur = prev.settings.workflows?.length ? prev.settings.workflows : seedWorkflows();
+        const list = exists ? cur.map((x) => (x.id === t.id ? t : x)) : [...cur, t];
+        return log({ ...prev, settings: { ...prev.settings, workflows: list } }, exists ? `قالب گردش کار «${t.name}» را ویرایش کرد` : `قالب گردش کار «${t.name}» را ساخت`, { type: "settings", id: t.id, title: "گردش کار" }, "settings", `${t.steps.length.toLocaleString("fa-IR")} مرحله`);
+      });
+      // بند ۱۶: «شما به‌عنوان تأییدکننده انتخاب شدید»
+      const oldUsers = new Set((old?.steps ?? []).flatMap((s) => [s.approver.kind === "user" ? s.approver.id : undefined, s.substitute]).filter(Boolean) as string[]);
+      t.steps.forEach((s) => {
+        const named = [s.approver.kind === "user" ? s.approver.id : undefined, s.substitute].filter((x): x is string => !!x && !oldUsers.has(x));
+        if (named.length) inbox.send(named, "knowledge", `شما به‌عنوان تأییدکننده‌ی مرحله‌ی «${s.name}» در گردش کار «${t.name}» انتخاب شدید.`, "/dashboard/knowledge?tab=workflow");
+      });
+    },
+    deleteWorkflow: (id) =>
+      setStore((prev) => {
+        const cur = prev.settings.workflows?.length ? prev.settings.workflows : seedWorkflows();
+        if (cur.length <= 1) return prev;
+        const t = cur.find((x) => x.id === id);
+        return log({ ...prev, settings: { ...prev.settings, workflows: cur.filter((x) => x.id !== id) } }, `قالب گردش کار «${t?.name ?? id}» را حذف کرد`, { type: "settings", id, title: "گردش کار" }, "settings");
+      }),
+    saveDelegation: (x) => {
+      setStore((prev) => log({ ...prev, settings: { ...prev.settings, delegations: [...(prev.settings.delegations ?? []), { ...x, id: nid(prev, "dl") }] } }, `«${x.to}» را جانشین «${x.from}» تا ${x.until} کرد`, { type: "settings", id: "delegation", title: "جانشینی" }, "settings", x.note));
+      inbox.send([x.to], "knowledge", `شما تا ${x.until} جانشین «${x.from}» در تأیید اسناد دانش هستید.`, "/dashboard/knowledge?tab=workflow");
+    },
+    removeDelegation: (id) => setStore((prev) => log({ ...prev, settings: { ...prev.settings, delegations: (prev.settings.delegations ?? []).filter((x) => x.id !== id) } }, "جانشینی را لغو کرد", { type: "settings", id, title: "جانشینی" }, "settings")),
 
     addRelation: (kind, id, rel) =>
       setStore((prev) => {
@@ -452,11 +689,11 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
       setStore((prev) => {
         const fallback = prev.categories.find((c) => c.id !== id && !c.parentId)?.id ?? "";
         const s = { ...prev, categories: prev.categories.filter((c) => c.id !== id).map((c) => (c.parentId === id ? { ...c, parentId: undefined } : c)), docs: prev.docs.map((d) => (d.categoryId === id ? { ...d, categoryId: fallback } : d)) };
-        return log(s, "دسته‌بندی را حذف کرد", { type: "category", id, title: prev.categories.find((c) => c.id === id)?.name ?? "" });
+        return log(s, "دسته‌بندی را حذف کرد", { type: "category", id, title: prev.categories.find((c) => c.id === id)?.name ?? "" }, "delete");
       }),
     saveDocType: dtype.save,
     deleteDocType: dtype.remove,
-    updateSettings: (patch) => setStore((prev) => log({ ...prev, settings: { ...prev.settings, ...patch } }, "تنظیمات مدیریت دانش را تغییر داد", { type: "settings", id: "km", title: "تنظیمات" })),
+    updateSettings: (patch) => setStore((prev) => log({ ...prev, settings: { ...prev.settings, ...patch } }, "تنظیمات مدیریت دانش را تغییر داد", { type: "settings", id: "km", title: "تنظیمات" }, "settings")),
     toggleInterest: (categoryId) =>
       setStore((prev) => {
         const cur = prev.settings.interests[me] ?? [];
@@ -465,7 +702,7 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
 
     saveRegistryType: rtype.save as Ctx["saveRegistryType"],
     deleteRegistryType: (id) =>
-      setStore((prev) => log({ ...prev, registryTypes: prev.registryTypes.filter((t) => t.id !== id), registry: prev.registry.filter((r) => r.typeId !== id) }, "نوع شناسنامه را حذف کرد", { type: "registry-type", id, title: prev.registryTypes.find((t) => t.id === id)?.name ?? "" })),
+      setStore((prev) => log({ ...prev, registryTypes: prev.registryTypes.filter((t) => t.id !== id), registry: prev.registry.filter((r) => r.typeId !== id) }, "نوع شناسنامه را حذف کرد", { type: "registry-type", id, title: prev.registryTypes.find((t) => t.id === id)?.name ?? "" }, "delete")),
     saveRegistryItem: (r) => reg.save({ ...r, updatedAt: KM_TODAY }),
     deleteRegistryItem: reg.remove,
 
@@ -475,16 +712,16 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
         if (old) {
           const history = old.progress !== r.progress ? [{ at: KM_TODAY, by: me, text: `وضعیت از «${old.statusLabel}» به «${r.statusLabel}» تغییر کرد.` }, ...old.history] : old.history;
           const updated = { ...old, ...r, id: old.id, history };
-          return log({ ...prev, rnd: prev.rnd.map((x) => (x.id === old.id ? updated : x)) }, "سند فرصت R&D را ویرایش کرد", { type: "rnd", id: old.id, title: updated.company });
+          return log({ ...prev, rnd: prev.rnd.map((x) => (x.id === old.id ? updated : x)) }, "سند فرصت R&D را ویرایش کرد", { type: "rnd", id: old.id, title: updated.company }, "edit");
         }
         const id = nid(prev, "rd");
         const created: RndDoc = { ...r, id, history: [{ at: KM_TODAY, by: me, text: "سند ایجاد شد." }] };
-        return log({ ...prev, rnd: [created, ...prev.rnd] }, "سند فرصت R&D جدید ثبت کرد", { type: "rnd", id, title: created.company });
+        return log({ ...prev, rnd: [created, ...prev.rnd] }, "سند فرصت R&D جدید ثبت کرد", { type: "rnd", id, title: created.company }, "create");
       }),
     deleteRnd: (id) =>
       setStore((prev) => {
         const r = prev.rnd.find((x) => x.id === id);
-        return r ? log({ ...prev, rnd: prev.rnd.filter((x) => x.id !== id) }, "سند فرصت R&D را حذف کرد", { type: "rnd", id, title: r.company }) : prev;
+        return r ? log({ ...prev, rnd: prev.rnd.filter((x) => x.id !== id) }, "سند فرصت R&D را حذف کرد", { type: "rnd", id, title: r.company }, "delete") : prev;
       }),
 
     saveProcess: proc.save as Ctx["saveProcess"],
@@ -551,11 +788,14 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
           docs: [...newDocs, ...prev.docs],
           experiences: prev.experiences.map((x) => (x.projectId === projectId && x.status !== "منتشرشده" ? { ...x, status: "منتشرشده" } : x)),
         };
-        return log(s, `دانش پروژه‌ی «${projectName}» را به مخزن سازمانی منتقل کرد (${newDocs.length.toLocaleString("fa-IR")} سند)`, { type: "project", id: projectId, title: projectName });
+        return log(s, `دانش پروژه‌ی «${projectName}» را به مخزن سازمانی منتقل کرد (${newDocs.length.toLocaleString("fa-IR")} سند)`, { type: "project", id: projectId, title: projectName }, "create");
       });
       return fresh.length;
     },
     logSearch: (t, results) => setStore((prev) => ({ ...prev, searches: [...prev.searches, { term: t, at: KM_TODAY, results }].slice(-300) })),
+    saveSearch: (x) => setStore((prev) => ({ ...prev, savedSearches: [{ ...x, id: nid(prev, "ss"), owner: me, createdAt: KM_TODAY }, ...prev.savedSearches] })),
+    deleteSearch: (id) => setStore((prev) => ({ ...prev, savedSearches: prev.savedSearches.filter((x) => x.id !== id) })),
+    toggleSearchNotify: (id) => setStore((prev) => ({ ...prev, savedSearches: prev.savedSearches.map((x) => (x.id === id ? { ...x, notify: !x.notify } : x)) })),
     resetKm: () => {
       try {
         localStorage.removeItem(KEY);

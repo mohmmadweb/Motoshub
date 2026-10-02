@@ -1,6 +1,7 @@
+import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { KanbanSquare, Plus, ListChecks, ClipboardList, PlayCircle, AlertTriangle, GanttChartSquare, ListFilter, Search, Star, Archive, LayoutTemplate, X, LayoutGrid, Table2 } from "lucide-react";
+import { KanbanSquare, Plus, ListChecks, ClipboardList, PlayCircle, AlertTriangle, GanttChartSquare, ListFilter, Search, Star, Archive, LayoutTemplate, X, LayoutGrid, Table2, CalendarRange } from "lucide-react";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import RowActions from "../components/ui/RowActions";
 import { useConfirm } from "../components/ui/ConfirmProvider";
@@ -20,6 +21,8 @@ import type { PMPlaybookTemplate, ProjectMeta, ProjectRole, ProjectState } from 
 import { ProjectIcon, projectColors, projectIconNames } from "./project/projectIcons";
 import ProjectGroupsBar from "./project/ProjectGroupsBar";
 import TemplateEditorModal from "./project/TemplateEditorModal";
+import PortfolioTimeline from "./project/PortfolioTimeline";
+import { ScopePicker } from "./project/SettingsExtras";
 import type { ProjectTemplate } from "../pm/templates";
 
 const healthTone: Record<string, BadgeTone> = {
@@ -66,13 +69,15 @@ export default function Projects() {
   const [color, setColor] = useState(projectColors[0]);
   const [visibility, setVisibility] = useState<ProjectMeta["visibility"]>("فقط اعضا");
   const [workspace, setWorkspace] = useState("");
+  const [scopeId, setScopeId] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("");
   const [category, setCategory] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
   const [tplEdit, setTplEdit] = useState<ProjectTemplate | "new" | null>(null);
   const [section, setSection] = useState<"projects" | "templates" | "playbooks">("projects");
-  const [layout, setLayout] = useState<"grid" | "table">("grid");
+  const [layout, setLayout] = useState<"grid" | "table" | "timeline">("grid");
   const [filterOpen, setFilterOpen] = useState(false);
   const [team, setTeam] = useState<{ name: string; title: string; role: ProjectRole }[]>([]);
   const [teamName, setTeamName] = useState("");
@@ -86,7 +91,7 @@ export default function Projects() {
   const { notify } = useToast();
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser, activeScopeLabel } = useTenancy();
+  const { filterScoped, defaultScopeForNew, hasPermission, canManageItem, actingUser, contextId, scopeLabel, scopePath } = useTenancy();
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
 
   const projects = pm.projects;
@@ -107,7 +112,8 @@ export default function Projects() {
     setIcon("Briefcase");
     setColor(projectColors[0]);
     setVisibility("فقط اعضا");
-    setWorkspace("");
+    setWorkspace(scopeLabel(contextId));
+    setScopeId(contextId);
     setCategory("");
     setTemplateId("");
     setGroupId(groupFilter && groupFilter !== "none" ? groupFilter : "");
@@ -128,6 +134,7 @@ export default function Projects() {
     setColor(p.meta.color);
     setVisibility(p.meta.visibility);
     setWorkspace(p.meta.workspace);
+    setScopeId(p.meta.scopeId ?? "");
     setCategory(p.meta.category);
     setGroupId(p.meta.groupId ?? "");
     setProjectOpen(true);
@@ -180,7 +187,7 @@ export default function Projects() {
       return;
     }
     if (editingProjectId) {
-      pm.updateMeta(editingProjectId, { name: name.trim(), client: client.trim(), description, start, deadline: deadline.trim() || "نامشخص", ...(manager.trim() ? { manager: manager.trim() } : {}), priority, icon, color, visibility, workspace, category, groupId: groupId || undefined, ...itemScope });
+      pm.updateMeta(editingProjectId, { name: name.trim(), client: client.trim(), description, start, deadline: deadline.trim() || "نامشخص", ...(manager.trim() ? { manager: manager.trim() } : {}), priority, icon, color, visibility, workspace, scopeId: scopeId || undefined, category, groupId: groupId || undefined, ...itemScope });
       notify(`پروژه «${name.trim()}» ویرایش شد.`);
       closeProjectModal();
       return;
@@ -205,7 +212,8 @@ export default function Projects() {
       icon,
       color,
       visibility,
-      workspace: workspace || activeScopeLabel,
+      workspace: workspace || scopeLabel(scopeId || contextId),
+      scopeId: scopeId || contextId,
       financeOfficer: mgr,
       budget: Number(budget.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace(/[^\d]/g, "")) || 0,
       members,
@@ -243,14 +251,16 @@ export default function Projects() {
     if (listFilter === "بایگانی‌شده") ps = ps.filter((p) => p.meta.archived);
     if (healthFilter !== "همه") ps = ps.filter((p) => p.meta.health === healthFilter);
     if (groupFilter) ps = ps.filter((p) => (groupFilter === "none" ? !p.meta.groupId : p.meta.groupId === groupFilter));
-    if (q) ps = ps.filter((p) => p.meta.name.includes(q) || p.meta.client.includes(q) || p.meta.manager.includes(q) || p.meta.tags.some((t) => t.includes(q)));
+    if (scopeFilter) ps = ps.filter((p) => p.meta.scopeId === scopeFilter);
+    if (q) ps = ps.filter((p) => p.meta.name.includes(q) || p.meta.client.includes(q) || p.meta.manager.includes(q) || p.meta.tags.some((t) => t.includes(q)) || (p.meta.key ?? "").toLowerCase() === q.trim().toLowerCase());
     const sorted = [...ps];
     if (sort === "deadline") sorted.sort((a, b) => (dayNum(a.meta.deadline) ?? 9e9) - (dayNum(b.meta.deadline) ?? 9e9));
     if (sort === "progress") sorted.sort((a, b) => projectProgress(b) - projectProgress(a));
     if (sort === "name") sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name, "fa"));
     if (sort === "recent") sorted.sort((a, b) => (lastActivity(b)?.seq ?? 0) - (lastActivity(a)?.seq ?? 0));
     return sorted.sort((a, b) => Number(b.meta.starred) - Number(a.meta.starred));
-  }, [scopedProjects, listFilter, healthFilter, groupFilter, q, sort, actingUser]);
+  }, [scopedProjects, listFilter, healthFilter, groupFilter, scopeFilter, q, sort, actingUser]);
+  const workspaceIds = [...new Set(scopedProjects.map((p) => p.meta.scopeId).filter((x): x is string => !!x))];
 
   const live = projects.filter((p) => !p.meta.archived);
   const atRisk = live.filter((p) => p.meta.health !== "سبز").length;
@@ -265,11 +275,14 @@ export default function Projects() {
         description="پروژه‌های پژوهشی، فناورانه و آموزشی با بودجه، تسک، گانت چارت و گراف وابستگی"
         icon={<KanbanSquare size={18} />}
         actions={
-          hasPermission("projects.create") ? (
-            <Button variant="primary" icon={<Plus size={15} />} onClick={() => { resetForm(); setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
-              پروژه جدید
-            </Button>
-          ) : null
+          <>
+            <ModuleReportsButton module="projects" />
+            {hasPermission("projects.create") && (
+              <Button variant="primary" icon={<Plus size={15} />} onClick={() => { resetForm(); setItemScope(defaultScopeForNew()); setProjectOpen(true); }}>
+                پروژه جدید
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -321,7 +334,7 @@ export default function Projects() {
             <div className="relative">
               <button onClick={() => setFilterOpen((v) => !v)} aria-expanded={filterOpen} className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1 ${healthFilter !== "همه" || sort !== "recent" ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
                 <ListFilter size={13} /> فیلتر و مرتب‌سازی
-                {healthFilter !== "همه" && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">۱</span>}
+                {(healthFilter !== "همه" || scopeFilter) && <span className="text-[10px] bg-brand-600 text-white rounded-full px-1.5">{fa(Number(healthFilter !== "همه") + Number(!!scopeFilter))}</span>}
               </button>
               {filterOpen && (
                 <>
@@ -339,6 +352,19 @@ export default function Projects() {
                         ))}
                       </div>
                     </div>
+                    {workspaceIds.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold text-ink-500 mb-1.5">فضای کاری (واحد سازمانی)</p>
+                        <select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value)} className="input-field !py-1.5 !text-xs" aria-label="فضای کاری">
+                          <option value="">همه‌ی فضاهای کاری</option>
+                          {workspaceIds.map((id) => (
+                            <option key={id} value={id}>
+                              {scopePath(id)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[11px] font-bold text-ink-500 mb-1.5">مرتب‌سازی</p>
                       <select value={sort} onChange={(e) => setSort(e.target.value as SortId)} className="input-field !py-1.5 !text-xs" aria-label="مرتب‌سازی">
@@ -359,10 +385,15 @@ export default function Projects() {
               <button onClick={() => setLayout("table")} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${layout === "table" ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`} aria-label="نمای جدولی (پورتفولیو)" title="نمای جدولی (پورتفولیو)">
                 <Table2 size={13} />
               </button>
+              <button onClick={() => setLayout("timeline")} className={`px-2.5 py-1.5 text-xs flex items-center gap-1 ${layout === "timeline" ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`} aria-label="تایم‌لاین پورتفولیو" title="تایم‌لاین پورتفولیو (گانت چندپروژه‌ای)">
+                <CalendarRange size={13} />
+              </button>
             </div>
           </div>
 
-          {layout === "grid" ? (
+          {layout === "timeline" ? (
+            <PortfolioTimeline projects={filteredProjects} />
+          ) : layout === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {filteredProjects.map((p) => {
                 const progress = projectProgress(p);
@@ -414,6 +445,7 @@ export default function Projects() {
                 <thead>
                   <tr className="text-ink-400 border-b border-ink-100 text-right">
                     <th className="p-3 font-medium">پروژه</th>
+                    <th className="p-3 font-medium">کلید</th>
                     <th className="p-3 font-medium">گروه</th>
                     <th className="p-3 font-medium">مدیر</th>
                     <th className="p-3 font-medium">سلامت</th>
@@ -439,6 +471,9 @@ export default function Projects() {
                             {p.meta.name}
                             {p.meta.starred && <Star size={11} className="text-amber-500" fill="currentColor" />}
                           </span>
+                        </td>
+                        <td className="p-3 font-mono text-[11px] text-ink-400" dir="ltr">
+                          {p.meta.key ?? "—"}
                         </td>
                         <td className="p-3 text-ink-500">{g ? g.name : "—"}</td>
                         <td className="p-3 text-ink-600">{p.meta.manager}</td>
@@ -593,8 +628,14 @@ export default function Projects() {
                 ))}
               </select>
             </Field>
-            <Field label="فضای کاری">
-              <input className="input-field" value={workspace} onChange={(e) => setWorkspace(e.target.value)} placeholder={activeScopeLabel} />
+            <Field label="فضای کاری (واحد سازمانی)">
+              <ScopePicker
+                value={scopeId}
+                onChange={(id, label) => {
+                  setScopeId(id);
+                  setWorkspace(label);
+                }}
+              />
             </Field>
             <Field label="دسته‌بندی">
               <input className="input-field" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثلاً: تحول دیجیتال" />

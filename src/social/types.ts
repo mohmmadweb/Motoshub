@@ -45,7 +45,10 @@ export type AllowedReaction = { id: string; code: string; emoji: string; is_acti
 export type ReactionRecord = { entity_name: EntityName; entity_id: string; user_id: string; reaction_code: string };
 
 /** فیلدهای مشترک همه‌ی موجودیت‌های قابل انتشار */
-export type Publishable = {
+/** واحد سازمانیِ مالکِ محتوا (لایه‌ی پیاز) — مستقل از privacy */
+export type OrgScoped = import("../data/tenancy").Scoped;
+
+export type Publishable = OrgScoped & {
   id: string;
   user_id: string;
   is_active: boolean;
@@ -75,6 +78,20 @@ export type ContentItem = Publishable & {
   show_comment: boolean;
   /** فقط پروتوتایپ — شمارنده‌ی بازدید */
   views: number;
+  /** «پیشنهادی» — اطلاعیه‌ی رسمی با تأیید خواندن (در API فعلی نیست) */
+  announcement?: Announcement | null;
+};
+
+/** «پیشنهادی» — اطلاعیه‌ی رسمی (must-read) روی خبر */
+export type Announcement = {
+  /** نیاز به «خواندم و پذیرفتم» */
+  requires_ack: boolean;
+  /** سنجاق در میز کار تا این تاریخ (شمسی) — null یعنی بدون سنجاق */
+  pin_until: string | null;
+  /** شناسه‌ی کاربر ← زمان تأیید خواندن */
+  acks: Record<string, string>;
+  /** آخرین یادآوری به نخوانده‌ها */
+  last_reminder_at?: string | null;
 };
 
 /** PostTypeEnum */
@@ -121,7 +138,16 @@ export type Topic = Publishable & {
   view_count: number;
   is_pinned: boolean;
   is_locked: boolean;
+  /** «پیشنهادی» — رأی کاربران: شناسه‌ی کاربر ← ۱ یا ‎-۱ */
+  votes?: Record<string, Vote>;
+  /** «پیشنهادی» — پاسخ پذیرفته‌شده (صاحب پرسش یا ناظر) */
+  accepted_post_id?: string | null;
+  /** «پیشنهادی» — پرسش تکراریِ این پرسش (پرسش قفل و به مقصد پیوند می‌شود) */
+  duplicate_of?: string | null;
 };
+
+/** «پیشنهادی» — رأی بالا/پایین */
+export type Vote = 1 | -1;
 
 /** PostDetail — پاسخ در پرسش و پاسخ (parent_id برای پاسخِ تو در تو) */
 export type ForumPost = {
@@ -135,6 +161,8 @@ export type ForumPost = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** «پیشنهادی» — رأی کاربران روی پاسخ */
+  votes?: Record<string, Vote>;
 };
 
 /** ChatTypeEnum */
@@ -167,6 +195,8 @@ export type Chat = {
   muted_by: string[];
   /** POST …/mark-read/ — آخرین پیام خوانده‌شده‌ی هر کاربر */
   last_read: Record<string, number>;
+  /** «پیشنهادی» — پیام‌های سنجاق‌شده (حداکثر ۵) */
+  pinned_message_ids?: string[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -190,6 +220,10 @@ export type Message = {
   created_at: string;
   updated_at: string;
   edited: boolean;
+  /** «پیشنهادی» — واکنش اموجی روی پیام: reaction_code ← شناسه‌ی کاربران */
+  reactions?: Record<string, string[]>;
+  /** «پیشنهادی» — پاسخ در رشته (thread): ریشه = parent_message_id و پیام در جریان اصلی نمی‌آید */
+  in_thread?: boolean;
 };
 
 /** دوستی (relations/friendships) */
@@ -200,7 +234,33 @@ export type Friendship = { id: string; sender_id: string; receiver_id: string; s
 export type OwnerType = "user" | "group" | "channel";
 /** FileManagerFolder */
 export type FileFolder = { id: string; owner_type: OwnerType; owner_id: string; name: string; parent_id: string | null; created_by_user_id: string; created_at: string; updated_at: string };
-export type FileItem = { id: string; owner_type: OwnerType; owner_id: string; folder_id: string | null; name: string; size: string; mime: string; created_by_user_id: string; created_at: string };
+export type FileItem = {
+  id: string;
+  owner_type: OwnerType;
+  owner_id: string;
+  folder_id: string | null;
+  name: string;
+  size: string;
+  mime: string;
+  created_by_user_id: string;
+  created_at: string;
+  /** «پیشنهادی» — شماره‌ی نسخه‌ی فعلی (پیش‌فرض ۱) */
+  version?: number;
+  /** «پیشنهادی» — نسخه‌های قبلی */
+  versions?: FileVersion[];
+  /** «پیشنهادی» — ستاره‌دار برای این کاربران */
+  starred_by?: string[];
+  /** «پیشنهادی» — آخرین باز کردن هر کاربر (برای «اخیر») */
+  opened_at?: Record<string, string>;
+  /** «پیشنهادی» — لینک اشتراک با انقضا */
+  share?: FileShare | null;
+};
+/** «پیشنهادی» — یک نسخه‌ی قبلی فایل */
+export type FileVersion = { id: string; version: number; size: string; created_at: string; created_by_user_id: string };
+/** «پیشنهادی» — لینک اشتراک */
+export type FileShare = { token: string; expires_on: string; created_by: string; created_at: string; allow_download: boolean };
+/** «پیشنهادی» — فایل در سطل بازیافت (۳۰ روز قابل بازگردانی) */
+export type TrashedFile = FileItem & { trashed_at: string; trashed_by: string };
 
 /** ValueTypeEnum + SettingDetail */
 export type ValueType = "str" | "int" | "float" | "bool" | "json";

@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import CommandPalette from "../components/CommandPalette";
 import CreditFooter from "../components/CreditFooter";
+import ReportIssueButton from "../components/ReportIssueButton";
 
 export default function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -35,6 +36,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
         <CreditFooter />
+        <ReportIssueButton />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
