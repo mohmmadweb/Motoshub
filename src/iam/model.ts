@@ -82,7 +82,16 @@ export type AuditEvent =
   | "membership.suspended"
   | "membership.activated"
   | "membership.removed"
-  | "review.completed";
+  | "review.completed"
+  // --- موج ۴: حاکمیت دسترسی ---
+  | "access.requested"
+  | "access.approved"
+  | "access.rejected"
+  | "access.cancelled"
+  | "impersonation.started"
+  | "impersonation.ended"
+  | "sod.updated"
+  | "settings.changed";
 
 export const auditLabel: Record<AuditEvent, string> = {
   "scope.created": "ایجاد واحد",
@@ -99,6 +108,14 @@ export const auditLabel: Record<AuditEvent, string> = {
   "membership.activated": "فعال‌سازی عضویت",
   "membership.removed": "حذف عضویت",
   "review.completed": "بازبینی دسترسی",
+  "access.requested": "درخواست دسترسی",
+  "access.approved": "تأیید درخواست دسترسی",
+  "access.rejected": "رد درخواست دسترسی",
+  "access.cancelled": "انصراف از درخواست دسترسی",
+  "impersonation.started": "شروع مشاهده به‌عنوان کاربر",
+  "impersonation.ended": "پایان مشاهده به‌عنوان کاربر",
+  "sod.updated": "تغییر قواعد تفکیک وظایف",
+  "settings.changed": "تغییر تنظیمات",
 };
 
 export type Audit = {
@@ -109,12 +126,56 @@ export type Audit = {
   actorId: string;
   event: AuditEvent;
   scopeId: string;
+  /** رویدادهای حاکمیتی (درخواست، مشاهده به‌عنوان، تفکیک وظایف، تنظیمات) نوع «review» دارند و جزئیات در `kind` می‌آید */
   targetType: "scope" | "role" | "binding" | "membership" | "review";
+  kind?: "request" | "impersonation" | "sod" | "settings";
   targetId: string;
   affectedUserId?: string;
   summary: string;
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
+};
+
+// ---------------------------------------------------------------------------
+// درخواست دسترسی (Just-in-time) — کاربر نقش زمان‌دار درخواست می‌دهد، مدیرِ واحد تأیید/رد می‌کند.
+// ---------------------------------------------------------------------------
+export type AccessRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type AccessRequest = {
+  id: string;
+  userId: string;
+  roleId: string;
+  scopeId: string;
+  /** مدت به روز؛ null = دائمی */
+  durationDays: number | null;
+  reason: string;
+  /** مجوزی که کاربر به‌خاطرش درخواست داده (اختیاری) */
+  perm?: string;
+  status: AccessRequestStatus;
+  createdAt: string;
+  decidedBy?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  /** تخصیصِ ساخته‌شده پس از تأیید */
+  bindingId?: string;
+  validUntil?: string;
+};
+
+// ---------------------------------------------------------------------------
+// تفکیک وظایف (SoD) — جفت مجوزهای ناسازگار برای یک کاربر در یک واحد.
+// ---------------------------------------------------------------------------
+export type SodRule = {
+  id: string;
+  a: string;
+  b: string;
+  title: string;
+  /** warn = هشدار هنگام تخصیص · block = جلوگیری از تخصیص */
+  mode: "warn" | "block";
+  active: boolean;
+};
+export type SodConfig = {
+  rules: SodRule[];
+  /** نقش‌های «اضطراری» که در محاسبه‌ی تعارض نادیده گرفته می‌شوند (مثلاً مدیر سامانه) */
+  exemptRoleIds: string[];
 };
 
 export type IamState = {
@@ -125,6 +186,8 @@ export type IamState = {
   bindings: Binding[];
   memberships: Membership[];
   audits: Audit[];
+  requests: AccessRequest[];
+  sod: SodConfig;
 };
 
 /** مجوزهای «مدیریتی» — نقشی که یکی از این‌ها را داشته باشد نقشِ مدیریتی است */
@@ -252,4 +315,49 @@ export function adminScopes(s: IamState, userId: string, perm: string, today: st
  */
 export function adminAnchor(s: IamState, userId: string, today: string): string[] {
   return s.bindings.filter((b) => b.userId === userId && bindingLive(b, today) && isAdminRole(s.roles.find((r) => r.id === b.roleId))).map((b) => b.scopeId);
+}
+
+// ---------------------------------------------------------------------------
+// تفکیک وظایف — توابع خالص
+// ---------------------------------------------------------------------------
+/** مجوزهای مؤثرِ کاربر در یک واحد بدون نقش‌های مستثنا (مبنای محاسبه‌ی تعارض) */
+export function sodPermsIn(s: IamState, userId: string, scopeId: string, today: string, extraRoleId?: string) {
+  const ex = new Set(s.sod?.exemptRoleIds ?? []);
+  const set = new Set<string>();
+  bindingsApplying(s, userId, scopeId, today)
+    .filter((b) => !ex.has(b.roleId))
+    .forEach((b) => s.roles.find((r) => r.id === b.roleId)?.permissions.forEach((p) => set.add(p)));
+  if (extraRoleId && !ex.has(extraRoleId)) s.roles.find((r) => r.id === extraRoleId)?.permissions.forEach((p) => set.add(p));
+  return set;
+}
+/** قواعد فعالی که با این مجموعه مجوز نقض می‌شوند */
+export function sodConflicts(s: IamState, perms: Set<string>) {
+  return (s.sod?.rules ?? []).filter((r) => r.active && perms.has(r.a) && perms.has(r.b));
+}
+/** تعارض‌های موجود در مجموعه‌ای از واحدها (هر کاربر × واحدی که در آن تخصیص زنده دارد) */
+export function sodViolations(s: IamState, today: string, scopeIds: Set<string>) {
+  const out: { userId: string; scopeId: string; rule: SodRule; roleIds: string[] }[] = [];
+  const pairs = new Set<string>();
+  s.bindings.filter((b) => bindingLive(b, today) && scopeIds.has(b.scopeId)).forEach((b) => pairs.add(`${b.userId}|${b.scopeId}`));
+  const ex = new Set(s.sod?.exemptRoleIds ?? []);
+  [...pairs].sort((x, y) => depth(s, x.split("|")[1]) - depth(s, y.split("|")[1])).forEach((k) => {
+    const [userId, scopeId] = k.split("|");
+    const perms = sodPermsIn(s, userId, scopeId, today);
+    sodConflicts(s, perms).forEach((rule) => {
+      const roleIds = [
+        ...new Set(
+          bindingsApplying(s, userId, scopeId, today)
+            .filter((b) => !ex.has(b.roleId))
+            .filter((b) => {
+              const r = s.roles.find((x) => x.id === b.roleId);
+              return r && (r.permissions.includes(rule.a) || r.permissions.includes(rule.b));
+            })
+            .map((b) => b.roleId)
+        ),
+      ];
+      // اگر همان تعارض از واحد بالاتر به ارث رسیده، فقط یک بار (در بالاترین واحد) گزارش شود
+      if (!out.some((o) => o.userId === userId && o.rule.id === rule.id && isAncestorOrSelf(s, o.scopeId, scopeId))) out.push({ userId, scopeId, rule, roleIds });
+    });
+  });
+  return out;
 }

@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 import type { Scoped } from "../data/tenancy";
 import type { EventCode } from "./events";
+import type { RecurRule, Reminder } from "./recurrence";
 
 /** نوع معنایی ستون بورد — منطق وابستگی و خودکارسازی به این نوع نگاه می‌کند نه به نام ستون */
 export type ColumnKind = "backlog" | "todo" | "doing" | "review" | "blocked" | "done";
@@ -83,21 +84,51 @@ export type Sprint = {
   completedPoints?: number;
 };
 
-export type CustomFieldType = "متن" | "عدد" | "انتخابی" | "تاریخ";
-export type CustomFieldDef = { id: string; name: string; type: CustomFieldType; options?: string[] };
+export type CustomFieldType = "متن" | "عدد" | "انتخابی" | "تاریخ" | "شخص" | "مبلغ" | "چندانتخابی" | "فرمول";
+/**
+ * فیلد سفارشی تسک. مقدار در task.customFields[id] به‌صورت رشته ذخیره می‌شود:
+ * چندانتخابی = گزینه‌ها با «، » · مبلغ = عدد ریال · شخص = نام عضو · فرمول ذخیره نمی‌شود و
+ * از formula (مثل «[ساعت] * [نرخ ساعتی]») روی فیلدهای عددی محاسبه می‌شود.
+ */
+export type CustomFieldDef = { id: string; name: string; type: CustomFieldType; options?: string[]; formula?: string };
 
 /** خط مبنا (Baseline) — عکس لحظه‌ای از زمان‌بندی برای مقایسه با برنامه‌ی فعلی */
 export type Baseline = { savedAt: string; savedBy: string; tasks: Record<string, { start: string; due: string }> };
 
-/** قاعده‌ی خودکارسازی سفارشی «وقتی … آنگاه …» (مشابه Jira Automation / Trello Butler) */
-export type CustomRuleTrigger = { type: "moved"; columnId: string } | { type: "created" } | { type: "labelAdded"; label: string };
+/** قاعده‌ی خودکارسازی سفارشی «وقتی … اگر … آنگاه …» (مشابه Jira Automation / Trello Butler) */
+export type CustomRuleTrigger =
+  | { type: "moved"; columnId: string }
+  | { type: "created" }
+  | { type: "labelAdded"; label: string }
+  /** زمان‌بندی‌شده: هر روز در این ساعت (روی همه‌ی تسک‌های باز که شرط را دارند) */
+  | { type: "daily"; time: string }
+  /** زمان‌بندی‌شده: N روز پیش از سررسید */
+  | { type: "beforeDue"; days: number };
+/** شرط «اگر» — field: priority | type | assignee | label | title | status | cf:<شناسه‌ی فیلد> */
+export type RuleCondition = { field: string; op: "eq" | "neq" | "contains"; value: string };
 export type CustomRuleAction =
   | { type: "assign"; member: string }
   | { type: "priority"; priority: PMPriority }
   | { type: "label"; label: string }
   | { type: "watch"; member: string }
-  | { type: "checklist"; text: string };
-export type CustomRule = { id: string; name: string; trigger: CustomRuleTrigger; action: CustomRuleAction; enabled: boolean; runs: number };
+  | { type: "checklist"; text: string }
+  | { type: "move"; columnId: string }
+  | { type: "setField"; fieldId: string; value: string }
+  | { type: "subtask"; title: string; assignee?: string }
+  /** to: assignee | manager | watchers | نام عضو */
+  | { type: "notify"; to: string; text?: string };
+export type CustomRule = {
+  id: string;
+  name: string;
+  trigger: CustomRuleTrigger;
+  /** عمل اول (سازگاری با قواعد قدیمی) */
+  action: CustomRuleAction;
+  /** همه‌ی عمل‌ها به ترتیب — اگر نباشد فقط action اجرا می‌شود */
+  actions?: CustomRuleAction[];
+  conditions?: RuleCondition[];
+  enabled: boolean;
+  runs: number;
+};
 
 /** نوع وابستگی (MS Project): FS پایان‌به‌شروع، SS شروع‌به‌شروع، FF پایان‌به‌پایان، SF شروع‌به‌پایان */
 export type DepType = "FS" | "SS" | "FF" | "SF";
@@ -177,7 +208,16 @@ export type PMMeeting = {
   description: string;
   taskIds: string[];
   status: MeetingStatus;
+  /** تکرار جلسه (سری) — date تاریخ نخستین وقوع است */
+  recurrence?: RecurRule;
+  /** یادآوری‌ها (نمایشی: چند دقیقه قبل + کانال) */
+  reminders?: Reminder[];
+  /** دستور جلسه — فرم صورت‌جلسه را پیش‌پر می‌کند */
+  agenda?: AgendaItem[];
+  /** اگر این جلسه از سری جدا شده (ویرایش «فقط این») */
+  seriesOf?: string;
 };
+export type AgendaItem = { id: string; title: string; owner: string; minutes: number };
 
 export type ActionItem = { id: string; text: string; owner: string; due: string; taskId?: string };
 export type PMMinute = {

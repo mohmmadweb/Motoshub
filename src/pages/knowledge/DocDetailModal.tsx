@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, EyeOff, History, GitCompare, Paperclip, ShieldCheck, ScrollText, ListTree } from "lucide-react";
+import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, EyeOff, History, GitCompare, Paperclip, ShieldCheck, ScrollText, ListTree, BadgeCheck, BellRing, Gavel, Hourglass } from "lucide-react";
+import { retentionInfo } from "../../km/templates";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
@@ -17,7 +18,7 @@ import { AclEditor, AccessSummary } from "./AccessEditor";
 import { FlowStepper, FlowHistory, OverdueBadge } from "./WorkflowEditor";
 import { codeOf } from "./AuditSection";
 
-type Tab = "body" | "info" | "files" | "workflow" | "access" | "relations" | "comments";
+type Tab = "body" | "info" | "files" | "workflow" | "access" | "relations" | "comments" | "acks";
 
 export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: { docId: string | null; onClose: () => void; onEdit: (d: KDoc) => void; onNavigate: (r: KRelation) => void }) {
   const km = useKnowledge();
@@ -39,6 +40,8 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
   const [fbMode, setFbMode] = useState<null | "unhelpful" | "report">(null);
   const [fbText, setFbText] = useState("");
   const [preview, setPreview] = useState<KFile | null>(null);
+  const [holdOpen, setHoldOpen] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
 
   useEffect(() => {
     if (!docId) return;
@@ -101,6 +104,12 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
   const docLogs = km.logs.filter((l) => l.entity.type === "doc" && l.entity.id === d.id);
   const accessLogs = docLogs.filter((l) => ["view", "preview", "download", "access"].includes(codeOf(l)));
 
+  // ابلاغ: «خواندم و پذیرفتم»
+  const circ = d.circular;
+  const published = d.status === "منتشرشده";
+  const audience = circ ? km.circularAudience(d) : [];
+  const iAmAudience = !!circ && audience.includes(km.me);
+  const ret = retentionInfo(d, km.settings.retention, km.today);
   const tabs: { id: Tab; label: string; count?: number }[] = [
     ...(isArticle ? [{ id: "body" as Tab, label: "متن" }] : []),
     { id: "info", label: "مشخصات" },
@@ -109,6 +118,7 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
     { id: "access", label: "دسترسی", count: d.acl?.entries.length || undefined },
     { id: "relations", label: "ارتباطات", count: d.relations.length },
     { id: "comments", label: "نظرات و بازخورد", count: d.comments.length },
+    ...(circ && (canEdit || canAudit) ? [{ id: "acks" as Tab, label: "خواندن و پذیرش", count: audience.filter((n) => !circ.acks[n]).length || undefined }] : []),
   ];
 
   const va = d.versions[cmpA] ?? d.versions[0];
@@ -124,6 +134,8 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
           {!canDl && <Badge tone="warning" icon={<EyeOff size={11} />}>فقط مشاهده</Badge>}
           {d.importance !== "عادی" && <Badge tone={d.importance === "حیاتی" ? "danger" : "warning"}>{d.importance}</Badge>}
           {flow && <OverdueBadge f={flow} />}
+          {d.legalHold && <Badge tone="danger" icon={<Gavel size={11} />}>نگهداشت قانونی</Badge>}
+          {circ && <Badge tone="warning" icon={<BadgeCheck size={11} />}>ابلاغی{circ.deadline ? ` · مهلت ${circ.deadline}` : ""}</Badge>}
           <span className="text-xs text-ink-500">نسخه‌ی {fa(d.version)}</span>
           <span className="text-xs text-ink-400 flex items-center gap-1">
             <Eye size={12} /> {fa(d.views)} · <Download size={12} /> {fa(d.downloads)}
@@ -149,6 +161,23 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
             )}
           </span>
         </div>
+
+        {circ && published && iAmAudience && (
+          circ.acks[km.me] ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700 flex items-center gap-2">
+              <BadgeCheck size={15} className="shrink-0" /> شما این {d.type} را در {circ.acks[km.me]} خواندید و پذیرفتید.
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3 flex-wrap">
+              <p className="text-[12.5px] text-amber-800 flex-1 min-w-[180px] leading-6">
+                این {d.type} به شما ابلاغ شده است{circ.deadline ? ` — مهلت تأیید تا ${circ.deadline}` : ""}. پس از مطالعه‌ی کامل تأیید کنید.
+              </p>
+              <Button size="sm" variant="primary" icon={<BadgeCheck size={14} />} onClick={() => { km.acknowledgeDoc(d.id); notify("تأیید خواندن ثبت شد."); }}>
+                خواندم و پذیرفتم
+              </Button>
+            </div>
+          )
+        )}
 
         {actions.some((x) => x.show) && (
           <div className="rounded-lg bg-ink-50 border border-ink-100 p-3">
@@ -225,6 +254,36 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                 </div>
               )}
               {d.archiveReason && <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">دلیل آرشیو: {d.archiveReason}</p>}
+              {d.legalHold ? (
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5 flex items-start gap-2 flex-wrap">
+                  <Gavel size={14} className="shrink-0 mt-0.5" />
+                  <span className="flex-1 min-w-[180px] leading-6">
+                    نگهداشت قانونی ({d.legalHold.by} · {d.legalHold.at}): «{d.legalHold.reason}» — حذف و امحای این سند ممکن نیست.
+                  </span>
+                  {hasPermission("knowledge.archive") && (
+                    <Button size="sm" variant="ghost" onClick={() => { km.setLegalHold(d.id, null); notify("نگهداشت قانونی برداشته شد.", "info"); }}>
+                      برداشتن
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                hasPermission("knowledge.archive") &&
+                (holdOpen ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <input className="input-field flex-1 min-w-[200px]" value={holdReason} onChange={(e) => setHoldReason(e.target.value)} placeholder="دلیل نگهداشت قانونی (مثلاً: پرونده‌ی دعوی، حسابرسی)" autoFocus />
+                    <Button size="sm" variant="primary" onClick={() => { if (!holdReason.trim()) return notify("دلیل را بنویسید.", "warning"); km.setLegalHold(d.id, holdReason.trim()); setHoldOpen(false); setHoldReason(""); notify("نگهداشت قانونی ثبت شد؛ سند حذف یا امحا نمی‌شود."); }}>
+                      ثبت
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setHoldOpen(false)}>
+                      انصراف
+                    </Button>
+                  </div>
+                ) : (
+                  <button onClick={() => setHoldOpen(true)} className="text-[11.5px] text-ink-500 hover:text-brand-700 flex items-center gap-1">
+                    <Gavel size={12} /> قرار دادن نگهداشت قانونی
+                  </button>
+                ))
+              )}
             </div>
             <dl className="text-xs space-y-2.5 md:border-r md:border-ink-100 md:pr-5">
               {[
@@ -242,6 +301,13 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                   <dd className="text-ink-800 font-medium mt-0.5">{v}</dd>
                 </div>
               ))}
+              <div>
+                <dt className="text-ink-400">نگهداشت</dt>
+                <dd className="text-ink-800 font-medium mt-0.5 flex items-center gap-1">
+                  <Hourglass size={12} className="text-ink-400" />
+                  {ret.years ? `${fa(ret.years)} سال از آرشیو${d.status === "آرشیو" && ret.due ? ` · سررسید ${ret.due}` : ""}` : "دائمی"}
+                </dd>
+              </div>
               <div>
                 <dt className="text-ink-400">بازبینی بعدی</dt>
                 <dd className={`font-medium mt-0.5 ${reviewLeft < 0 ? "text-rose-600" : reviewLeft <= 30 ? "text-amber-600" : "text-ink-800"}`}>
@@ -418,6 +484,8 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
           </div>
         )}
 
+        {tab === "acks" && circ && <AckProgress doc={d} audience={audience} />}
+
         {tab === "relations" && <RelationsEditor kind="doc" id={d.id} relations={d.relations} canEdit={canEdit} onOpen={onNavigate} />}
 
         {tab === "comments" && (
@@ -524,6 +592,8 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
               variant="ghost"
               className="text-rose-600"
               icon={<Trash2 size={13} />}
+              disabled={!!d.legalHold}
+              title={d.legalHold ? "سند در نگهداشت قانونی است و حذف نمی‌شود" : undefined}
               onClick={() =>
                 confirm({
                   title: `حذف سند «${d.title}»؟`,
@@ -570,5 +640,71 @@ function FileList({ d, canDl, onPreview, onDownload }: { d: KDoc; canDl: boolean
         </li>
       ))}
     </ul>
+  );
+}
+
+/** پیشرفت «خواندم و پذیرفتم» برای مالک: درصد، نخوانده‌ها و یادآوری */
+function AckProgress({ doc: d, audience }: { doc: KDoc; audience: string[] }) {
+  const km = useKnowledge();
+  const { notify } = useToast();
+  const circ = d.circular!;
+  const done = audience.filter((n) => circ.acks[n]);
+  const pending = audience.filter((n) => !circ.acks[n]);
+  const pct = audience.length ? Math.round((done.length / audience.length) * 100) : 0;
+  const late = circ.deadline && (dayNum(km.today) ?? 0) > (dayNum(circ.deadline) ?? 0);
+  return (
+    <div className="space-y-3">
+      {d.status !== "منتشرشده" && <p className="text-[11.5px] text-amber-700">ابلاغ پس از انتشار سند برای مخاطبان ارسال می‌شود.</p>}
+      <div className="flex items-end justify-between gap-2 flex-wrap">
+        <span className="text-2xl font-bold text-ink-900 tabular-nums">{fa(pct)}٪</span>
+        <span className="text-[11.5px] text-ink-500">
+          {fa(done.length)} از {fa(audience.length)} نفر تأیید کرده‌اند{circ.deadline ? ` · مهلت ${circ.deadline}` : ""}
+          {late && pending.length > 0 && <span className="text-rose-600"> · مهلت گذشته</span>}
+        </span>
+      </div>
+      <span className="block h-2 rounded-full bg-ink-100 overflow-hidden">
+        <span className={`block h-full rounded-full ${pct >= 80 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-rose-500"}`} style={{ width: `${pct}%` }} />
+      </span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          size="sm"
+          variant="primary"
+          icon={<BellRing size={13} />}
+          disabled={!pending.length || d.status !== "منتشرشده"}
+          onClick={() => {
+            const n = km.remindCircular(d.id);
+            notify(n ? `یادآوری برای ${fa(n)} نفر ارسال شد.` : "همه خوانده‌اند.", n ? "success" : "info");
+          }}
+        >
+          یادآوری به نخوانده‌ها
+        </Button>
+        {circ.lastReminderAt && <span className="text-[10.5px] text-ink-400">آخرین یادآوری: {circ.lastReminderAt}</span>}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <p className="text-xs font-bold text-ink-700 mb-1.5">نخوانده ({fa(pending.length)})</p>
+          <ul className="border border-ink-100 rounded-lg divide-y divide-ink-100 max-h-56 overflow-y-auto">
+            {pending.map((n) => (
+              <li key={n} className="px-3 py-1.5 text-xs text-ink-700">
+                {n}
+              </li>
+            ))}
+            {!pending.length && <li className="px-3 py-2 text-[11px] text-ink-400">همه تأیید کرده‌اند.</li>}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-bold text-ink-700 mb-1.5">تأییدکرده ({fa(done.length)})</p>
+          <ul className="border border-ink-100 rounded-lg divide-y divide-ink-100 max-h-56 overflow-y-auto">
+            {done.map((n) => (
+              <li key={n} className="px-3 py-1.5 text-xs text-ink-700 flex items-center justify-between gap-2">
+                <span className="truncate">{n}</span>
+                <span className="text-[10.5px] text-ink-400 shrink-0">{circ.acks[n]}</span>
+              </li>
+            ))}
+            {!done.length && <li className="px-3 py-2 text-[11px] text-ink-400">هنوز کسی تأیید نکرده است.</li>}
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 }

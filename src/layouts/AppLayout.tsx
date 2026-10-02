@@ -6,6 +6,7 @@ import CommandPalette from "../components/CommandPalette";
 import CreditFooter from "../components/CreditFooter";
 import ReportIssueButton from "../components/ReportIssueButton";
 import ClassificationBanner from "../components/ClassificationBanner";
+import { ImpersonationBar } from "../components/ImpersonationBar";
 import MobileBottomNav from "../components/MobileBottomNav";
 
 export default function AppLayout() {
@@ -33,6 +34,7 @@ export default function AppLayout() {
       </a>
       <Sidebar />
       <div className="flex-1 min-w-0">
+        <ImpersonationBar />
         <ClassificationBanner />
         <Topbar onOpenPalette={() => setPaletteOpen(true)} />
         <main id="main-content" tabIndex={-1} className="p-4 lg:p-6 max-w-7xl mx-auto outline-none">

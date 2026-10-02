@@ -9,6 +9,8 @@ import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useTimesheet } from "../../context/TimesheetContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { dayNum, fa } from "../../pm/jalali";
+import Toggle from "../../components/ui/Toggle";
+import { defaultLeavePolicy, defaultReminderPolicy } from "../../timesheet/types";
 
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const ts = useTimesheet();
@@ -18,6 +20,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const s = ts.settings;
   // تنظیمات سازمانی است؛ فقط مدیر (تأیید/مالی) تغییرش می‌دهد
   const canEdit = hasPermission("timesheet.approve") || hasPermission("timesheet.finance");
+  const lp = { ...defaultLeavePolicy, ...(s.leavePolicy ?? {}) };
+  const rp = { ...defaultReminderPolicy, ...(s.reminders ?? {}) };
   const [hDate, setHDate] = useState("");
   const [hTitle, setHTitle] = useState("");
 
@@ -60,6 +64,47 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             ))}
           </div>
           <p className="text-[11px] text-ink-400 mt-1">جمعه همیشه تعطیل است.</p>
+        </div>
+        <div className="rounded-lg border border-ink-100 p-3 space-y-2.5">
+          <p className="text-xs font-bold text-ink-700">سیاست مرخصی</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label className="block text-xs text-ink-600">
+              اندوخته
+              <select className="input-field mt-1" value={lp.accrual} onChange={(e) => ts.updateSettings({ leavePolicy: { ...lp, accrual: e.target.value as "monthly" | "upfront" } })}>
+                <option value="monthly">ماهانه ({fa(Math.round((s.annualLeaveDays / 12) * 10) / 10)} روز در ماه)</option>
+                <option value="upfront">کل سهمیه از ابتدای سال</option>
+              </select>
+            </label>
+            <label className="block text-xs text-ink-600">
+              تبدیل مرخصی ساعتی به روز
+              <select className="input-field mt-1" value={lp.hourlyBase} onChange={(e) => ts.updateSettings({ leavePolicy: { ...lp, hourlyBase: e.target.value as "person" | "org" } })}>
+                <option value="person">با ساعت کاری خود شخص</option>
+                <option value="org">با ساعت موظف سازمان ({fa(s.dailyHours)} ساعت)</option>
+              </select>
+            </label>
+            <label className="block text-xs text-ink-600">
+              سقف انتقال به سال بعد (روز)
+              <input type="number" min={0} max={30} className="input-field mt-1" value={lp.carryOverDays} onChange={(e) => ts.updateSettings({ leavePolicy: { ...lp, carryOverDays: Math.max(0, Math.min(30, Number(e.target.value) || 0)) } })} />
+            </label>
+          </div>
+        </div>
+        <div className="rounded-lg border border-ink-100 p-3 space-y-2">
+          <p className="text-xs font-bold text-ink-700">یادآوری‌ها (اعلان درون‌برنامه، روزی یک بار)</p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs text-ink-600 flex items-center gap-1.5 flex-wrap">
+              روز کاری بدون ثبت — از ساعت
+              <input type="number" min={12} max={23} className="input-field !w-16 !py-1 text-center" value={rp.eveningHour} onChange={(e) => ts.updateSettings({ reminders: { ...rp, eveningHour: Math.max(12, Math.min(23, Number(e.target.value) || 17)) } })} aria-label="ساعت یادآوری عصر" />
+            </span>
+            <Toggle on={rp.eveningMissing} onChange={() => ts.updateSettings({ reminders: { ...rp, eveningMissing: !rp.eveningMissing } })} label="یادآوری روز بدون ثبت" />
+          </div>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs text-ink-600 flex items-center gap-1.5 flex-wrap">
+              پایان دوره (۲۵ هر ماه) —
+              <input type="number" min={1} max={7} className="input-field !w-14 !py-1 text-center" value={rp.periodDaysBefore} onChange={(e) => ts.updateSettings({ reminders: { ...rp, periodDaysBefore: Math.max(1, Math.min(7, Number(e.target.value) || 2)) } })} aria-label="روز پیش از پایان دوره" />
+              روز قبل
+            </span>
+            <Toggle on={rp.periodEnd} onChange={() => ts.updateSettings({ reminders: { ...rp, periodEnd: !rp.periodEnd } })} label="یادآوری پایان دوره" />
+          </div>
         </div>
         <div>
           <p className="text-xs text-ink-600 mb-1.5">تعطیلات رسمی ({fa(s.holidays.length)})</p>

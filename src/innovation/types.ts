@@ -9,6 +9,7 @@
 import type { Scoped } from "../data/tenancy";
 import type { NfProject } from "../data/mockInnovationFund";
 import type { FundRecord } from "../data/mock";
+import type { FormDef, FormSubmission } from "./forms";
 
 export type InnModule = "research" | "contracts" | "funds" | "award" | "training" | "ecosystem";
 
@@ -167,6 +168,8 @@ export type Application = {
   submittedAt: string;
   reviews: Review[];
   note?: string;
+  /** پاسخ‌های فرم سفارشی فراخوان + نتیجه‌ی احراز شرایط */
+  form?: FormSubmission;
 };
 
 export type CallStage = "پیش‌نویس" | "فراخوان باز" | "بررسی درخواست‌ها" | "داوری" | "در حال اجرا" | "پایان‌یافته";
@@ -260,7 +263,22 @@ export type Contract = {
   history: ContractEventX[];
   renewals: { at: string; by: string; from: string; to: string; reason: string }[];
   createdAt: string;
+  /** قالب استاندارد و مقادیر متغیرها ({{طرف_دوم}}، {{مبلغ}} …) */
+  templateId?: string;
+  templateVars?: Record<string, string>;
+  /** متن نهایی قرارداد؛ اگر با متن استانداردِ قالب فرق کند «انحراف» نشان داده می‌شود */
+  body?: string;
+  /** بند مالکیت فکری ساختاریافته */
+  ip?: ContractIp;
+  /** ضمانت‌نامه‌های حسن انجام کار / پیش‌پرداخت و … */
+  guarantees?: ContractGuarantee[];
 } & Scoped;
+
+export type ContractIp = { owner: "بنیاد" | "طرف دوم" | "مشترک"; ownerShare?: number; usageRight: string; revenueShare: number; notes?: string };
+export type GuaranteeKind = "حسن انجام کار" | "پیش‌پرداخت" | "شرکت در مناقصه" | "تعهد پرداخت";
+export type GuaranteeStatus = "معتبر" | "آزادشده" | "ضبط‌شده";
+export type ContractGuarantee = { id: string; kind: GuaranteeKind; bank: string; amount: number; number?: string; issuedAt?: string; expiry: string; status: GuaranteeStatus };
+export type ContractTemplate = { id: string; title: string; type: ContractType; body: string; updatedAt: string; updatedBy: string };
 
 export type TenderStage = "انتشار آگهی" | "دریافت پاکات" | "کمیسیون معاملات" | "ابلاغ برنده" | "عقد قرارداد";
 export const tenderStages: TenderStage[] = ["انتشار آگهی", "دریافت پاکات", "کمیسیون معاملات", "ابلاغ برنده", "عقد قرارداد"];
@@ -336,6 +354,8 @@ export type AwardEntryX = {
   certificateNo?: string;
   override?: { score: number; reason: string; by: string };
   createdAt: string;
+  /** پاسخ‌های فرم سفارشی دوره + نتیجه‌ی احراز شرایط */
+  form?: FormSubmission;
 };
 export type JudgeAssignment = {
   id: string;
@@ -415,4 +435,34 @@ export type InnStore = {
   decisions: Decision[];
   outcomes: Outcome[];
   logs: ILog[];
+  // ---- افزوده‌های موج ۴ (اختیاری تا داده‌ی ذخیره‌شده‌ی قبلی معتبر بماند)
+  /** فرم‌های سفارشی فراخوان/جایزه/فرصت مطالعاتی */
+  forms?: FormDef[];
+  /** ماتریس داوری چندداوره‌ی صندوق */
+  judging?: JudgePanel[];
+  fundSettings?: FundSettings;
+  contractTemplates?: ContractTemplate[];
+  extrasVersion?: number;
+};
+
+// ------------------------------------------------------------------- داوری چندداوره
+export type JudgeCriterion = { id: string; title: string; max: number };
+export type JudgePanel = {
+  id: string;
+  subjectKind: "nf" | "employment";
+  subjectId: string;
+  subjectTitle: string;
+  judges: string[];
+  criteria: JudgeCriterion[];
+  /** نام داور ← شناسه‌ی معیار ← نمره */
+  scores: Record<string, Record<string, number>>;
+  due: string;
+  reminders: { judge: string; at: string }[];
+  createdAt: string;
+};
+export type FundSettings = {
+  /** آستانه‌ی «پروژه‌ی خوابیده» (روز)؛ خالی = پارامتر سراسری گردش کار */
+  dormantDays?: number;
+  /** آستانه‌ی اختلاف داوران: انحراف معیار به‌صورت درصدی از سقف نمره */
+  disagreementPct: number;
 };

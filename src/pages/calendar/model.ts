@@ -7,6 +7,7 @@ import { isDone } from "../../pm/selectors";
 import type { ProjectState } from "../../pm/types";
 import type { EventMember, SocialEvent } from "../../social/types";
 import { occursOn } from "../social/EventsCalendar";
+import { recursOn, reminderLabel, ruleLabel, type RecurRule, type Reminder } from "../../pm/recurrence";
 
 // ---------------------------------------------------------------- لایه‌ها
 export type Layer = "events" | "meetings" | "tasks" | "milestones" | "sprints" | "personal" | "holidays";
@@ -46,6 +47,10 @@ export type CalItem = {
   /** برای خروجی ics */
   description?: string;
   location?: string;
+  /** منبع قابل ویرایش (برای کشیدن/تغییر اندازه و ویرایش سری) */
+  source?: { kind: "personal" | "meeting" | "event"; id: string; pid?: string; occDate: string; series: boolean };
+  /** کاربر اجازه‌ی جابه‌جایی دارد */
+  editable?: boolean;
 };
 
 // ---------------------------------------------------------------- یادآور/بلوک شخصی
@@ -65,10 +70,21 @@ export type PersonalItem = {
   /** در آزاد/مشغول حساب شود */
   busy: boolean;
   note?: string;
+  /** تکرار کامل (روزانه/روزهای کاری/هفتگی/ماهانه/سالانه + پایان + استثنا) — اگر باشد بر repeat مقدم است */
+  rrule?: RecurRule;
+  reminders?: Reminder[];
 };
+/** قاعده‌ی مؤثر یک قلم شخصی (تبدیل تکرار قدیمی به قاعده‌ی تازه) */
+export function personalRule(p: PersonalItem): RecurRule | undefined {
+  if (p.rrule) return p.rrule;
+  if (p.repeat === "daily") return { freq: "weekly", days: [0, 1, 2, 3, 4, 5] };
+  if (p.repeat === "weekly") return { freq: "weekly" };
+  return undefined;
+}
 export const personalColors = ["#059669", "#1f4f99", "#7c3aed", "#d97706", "#db2777", "#0891b2", "#64748b"];
 
 export function personalOccursOn(p: PersonalItem, day: number): boolean {
+  if (p.rrule) return recursOn(p.rrule, p.date, day);
   const s = dayNum(p.date);
   if (s === null || day < s) return false;
   if (p.repeat === "none") return day === s;
@@ -149,6 +165,8 @@ export type CollectInput = {
   visibleEvent: (ev: SocialEvent) => boolean;
   projects: ProjectState[];
   personal: PersonalItem[];
+  /** آیا کاربر می‌تواند جلسات این پروژه را جابه‌جا کند */
+  canEditMeeting?: (p: ProjectState) => boolean;
 };
 
 const evLink = (id: string) => `/dashboard/events/${id}`;
@@ -186,6 +204,8 @@ export function collectItems(x: CollectInput): CalItem[] {
           tentative: m.status === "invited",
           link: evLink(ev.id),
           busy: m.status !== "invited",
+          source: { kind: "event", id: ev.id, occDate: fromDayNum(d), series: false },
+          editable: ev.user_id === x.meId && !ev.is_repeat && (ev.end_date || ev.start_date) === ev.start_date && st !== null,
           description: ev.description,
           location: ev.is_online ? ev.meeting_link : ev.location,
           details: [
@@ -207,30 +227,36 @@ export function collectItems(x: CollectInput): CalItem[] {
       .forEach((p) =>
         p.meetings.forEach((mt) => {
           if (!mt.participants.includes(x.meName)) return;
-          const d = dayNum(mt.date);
-          if (d === null || d < x.from || d > x.to) return;
-          const st = toMin(mt.time);
-          const cancelled = mt.status === "لغوشده";
-          out.push({
-            key: `mt:${p.meta.id}:${mt.id}`,
-            layer: "meetings",
-            title: mt.title,
-            day: d,
-            start: st,
-            end: st === null ? null : st + (mt.duration || 60),
-            color: layerMeta.meetings.color,
-            sub: p.meta.name,
-            dim: cancelled,
-            busy: !cancelled,
-            link: meetingLink(p.meta.id, mt.id),
-            description: mt.description,
-            location: mt.mode,
-            details: [
-              ["پروژه", p.meta.name],
-              ["نحوه‌ی برگزاری", mt.mode],
-              ["وضعیت", mt.status],
-              ["شرکت‌کنندگان", mt.participants.join("، ")],
-            ],
+          const canMove = !!x.canEditMeeting?.(p) && mt.status === "برنامه‌ریزی‌شده";
+          days.forEach((d) => {
+            if (!recursOn(mt.recurrence, mt.date, d)) return;
+            const st = toMin(mt.time);
+            const cancelled = mt.status === "لغوشده";
+            out.push({
+              key: `mt:${p.meta.id}:${mt.id}:${d}`,
+              layer: "meetings",
+              title: mt.title,
+              day: d,
+              start: st,
+              end: st === null ? null : st + (mt.duration || 60),
+              color: layerMeta.meetings.color,
+              sub: p.meta.name,
+              dim: cancelled,
+              busy: !cancelled,
+              link: meetingLink(p.meta.id, mt.id),
+              description: mt.description,
+              location: mt.mode,
+              source: { kind: "meeting", id: mt.id, pid: p.meta.id, occDate: fromDayNum(d), series: !!mt.recurrence },
+              editable: canMove && st !== null,
+              details: [
+                ["پروژه", p.meta.name],
+                ["نحوه‌ی برگزاری", mt.mode],
+                ["وضعیت", mt.status],
+                ["شرکت‌کنندگان", mt.participants.join("، ")],
+                ...(mt.recurrence ? ([["تکرار", ruleLabel(mt.recurrence, mt.date)]] as [string, string][]) : []),
+                ...(mt.reminders?.length ? ([["یادآوری", mt.reminders.map(reminderLabel).join("، ")]] as [string, string][]) : []),
+              ],
+            });
           });
         }),
       );
@@ -344,8 +370,11 @@ export function collectItems(x: CollectInput): CalItem[] {
             busy: p.busy,
             personalId: p.id,
             description: p.note,
+            source: { kind: "personal", id: p.id, occDate: fromDayNum(d), series: !!personalRule(p) },
+            editable: st !== null,
             details: [
-              ["تکرار", repeatLabel[p.repeat]],
+              ["تکرار", p.rrule ? ruleLabel(p.rrule, p.date) : repeatLabel[p.repeat]],
+              ...(p.reminders?.length ? ([["یادآوری", p.reminders.map(reminderLabel).join("، ")]] as [string, string][]) : []),
               ["نمایش به همکاران", p.private ? "فقط «مشغول»" : "عنوان نمایش داده می‌شود"],
               ["آزاد/مشغول", p.busy ? "مشغول" : "آزاد"],
               ...(p.note ? ([["یادداشت", p.note]] as [string, string][]) : []),
@@ -393,7 +422,7 @@ export function busyOf(
   });
   ctx.projects.forEach((p) =>
     p.meetings.forEach((mt) => {
-      if (mt.status === "لغوشده" || !mt.participants.includes(userName) || dayNum(mt.date) !== day) return;
+      if (mt.status === "لغوشده" || !mt.participants.includes(userName) || !recursOn(mt.recurrence, mt.date, day)) return;
       const st = toMin(mt.time);
       if (st === null) return;
       out.push({ key: `mt:${p.meta.id}:${mt.id}`, day, start: st, end: st + (mt.duration || 60), title: mt.title, source: "جلسه‌ی پروژه", link: meetingLink(p.meta.id, mt.id) });

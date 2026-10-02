@@ -1,6 +1,6 @@
 // «اعضا و عضویت‌ها» — عضویت کاربران در واحدهای زیرمجموعه‌ی کانتکست.
 import { useMemo, useState } from "react";
-import { Ban, CheckCircle2, KeyRound, Lock, Star, Trash2, UserPlus, Users } from "lucide-react";
+import { Ban, CheckCircle2, Eye, KeyRound, Lock, Star, Trash2, UserPlus, Users } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
 import Modal from "../../../components/ui/Modal";
@@ -224,7 +224,10 @@ export function UserDrawer({ userId, onClose }: { userId: string | null; onClose
   const t = useTenancy();
   const { iam, today } = t;
   const sub = useSubtree();
+  const [imp, setImp] = useState(false);
   if (!userId) return null;
+  const canImp = t.hasPermission("iam.impersonate") || t.readOnly;
+  const impCheck = t.checkImpersonate(userId);
   const inView = (id: string) => sub.ids.has(id) || sub.chainIds.has(id);
   const allMs = t.membershipsOf(userId);
   const ms = allMs.filter((m) => inView(m.scopeId));
@@ -236,9 +239,24 @@ export function UserDrawer({ userId, onClose }: { userId: string | null; onClose
 
   return (
     <Drawer open onClose={onClose} title="جزئیات عضو" width="max-w-lg">
-      <div className="card p-3 mb-4">
+      <div className="card p-3 mb-4 flex items-center justify-between gap-2 flex-wrap">
         <UserCell userId={userId} size={40} />
+        {canImp && (
+          <GuardButton size="sm" variant="secondary" icon={<Eye size={13} />} check={impCheck} onClick={() => setImp(true)}>
+            مشاهده به‌عنوان این کاربر
+          </GuardButton>
+        )}
       </div>
+      {imp && (
+        <ImpersonateModal
+          userId={userId}
+          onClose={() => setImp(false)}
+          onStarted={() => {
+            setImp(false);
+            onClose();
+          }}
+        />
+      )}
 
       <p className="text-[12px] font-bold text-ink-600 mb-2">عضویت‌ها ({fmtN(ms.length)})</p>
       <ul className="space-y-1.5 mb-5">
@@ -306,5 +324,43 @@ export function UserDrawer({ userId, onClose }: { userId: string | null; onClose
         </p>
       )}
     </Drawer>
+  );
+}
+
+/** شروع «مشاهده به‌عنوان» رسمی: دلیل و مدت الزامی، فقط‌خواندنی، شروع/پایان در تاریخچه ثبت می‌شود */
+function ImpersonateModal({ userId, onClose, onStarted }: { userId: string; onClose: () => void; onStarted: () => void }) {
+  const t = useTenancy();
+  const run = useRun();
+  const [reason, setReason] = useState("");
+  const [minutes, setMinutes] = useState(30);
+  const base = t.checkImpersonate(userId);
+  const check = !base.ok ? base : reason.trim().length < 5 ? { ok: false as const, reason: "دلیل را بنویسید (مثلاً شماره‌ی تیکت پشتیبانی)." } : base;
+  return (
+    <Modal open onClose={onClose} title={`مشاهده به‌عنوان «${userName(userId)}»`} description="سامانه را دقیقاً از دید این کاربر می‌بینید؛ هیچ تغییری ممکن نیست و شروع و پایان در تاریخچه ثبت می‌شود." width="max-w-md">
+      <div className="space-y-3">
+        <Field label="دلیل (الزامی)">
+          <input className="input-field" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثلاً: بررسی تیکت T-1042 — منوی پروژه دیده نمی‌شود" autoFocus />
+        </Field>
+        <Field label="مدت">
+          <select className="input-field" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
+            {[15, 30, 60, 120].map((m) => (
+              <option key={m} value={m}>
+                {m.toLocaleString("fa-IR")} دقیقه
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Callout tone="warning">در این مدت نوار کهربایی بالای صفحه نشان می‌دهد در حالت فقط‌خواندنی هستید؛ با «پایان» یا تمام شدن مهلت به حساب خودتان برمی‌گردید.</Callout>
+        <CheckLine check={check} okText="آماده‌ی شروع." />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            انصراف
+          </Button>
+          <GuardButton variant="primary" icon={<Eye size={14} />} check={check} onClick={() => run(t.startImpersonation(userId, reason, minutes), `اکنون سامانه را به‌عنوان «${userName(userId)}» می‌بینید (فقط‌خواندنی).`) && onStarted()}>
+            شروع مشاهده
+          </GuardButton>
+        </div>
+      </div>
+    </Modal>
   );
 }

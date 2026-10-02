@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { cfDisplay } from "../../pm/customFields";
 import { LayoutGrid, List, Plus, Search, Settings2, MessageSquare, CheckSquare, Link2, ArrowUp, ArrowDown, Trash2, ListFilter, ListTree, Repeat, Eye, ShieldCheck, CornerDownLeft, X, Archive, ArchiveRestore, MoreHorizontal, Upload, Download, Columns3, Bookmark, BookmarkPlus, Users, Lock, Pencil, Zap } from "lucide-react";
 import { useTenancy } from "../../context/TenancyContext";
 import Badge from "../../components/ui/Badge";
@@ -167,7 +168,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
     { id: "points", label: "امتیاز", cell: (t) => <span className="text-ink-500">{t.storyPoints ? fa(t.storyPoints) : "—"}</span>, csv: (t) => t.storyPoints ?? "" },
     { id: "labels", label: "برچسب‌ها", cell: (t) => <span className="text-ink-500 whitespace-nowrap">{t.labels.join("، ") || "—"}</span>, csv: (t) => t.labels.join("، ") },
     { id: "hours", label: "برآورد ساعت", cell: (t) => <span className="text-ink-500">{t.estHours ? fa(t.estHours) : "—"}</span>, csv: (t) => t.estHours },
-    ...fields.map((cf) => ({ id: `cf:${cf.id}`, label: cf.name, cell: (t: PMTask) => <span className="text-ink-500 whitespace-nowrap">{t.customFields?.[cf.id] || "—"}</span>, csv: (t: PMTask) => t.customFields?.[cf.id] ?? "" })),
+    ...fields.map((cf) => ({ id: `cf:${cf.id}`, label: cf.name, cell: (t: PMTask) => <span className="text-ink-500 whitespace-nowrap">{cfDisplay(p, t, cf) || "—"}</span>, csv: (t: PMTask) => (cf.type === "فرمول" ? cfDisplay(p, t, cf) : t.customFields?.[cf.id] ?? "") })),
   ];
   const defaultCols = ["key", "type", "status", "assignee", "priority", "start", "due", "progress", "deps", ...(sprints.length ? ["sprint"] : []), "points", ...fields.map((x) => `cf:${x.id}`)];
   const visibleCols = (st.columns ?? defaultCols).map((id) => allCols.find((c) => c.id === id)).filter(Boolean) as Col[];

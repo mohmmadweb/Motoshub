@@ -5,7 +5,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { useTenancy } from "../context/TenancyContext";
 import { isAncestorOrSelf } from "../iam/model";
-import type { ReportModule, ReportSpec } from "./types";
+import type { ReportModule, ReportSchedule, ReportSpec, ScheduleDelivery, ScheduleFreq } from "./types";
+import { dayNum, fromDayNum, monthNames, parseJalali, weekdayOf } from "../pm/jalali";
 
 const KEY = "motoshub.reports.v1";
 
@@ -73,4 +74,90 @@ export function useSavedReports(module?: ReportModule) {
     const canSee = (r: ReportSpec) => r.createdBy === actingUser.id || (r.shared === "scope" && (iam.scopes.some((s) => s.id === r.scope) ? isAncestorOrSelf(iam, r.scope, contextId) : false));
     return all.filter((r) => canSee(r) && (!module || r.module === module));
   }, [all, actingUser.id, iam, contextId, module]);
+}
+
+// ---------------------------------------------------------------------------
+// زمان‌بندی ارسال گزارش‌های ذخیره‌شده — localStorage («motoshub.reportSchedules.v1»)
+// اجراکننده‌ی شبیه‌سازی‌شده هنگام بارگذاری برنامه، برای هر زمان‌بندیِ سررسیده یک بار در
+// هر دوره (روز/هفته/ماه/دوره‌ی کارکرد) اعلان درون‌برنامه می‌فرستد و ارسال را ثبت می‌کند.
+// ---------------------------------------------------------------------------
+const SKEY = "motoshub.reportSchedules.v1";
+type SchedState = { schedules: ReportSchedule[]; deliveries: ScheduleDelivery[] };
+let scache: SchedState | null = null;
+const slisteners = new Set<() => void>();
+
+function sread(): SchedState {
+  if (scache) return scache;
+  try {
+    const raw = localStorage.getItem(SKEY);
+    const v = raw ? (JSON.parse(raw) as Partial<SchedState>) : {};
+    scache = { schedules: Array.isArray(v.schedules) ? v.schedules : [], deliveries: Array.isArray(v.deliveries) ? v.deliveries : [] };
+  } catch {
+    scache = { schedules: [], deliveries: [] };
+  }
+  return scache;
+}
+function swrite(next: SchedState) {
+  scache = next;
+  try {
+    localStorage.setItem(SKEY, JSON.stringify(next));
+  } catch {
+    /* در حافظه می‌ماند */
+  }
+  slisteners.forEach((l) => l());
+}
+const ssubscribe = (l: () => void) => {
+  slisteners.add(l);
+  return () => slisteners.delete(l);
+};
+
+export const scheduleStore = {
+  all: () => sread().schedules,
+  upsert(s: ReportSchedule) {
+    const st = sread();
+    swrite({ ...st, schedules: st.schedules.some((x) => x.id === s.id) ? st.schedules.map((x) => (x.id === s.id ? s : x)) : [s, ...st.schedules] });
+  },
+  remove(id: string) {
+    const st = sread();
+    swrite({ ...st, schedules: st.schedules.filter((x) => x.id !== id) });
+  },
+  recordDelivery(d: ScheduleDelivery) {
+    const st = sread();
+    swrite({
+      schedules: st.schedules.map((x) => (x.id === d.scheduleId ? { ...x, lastPeriod: d.period, lastSentAt: d.at } : x)),
+      deliveries: [d, ...st.deliveries].slice(0, 200),
+    });
+  },
+};
+
+export function useSchedules(reportId?: string) {
+  const st = useSyncExternalStore(ssubscribe, sread, sread);
+  return useMemo(() => ({ schedules: reportId ? st.schedules.filter((s) => s.reportId === reportId) : st.schedules, deliveries: reportId ? st.deliveries.filter((d) => d.reportId === reportId) : st.deliveries }), [st, reportId]);
+}
+
+export const newScheduleId = () => `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** دوره‌ی جاری هر بسامد — کلید برای جلوگیری از ارسال تکراری + برچسب فارسی */
+export function periodOf(freq: ScheduleFreq, today: string): { key: string; label: string } {
+  const p = parseJalali(today);
+  const t = dayNum(today);
+  if (!p || t === null) return { key: today, label: today };
+  const [jy, jm, jd] = p;
+  switch (freq) {
+    case "daily":
+      return { key: `d-${t}`, label: `روز ${today}` };
+    case "weekly": {
+      const start = fromDayNum(t - weekdayOf(today));
+      return { key: `w-${start}`, label: `هفته‌ی ${start}` };
+    }
+    case "monthly":
+      return { key: `m-${jy}-${jm}`, label: `${monthNames[jm - 1]} ${jy.toLocaleString("fa-IR", { useGrouping: false })}` };
+    case "payroll": {
+      // دوره‌ی کارکرد ۲۶ ماه قبل تا ۲۵ همین ماه؛ پس از رسیدن به ۲۵ام، دوره‌ی همین ماه سررسید است
+      const z = jy * 12 + (jm - 1) + (jd >= 25 ? 0 : -1);
+      const y = Math.floor(z / 12);
+      const m = (z % 12) + 1;
+      return { key: `p-${y}-${m}`, label: `دوره‌ی کارکرد منتهی به ۲۵ ${monthNames[m - 1]}` };
+    }
+  }
 }

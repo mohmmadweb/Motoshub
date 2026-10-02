@@ -22,7 +22,10 @@ export type InboxKind =
   | "knowledge"
   | "chat_added"
   | "group_message"
-  | "announcement";
+  | "announcement"
+  | "timesheet"
+  | "report"
+  | "access";
 
 export const inboxKindLabel: Record<InboxKind, string> = {
   friend_request: "درخواست دوستی",
@@ -38,6 +41,9 @@ export const inboxKindLabel: Record<InboxKind, string> = {
   chat_added: "عضویت در گروه/کانال",
   group_message: "پیام گروه",
   announcement: "اطلاعیه‌ی رسمی",
+  timesheet: "یادآوری کارکرد",
+  report: "گزارش زمان‌بندی‌شده",
+  access: "درخواست دسترسی",
 };
 
 /** نوع‌هایی که همیشه تحویل می‌شوند (بی‌صدا، ساعات سکوت و خلاصه‌ی روزانه رویشان اثر ندارد) */
@@ -104,7 +110,7 @@ type Ctx = {
   unread: number;
   all: InboxItem[];
   /** ارسال اعلان؛ انجام‌دهنده خودش اعلان نمی‌گیرد */
-  send: (recipients: string[] | "*", kind: InboxKind, text: string, link: string, opts?: { urgent?: boolean }) => void;
+  send: (recipients: string[] | "*", kind: InboxKind, text: string, link: string, opts?: { urgent?: boolean; /** فرستنده «سامانه» — به خودِ کاربر هم تحویل می‌شود */ system?: boolean }) => void;
   /** همه‌ی اعلان‌های کاربر جاری، حتی نوع‌های خاموش‌شده (برای صفحه‌ی تنظیمات) */
   mineAll: InboxItem[];
   isKindOn: (kind: InboxKind) => boolean;
@@ -162,10 +168,10 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     isRead,
     send: (recipients, kind, text, link, opts) =>
       setStore((prev) => {
-        const list = recipients === "*" ? ["*"] : [...new Set(recipients.filter((r) => r && r !== me))];
+        const list = recipients === "*" ? ["*"] : [...new Set(recipients.filter((r) => r && (opts?.system || r !== me)))];
         let seq = prev.seq;
         const time = clock();
-        const fresh: InboxItem[] = list.map((recipient) => ({ id: `ib${++seq}`, kind, recipient, actor: me, text, link, time, seq, readBy: [], hiddenFor: [], ...(opts?.urgent ? { urgent: true } : {}) }));
+        const fresh: InboxItem[] = list.map((recipient) => ({ id: `ib${++seq}`, kind, recipient, actor: opts?.system ? "سامانه" : me, text, link, time, seq, readBy: [], hiddenFor: [], ...(opts?.urgent ? { urgent: true } : {}) }));
         return { ...prev, seq, items: [...fresh, ...prev.items] };
       }),
     markRead: (id, read = true) =>

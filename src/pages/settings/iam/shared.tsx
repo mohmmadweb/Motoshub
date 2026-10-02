@@ -9,6 +9,7 @@ import { users, permissionCatalog, type UserProfile } from "../../../data/mock";
 import { useTenancy, type Check } from "../../../context/TenancyContext";
 import { ancestorsOrSelf, depth, descendantsOrSelf, type Binding, type IamState, type ScopeNode, type ScopeType } from "../../../iam/model";
 import { diffDays } from "../../../pm/jalali";
+import { backendMapping } from "../../../iam/backendCodes";
 
 export const fmtN = (n: number) => n.toLocaleString("fa-IR");
 export const TYPE_ORDER: ScopeType[] = ["system", "holding", "company", "unit"];
@@ -181,10 +182,34 @@ export const permMeta = new Map<string, { label: string; groupId: string; groupL
 export const permLabel = (id: string) => permMeta.get(id)?.label ?? id;
 export const TOTAL_PERMS = permMeta.size;
 
-export function PermId({ id }: { id: string }) {
+export function PermId({ id, backend = true }: { id: string; backend?: boolean }) {
   return (
-    <span dir="ltr" className="font-mono text-[10px] text-ink-400 break-all">
-      {id}
+    <span className="flex items-center gap-1 flex-wrap">
+      <span dir="ltr" className="font-mono text-[10px] text-ink-400 break-all">
+        {id}
+      </span>
+      {backend && <BackendChip id={id} />}
+    </span>
+  );
+}
+
+/** چیپ کوچکِ کد معادل در بک‌اند Identity (یا «پیشنهاد افزودن به بک‌اند») */
+export function BackendChip({ id }: { id: string }) {
+  const m = backendMapping(id);
+  if (m.code)
+    return (
+      <span
+        dir="ltr"
+        title={`کد بک‌اند${m.partial ? " (معادل ناقص)" : ""}: ${m.code}${m.note ? ` — ${m.note}` : ""}`}
+        className={`font-mono text-[9.5px] leading-4 rounded px-1 border max-w-full truncate ${m.partial ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}
+      >
+        {m.code}
+        {m.partial ? " ≈" : ""}
+      </span>
+    );
+  return (
+    <span title={m.service ? m.note : `${m.note}: ${m.suggest}`} className="text-[9.5px] leading-4 rounded px-1 border border-dashed border-ink-200 text-ink-400 whitespace-nowrap">
+      {m.service ? <span dir="ltr" className="font-mono">social.shub.ir</span> : "بدون کد بک‌اند"}
     </span>
   );
 }
@@ -230,7 +255,16 @@ export function IconAction({ check, icon, label, onClick, tone = "neutral" }: { 
 
 /** نتیجه‌ی زنده‌ی یک بررسی قبل از ثبت */
 export function CheckLine({ check, okText }: { check: Check; okText: string }) {
-  return check.ok ? (
+  return check.ok && check.warning ? (
+    <div className="space-y-1.5">
+      <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700">
+        <CheckIcon size={14} className="shrink-0 mt-0.5" /> <span className="leading-5">{okText}</span>
+      </div>
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+        <ShieldAlert size={14} className="shrink-0 mt-0.5" /> <span className="leading-5">{check.warning}</span>
+      </div>
+    </div>
+  ) : check.ok ? (
     <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700">
       <CheckIcon size={14} className="shrink-0 mt-0.5" /> <span className="leading-5">{okText}</span>
     </div>

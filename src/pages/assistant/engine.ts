@@ -4,6 +4,7 @@
 // اجازه‌ی دیدنش را دارد (src/pages/search/liveData.ts). هر پاسخ = متن کوتاه + کارت‌های پیونددار.
 // ---------------------------------------------------------------------------
 import { useCallback } from "react";
+import { occurrenceDates } from "../../pm/recurrence";
 import { useTenancy } from "../../context/TenancyContext";
 import { useSocial } from "../../context/SocialContext";
 import { useKnowledge, docSearchText } from "../../context/KnowledgeContext";
@@ -94,7 +95,12 @@ export function useAssistantEngine() {
           const n = dayNum(d);
           return n !== null && n >= a && n <= b;
         };
-        const pmMeetings = v.projects.flatMap((p) => p.meetings.filter((m) => m.status !== "لغوشده" && inWeek(m.date) && (m.participants.includes(me.name) || p.meta.manager === me.name)).map((m) => ({ p, m })));
+        const pmMeetings = v.projects.flatMap((p) =>
+          p.meetings
+            .filter((m) => m.status !== "لغوشده" && (m.participants.includes(me.name) || p.meta.manager === me.name))
+            .flatMap((m) => occurrenceDates(m.recurrence, m.date, a, b).map((date) => ({ p, m: { ...m, date } })))
+            .filter(({ m }) => inWeek(m.date)),
+        );
         const events = v.events.filter((e) => inWeek(datePart(e.start_date)) && (e.user_id === s.me || ["accepted", "joined", "invited"].includes(s.myEventStatus(e.id)?.status ?? "")));
         const cards: AnswerCard[] = [
           ...pmMeetings.map(({ p, m }) => ({ title: m.title, sub: `${m.date} · ساعت ${m.time} · ${p.meta.name}`, to: `/dashboard/projects/${p.meta.id}?tab=minutes`, badge: m.mode, tone: "brand" as BadgeTone, _d: dayNum(m.date) ?? 0 })),

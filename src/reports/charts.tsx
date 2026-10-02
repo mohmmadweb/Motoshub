@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { BarChart3 } from "lucide-react";
-import { PALETTE, type ChartType, type ValueFormat } from "./types";
+import { PALETTE, type ChartType, type Row, type ValueFormat } from "./types";
 import { formatValue, pivotOf, faNum, type Pivot, type ReportResult } from "./engine";
 
 // ----------------------------------------------------------------- ابزار
@@ -88,6 +88,7 @@ export function BarChart({
   orientation = "auto",
   height,
   mini = false,
+  onPick,
 }: {
   cats: ChartCat[];
   series: ChartSeries[];
@@ -95,6 +96,8 @@ export function BarChart({
   orientation?: "auto" | "horizontal" | "vertical";
   height?: number;
   mini?: boolean;
+  /** کلیک روی میله ← (اندیس دسته، اندیس سری) */
+  onPick?: (ci: number, si: number) => void;
 }) {
   const [ref, W] = useWidth<HTMLDivElement>();
   const maxLabel = Math.max(0, ...cats.map((c) => c.label.length));
@@ -143,7 +146,7 @@ export function BarChart({
             const total = sums[i] + negs[i];
             return (
               <g key={i}>
-                <text x={W - 4} y={y + rowH / 2 + 4} fontSize={11} fill="currentColor" className="text-ink-700" textAnchor="start">
+                <text x={W - 4} y={y + rowH / 2 + 4} fontSize={11} fill="currentColor" className={`text-ink-700 ${onPick ? "cursor-pointer" : ""}`} textAnchor="start" onClick={onPick ? () => onPick(i, -1) : undefined}>
                   <title>{c.label}</title>
                   {trunc(c.label, maxChars)}
                 </text>
@@ -174,7 +177,7 @@ export function BarChart({
                   const left = Math.min(a, b);
                   const wd = Math.max(v === 0 ? 0 : 1.5, Math.abs(a - b));
                   return (
-                    <rect key={si} x={left} y={by} width={wd} height={Math.max(2, bh - (stacked ? 0 : 1))} rx={2} fill={s.color}>
+                    <rect key={si} x={left} y={by} width={wd} height={Math.max(2, bh - (stacked ? 0 : 1))} rx={2} fill={s.color} onClick={onPick ? () => onPick(i, si) : undefined} className={onPick ? "cursor-pointer hover:opacity-80" : undefined}>
                       <title>{`${c.label}${series.length > 1 ? ` · ${s.label}` : ""}: ${formatValue(v, s.format)}`}</title>
                     </rect>
                   );
@@ -249,7 +252,7 @@ export function BarChart({
                   bx = cx(i) + barW / 2 - (si + 1) * bw;
                 }
                 return (
-                  <rect key={si} x={bx + 0.5} y={top} width={Math.max(1, bw - 1)} height={Math.max(v === 0 ? 0 : 1.5, bot - top)} rx={2} fill={s.color}>
+                  <rect key={si} x={bx + 0.5} y={top} width={Math.max(1, bw - 1)} height={Math.max(v === 0 ? 0 : 1.5, bot - top)} rx={2} fill={s.color} onClick={onPick ? () => onPick(i, si) : undefined} className={onPick ? "cursor-pointer hover:opacity-80" : undefined}>
                     <title>{`${c.label}${series.length > 1 ? ` · ${s.label}` : ""}: ${formatValue(v, s.format)}`}</title>
                   </rect>
                 );
@@ -276,7 +279,7 @@ export function BarChart({
 
 // ----------------------------------------------------------------- خطی
 
-export function LineChart({ cats, series, height, mini = false }: { cats: ChartCat[]; series: ChartSeries[]; height?: number; mini?: boolean }) {
+export function LineChart({ cats, series, height, mini = false, onPick }: { cats: ChartCat[]; series: ChartSeries[]; height?: number; mini?: boolean; onPick?: (ci: number, si: number) => void }) {
   const [ref, W] = useWidth<HTMLDivElement>();
   const fmt = series[0]?.format ?? "number";
   const flat = series.flatMap((s) => s.values);
@@ -313,7 +316,7 @@ export function LineChart({ cats, series, height, mini = false }: { cats: ChartC
               <polyline points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
               {(n <= 40 || mini === false) &&
                 s.values.map((v, i) => (
-                  <circle key={i} cx={cx(i)} cy={y(v || 0)} r={n > 24 ? 2.2 : 3.4} fill="var(--color-ink-50, #fff)" stroke={s.color} strokeWidth={2}>
+                  <circle key={i} cx={cx(i)} cy={y(v || 0)} r={n > 24 ? 2.2 : 3.4} fill="var(--color-ink-50, #fff)" stroke={s.color} strokeWidth={2} onClick={onPick ? () => onPick(i, si) : undefined} className={onPick ? "cursor-pointer" : undefined}>
                     <title>{`${cats[i].label}${series.length > 1 ? ` · ${s.label}` : ""}: ${formatValue(v || 0, s.format)}`}</title>
                   </circle>
                 ))}
@@ -336,7 +339,7 @@ export function LineChart({ cats, series, height, mini = false }: { cats: ChartC
 
 // ----------------------------------------------------------------- دایره‌ای / حلقه‌ای
 
-export function PieChart({ slices, donut = false, format = "number", mini = false }: { slices: { label: string; value: number; color: string }[]; donut?: boolean; format?: ValueFormat; mini?: boolean }) {
+export function PieChart({ slices, donut = false, format = "number", mini = false, onPick }: { slices: { label: string; value: number; color: string; key?: string }[]; donut?: boolean; format?: ValueFormat; mini?: boolean; onPick?: (key: string) => void }) {
   const [ref, W] = useWidth<HTMLDivElement>();
   const data = slices.filter((s) => s.value > 0);
   const total = data.reduce((s, x) => s + x.value, 0);
@@ -357,7 +360,7 @@ export function PieChart({ slices, donut = false, format = "number", mini = fals
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 text-ink-900" role="img" aria-label={donut ? "نمودار حلقه‌ای" : "نمودار دایره‌ای"}>
         {data.length === 1 ? (
           <g>
-            <circle cx={c} cy={c} r={r} fill={data[0].color} />
+            <circle cx={c} cy={c} r={r} fill={data[0].color} onClick={onPick && data[0].key ? () => onPick(data[0].key!) : undefined} className={onPick ? "cursor-pointer" : undefined} />
             {donut && <circle cx={c} cy={c} r={inner} fill="var(--color-ink-50, #fff)" />}
             <title>{`${data[0].label}: ${formatValue(data[0].value, format)} (۱۰۰٪)`}</title>
           </g>
@@ -367,7 +370,7 @@ export function PieChart({ slices, donut = false, format = "number", mini = fals
             const d = arc(a0, a1);
             a0 = a1;
             return (
-              <path key={i} d={d} fill={s.color} stroke="var(--color-ink-50, #fff)" strokeWidth={1.5}>
+              <path key={i} d={d} fill={s.color} stroke="var(--color-ink-50, #fff)" strokeWidth={1.5} onClick={onPick && s.key ? () => onPick(s.key!) : undefined} className={onPick ? "cursor-pointer hover:opacity-80" : undefined}>
                 <title>{`${s.label}: ${formatValue(s.value, format)} (${faNum((s.value / total) * 100)}٪)`}</title>
               </path>
             );
@@ -386,7 +389,7 @@ export function PieChart({ slices, donut = false, format = "number", mini = fals
       </svg>
       <ul className={`flex-1 min-w-0 w-full space-y-1.5 ${mini ? "text-[11px]" : "text-xs"}`}>
         {data.slice(0, mini ? 5 : 12).map((s, i) => (
-          <li key={i} className="flex items-center gap-2 min-w-0">
+          <li key={i} className={`flex items-center gap-2 min-w-0 ${onPick && s.key ? "cursor-pointer hover:bg-ink-50 rounded" : ""}`} onClick={onPick && s.key ? () => onPick(s.key!) : undefined}>
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
             <span className="truncate text-ink-700 flex-1" title={s.label}>
               {s.label}
@@ -402,11 +405,11 @@ export function PieChart({ slices, donut = false, format = "number", mini = fals
 
 // ----------------------------------------------------------------- کارت شاخص
 
-export function KpiTiles({ items, mini = false }: { items: { label: string; value: number; format: ValueFormat; color?: string }[]; mini?: boolean }) {
+export function KpiTiles({ items, mini = false, onPick }: { items: { label: string; value: number; format: ValueFormat; color?: string }[]; mini?: boolean; onPick?: () => void }) {
   return (
     <div className={`grid gap-3 ${items.length === 1 ? "grid-cols-1" : mini ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"}`}>
       {items.map((k, i) => (
-        <div key={i} className={`rounded-xl border border-ink-200 ${mini ? "p-2.5" : "p-3.5"} min-w-0 relative overflow-hidden`}>
+        <div key={i} onClick={onPick} className={`rounded-xl border border-ink-200 ${mini ? "p-2.5" : "p-3.5"} min-w-0 relative overflow-hidden ${onPick ? "cursor-pointer hover:border-brand-300" : ""}`}>
           <span className="absolute inset-y-0 right-0 w-1" style={{ background: k.color }} />
           <p className="text-[11px] text-ink-500 truncate" title={k.label}>
             {k.label}
@@ -423,7 +426,7 @@ export function KpiTiles({ items, mini = false }: { items: { label: string; valu
 
 // ----------------------------------------------------------------- جدول متقاطع (نقشه‌ی حرارتی)
 
-export function PivotTable({ pivot, rowLabel, colLabel, mini = false }: { pivot: Pivot; rowLabel: string; colLabel: string; mini?: boolean }) {
+export function PivotTable({ pivot, rowLabel, colLabel, mini = false, onCell }: { pivot: Pivot; rowLabel: string; colLabel: string; mini?: boolean; onCell?: (ri: number, ci: number) => void }) {
   const heat = (v: number) => (pivot.max > 0 ? v / pivot.max : 0);
   const rows = mini ? pivot.rowCats.slice(0, 6) : pivot.rowCats;
   return (
@@ -453,7 +456,8 @@ export function PivotTable({ pivot, rowLabel, colLabel, mini = false }: { pivot:
                 return (
                   <td
                     key={ci}
-                    className={`text-center px-2 py-1.5 rounded ${h > 0.55 ? "text-white font-medium" : "text-ink-800"}`}
+                    onClick={onCell && v ? () => onCell(ri, ci) : undefined}
+                    className={`text-center px-2 py-1.5 rounded ${h > 0.55 ? "text-white font-medium" : "text-ink-800"} ${onCell && v ? "cursor-pointer hover:ring-2 hover:ring-brand-300" : ""}`}
                     style={{ background: v ? `rgba(31,79,153,${(0.08 + h * 0.77).toFixed(2)})` : undefined }}
                     title={`${r.label} · ${pivot.colCats[ci].label}: ${formatValue(v, pivot.format)}`}
                   >
@@ -461,7 +465,7 @@ export function PivotTable({ pivot, rowLabel, colLabel, mini = false }: { pivot:
                   </td>
                 );
               })}
-              <td className="text-center px-2 py-1.5 font-bold text-ink-900 bg-ink-50 rounded">{formatValue(pivot.rowTotals[ri], pivot.format, true)}</td>
+              <td onClick={onCell ? () => onCell(ri, -1) : undefined} className={`text-center px-2 py-1.5 font-bold text-ink-900 bg-ink-50 rounded ${onCell ? "cursor-pointer hover:ring-2 hover:ring-brand-300" : ""}`}>{formatValue(pivot.rowTotals[ri], pivot.format, true)}</td>
             </tr>
           ))}
         </tbody>
@@ -469,7 +473,7 @@ export function PivotTable({ pivot, rowLabel, colLabel, mini = false }: { pivot:
           <tr>
             <th className="sticky right-0 bg-white text-right font-bold text-ink-700 px-2 py-1.5">جمع</th>
             {pivot.colTotals.map((v, i) => (
-              <td key={i} className="text-center px-2 py-1.5 font-bold text-ink-900 bg-ink-50 rounded">
+              <td key={i} onClick={onCell ? () => onCell(-1, i) : undefined} className={`text-center px-2 py-1.5 font-bold text-ink-900 bg-ink-50 rounded ${onCell ? "cursor-pointer hover:ring-2 hover:ring-brand-300" : ""}`}>
                 {formatValue(v, pivot.format, true)}
               </td>
             ))}
@@ -483,7 +487,7 @@ export function PivotTable({ pivot, rowLabel, colLabel, mini = false }: { pivot:
 
 // ----------------------------------------------------------------- جدول نتیجه
 
-export function ResultTable({ result, maxRows }: { result: ReportResult; maxRows?: number }) {
+export function ResultTable({ result, maxRows, onGroup }: { result: ReportResult; maxRows?: number; onGroup?: (gi: number, ci?: number) => void }) {
   const { dims, measures, groups } = result;
   const two = dims.length === 2;
   const rows = maxRows ? groups.slice(0, maxRows) : groups;
@@ -520,9 +524,20 @@ export function ResultTable({ result, maxRows }: { result: ReportResult; maxRows
                 g.children
                   .filter((c) => c.rows.length)
                   .map((c, ci, arr) => (
-                    <tr key={`${g.key}-${c.key}`} className="hover:bg-ink-50">
+                    <tr key={`${g.key}-${c.key}`} className={`hover:bg-ink-50 ${onGroup ? "cursor-pointer" : ""}`} onClick={onGroup ? () => onGroup(groups.indexOf(g), g.children.indexOf(c)) : undefined}>
                       {ci === 0 && (
-                        <td rowSpan={arr.length} className="px-2.5 py-2 align-top font-medium text-ink-800 max-w-[220px]">
+                        <td
+                          rowSpan={arr.length}
+                          className="px-2.5 py-2 align-top font-medium text-ink-800 max-w-[220px]"
+                          onClick={
+                            onGroup
+                              ? (e) => {
+                                  e.stopPropagation();
+                                  onGroup(groups.indexOf(g));
+                                }
+                              : undefined
+                          }
+                        >
                           {g.label}
                         </td>
                       )}
@@ -535,7 +550,7 @@ export function ResultTable({ result, maxRows }: { result: ReportResult; maxRows
                     </tr>
                   ))
               ) : (
-                <tr key={g.key} className="hover:bg-ink-50">
+                <tr key={g.key} className={`hover:bg-ink-50 ${onGroup ? "cursor-pointer" : ""}`} onClick={onGroup ? () => onGroup(groups.indexOf(g)) : undefined}>
                   <td className="px-2.5 py-2 text-ink-800 max-w-[260px]">{g.label}</td>
                   {g.values.map((v, i) => (
                     <td key={i} className="text-left px-2.5 py-2 text-ink-900 whitespace-nowrap">
@@ -578,23 +593,39 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 /** نمودارِ مناسبِ یک نتیجه بر اساس نوع نمایش */
-export function ReportChart({ result, chart, mini = false, height }: { result: ReportResult; chart: ChartType; mini?: boolean; height?: number }) {
+export type ChartPick = { title: string; rows: Row[] };
+
+export function ReportChart({ result, chart, mini = false, height, onPick }: { result: ReportResult; chart: ChartType; mini?: boolean; height?: number; onPick?: (p: ChartPick) => void }) {
   const dark = useIsDark();
   if (result.rowCount === 0) return <Note>هیچ داده‌ای با این فیلترها و بازه‌ی زمانی پیدا نشد.</Note>;
   const { dims, measures, groups } = result;
+  const two = dims.length === 2;
+  const pickGroup = (gi: number, ci?: number) => {
+    const g = result.groups[gi];
+    if (!g || !onPick) return;
+    const c = ci !== undefined && ci >= 0 ? g.children[ci] : undefined;
+    onPick({ title: c ? `${g.label} · ${c.label}` : g.label, rows: c ? c.rows : g.rows });
+  };
+  const pickAll = onPick ? () => onPick({ title: "همه‌ی ردیف‌های گزارش", rows: result.filtered }) : undefined;
 
   if (chart === "kpi") {
-    return <KpiTiles mini={mini} items={measures.map((m, i) => ({ label: m.label, value: result.totals[i], format: m.format, color: colorAt(i, dark) }))} />;
+    return <KpiTiles mini={mini} onPick={pickAll} items={measures.map((m, i) => ({ label: m.label, value: result.totals[i], format: m.format, color: colorAt(i, dark) }))} />;
   }
-  if (chart === "table") return <ResultTable result={result} maxRows={mini ? 6 : undefined} />;
+  if (chart === "table") return <ResultTable result={result} maxRows={mini ? 6 : undefined} onGroup={onPick && dims.length ? pickGroup : undefined} />;
   if (chart === "pivot") {
     const pv = pivotOf(result);
     if (!pv) return <Note>جدول متقاطع به دو بُعد نیاز دارد — «تفکیک بر اساس» را هم انتخاب کنید.</Note>;
-    return <PivotTable pivot={pv} rowLabel={dims[0].label} colLabel={dims[1].label} mini={mini} />;
+    const onCell = onPick
+      ? (ri: number, ci: number) => {
+          if (ri >= 0) return pickGroup(ri, ci >= 0 ? ci : undefined);
+          const s = result.series[ci];
+          if (s) onPick({ title: `${dims[1].label}: ${s.label}`, rows: [...new Set(result.groups.flatMap((g) => g.children[ci]?.rows ?? []))] });
+        }
+      : undefined;
+    return <PivotTable pivot={pv} rowLabel={dims[0].label} colLabel={dims[1].label} mini={mini} onCell={onCell} />;
   }
 
   // ---- دسته‌ها و سری‌ها
-  const two = dims.length === 2;
   const timeAxis = dims[0]?.kind === "date";
   const gs = !mini ? groups : timeAxis || chart === "line" ? groups.slice(-40) : groups.slice(0, 5);
   let cats: ChartCat[];
@@ -611,20 +642,30 @@ export function ReportChart({ result, chart, mini = false, height }: { result: R
   }
 
   if (chart === "pie" || chart === "donut") {
-    let slices: { label: string; value: number; color: string }[];
-    if (!dims.length) slices = measures.map((m, i) => ({ label: m.label, value: result.totals[i], color: colorAt(i, dark) }));
+    let slices: { label: string; value: number; color: string; key?: string }[];
+    if (!dims.length) slices = measures.map((m, i) => ({ label: m.label, value: result.totals[i], color: colorAt(i, dark), key: `__all${i}` }));
     else {
       const sorted = [...groups].sort((a, b) => b.values[0] - a.values[0]);
       const top = sorted.slice(0, 7);
       const rest = sorted.slice(7);
-      slices = top.map((g, i) => ({ label: g.label, value: g.values[0], color: colorAt(i, dark) }));
-      if (rest.length) slices.push({ label: `سایر (${faNum(rest.length)})`, value: rest.reduce((s, g) => s + g.values[0], 0), color: "#94a3b8" });
+      slices = top.map((g, i) => ({ label: g.label, value: g.values[0], color: colorAt(i, dark), key: g.key }));
+      if (rest.length) slices.push({ label: `سایر (${faNum(rest.length)})`, value: rest.reduce((s, g) => s + g.values[0], 0), color: "#94a3b8", key: "__pie_rest" });
+      const pieRest = rest;
+      const onSlice = onPick
+        ? (key: string) => {
+            if (key === "__pie_rest") onPick({ title: "سایر", rows: [...new Set(pieRest.flatMap((g) => g.rows))] });
+            else pickGroup(result.groups.findIndex((g) => g.key === key));
+          }
+        : undefined;
+      return <PieChart slices={slices} donut={chart === "donut"} format={measures[0].format} mini={mini} onPick={onSlice} />;
     }
-    return <PieChart slices={slices} donut={chart === "donut"} format={measures[0].format} mini={mini} />;
+    return <PieChart slices={slices} donut={chart === "donut"} format={measures[0].format} mini={mini} onPick={pickAll ? () => pickAll() : undefined} />;
   }
+  // اندیس دسته در نمودار ← اندیس گروه در نتیجه (در حالت کوچک ممکن است بخشی از گروه‌ها نمایش داده شود)
+  const onBar = onPick && dims.length ? (ci: number, si: number) => pickGroup(result.groups.indexOf(gs[ci]), two && si >= 0 ? si : undefined) : pickAll ? () => pickAll() : undefined;
   if (chart === "line") {
-    if (cats.length < 2) return <BarChart cats={cats} series={series} mini={mini} height={height} />;
-    return <LineChart cats={cats} series={series} mini={mini} height={height} />;
+    if (cats.length < 2) return <BarChart cats={cats} series={series} mini={mini} height={height} onPick={onBar} />;
+    return <LineChart cats={cats} series={series} mini={mini} height={height} onPick={onBar} />;
   }
-  return <BarChart cats={cats} series={series} stacked={chart === "stackedBar"} orientation={timeAxis ? "vertical" : "auto"} mini={mini} height={height} />;
+  return <BarChart cats={cats} series={series} stacked={chart === "stackedBar"} orientation={timeAxis ? "vertical" : "auto"} mini={mini} height={height} onPick={onBar} />;
 }

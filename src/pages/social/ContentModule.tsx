@@ -6,7 +6,7 @@
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Newspaper, Plus, Search, MessageSquare, SmilePlus, Eye, Megaphone, BadgeCheck } from "lucide-react";
+import { BookOpen, Newspaper, Plus, Search, MessageSquare, SmilePlus, Eye, Megaphone, BadgeCheck, Send, Save, Undo2 } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -38,6 +38,11 @@ import {
   stamp,
   type PublishState,
 } from "./kit";
+import { MarkdownEditor } from "../knowledge/Markdown";
+import { HiddenBadge, ReviewBadge } from "./moderation";
+
+/** متن ساده‌ی قدیمی ← Markdown (هر خط یک پاراگراف می‌ماند) */
+export const plainToMd = (t: string) => t.replace(/\r/g, "").replace(/([^\n])\n(?!\n)/g, "$1\n\n");
 
 // ---------------------------------------------------------------- کمکی‌های مشترک (با صفحه‌ی رسانه)
 export type StatusFilter = "published" | "drafts" | "all";
@@ -100,10 +105,16 @@ export const permPrefix = (k: ContentKind) => (k === "news" ? "news" : k === "bl
 
 function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: ContentItem; onDone: (id?: string) => void }) {
   const { saveContent } = useSocial();
+  const { hasPermission } = useTenancy();
   const { notify } = useToast();
+  // «پیشنهادی» — بازبینی پیش از انتشار: بدون مجوز manage، مطلب منتشرنشده فقط «ارسال برای بازبینی» می‌شود
+  const manager = hasPermission(`${permPrefix(kind)}.manage`);
+  const livePublished = !!item && item.is_public && !item.is_draft;
+  const needsReview = !manager && !livePublished;
   const [title, setTitle] = useState(item?.title ?? "");
   const [excerpt, setExcerpt] = useState(item?.excerpt ?? "");
-  const [content, setContent] = useState(item?.content ?? "");
+  // ویرایشگر غنی (Markdown راست‌به‌چپ) — متن ساده‌ی قدیمی هنگام ویرایش به Markdown تبدیل می‌شود
+  const [content, setContent] = useState(item ? (item.content_format === "markdown" ? item.content : plainToMd(item.content)) : "");
   const [poster, setPoster] = useState<string | null>(item?.poster ?? "#1f4f99");
   const [files, setFiles] = useState<Attachment[]>([]);
   const [pub, setPub] = useState<PublishState>(
@@ -118,9 +129,10 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
   const [requiresAck, setRequiresAck] = useState(item?.announcement?.requires_ack ?? true);
   const [pinUntil, setPinUntil] = useState(item?.announcement?.pin_until ?? "");
 
-  const save = () => {
+  const save = (mode: "default" | "draft" | "review" = "default") => {
     if (!title.trim()) return setErr("عنوان (title) الزامی است.");
     if (!content.trim()) return setErr("متن (content) الزامی است.");
+    const asDraft = needsReview ? true : pub.is_draft;
     const id = saveContent(kind, {
       id: item?.id,
       title: title.trim(),
@@ -132,14 +144,27 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
       privacy: pub.privacy,
       category_ids: pub.category_ids,
       tags: pub.tags,
-      is_draft: pub.is_draft,
-      published_date: pub.published_date || undefined,
-      published_time: pub.published_time || undefined,
+      is_draft: asDraft,
+      published_date: needsReview ? undefined : pub.published_date || undefined,
+      published_time: needsReview ? undefined : pub.published_time || undefined,
       uploaded_files: files,
-      send_notification: pub.send_notification,
+      send_notification: needsReview ? false : pub.send_notification,
       announcement: kind === "news" ? (official ? { requires_ack: requiresAck, pin_until: pinUntil || null } : null) : undefined,
+      content_format: "markdown",
+      submit_review: needsReview && mode === "review",
     });
-    notify(item ? `${label} ویرایش شد.` : pub.is_draft ? `${label} به‌صورت پیش‌نویس ذخیره شد.` : `${label} منتشر شد.`, "success");
+    notify(
+      needsReview
+        ? mode === "review"
+          ? `${label} برای بازبینی فرستاده شد؛ پس از تأیید مدیر منتشر می‌شود.`
+          : `${label} به‌صورت پیش‌نویس ذخیره شد.`
+        : item
+          ? `${label} ویرایش شد.`
+          : pub.is_draft
+            ? `${label} به‌صورت پیش‌نویس ذخیره شد.`
+            : `${label} منتشر شد.`,
+      "success"
+    );
     onDone(id);
   };
 
@@ -153,8 +178,8 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
           <Field label="خلاصه (excerpt)" hint="در کارت فهرست نمایش داده می‌شود.">
             <textarea className="input-field min-h-[60px]" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
           </Field>
-          <Field label="متن (content) *">
-            <textarea className="input-field min-h-[220px] leading-7" value={content} onChange={(e) => setContent(e.target.value)} />
+          <Field label="متن (content) *" hint="ویرایشگر راست‌به‌چپ: عنوان، فهرست، پررنگ، پیوند، جدول و نقل‌قول.">
+            <MarkdownEditor value={content} onChange={setContent} minHeight={220} />
           </Field>
           <PosterPicker value={poster} onChange={setPoster} />
           {item && item.attachments.length > 0 && (
@@ -187,14 +212,38 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
               )}
             </div>
           )}
-          <PublishOptions entity={contentEntity[kind]} value={pub} onChange={setPub} notifyOption={!item && !(kind === "news" && official)} />
+          {item?.review?.status === "returned" && item.review.note && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-[12px] text-rose-700 leading-6 flex gap-2">
+              <Undo2 size={14} className="shrink-0 mt-1" />
+              <span>
+                یادداشت بازبین: «{item.review.note}»
+              </span>
+            </div>
+          )}
+          {needsReview && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11.5px] text-amber-800 leading-6">
+              انتشار در این بخش پس از بازبینی مدیر انجام می‌شود. «ارسال برای بازبینی» را بزنید تا مطلب در صف بازبینی قرار گیرد؛ نتیجه به شما اعلان می‌شود.
+            </p>
+          )}
+          <PublishOptions entity={contentEntity[kind]} value={pub} onChange={setPub} notifyOption={!needsReview && !item && !(kind === "news" && official)} draftOption={!needsReview} />
         </div>
       </div>
       {err && <p className="text-xs text-rose-600">{err}</p>}
-      <div className="flex items-center gap-2 pt-2 border-t border-ink-100">
-        <Button variant="primary" onClick={save}>
-          {item ? "ذخیره‌ی تغییرات" : pub.is_draft ? "ذخیره‌ی پیش‌نویس" : "انتشار"}
-        </Button>
+      <div className="flex items-center gap-2 pt-2 border-t border-ink-100 flex-wrap">
+        {needsReview ? (
+          <>
+            <Button variant="primary" icon={<Send size={14} />} onClick={() => save("review")}>
+              ارسال برای بازبینی
+            </Button>
+            <Button icon={<Save size={14} />} onClick={() => save("draft")}>
+              ذخیره‌ی پیش‌نویس
+            </Button>
+          </>
+        ) : (
+          <Button variant="primary" onClick={() => save()}>
+            {item ? "ذخیره‌ی تغییرات" : pub.is_draft ? "ذخیره‌ی پیش‌نویس" : "انتشار"}
+          </Button>
+        )}
         <Button variant="ghost" onClick={() => onDone()}>
           انصراف
         </Button>
@@ -248,7 +297,9 @@ function ContentCard({ x }: { x: ContentItem }) {
               منتظر تأیید شما
             </Badge>
           )}
-          <PublishBadge item={x} />
+          <ReviewBadge review={x.review} />
+          <HiddenBadge m={x.moderation} />
+          {!x.review || x.review.status === "approved" ? <PublishBadge item={x} /> : null}
           {x.privacy !== "EVERYONE" && <PrivacyBadge value={x.privacy} />}
         </span>
       </Poster>

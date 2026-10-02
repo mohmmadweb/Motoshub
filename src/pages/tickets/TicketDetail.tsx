@@ -19,6 +19,11 @@ import {
   PlusCircle,
   XCircle,
   Gauge,
+  Users,
+  Bell,
+  BellOff,
+  HandHelping,
+  X,
 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -31,6 +36,7 @@ import { useInbox } from "../../context/InboxContext";
 import { users } from "../../data/mock";
 import { fa } from "../../pm/jalali";
 import {
+  affectedCount,
   cannedReplies,
   fmtSize,
   fmtTs,
@@ -188,6 +194,8 @@ export default function TicketDetail({ ticket: t, onOpen }: { ticket: Ticket; on
           </span>
         )}
       </div>
+
+      <PeopleRow t={t} isReporter={isReporter} />
 
       {isReporter && t.status === "need-info" && (
         <p className="text-[12px] rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-3 py-2 leading-6">
@@ -353,6 +361,8 @@ function describe(e: TicketEvent, t: Ticket): { icon: typeof CircleDot; text: st
       return { icon: Rocket, text: `نسخه‌ی رفع را «${e.to}» تعیین کرد.` };
     case "rating":
       return { icon: Star, text: `به پاسخ‌گویی امتیاز ${fa(Number(e.to))} از ۵ داد.` };
+    case "affected":
+      return { icon: Users, text: "اعلام کرد این مشکل را دارد." };
     default:
       return { icon: CircleDot, text: "" };
   }
@@ -725,5 +735,97 @@ function RateModal({ mode, onClose, t }: { mode: "confirm" | "rate" | null; onCl
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** دنبال‌کنندگان و «من هم این مشکل را دارم» */
+function PeopleRow({ t, isReporter }: { t: Ticket; isReporter: boolean }) {
+  const tk = useTickets();
+  const { actingUser } = useTenancy();
+  const { notify } = useToast();
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState("");
+  const followers = t.followers ?? [];
+  const affected = t.affected ?? [];
+  const following = followers.includes(actingUser.id);
+  const iAmAffected = affected.includes(actingUser.id);
+  const canManage = isReporter || tk.isVendor;
+  const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? id;
+  return (
+    <div className="flex items-center gap-2 flex-wrap text-[11.5px]">
+      <span className="flex items-center gap-1 rounded-full bg-ink-100 text-ink-700 px-2.5 py-1" title="گزارش‌دهنده + کسانی که «من هم» زده‌اند">
+        <Users size={12} /> {fa(affectedCount(t))} کاربر درگیر
+      </span>
+      {!isReporter && !isFinal(t.status) && (
+        <Button
+          size="sm"
+          variant={iAmAffected ? "ghost" : "secondary"}
+          icon={<HandHelping size={13} />}
+          disabled={iAmAffected}
+          onClick={() => {
+            if (tk.meToo(t.id)) notify("ثبت شد؛ شما هم دنبال‌کننده‌ی این تیکت شدید و از پیشرفت آن باخبر می‌شوید.");
+          }}
+        >
+          {iAmAffected ? "شما هم این مشکل را دارید" : "من هم این مشکل را دارم"}
+        </Button>
+      )}
+      {!isReporter && (
+        <Button size="sm" variant="ghost" icon={following ? <BellOff size={13} /> : <Bell size={13} />} onClick={() => (tk.toggleFollow(t.id), notify(following ? "دنبال کردن لغو شد." : "از این پس به‌روزرسانی‌های تیکت به شما اعلان می‌شود."))}>
+          {following ? "لغو دنبال کردن" : "دنبال کردن"}
+        </Button>
+      )}
+      <button onClick={() => setOpen(true)} className="flex items-center gap-1 text-ink-500 hover:text-brand-700 mr-auto">
+        <span className="flex -space-x-1.5 space-x-reverse">
+          {followers.slice(0, 4).map((u) => (
+            <Avatar key={u} name={nameOf(u)} color={users.find((x) => x.id === u)?.avatarColor} size={20} />
+          ))}
+        </span>
+        دنبال‌کنندگان ({fa(followers.length)})
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title="دنبال‌کنندگان تیکت" description="در هر پیام عمومی، تغییر وضعیت، بازگشایی یا تکراری‌شدن اعلان می‌گیرند.">
+        <div className="space-y-3">
+          <ul className="border border-ink-100 rounded-lg divide-y divide-ink-100 max-h-64 overflow-y-auto">
+            {followers.map((u) => (
+              <li key={u} className="flex items-center gap-2 px-3 py-2">
+                <Avatar name={nameOf(u)} color={users.find((x) => x.id === u)?.avatarColor} size={24} />
+                <span className="flex-1 text-[12.5px] text-ink-800 truncate">{nameOf(u)}</span>
+                {affected.includes(u) && <Badge tone="warning">من هم</Badge>}
+                {(canManage || u === actingUser.id) && (
+                  <button onClick={() => tk.removeFollower(t.id, u)} className="p-1 text-ink-400 hover:text-rose-600" aria-label={`حذف ${nameOf(u)}`}>
+                    <X size={13} />
+                  </button>
+                )}
+              </li>
+            ))}
+            {!followers.length && <li className="px-3 py-3 text-[12px] text-ink-400">هنوز دنبال‌کننده‌ای ندارد.</li>}
+          </ul>
+          {canManage && (
+            <div className="flex gap-2">
+              <select className="input-field flex-1" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="افزودن دنبال‌کننده">
+                <option value="">افزودن همکار…</option>
+                {users
+                  .filter((u) => !followers.includes(u.id) && u.id !== t.reporterId)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+              </select>
+              <Button
+                variant="primary"
+                disabled={!pick}
+                onClick={() => {
+                  tk.addFollower(t.id, pick);
+                  setPick("");
+                  notify("دنبال‌کننده اضافه و مطلع شد.");
+                }}
+              >
+                افزودن
+              </Button>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
   );
 }

@@ -7,7 +7,7 @@ import { rndOpportunityDocs, supportedProducts, supportedVentures, partnerTechno
 import { withDemoScopes } from "../data/tenancy";
 import { DEMO_REF_DATE } from "../pm/seed";
 import { addDays } from "../pm/jalali";
-import type { Experience, Expert, GlossaryTerm, KCategory, KDoc, KDocType, KLog, KProcess, KSavedSearch, KSettings, KWfTemplate, RegistryItem, RegistryType, RndDoc } from "./types";
+import type { Experience, Expert, GlossaryTerm, KCategory, KCircular, KDoc, KDocType, KLog, KProcess, KSavedSearch, KSettings, KWfTemplate, RegistryItem, RegistryType, RndDoc } from "./types";
 import { DEFAULT_ACCESS_POLICY } from "./access";
 
 export const KM_TODAY = DEMO_REF_DATE;
@@ -420,6 +420,9 @@ const A3_BODY = `## ساعات کاری
 ## تاریخ اجرا
 از ابتدای تیر ۱۴۰۵.`;
 
+/** ابلاغ بخشنامه‌ی ساعات کاری پس از انتشار (مخاطب: کل سامانه) */
+export const A3_CIRCULAR: KCircular = { audience: [], deadline: addDays(KM_TODAY, 14), acks: {}, lastReminderAt: null };
+
 function articleDocs(): KDoc[] {
   const base = {
     tags: [] as string[],
@@ -517,6 +520,7 @@ function articleDocs(): KDoc[] {
       access: "داخلی",
       description: "ساعات کاری ستاد و هلدینگ‌ها و قواعد دورکاری سال ۱۴۰۵.",
       body: A3_BODY,
+      circular: A3_CIRCULAR,
       reviewDate: addDays(KM_TODAY, 300),
       versions: [{ version: 1, date: addDays(KM_TODAY, -3), by: "پایگاه اطلاع‌رسانی بنیاد", note: "ایجاد سند", files: [], body: A3_BODY }],
       workflow: [],
@@ -538,7 +542,72 @@ function articleDocs(): KDoc[] {
 }
 
 export function seedDocs(): KDoc[] {
-  return [...articleDocs(), ...baseDocs().map(enrich)];
+  return [...articleDocs(), ...baseDocs().map(enrich), ...seedRetentionDocs()];
+}
+
+/** اسناد آرشیوشده‌ی قدیمی که دوره‌ی نگهداشتشان سر آمده (صف «آماده‌ی امحا») + یک سند با نگهداشت قانونی */
+export function seedRetentionDocs(): KDoc[] {
+  const doc = (id: string, title: string, type: string, created: string, archived: string, extra: Partial<KDoc> = {}): KDoc => {
+    const file = { id: `f-${id}`, name: `${title}.pdf`, size: "۴۲۰ کیلوبایت", ext: "pdf" };
+    return {
+      id,
+      title,
+      code: `KM-${created.slice(0, 4)}-${id.slice(-4).toUpperCase()}`,
+      type,
+      categoryId: type === "صورت‌جلسه" ? "cat-minutes" : type === "قرارداد" ? "cat-contracts" : "cat-reports",
+      tags: ["آرشیو"],
+      unit: "دبیرخانه",
+      owner: "دبیرخانه",
+      author: "دبیرخانه",
+      createdAt: created,
+      updatedAt: archived,
+      version: 1,
+      status: "آرشیو",
+      access: "داخلی",
+      description: `${title} — سند آرشیوی که طبق جدول نگهداشت بررسی می‌شود.`,
+      files: [file],
+      reviewDate: archived,
+      versions: [{ version: 1, date: created, by: "دبیرخانه", note: "ایجاد سند", files: [file] }],
+      workflow: [
+        { id: `wf-${id}-1`, action: "انتشار", from: "تأییدشده", to: "منتشرشده", by: "دبیرخانه", at: created },
+        { id: `wf-${id}-2`, action: "آرشیو", from: "منتشرشده", to: "آرشیو", by: "دبیرخانه", at: archived, note: "پایان اعتبار" },
+      ],
+      approvers: ["پایگاه اطلاع‌رسانی بنیاد"],
+      relations: [],
+      views: 12,
+      downloads: 3,
+      ratings: [],
+      feedback: [],
+      comments: [],
+      followers: [],
+      importance: "عادی",
+      archiveReason: "منقضی — پایان اعتبار",
+      scope: "سراسری",
+      ...extra,
+    };
+  };
+  // بخشنامه‌ی ابلاغ‌شده با «خواندم و پذیرفتم» (مخاطب: همه‌ی کسانی که سند را می‌بینند)
+  const circ = doc("kd-cir-0401", "بخشنامه‌ی ثبت مرخصی و مأموریت در سامانه", "بخشنامه", addDays(KM_TODAY, -4), addDays(KM_TODAY, -4), {
+    status: "منتشرشده",
+    archiveReason: undefined,
+    tags: ["بخشنامه", "منابع انسانی"],
+    categoryId: "cat-regs",
+    description: "از ابتدای تیر، همه‌ی درخواست‌های مرخصی و مأموریت فقط از طریق سامانه ثبت می‌شود.",
+    format: "article",
+    body: "## موضوع\nثبت مرخصی و مأموریت در سامانه\n\n## متن ابلاغ\nاز ابتدای تیرماه، درخواست‌های کاغذی پذیرفته نمی‌شود.\n\n## الزامات\n1. درخواست مرخصی حداقل ۲۴ ساعت قبل ثبت شود.\n2. مأموریت‌ها با تأیید مدیر مستقیم در سامانه ثبت شود.",
+    reviewDate: addDays(KM_TODAY, 360),
+    workflow: [{ id: "wf-cir-1", action: "انتشار", from: "تأییدشده", to: "منتشرشده", by: "دبیرخانه", at: addDays(KM_TODAY, -4) }],
+    circular: { audience: [], deadline: addDays(KM_TODAY, 5), acks: { "محسن مردعلی": `${addDays(KM_TODAY, -3)} ۰۹:۱۲`, "حسین دهقان": `${addDays(KM_TODAY, -2)} ۱۴:۴۰` }, lastReminderAt: null },
+  });
+  return [
+    circ,
+    doc("kd-ret-0391", "صورت‌جلسات کمیته‌ی تدارکات سال ۱۳۹۸", "صورت‌جلسه", "۱۳۹۸/۰۶/۱۰", "۱۳۹۹/۰۲/۰۱"),
+    doc("kd-ret-0392", "گزارش عملکرد فصلی طرح‌های اشتغال ۱۳۹۷", "گزارش", "۱۳۹۷/۱۰/۰۵", "۱۳۹۸/۰۴/۱۵"),
+    doc("kd-ret-0393", "فرم‌های قدیمی درخواست تسهیلات (نسخه‌ی ۹۶)", "فرم", "۱۳۹۶/۰۳/۰۱", "۱۳۹۹/۰۹/۱۰"),
+    doc("kd-ret-0394", "قرارداد پیمانکاری آب‌رسانی روستایی ۱۳۸۸", "قرارداد", "۱۳۸۸/۰۵/۲۰", "۱۳۹۰/۰۱/۱۵", {
+      legalHold: { by: "واحد حقوقی", at: "۱۴۰۴/۰۸/۰۱", reason: "پرونده‌ی دعوی حقوقی باز در دادگاه — تا پایان رسیدگی نگهداری شود." },
+    }),
+  ];
 }
 
 // ---------------------------------------------------------------------------

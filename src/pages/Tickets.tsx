@@ -9,7 +9,7 @@
 import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { LifeBuoy, Plus, Search, SlidersHorizontal, AlertTriangle, Timer, Smile, Inbox, MessageSquareText, Paperclip, X, UserCheck, Building2, Headset } from "lucide-react";
+import { LifeBuoy, Plus, Search, SlidersHorizontal, AlertTriangle, Timer, Smile, Inbox, MessageSquareText, Paperclip, X, UserCheck, Building2, Headset, Users, Bell } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
@@ -24,6 +24,7 @@ import { useTickets } from "../context/TicketsContext";
 import { descendantsOrSelf } from "../iam/model";
 import { fa } from "../pm/jalali";
 import {
+  affectedCount,
   fmtDur,
   isBreached,
   isFinal,
@@ -86,10 +87,12 @@ export default function Tickets() {
   const orgIds = useMemo(() => new Set(descendantsOrSelf(iam, contextId).map((s) => s.id)), [iam, contextId]);
   const lists = useMemo(
     () => ({
-      mine: tk.tickets.filter((t) => t.reporterId === actingUser.id),
+      // «تیکت‌های من» = ثبت‌کرده‌ها + دنبال‌شده‌ها + «من هم»ها
+      mine: tk.tickets.filter((t) => tk.involved(t)),
       org: tk.tickets.filter((t) => orgIds.has(t.reporterScopeId)),
       desk: tk.tickets,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tk.tickets, actingUser.id, orgIds],
   );
   const base = lists[view];
@@ -117,7 +120,7 @@ export default function Tickets() {
         const bb = isBreached(b, now) ? 0 : 1;
         const fa_ = isFinal(a.status) ? 1 : 0;
         const fb_ = isFinal(b.status) ? 1 : 0;
-        return fa_ - fb_ || ba - bb || prioRank[a.priority] - prioRank[b.priority] || b.updatedAt - a.updatedAt;
+        return fa_ - fb_ || ba - bb || prioRank[a.priority] - prioRank[b.priority] || affectedCount(b) - affectedCount(a) || b.updatedAt - a.updatedAt;
       }
       return b.updatedAt - a.updatedAt;
     });
@@ -129,7 +132,7 @@ export default function Tickets() {
   const avgFirst = responded.length ? responded.reduce((s, t) => s + (t.firstResponseAt! - t.createdAt), 0) / responded.length : 0;
   const rated = base.filter((t) => t.rating);
   const csat = rated.length ? rated.reduce((s, t) => s + t.rating!.score, 0) / rated.length : 0;
-  const awaitingMe = lists.mine.filter((t) => t.status === "resolved" || t.status === "need-info").length;
+  const awaitingMe = lists.mine.filter((t) => t.reporterId === actingUser.id && (t.status === "resolved" || t.status === "need-info")).length;
   const unassigned = open.filter((t) => !t.assigneeId).length;
 
   const extraFilters = [prio, mod, sla, assignee].filter(Boolean).length;
@@ -361,6 +364,7 @@ export default function Tickets() {
               onToggle={() => toggleSel(t.id)}
               onOpen={() => patchParams({ id: t.id })}
               internalVisible={tk.isVendor}
+              following={t.reporterId !== actingUser.id && tk.involved(t)}
             />
           ))}
         </div>
@@ -373,6 +377,10 @@ export default function Tickets() {
             onCancel={() => patchParams({ new: null, from: null })}
             onCreated={(t) => {
               notify(`تیکت ${t.id} ثبت شد؛ نتیجه از همین صفحه و صندوق اعلان‌ها اطلاع‌رسانی می‌شود.`);
+              patchParams({ new: null, from: null, id: t.id, view: null });
+            }}
+            onJoined={(t) => {
+              notify(`به تیکت ${t.id} پیوستید؛ به‌جای تیکت تکراری، پیشرفت همین تیکت به شما اعلان می‌شود.`);
               patchParams({ new: null, from: null, id: t.id, view: null });
             }}
           />
@@ -399,7 +407,9 @@ function TicketRow({
   onToggle,
   onOpen,
   internalVisible,
+  following = false,
 }: {
+  following?: boolean;
   t: Ticket;
   now: number;
   showReporter: boolean;
@@ -448,6 +458,16 @@ function TicketRow({
             </span>
           )}
           {t.rating && <span className="text-amber-600">★ {fa(t.rating.score)}</span>}
+          {affectedCount(t) > 1 && (
+            <span className={`flex items-center gap-0.5 ${affectedCount(t) >= 3 ? "text-rose-600 font-medium" : ""}`} title="کاربران درگیر (گزارش‌دهنده + «من هم»)">
+              <Users size={11} /> {fa(affectedCount(t))}
+            </span>
+          )}
+          {following && (
+            <span className="flex items-center gap-0.5 text-brand-700" title="دنبال می‌کنید">
+              <Bell size={11} /> دنبال‌شده
+            </span>
+          )}
         </div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">

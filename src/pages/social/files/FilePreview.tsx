@@ -3,7 +3,7 @@
 // در پروتوتایپ محتوای واقعی فایل وجود ندارد؛ پیش‌نمایش با جای‌نگهدار متناسب با نوع فایل رسم می‌شود.
 // ---------------------------------------------------------------------------
 import { useRef, useState } from "react";
-import { Download, Star, History, Link2, Eye, Copy, Upload, RotateCcw, Image as ImageIcon, FileText, FileSpreadsheet, Ban, Clock } from "lucide-react";
+import { Download, Star, History, Link2, Eye, Copy, Upload, RotateCcw, Image as ImageIcon, FileText, FileSpreadsheet, Ban, Clock, Activity, Pencil, Check, X, Users } from "lucide-react";
 import Modal from "../../../components/ui/Modal";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
@@ -12,10 +12,23 @@ import { useConfirm } from "../../../components/ui/ConfirmProvider";
 import { useSocial } from "../../../context/SocialContext";
 import { dayNum } from "../../../pm/jalali";
 import { endpoints, fmtEndpoint } from "../../../social/endpoints";
-import type { FileItem } from "../../../social/types";
-import { UserLine, fa, stamp, toAttachments } from "../kit";
+import type { FileEventAction, FileItem } from "../../../social/types";
+import { fileEventLabel } from "../../../social/types";
+import { UserLine, UserPicker, fa, stamp, toAttachments } from "../kit";
 
-type Tab = "preview" | "versions" | "share";
+type Tab = "preview" | "versions" | "share" | "activity";
+const eventTone: Record<FileEventAction, "brand" | "success" | "warning" | "danger" | "neutral" | "navy"> = {
+  upload: "success",
+  version: "brand",
+  restore_version: "brand",
+  rename: "neutral",
+  share: "navy",
+  unshare: "neutral",
+  download: "neutral",
+  delete: "danger",
+  restore: "warning",
+  purge: "danger",
+};
 export const kindOf = (f: Pick<FileItem, "mime" | "name">): "image" | "pdf" | "text" | "sheet" | "doc" | "other" => {
   const n = f.name.toLowerCase();
   if (f.mime.startsWith("image/")) return "image";
@@ -38,6 +51,10 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   const [tab, setTab] = useState<Tab>("preview");
   const [days, setDays] = useState(7);
   const [allowDl, setAllowDl] = useState(true);
+  const [people, setPeople] = useState<string[]>([]);
+  const [pickPeople, setPickPeople] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState("");
   const verInput = useRef<HTMLInputElement>(null);
   const f = fileId ? s.files.find((x) => x.id === fileId) : undefined;
   if (!f) return null;
@@ -48,7 +65,20 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   const shareUrl = f.share ? `https://shub.ir/s/${f.share.token}` : "";
   const daysLeft = f.share ? (dayNum(f.share.expires_on) ?? 0) - (dayNum(s.today) ?? 0) : 0;
 
-  const download = () => notify(`دریافت «${f.name}» — ${fmtEndpoint(endpoints.fileDownload(f.owner_type, f.owner_id, f.id))}`, "info");
+  // فایلی که دیگری فقط برای مشاهده به اشتراک گذاشته، برای گیرنده قابل دریافت نیست
+  const dlBlocked = !canWrite && f.owner_type === "user" && f.owner_id !== s.me && !!f.share && !f.share.allow_download;
+  const download = () => {
+    if (dlBlocked) return notify("این فایل فقط برای مشاهده به اشتراک گذاشته شده است.", "warning");
+    s.logFileDownload(f.id);
+    notify(`دریافت «${f.name}» — ${fmtEndpoint(endpoints.fileDownload(f.owner_type, f.owner_id, f.id))}`, "info");
+  };
+  const activity = s.fileActivity(f.id);
+  const saveName = () => {
+    const r = s.renameFile(f.id, newName);
+    if (!r.ok) return notify(r.error, "warning");
+    setRenaming(false);
+    notify("نام فایل تغییر کرد.", "success");
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -61,12 +91,28 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   const tabs: { id: Tab; label: string; icon: typeof Eye }[] = [
     { id: "preview", label: "پیش‌نمایش", icon: Eye },
     { id: "versions", label: `نسخه‌ها (${fa(versions.length + 1)})`, icon: History },
-    { id: "share", label: "اشتراک لینک", icon: Link2 },
+    { id: "share", label: "اشتراک", icon: Link2 },
+    { id: "activity", label: "فعالیت", icon: Activity },
   ];
 
   return (
     <Modal open onClose={onClose} title={f.name} description={`${f.size} · نسخه‌ی ${fa(f.version ?? 1)} · ${s.userName(f.created_by_user_id)} · ${stamp(f.created_at)}`} width="max-w-3xl">
       <div className="space-y-4">
+        {canWrite && (
+          renaming ? (
+            <div className="flex items-center gap-2">
+              <input className="input-field !py-1.5 flex-1 min-w-0" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveName()} autoFocus aria-label="نام جدید فایل" />
+              <Button size="sm" variant="primary" icon={<Check size={13} />} onClick={saveName} title={fmtEndpoint(endpoints.fileRename(f.owner_type, f.owner_id, f.id))}>
+                ذخیره
+              </Button>
+              <Button size="sm" variant="ghost" icon={<X size={13} />} onClick={() => setRenaming(false)} aria-label="انصراف" />
+            </div>
+          ) : (
+            <button onClick={() => (setNewName(f.name), setRenaming(true))} className="text-[11.5px] text-ink-500 hover:text-brand-700 flex items-center gap-1">
+              <Pencil size={12} /> تغییر نام
+            </button>
+          )
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex rounded-lg border border-ink-200 p-0.5 bg-ink-50 max-w-full overflow-x-auto">
             {tabs.map((t) => (
@@ -79,7 +125,7 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
             <Button size="sm" variant="ghost" icon={<Star size={14} className={starred ? "fill-amber-400 text-amber-500" : ""} />} onClick={() => s.toggleStar(f.id)} aria-label={starred ? "برداشتن ستاره" : "ستاره‌دار کردن"}>
               <span className="hidden sm:inline">{starred ? "ستاره‌دار" : "ستاره"}</span>
             </Button>
-            <Button size="sm" icon={<Download size={14} />} onClick={download}>
+            <Button size="sm" icon={<Download size={14} />} onClick={download} disabled={dlBlocked} title={dlBlocked ? "فقط مشاهده" : undefined}>
               دریافت
             </Button>
           </span>
@@ -237,6 +283,11 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
                 <p className="text-[11.5px] text-ink-600 flex items-center gap-1 flex-wrap">
                   <Clock size={12} /> معتبر تا {f.share.expires_on} ({daysLeft > 0 ? `${fa(daysLeft)} روز مانده` : "امروز منقضی می‌شود"}) · {f.share.allow_download ? "مشاهده و دریافت" : "فقط مشاهده"}
                 </p>
+                {!!f.share.shared_with?.length && (
+                  <p className="text-[11.5px] text-ink-600 flex items-start gap-1">
+                    <Users size={12} className="mt-1 shrink-0" /> در «اشتراک‌گذاشته با من» این افراد: {f.share.shared_with.map((u) => s.userName(u)).join("، ")}
+                  </p>
+                )}
                 {(canWrite || f.share.created_by === s.me) && (
                   <Button
                     size="sm"
@@ -267,19 +318,48 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
                 <label className="flex items-center gap-2 text-xs text-ink-700">
                   <input type="checkbox" checked={allowDl} onChange={(e) => setAllowDl(e.target.checked)} className="accent-[var(--color-brand-600)]" /> اجازه‌ی دریافت فایل
                 </label>
+                <label className="flex items-center gap-2 text-xs text-ink-700">
+                  <input type="checkbox" checked={pickPeople} onChange={(e) => setPickPeople(e.target.checked)} className="accent-[var(--color-brand-600)]" /> اشتراک با افراد مشخص (در «اشتراک‌گذاشته با من» آن‌ها می‌آید و اعلان می‌گیرند)
+                </label>
+                {pickPeople && <UserPicker value={people} onChange={setPeople} exclude={[s.me]} placeholder="جستجوی همکار…" />}
                 <Button
                   size="sm"
                   variant="primary"
                   icon={<Link2 size={13} />}
                   onClick={() => {
-                    const sh = s.createShare(f.id, days, allowDl);
-                    if (sh) notify(`لینک تا ${sh.expires_on} ساخته شد.`, "success");
+                    const sh = s.createShare(f.id, days, allowDl, pickPeople ? people : []);
+                    if (sh) notify(sh.shared_with?.length ? `با ${fa(sh.shared_with.length)} نفر تا ${sh.expires_on} به اشتراک گذاشته شد.` : `لینک تا ${sh.expires_on} ساخته شد.`, "success");
                   }}
                 >
-                  ساخت لینک اشتراک
+                  {pickPeople && people.length ? `اشتراک با ${fa(people.length)} نفر` : "ساخت لینک اشتراک"}
                 </Button>
               </div>
             )}
+          </div>
+        )}
+        {/* ---------------------------------------------------- فعالیت («پیشنهادی») */}
+        {tab === "activity" && (
+          <div className="space-y-2">
+            {activity.length === 0 ? (
+              <p className="text-xs text-ink-400">فعالیتی برای این فایل ثبت نشده است.</p>
+            ) : (
+              <ol className="relative border-r-2 border-ink-100 pr-4 space-y-3 max-h-[50vh] overflow-y-auto">
+                {activity.map((e) => (
+                  <li key={e.id} className="relative">
+                    <span className="absolute -right-[23px] top-1.5 w-3 h-3 rounded-full bg-brand-500 border-2 border-white" />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge tone={eventTone[e.action]}>{fileEventLabel[e.action]}</Badge>
+                      <span className="text-[12px] text-ink-800">{s.userName(e.user_id)}</span>
+                      <span className="text-[11px] text-ink-400 mr-auto">{stamp(e.at)}</span>
+                    </div>
+                    {e.detail && <p className="text-[11px] text-ink-500 mt-0.5">{e.detail}</p>}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <p className="text-[10.5px] text-amber-700" dir="rtl">
+              پیشنهادی · <code dir="ltr">{fmtEndpoint(endpoints.fileActivity(f.owner_type, f.owner_id, f.id))}</code>
+            </p>
           </div>
         )}
       </div>

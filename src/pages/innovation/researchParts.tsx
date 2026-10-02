@@ -10,6 +10,9 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import type { Application, EntityKind, Review, RubricItem } from "../../innovation/types";
 import { faN, reviewSummary, uid, weighted } from "../../innovation/util";
 import { EntityLink, EntityPicker, Field } from "./shared";
+import type { FormCheck, FormDef, FormSubmission } from "../../innovation/forms";
+import { evaluateForm } from "../../innovation/forms";
+import { applicantFromForm, EligibilityResult, emptySubmission, FormAnswersView, FormFill, FormStatusBadge, type FormValue } from "./FormBuilder";
 
 export function ReviewModal({ title, rubric, onClose, onSave }: { title: string; rubric: RubricItem[]; onClose: () => void; onSave: (r: Review) => void }) {
   const { me, stamp } = useInnovation();
@@ -62,45 +65,95 @@ export function ReviewModal({ title, rubric, onClose, onSave }: { title: string;
   );
 }
 
-export function ApplicationModal({ title, kind, onClose, onSave }: { title: string; kind?: EntityKind; onClose: () => void; onSave: (a: Application) => void }) {
-  const { today } = useInnovation();
+export function ApplicationModal({ title, kind, form, onClose, onSave }: { title: string; kind?: EntityKind; form?: FormDef; onClose: () => void; onSave: (a: Application) => void }) {
+  const { today, entities, stamp } = useInnovation();
   const [name, setName] = useState("");
   const [entityId, setEntityId] = useState<string | undefined>();
   const [affiliation, setAffiliation] = useState("");
   const [proposal, setProposal] = useState("");
   const [err, setErr] = useState(false);
+  const [fv, setFv] = useState<FormValue>(() => emptySubmission(form));
+  const [check, setCheck] = useState<FormCheck | null>(null);
   const { entityById } = useInnovation();
+  // اگر فرم سفارشی فیلد «شرکت / پژوهشگر» داشته باشد، متقاضی از همان گرفته می‌شود
+  const fromForm = form ? applicantFromForm(form, fv) : {};
+  const formHasApplicant = !!form?.fields.some((f) => f.type === "entity");
+  const applicantName = (formHasApplicant ? fromForm.name : name)?.trim() ?? "";
+  const applicantId = formHasApplicant ? fromForm.entityId : entityId;
+
+  const build = (sub?: FormSubmission, rejected = false): Application => {
+    const e = entityById(applicantId);
+    return {
+      id: uid("ap"),
+      name: applicantName,
+      entityId: applicantId,
+      affiliation: affiliation.trim() || e?.affiliation || e?.city || "—",
+      proposal: proposal.trim(),
+      status: rejected ? "رد شده" : "ارسال‌شده",
+      submittedAt: today,
+      reviews: [],
+      form: sub,
+      note: rejected && sub ? `عدم احراز شرایط: ${sub.reasons.join(" ")}` : undefined,
+    };
+  };
+
+  const submit = (forceIneligible = false) => {
+    if (!applicantName) {
+      setErr(true);
+      if (form) setCheck(evaluateForm(form, fv, entities));
+      return;
+    }
+    if (!form) {
+      onSave(build());
+      onClose();
+      return;
+    }
+    const c = evaluateForm(form, fv, entities);
+    setCheck(c);
+    if (c.missing.length) return;
+    const sub: FormSubmission = { formId: form.id, answers: fv.answers, refs: fv.refs, eligible: c.eligible, reasons: c.reasons, at: stamp() };
+    if (!c.eligible && !forceIneligible) return;
+    onSave(build(sub, !c.eligible));
+    onClose();
+  };
+
   return (
-    <Modal open onClose={onClose} title="ثبت درخواست" description={title}>
+    <Modal open onClose={onClose} title="ثبت درخواست" description={title} width={form ? "max-w-xl" : undefined}>
       <div className="space-y-3">
-        <Field label="متقاضی" required>
-          <EntityPicker
-            kind={kind}
-            name={name}
-            invalid={err && !name.trim()}
-            onChange={(n, id) => {
-              setName(n);
-              setEntityId(id);
-              setErr(false);
-              const e = entityById(id);
-              if (e) setAffiliation(e.affiliation ?? e.city);
-            }}
-          />
-        </Field>
-        <Field label="وابستگی سازمانی"><input value={affiliation} onChange={(e) => setAffiliation(e.target.value)} className="input-field" /></Field>
-        <Field label="خلاصه‌ی پیشنهاده"><textarea value={proposal} onChange={(e) => setProposal(e.target.value)} rows={3} className="input-field" placeholder="رویکرد، برنامه‌ی زمانی و بودجه‌ی پیشنهادی" /></Field>
-        <div className="flex gap-2">
-          <Button
-            variant="primary"
-            className="flex-1 justify-center"
-            onClick={() => {
-              if (!name.trim()) return setErr(true);
-              onSave({ id: uid("ap"), name: name.trim(), entityId, affiliation: affiliation.trim() || "—", proposal: proposal.trim(), status: "ارسال‌شده", submittedAt: today, reviews: [] });
-              onClose();
-            }}
-          >
-            ثبت درخواست
+        {!formHasApplicant && (
+          <Field label="متقاضی" required>
+            <EntityPicker
+              kind={kind}
+              name={name}
+              invalid={err && !name.trim()}
+              onChange={(n, id) => {
+                setName(n);
+                setEntityId(id);
+                setErr(false);
+                const e = entityById(id);
+                if (e) setAffiliation(e.affiliation ?? e.city);
+              }}
+            />
+          </Field>
+        )}
+        {form ? (
+          <FormFill def={form} value={fv} onChange={(v) => { setFv(v); setCheck(null); setErr(false); }} missing={check?.missing} />
+        ) : (
+          <>
+            <Field label="وابستگی سازمانی"><input value={affiliation} onChange={(e) => setAffiliation(e.target.value)} className="input-field" /></Field>
+            <Field label="خلاصه‌ی پیشنهاده"><textarea value={proposal} onChange={(e) => setProposal(e.target.value)} rows={3} className="input-field" placeholder="رویکرد، برنامه‌ی زمانی و بودجه‌ی پیشنهادی" /></Field>
+          </>
+        )}
+        {form && check && <EligibilityResult def={form} check={check} />}
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="primary" className="flex-1 justify-center" onClick={() => submit(false)}>
+            {form ? "ارسال و سنجش شرایط" : "ثبت درخواست"}
           </Button>
+          {form && check && !check.missing.length && !check.eligible && (
+            <Button variant="secondary" onClick={() => submit(true)} title="درخواست با وضعیت «رد شده» و دلیل عدم احراز ثبت می‌شود">
+              ثبت به‌عنوان فاقد شرایط
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>انصراف</Button>
         </div>
       </div>
@@ -159,10 +212,17 @@ export function ApplicationsList({
               <div className="flex items-center gap-1.5 shrink-0">
                 {s.avg !== undefined && <Badge tone="navy">{faN(s.avg, 1)} ({faN(s.count)} داور)</Badge>}
                 {s.sd > 12 && <Badge tone="warning">اختلاف داوران</Badge>}
+                <FormStatusBadge sub={a.form} />
                 <Badge tone={tone[a.status]}>{a.status}</Badge>
               </div>
             </div>
             {a.proposal && <p className="text-ink-500 mt-1.5 leading-5">{a.proposal}</p>}
+            {a.form && (
+              <details className="mt-1.5">
+                <summary className="cursor-pointer text-[11px] text-brand-700">پاسخ‌های فرم درخواست</summary>
+                <div className="mt-1.5"><FormAnswersOf sub={a.form} /></div>
+              </details>
+            )}
             {a.note && <p className="text-amber-700 mt-1">یادداشت: {a.note}</p>}
             {a.reviews.length > 0 && (
               <div className="mt-1.5 space-y-0.5">
@@ -226,4 +286,12 @@ export function ProjectLinks({ opportunityId, title, canEdit }: { opportunityId:
       )}
     </div>
   );
+}
+
+/** نمایش پاسخ‌های فرم با یافتن تعریف فرم از روی شناسه */
+function FormAnswersOf({ sub }: { sub: FormSubmission }) {
+  const { forms } = useInnovation();
+  const def = forms?.find((f) => f.id === sub.formId);
+  if (!def) return <p className="text-[11px] text-ink-400">تعریف این فرم حذف شده است.</p>;
+  return <FormAnswersView def={def} sub={sub} />;
 }

@@ -29,6 +29,7 @@ import EcosystemBank from "./innovation/EcosystemBank";
 import EcosystemGraph from "./innovation/EcosystemGraph";
 import { ActivityLogButton, Bar, DecisionModal, DecisionsOf, EntityLink, EntityPicker, Field, FilterChips, Info2, OutcomeModal, OutcomeSummary, Section, Stepper } from "./innovation/shared";
 import { ApplicationModal, ApplicationsList, ProjectLinks, ReviewModal, RubricEditor } from "./innovation/researchParts";
+import { FormDesignButton, useOwnerForm } from "./innovation/FormBuilder";
 
 type TabId = "opps" | "rfp" | "sabbatical" | "bank" | "graph";
 
@@ -239,6 +240,7 @@ function CallFile({ c }: { c: ResearchCall }) {
   const candidates = c.applications.filter((a) => a.status !== "رد شده");
   const ranked = [...candidates].sort((a, b) => (reviewSummary(b.reviews, c.rubric).avg ?? -1) - (reviewSummary(a.reviews, c.rubric).avg ?? -1));
   const accepted = c.applications.find((a) => a.status === "پذیرفته");
+  const callForm = useOwnerForm("call", c.id);
 
   return (
     <div className="space-y-5">
@@ -268,7 +270,7 @@ function CallFile({ c }: { c: ResearchCall }) {
           <div className="flex flex-wrap gap-1.5">{c.outputs.map((o) => <Badge key={o} tone="brand">{o}</Badge>)}</div>
         </Section>
       )}
-      <Section title="معیارهای داوری">
+      <Section title="معیارهای داوری" action={canEdit ? <FormDesignButton kind="call" ownerId={c.id} ownerTitle={c.title} /> : callForm ? <Badge tone="brand">فرم سفارشی · {faN(callForm.fields.length)} فیلد</Badge> : undefined}>
         <div className="flex flex-wrap gap-1.5">{c.rubric.map((r) => <Badge key={r.id} tone="neutral">{r.criterion} · {faN(r.weight)}٪</Badge>)}</div>
       </Section>
 
@@ -276,7 +278,7 @@ function CallFile({ c }: { c: ResearchCall }) {
         title={`درخواست‌ها (${faN(c.applications.length)})`}
         icon={<Users size={13} />}
         action={
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-wrap justify-end">
             {(c.stage === "فراخوان باز" || c.stage === "بررسی درخواست‌ها") && hasPermission("research.list") && <Button size="sm" variant="secondary" icon={<Plus size={12} />} onClick={() => setApplyOpen(true)}>ثبت درخواست</Button>}
             {canEdit && !accepted && ranked.length > 0 && c.stage !== "پیش‌نویس" && <Button size="sm" variant="primary" icon={<Gavel size={12} />} onClick={() => setDeciding(true)}>تصمیم پذیرش</Button>}
           </div>
@@ -319,7 +321,7 @@ function CallFile({ c }: { c: ResearchCall }) {
       <OutcomeSummary module="research" subjectId={c.id} />
 
       {applyOpen && (
-        <ApplicationModal title={c.title} onClose={() => setApplyOpen(false)} onSave={(a) => { upd(`درخواست «${a.name}» را ثبت کرد`, (x) => ({ ...x, applications: [...x.applications, a] })); notify("درخواست ثبت شد."); }} />
+        <ApplicationModal title={c.title} form={callForm} onClose={() => setApplyOpen(false)} onSave={(a) => { upd(`درخواست «${a.name}» را ثبت کرد`, (x) => ({ ...x, applications: [...x.applications, a] })); notify("درخواست ثبت شد."); }} />
       )}
       {reviewing && (
         <ReviewModal title={`${reviewing.name} — ${c.title}`} rubric={c.rubric} onClose={() => setReviewing(null)} onSave={(r) => setApp(reviewing, { reviews: [...reviewing.reviews.filter((x) => x.reviewer !== r.reviewer), r], status: "در داوری" }, `درخواست «${reviewing.name}» را داوری کرد`)} />
@@ -739,6 +741,7 @@ function SabbaticalFile({ sb }: { sb: SabbaticalX }) {
   const [deciding, setDeciding] = useState(false);
   const [closing, setClosing] = useState(false);
   const canEdit = hasPermission("research.edit");
+  const sbForm = useOwnerForm("sabbatical", sb.id);
   const rubric = defaultRubric();
   const upd = (action: string, fn: (x: SabbaticalX) => SabbaticalX) => inn.commit("research", action, { id: sb.id, title: sb.topic }, (s) => ({ ...s, sabbaticals: s.sabbaticals.map((x) => (x.id === sb.id ? fn(x) : x)) }));
   const ranked = [...sb.applicants.filter((a) => a.status !== "رد شده")].sort((a, b) => (reviewSummary(b.reviews, rubric).avg ?? -1) - (reviewSummary(a.reviews, rubric).avg ?? -1));
@@ -767,7 +770,8 @@ function SabbaticalFile({ sb }: { sb: SabbaticalX }) {
           title={`متقاضیان (${faN(sb.applicants.length)})`}
           icon={<Users size={13} />}
           action={
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              {canEdit && <FormDesignButton kind="sabbatical" ownerId={sb.id} ownerTitle={sb.topic} />}
               <Button size="sm" variant="secondary" icon={<Plus size={12} />} onClick={() => setApplyOpen(true)}>ثبت درخواست استاد</Button>
               {canEdit && ranked.length > 0 && <Button size="sm" variant="primary" icon={<Gavel size={12} />} onClick={() => setDeciding(true)}>انتخاب استاد</Button>}
             </div>
@@ -812,7 +816,7 @@ function SabbaticalFile({ sb }: { sb: SabbaticalX }) {
       <DecisionsOf subjectId={sb.id} />
       <OutcomeSummary module="research" subjectId={sb.id} />
 
-      {applyOpen && <ApplicationModal title={sb.topic} kind="researcher" onClose={() => setApplyOpen(false)} onSave={(a) => { upd(`درخواست «${a.name}» را ثبت کرد`, (x) => ({ ...x, stage: x.stage === "فراخوان" ? "انتخاب استاد" : x.stage, applicants: [...x.applicants, a] })); notify("درخواست ثبت شد."); }} />}
+      {applyOpen && <ApplicationModal title={sb.topic} kind="researcher" form={sbForm} onClose={() => setApplyOpen(false)} onSave={(a) => { upd(`درخواست «${a.name}» را ثبت کرد`, (x) => ({ ...x, stage: x.stage === "فراخوان" ? "انتخاب استاد" : x.stage, applicants: [...x.applicants, a] })); notify("درخواست ثبت شد."); }} />}
       {reviewing && <ReviewModal title={`${reviewing.name} — ${sb.topic}`} rubric={rubric} onClose={() => setReviewing(null)} onSave={(r) => upd(`درخواست «${reviewing.name}» را داوری کرد`, (x) => ({ ...x, applicants: x.applicants.map((a) => (a.id === reviewing.id ? { ...a, status: "در داوری", reviews: [...a.reviews.filter((y) => y.reviewer !== r.reviewer), r] } : a)) }))} />}
       <DecisionModal
         open={deciding}

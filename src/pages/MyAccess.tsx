@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { ArrowDownToLine, Check, CircleHelp, Clock, GitMerge, KeyRound, Layers, MapPin, Send, ShieldBan, ShieldCheck, Star, X } from "lucide-react";
+import { ArrowDownToLine, Check, CircleHelp, Clock, GitMerge, Inbox, KeyRound, Layers, MapPin, Send, ShieldBan, ShieldCheck, Star, X } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -11,6 +11,8 @@ import { permissionCatalog } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import { useInbox } from "../context/InboxContext";
 import { ROOT_ID, ancestorsOrSelf, descendantsOrSelf, type ScopeNode } from "../iam/model";
+import { useMyAccessRequests } from "../iam/hooks";
+import { durationLabel, reqStatusLabel, reqStatusTone } from "./settings/AccessRequestsSection";
 import {
   BindingStatusBadge,
   CheckLine,
@@ -188,6 +190,8 @@ export default function MyAccess() {
             <p className="text-[10.5px] text-ink-400 px-1 mt-2 leading-5">واحدهای کم‌رنگ لایه‌های بالاتر مسیرند. روی هر واحد بزنید تا دسترسی‌تان در آن را ببینید.</p>
           </div>
 
+          <MyRequests />
+
           <div className="card p-4">
             <p className="text-[12.5px] font-bold text-ink-800 mb-3">قواعد دسترسی</p>
             <ul className="space-y-3">
@@ -341,7 +345,7 @@ function RequestAccess({ initial, scopes, onClose }: { initial: { scopeId: strin
   const { iam, today, actingUser: me } = t;
   const [scopeId, setScopeId] = useState(initial.scopeId);
   const [roleId, setRoleId] = useState("");
-  const [duration, setDuration] = useState("");
+  const [duration, setDuration] = useState("30");
   const [reason, setReason] = useState("");
 
   const mine = new Set(iam.bindings.filter((b) => b.userId === me.id && b.scopeId === scopeId && bindingStatus(b, today) === "live").map((b) => b.roleId));
@@ -364,19 +368,23 @@ function RequestAccess({ initial, scopes, onClose }: { initial: { scopeId: strin
   }, [iam, scopeId, me.id, today, t]);
 
   const role = iam.roles.find((r) => r.id === roleId);
-  const check = !managers ? ({ ok: false, reason: "مدیری برای این واحد پیدا نشد." } as const) : !roleId ? ({ ok: false, reason: "نقش مورد نیاز را انتخاب کنید." } as const) : !reason.trim() ? ({ ok: false, reason: "دلیل درخواست را بنویسید." } as const) : ({ ok: true } as const);
+  const durationDays = duration ? Number(duration) : null;
+  const input = { roleId, scopeId, durationDays, reason, perm: initial.perm };
+  const check = !managers ? ({ ok: false, reason: "مدیری برای این واحد پیدا نشد." } as const) : !roleId ? ({ ok: false, reason: "نقش مورد نیاز را انتخاب کنید." } as const) : t.checkRequestAccess(input);
 
   const submit = () => {
     if (!check.ok || !managers || !role) return notify(check.ok ? "اطلاعات ناقص است." : check.reason, "warning");
+    const res = t.requestAccess(input);
+    if (!res.ok) return notify(res.reason, "warning");
     const names = managers.ids.map(userName);
-    const dur = duration ? ` برای ${duration}` : "";
-    inbox.send(names, "direct_message", `«${me.name}» درخواست نقش «${role.name}» در «${t.scopeLabel(scopeId)}»${dur} را دارد. دلیل: ${reason.trim()}`, "/dashboard/settings?section=bindings");
-    notify(`درخواست برای ${names.join("، ")} فرستاده شد.`, "success");
+    const dur = durationDays ? ` برای ${durationLabel(durationDays)}` : " (دائمی)";
+    inbox.send(names, "access", `«${me.name}» درخواست نقش «${role.name}» در «${t.scopeLabel(scopeId)}»${dur} را دارد. دلیل: ${reason.trim()}`, "/dashboard/settings?section=access-requests");
+    notify(`درخواست ثبت و برای ${names.join("، ")} فرستاده شد؛ وضعیت را در «درخواست‌های من» ببینید.`, "success");
     onClose();
   };
 
   return (
-    <Modal open onClose={onClose} title="درخواست دسترسی" description="درخواست شما به مدیرِ واحد می‌رسد و او در صورت تأیید، نقش را تخصیص می‌دهد." width="max-w-xl">
+    <Modal open onClose={onClose} title="درخواست دسترسی" description="درخواست شما به مدیرِ واحد می‌رسد؛ با تأیید او نقش به‌صورت زمان‌دار (تا پایان مدت) تخصیص می‌یابد." width="max-w-xl">
       <div className="space-y-3">
         <Field label="در کدام واحد؟">
           <ScopeSelect
@@ -412,10 +420,10 @@ function RequestAccess({ initial, scopes, onClose }: { initial: { scopeId: strin
         <div className="grid grid-cols-1 sm:grid-cols-[160px_minmax(0,1fr)] gap-3">
           <Field label="مدت">
             <select className="input-field" value={duration} onChange={(e) => setDuration(e.target.value)}>
+              <option value="7">۱ هفته</option>
+              <option value="30">۳۰ روز</option>
+              <option value="90">۳ ماه</option>
               <option value="">دائمی</option>
-              <option value="۱ هفته">۱ هفته</option>
-              <option value="۳۰ روز">۳۰ روز</option>
-              <option value="۳ ماه">۳ ماه</option>
             </select>
           </Field>
           <Field label="دلیل">
@@ -454,5 +462,41 @@ function ScopeNameInline({ id }: { id: string }) {
     <span className="inline-flex align-middle">
       <ScopeName id={id} />
     </span>
+  );
+}
+
+/** درخواست‌های دسترسیِ من و وضعیتشان */
+function MyRequests() {
+  const t = useTenancy();
+  const { notify } = useToast();
+  const mine = useMyAccessRequests();
+  if (!mine.length) return null;
+  const roleName = (id: string) => t.iam.roles.find((r) => r.id === id)?.name ?? "—";
+  return (
+    <div className="card p-3">
+      <p className="text-[12.5px] font-bold text-ink-800 px-1 mb-2 flex items-center gap-1.5">
+        <Inbox size={14} className="text-brand-600" /> درخواست‌های من
+      </p>
+      <ul className="space-y-1.5">
+        {mine.slice(0, 6).map((r) => (
+          <li key={r.id} className="rounded-lg border border-ink-100 px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12px] font-semibold text-ink-800 truncate">{roleName(r.roleId)}</span>
+              <Badge tone={reqStatusTone[r.status]}>{reqStatusLabel[r.status]}</Badge>
+            </div>
+            <p className="text-[11px] text-ink-400 truncate">
+              {t.scopeLabel(r.scopeId)} · {durationLabel(r.durationDays)}
+              {r.validUntil ? ` · تا ${r.validUntil}` : ""}
+            </p>
+            {r.decisionNote && <p className="text-[11px] text-ink-500 mt-0.5">{r.decisionNote}</p>}
+            {r.status === "pending" && (
+              <button type="button" className="text-[11px] text-rose-600 hover:underline mt-0.5" onClick={() => { const c = t.cancelRequest(r.id); notify(c.ok ? "درخواست لغو شد." : c.reason, c.ok ? "success" : "warning"); }}>
+                انصراف از درخواست
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

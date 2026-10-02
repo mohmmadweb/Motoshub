@@ -26,6 +26,8 @@ import { diffDays, dayNum } from "../pm/jalali";
 import type { Contract, ContractMethod, ContractStage, ContractType, ESignDoc, Tender, TenderStage } from "../innovation/types";
 import { contractStages, tenderStages } from "../innovation/types";
 import { faN, num, rialShort, uid } from "../innovation/util";
+import { autoVars, deviatesFromTemplate, fillTemplate } from "../innovation/extras";
+import { ContractTextSection, DeviationBadge, GuaranteeAlertsCard, GuaranteesSection, IpSection, TemplatesButton } from "./innovation/ContractTerms";
 import { ActivityLogButton, Bar, DecisionModal, DecisionsOf, EntityLink, EntityPicker, Field, FilterChips, Info2, OutcomeModal, OutcomeSummary, Section, Stepper } from "./innovation/shared";
 
 const stageTone: Record<ContractStage, BadgeTone> = {
@@ -82,8 +84,8 @@ export default function Contracts() {
 // ===========================================================================
 // قراردادها — چرخه‌ی عمر
 // ===========================================================================
-type CForm = { title: string; vendor: string; vendorEntityId?: string; type: ContractType; method: ContractMethod; value: string; startDate: string; endDate: string; guarantee: string };
-const emptyForm = (): CForm => ({ title: "", vendor: "", type: "فناورانه", method: "فراخوان عمومی", value: "", startDate: "", endDate: "", guarantee: "" });
+type CForm = { title: string; vendor: string; vendorEntityId?: string; type: ContractType; method: ContractMethod; value: string; startDate: string; endDate: string; guarantee: string; templateId?: string };
+const emptyForm = (): CForm => ({ title: "", vendor: "", type: "فناورانه", method: "فراخوان عمومی", value: "", startDate: "", endDate: "", guarantee: "", templateId: "" });
 
 function TechContractsTab() {
   const inn = useInnovation();
@@ -126,7 +128,10 @@ function TechContractsTab() {
       notify(`قرارداد «${patch.title}» ویرایش شد.`);
     } else {
       const id = uid("ct");
-      const c: Contract = { id, ...patch, stage: "پیش‌نویس", owner: actingUser.name, milestones: [], payments: [], history: [{ id: uid("h"), at: inn.stamp(), by: actingUser.name, text: "قرارداد به‌صورت پیش‌نویس ثبت شد", to: "پیش‌نویس" }], renewals: [], createdAt: today, ...itemScope, authorId: actingUser.id };
+      const tpl = form.templateId ? inn.contractTemplates?.find((t) => t.id === form.templateId) : undefined;
+      const vars = tpl ? autoVars({ ...patch, owner: actingUser.name }) : undefined;
+      const textPart = tpl && vars ? { templateId: tpl.id, templateVars: vars, body: fillTemplate(tpl.body, vars) } : {};
+      const c: Contract = { id, ...patch, ...textPart, guarantees: [], stage: "پیش‌نویس", owner: actingUser.name, milestones: [], payments: [], history: [{ id: uid("h"), at: inn.stamp(), by: actingUser.name, text: "قرارداد به‌صورت پیش‌نویس ثبت شد", to: "پیش‌نویس" }], renewals: [], createdAt: today, ...itemScope, authorId: actingUser.id };
       inn.commit("contracts", "قرارداد جدید ثبت کرد", { id, title: c.title }, (s) => ({ ...s, contracts: [c, ...s.contracts] }));
       notify(`قرارداد «${c.title}» در مرحله‌ی «پیش‌نویس» ثبت شد.`);
       setOpen(id);
@@ -137,7 +142,7 @@ function TechContractsTab() {
   };
 
   const columns: Column<Contract>[] = [
-    { key: "title", label: "عنوان قرارداد", render: (c) => <span className="font-medium text-ink-900">{c.title}</span> },
+    { key: "title", label: "عنوان قرارداد", render: (c) => <span className="font-medium text-ink-900">{c.title}{deviatesFromTemplate(c, inn.contractTemplates) && <span className="inline-flex align-middle mr-1.5"><DeviationBadge c={c} /></span>}</span> },
     { key: "vendor", label: "طرف قرارداد", render: (c) => <EntityLink id={c.vendorEntityId} name={c.vendor} /> },
     { key: "stage", label: "مرحله", render: (c) => <Badge tone={stageTone[c.stage]}>{c.stage}</Badge> },
     { key: "value", label: "ارزش", render: (c) => (c.value ? rialShort(c.value) : "—") },
@@ -172,6 +177,8 @@ function TechContractsTab() {
         <StatCard label="پرداخت‌شده" value={rialShort(paidTotal)} icon={<ShieldCheck size={16} />} />
       </div>
 
+      <GuaranteeAlertsCard contracts={scoped} today={today} onOpen={setOpen} />
+
       {alerts.length > 0 && (
         <div className="card p-3.5 mb-4 border-amber-200 bg-amber-50/60">
           <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2"><BellRing size={14} /> هشدار تمدید و انقضا (۹۰، ۶۰ و ۳۰ روز تا پایان)</p>
@@ -188,7 +195,10 @@ function TechContractsTab() {
 
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <FilterChips items={contractStages} value={stageFilter} onChange={setStageFilter} counts={counts} />
-        {hasPermission("contracts.create") && <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setEditingId(null); setForm(emptyForm()); }}>ثبت قرارداد جدید</Button>}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(hasPermission("contracts.create") || hasPermission("contracts.edit")) && <TemplatesButton />}
+          {hasPermission("contracts.create") && <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setItemScope(defaultScopeForNew()); setEditingId(null); setForm(emptyForm()); }}>ثبت قرارداد جدید</Button>}
+        </div>
       </div>
 
       <DataTable columns={columns} rows={filtered} searchKeys={["title", "vendor"]} searchPlaceholder="جستجو در عنوان یا طرف قرارداد…" onRowClick={(c) => setOpen(c.id)} />
@@ -206,6 +216,14 @@ function TechContractsTab() {
               <Field label="شروع"><JalaliDatePicker value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} /></Field>
               <Field label="پایان"><JalaliDatePicker value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} /></Field>
             </div>
+            {!editingId && (inn.contractTemplates ?? []).length > 0 && (
+              <Field label="متن از قالب استاندارد" hint="متغیرها ({{طرف_دوم}}، {{مبلغ}} …) از همین فرم پر می‌شوند؛ بعداً در پرونده قابل ویرایش است">
+                <select value={form.templateId ?? ""} onChange={(e) => setForm({ ...form, templateId: e.target.value })} className="input-field">
+                  <option value="">بدون قالب</option>
+                  {(inn.contractTemplates ?? []).map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                </select>
+              </Field>
+            )}
             <div className="flex gap-2"><Button variant="primary" className="flex-1 justify-center" onClick={save}>{editingId ? "ذخیره تغییرات" : "ثبت قرارداد"}</Button><Button variant="secondary" onClick={() => setForm(null)}>انصراف</Button></div>
           </div>
         </Modal>
@@ -267,6 +285,7 @@ function ContractFile({ c }: { c: Contract }) {
           <Badge tone="navy">{c.type}</Badge>
           <Badge tone="neutral">{c.method}</Badge>
           {d !== null && d <= 90 && <Badge tone={d <= 30 ? "danger" : "warning"} icon={<CalendarClock size={10} />}>{d < 0 ? "منقضی" : `${faN(d)} روز تا پایان`}</Badge>}
+          <DeviationBadge c={c} />
         </div>
       </div>
       <Stepper steps={contractStages} current={c.stage} />
@@ -282,7 +301,7 @@ function ContractFile({ c }: { c: Contract }) {
         <Info2 label="ارزش" value={c.value ? rialShort(c.value) : "—"} />
         <Info2 label="شروع / پایان" value={`${c.startDate} ← ${c.endDate}`} />
         <Info2 label="مسئول پیگیری" value={c.owner} />
-        <div className="col-span-2"><Info2 label="ضمانت" value={<span className="flex items-center gap-1"><Landmark size={12} /> {c.guarantee}</span>} /></div>
+        {!(c.guarantees ?? []).length && <div className="col-span-2"><Info2 label="ضمانت" value={<span className="flex items-center gap-1"><Landmark size={12} /> {c.guarantee}</span>} /></div>}
         {opp && <div className="col-span-2"><Info2 label="فرصت مبدأ" value={<Link className="text-brand-700 hover:underline" to={"stage" in opp && "bids" in opp ? "/dashboard/research?tab=rfp" : `/dashboard/research?open=${opp.id}`}>{opp.title}</Link>} /></div>}
       </div>
 
@@ -329,6 +348,10 @@ function ContractFile({ c }: { c: Contract }) {
           })}
         </div>
       </Section>
+
+      <GuaranteesSection c={c} canEdit={canEdit} upd={upd} today={today} />
+      <ContractTextSection c={c} canEdit={canEdit} upd={upd} />
+      <IpSection c={c} canEdit={canEdit} upd={upd} />
 
       {c.renewals.length > 0 && (
         <Section title="تمدیدها">

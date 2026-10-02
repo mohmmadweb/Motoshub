@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, CheckCircle2, Phone, Paperclip, BellRing, Upload } from "lucide-react";
+import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, CheckCircle2, Phone, Paperclip, BellRing, Upload, Repeat, ChevronDown, ListOrdered } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -9,12 +9,17 @@ import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { dayNum, fa } from "../../pm/jalali";
-import type { ActionItem, DocType, PMMeeting, PMMinute } from "../../pm/types";
+import { dayNum, fa, fromDayNum } from "../../pm/jalali";
+import type { ActionItem, AgendaItem, DocType, PMMeeting, PMMinute } from "../../pm/types";
+import { endBefore, nextOccurrence, reminderLabel, ruleLabel, splitEdit, withException, type EditScope } from "../../pm/recurrence";
+import AvailabilityPanel from "../calendar/AvailabilityPanel";
+import { attendeeFromName } from "../calendar/availability";
+import { RecurrenceEditor, RemindersEditor, SeriesScopeDialog } from "../calendar/RecurrenceFields";
+import { fmtMin, toMin } from "../calendar/model";
 import { defaultMeetingSettings } from "../../pm/selectors";
 import { Field, MemberSelect, SectionTitle, taskTitle, useProjectPage } from "./shared";
 
-type MeetDraft = Omit<PMMeeting, "id" | "status"> & { id?: string };
+type MeetDraft = Omit<PMMeeting, "id" | "status"> & { id?: string; /** تاریخ وقوعی از سری که ویرایش می‌شود */ occDate?: string };
 type MinDraft = Omit<PMMinute, "id"> & { id?: string; publish: boolean; newFiles: { name: string; type: DocType; size: string }[] };
 
 const modeIcon = (mode: PMMeeting["mode"], size = 16) => (mode === "ویدیویی" ? <Video size={size} /> : mode === "صوتی" ? <Phone size={size} /> : <Users size={size} />);
@@ -31,6 +36,8 @@ export default function MeetingsTab() {
   const [room, setRoom] = useState<PMMeeting | null>(null);
   const [minute, setMinute] = useState<MinDraft | null>(null);
   const [viewMin, setViewMin] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
+  const [scopeAsk, setScopeAsk] = useState<{ title: string; run: (s: EditScope) => void } | null>(null);
   const ms = p.meetingSettings ?? defaultMeetingSettings;
   // پرش از جستجو/اعلان به یک صورت‌جلسه
   useEffect(() => {
@@ -38,29 +45,73 @@ export default function MeetingsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId]);
   const ref = dayNum(refDate)!;
-  const upcoming = p.meetings.filter((m) => m.status === "برنامه‌ریزی‌شده").sort((a, b) => (dayNum(a.date) ?? 0) - (dayNum(b.date) ?? 0));
+  /** تاریخ وقوع بعدی (برای جلسات تکرارشونده) */
+  const nextOf = (m: PMMeeting) => (m.recurrence ? nextOccurrence(m.recurrence, m.date, ref) ?? dayNum(m.date) ?? 0 : dayNum(m.date) ?? 0);
+  const upcoming = p.meetings.filter((m) => m.status === "برنامه‌ریزی‌شده").sort((a, b) => nextOf(a) - nextOf(b));
   const past = p.meetings.filter((m) => m.status !== "برنامه‌ریزی‌شده");
   const memberList = p.members.map((m) => m.name);
 
   const saveMeet = () => {
     if (!meet) return;
     if (!meet.title.trim() || !meet.date || !meet.time) return notify("عنوان، تاریخ و ساعت الزامی است.", "warning");
+    if (toMin(meet.time) === null) return notify("ساعت را به شکل ۱۰:۳۰ وارد کنید.", "warning");
     if (!meet.participants.length) return notify("حداقل یک شرکت‌کننده انتخاب کنید.", "warning");
-    pm.saveMeeting(pid, meet);
+    const { occDate, ...draft } = meet;
+    const agenda = (draft.agenda ?? []).filter((a) => a.title.trim());
+    const clean = { ...draft, agenda: agenda.length ? agenda : undefined, reminders: draft.reminders?.length ? draft.reminders : undefined };
+    const orig = draft.id ? p.meetings.find((x) => x.id === draft.id) : undefined;
+    if (orig?.recurrence && occDate) {
+      setScopeAsk({
+        title: `ویرایش «${orig.title}»`,
+        run: (scope) => {
+          const r = splitEdit(orig, occDate, scope, { ...orig, ...clean, id: orig.id }, (x) => x.recurrence, (x, rr) => ({ ...x, recurrence: rr }));
+          if (r.update) pm.saveMeeting(pid, r.update);
+          r.create.forEach((c) => pm.saveMeeting(pid, { ...c, id: undefined, seriesOf: orig.id }));
+          notify(scope === "one" ? "فقط همین جلسه تغییر کرد و به شرکت‌کنندگان اطلاع داده شد." : scope === "following" ? "این جلسه و جلسات بعدی سری تغییر کرد." : "همه‌ی جلسات سری به‌روزرسانی شد.");
+          setScopeAsk(null);
+          setMeet(null);
+        },
+      });
+      return;
+    }
+    pm.saveMeeting(pid, clean);
     notify(meet.id ? "جلسه به‌روزرسانی شد و به شرکت‌کنندگان اطلاع داده شد." : `جلسه ایجاد شد و دعوت‌نامه برای ${fa(meet.participants.length)} نفر رفت.`);
     setMeet(null);
+  };
+
+  const editMeet = (m: PMMeeting) => {
+    const occ = m.recurrence ? nextOccurrence(m.recurrence, m.date, ref) : null;
+    setMore(!!(m.recurrence || m.reminders?.length || m.agenda?.length));
+    setMeet({ ...m, date: occ !== null ? fromDayNum(occ) : m.date, occDate: occ !== null ? fromDayNum(occ) : undefined });
+  };
+
+  const cancelMeet = (m: PMMeeting) => {
+    const occ = m.recurrence ? nextOccurrence(m.recurrence, m.date, ref) : null;
+    if (!m.recurrence || occ === null)
+      return confirm({ title: `لغو جلسه‌ی «${m.title}»؟`, message: "به همه‌ی شرکت‌کنندگان (درون‌برنامه، رایانامه و پیامک) اطلاع داده می‌شود.", confirmLabel: "لغو جلسه", onConfirm: () => pm.setMeetingStatus(pid, m.id, "لغوشده") });
+    const occDate = fromDayNum(occ);
+    setScopeAsk({
+      title: `لغو «${m.title}» (${occDate})`,
+      run: (scope) => {
+        if (scope === "all") pm.setMeetingStatus(pid, m.id, "لغوشده");
+        else pm.saveMeeting(pid, { ...m, recurrence: scope === "one" ? withException(m.recurrence!, occDate) : endBefore(m.recurrence!, m.date, occDate) });
+        notify(scope === "one" ? `جلسه‌ی ${occDate} لغو شد.` : scope === "following" ? "جلسات این سری از این تاریخ به بعد لغو شد." : "کل سری جلسه لغو شد.");
+        setScopeAsk(null);
+      },
+    });
   };
 
   const newMinuteFor = (m?: PMMeeting) =>
     setMinute({
       title: m?.title ?? "",
-      date: m?.date ?? refDate,
+      date: m ? (m.recurrence ? fromDayNum(Math.min(nextOf(m), ref)) : m.date) : refDate,
       attendees: m?.participants.length ?? 0,
       decisions: 0,
       followUps: 0,
       meetingId: m?.id,
       participants: m?.participants ?? [],
-      topics: [""],
+      // دستور جلسه، موضوعات صورت‌جلسه را پیش‌پر می‌کند
+      topics: m?.agenda?.length ? m.agenda.map((a) => `${a.title}${a.owner ? ` — ${a.owner}` : ""}${a.minutes ? ` (${fa(a.minutes)} دقیقه)` : ""}`) : [""],
       decisionList: [""],
       actions: [],
       publish: true,
@@ -80,7 +131,7 @@ export default function MeetingsTab() {
   const mv = viewMin ? p.minutes.find((x) => x.id === viewMin) : undefined;
 
   const MeetingRow = ({ m }: { m: PMMeeting }) => {
-    const d = dayNum(m.date) ?? 0;
+    const d = nextOf(m);
     const hasMin = p.minutes.some((x) => x.meetingId === m.id);
     return (
       <div className={`card p-4 flex items-center justify-between gap-3 flex-wrap ${focusId === m.id ? "ring-2 ring-brand-300" : ""}`}>
@@ -89,14 +140,29 @@ export default function MeetingsTab() {
           <div className="min-w-0">
             <p className="text-sm font-medium text-ink-900">{m.title}</p>
             <p className="text-xs text-ink-400 mt-0.5">
-              {m.date} ساعت {m.time} · {fa(m.duration)} دقیقه · {m.mode} · {fa(m.participants.length)} شرکت‌کننده
+              {m.recurrence && m.status === "برنامه‌ریزی‌شده" ? fromDayNum(d) : m.date} ساعت {m.time} · {fa(m.duration)} دقیقه · {m.mode} · {fa(m.participants.length)} شرکت‌کننده
               {m.status === "برنامه‌ریزی‌شده" && d - ref >= 0 && d - ref <= 1 && <span className="text-amber-600"> · {d === ref ? "امروز" : "فردا"}</span>}
               {m.status === "برنامه‌ریزی‌شده" && d >= ref && (
-                <span className="inline-flex items-center gap-0.5 mr-1" title="یادآوری خودکار به شرکت‌کنندگان">
-                  · <BellRing size={10} /> {fa(ms.reminderMinutes)} دقیقه قبل
+                <span className="inline-flex items-center gap-0.5 mr-1" title={m.reminders?.length ? m.reminders.map(reminderLabel).join("، ") : "یادآوری خودکار به شرکت‌کنندگان"}>
+                  · <BellRing size={10} /> {m.reminders?.length ? reminderLabel(m.reminders[0]) : `${fa(ms.reminderMinutes)} دقیقه قبل`}
+                  {(m.reminders?.length ?? 0) > 1 && ` +${fa(m.reminders!.length - 1)}`}
                 </span>
               )}
             </p>
+            {(m.recurrence || m.agenda?.length) && (
+              <p className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                {m.recurrence && (
+                  <span className="inline-flex items-center gap-1" title="جلسه‌ی تکرارشونده">
+                    <Repeat size={11} className="text-brand-600" /> {ruleLabel(m.recurrence, m.date)}
+                  </span>
+                )}
+                {m.agenda?.length ? (
+                  <span className="inline-flex items-center gap-1" title={m.agenda.map((a) => a.title).join("، ")}>
+                    <ListOrdered size={11} /> دستور جلسه: {fa(m.agenda.length)} بند
+                  </span>
+                ) : null}
+              </p>
+            )}
             {m.taskIds.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {m.taskIds.map((id) => (
@@ -121,10 +187,10 @@ export default function MeetingsTab() {
                   <Button size="sm" variant="secondary" icon={<CheckCircle2 size={13} />} onClick={() => newMinuteFor(m)}>
                     ثبت صورت‌جلسه
                   </Button>
-                  <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => confirm({ title: `لغو جلسه‌ی «${m.title}»؟`, message: "به همه‌ی شرکت‌کنندگان (درون‌برنامه، رایانامه و پیامک) اطلاع داده می‌شود.", confirmLabel: "لغو جلسه", onConfirm: () => pm.setMeetingStatus(pid, m.id, "لغوشده") })}>
+                  <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => cancelMeet(m)}>
                     لغو
                   </Button>
-                  <RowActions onEdit={() => setMeet({ ...m })} />
+                  <RowActions onEdit={() => editMeet(m)} />
                 </>
               )}
             </>
@@ -152,7 +218,7 @@ export default function MeetingsTab() {
           hint="ایجاد جلسه: عنوان، تاریخ، ساعت، شرکت‌کنندگان، توضیحات و تسک‌های مرتبط — جلسه‌ی ویدیویی یا تماس صوتی بدون خروج از سامانه برگزار می‌شود."
           action={
             canEdit && (
-              <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => setMeet({ title: "", date: refDate, time: "۱۰:۰۰", duration: ms.defaultDuration, mode: ms.defaultMode, participants: [p.meta.manager], description: "", taskIds: [] })}>
+              <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => { setMore(false); setMeet({ title: "", date: refDate, time: "۱۰:۰۰", duration: ms.defaultDuration, mode: ms.defaultMode, participants: [p.meta.manager], description: "", taskIds: [], reminders: [{ minutes: ms.reminderMinutes, channel: "inapp" }] }); }}>
                 جلسه‌ی جدید
               </Button>
             )
@@ -263,6 +329,38 @@ export default function MeetingsTab() {
                 ))}
               </div>
             </Field>
+            <AvailabilityPanel
+              attendees={meet.participants.map((n) => attendeeFromName(n, p.members))}
+              date={meet.date}
+              start={toMin(meet.time)}
+              duration={meet.duration || 60}
+              exclude={meet.id ? [`mt:${pid}:${meet.id}`] : []}
+              onPick={(d, st) => setMeet({ ...meet, date: d, time: fmtMin(st) })}
+            />
+            <div className="rounded-lg border border-ink-100">
+              <button type="button" onClick={() => setMore((v) => !v)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-ink-700" aria-expanded={more}>
+                <span className="flex items-center gap-1.5">
+                  <Repeat size={13} className="text-brand-600" /> تکرار، یادآوری و دستور جلسه
+                  <span className="text-ink-400">
+                    {[meet.recurrence ? ruleLabel(meet.recurrence, meet.date) : "", meet.reminders?.length ? `${fa(meet.reminders.length)} یادآوری` : "", meet.agenda?.length ? `${fa(meet.agenda.length)} بند` : ""].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+                <ChevronDown size={14} className={`transition-transform ${more ? "rotate-180" : ""}`} />
+              </button>
+              {more && (
+                <div className="px-3 pb-3 space-y-3">
+                  <Field label="تکرار">
+                    <RecurrenceEditor value={meet.recurrence} onChange={(r) => setMeet({ ...meet, recurrence: r })} startDate={meet.date} />
+                  </Field>
+                  <Field label="یادآوری به شرکت‌کنندگان">
+                    <RemindersEditor value={meet.reminders} onChange={(r) => setMeet({ ...meet, reminders: r })} />
+                  </Field>
+                  <Field label="دستور جلسه" hint="بندهای دستور جلسه هنگام ثبت صورت‌جلسه، موضوعات را پیش‌پر می‌کنند.">
+                    <AgendaEditor items={meet.agenda ?? []} duration={meet.duration} members={memberList} onChange={(agenda) => setMeet({ ...meet, agenda })} />
+                  </Field>
+                </div>
+              )}
+            </div>
             <Field label="تسک‌های مرتبط">
               <div className="max-h-32 overflow-y-auto border border-ink-200 rounded-lg p-2 space-y-1">
                 {p.tasks.map((t) => (
@@ -494,7 +592,38 @@ export default function MeetingsTab() {
         )}
       </Modal>
 
+      <SeriesScopeDialog open={!!scopeAsk} title={scopeAsk?.title ?? ""} onPick={(sc) => scopeAsk?.run(sc)} onClose={() => setScopeAsk(null)} />
       {room && <VideoRoom meeting={room} recordingAllowed={ms.recordingAllowed} onLeave={() => { const r = room; setRoom(null); if (canEdit) confirm({ title: "جلسه تمام شد؛ صورت‌جلسه ثبت شود؟", message: "تصمیمات و اقدامات را همین حالا ثبت کنید تا به تسک تبدیل شوند.", confirmLabel: "ثبت صورت‌جلسه", onConfirm: () => newMinuteFor(r) }); }} />}
+    </div>
+  );
+}
+
+/** ویرایشگر دستور جلسه: عنوان، مسئول، دقیقه */
+function AgendaEditor({ items, duration, members, onChange }: { items: AgendaItem[]; duration: number; members: string[]; onChange: (a: AgendaItem[]) => void }) {
+  const total = items.reduce((s, a) => s + (a.minutes || 0), 0);
+  return (
+    <div className="space-y-1.5">
+      {items.map((a, i) => (
+        <div key={a.id} className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_140px_70px_auto] gap-1.5 items-center">
+          <input className="input-field !py-1.5 text-xs col-span-1" value={a.title} onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} placeholder={`بند ${fa(i + 1)}`} aria-label="عنوان بند" />
+          <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))} className="p-1 text-ink-400 hover:text-rose-600 sm:order-last" aria-label="حذف بند">
+            <X size={13} />
+          </button>
+          <select className="input-field !py-1.5 text-xs" value={a.owner} onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, owner: e.target.value } : x)))} aria-label="مسئول بند">
+            <option value="">بدون مسئول</option>
+            {members.map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+          <input className="input-field !py-1.5 text-xs text-center" value={fa(a.minutes || 0)} onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, minutes: Number(e.target.value.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace(/\D/g, "")) || 0 } : x)))} aria-label="دقیقه" />
+        </div>
+      ))}
+      <div className="flex items-center justify-between gap-2">
+        <Button size="sm" variant="ghost" icon={<Plus size={12} />} onClick={() => onChange([...items, { id: `ag-${Date.now().toString(36)}`, title: "", owner: "", minutes: 10 }])}>
+          افزودن بند
+        </Button>
+        {items.length > 0 && <span className={`text-[11px] ${total > duration ? "text-rose-600" : "text-ink-400"}`}>{fa(total)} از {fa(duration)} دقیقه</span>}
+      </div>
     </div>
   );
 }

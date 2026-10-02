@@ -42,6 +42,9 @@ import type {
   SocialEvent,
   Tag,
   TrashedFile,
+  AbuseReport,
+  FileEvent,
+  ModerationEvent,
 } from "./types";
 
 export const SOCIAL_TODAY = DEMO_REF_DATE;
@@ -647,5 +650,109 @@ export function seedSettings(): Setting[] {
     s("messaging", "messaging.channels.max_members", 5000, "int", "حداکثر اعضای کانال"),
     s("messaging", "messaging.direct-messages.allow_non_friends", true, "bool", "پیام مستقیم به غیر دوستان"),
     s("relations", "relations.friendships.max_friends", 1000, "int", "حداکثر تعداد دوستان"),
+  ];
+}
+
+// ------------------------------------------------------------------ «پیشنهادی» — نسخه‌ی ۴ داده‌ی نمونه
+/** مطالب در گردش بازبینی پیش از انتشار */
+export function seedReviewContent(all: Category[]): ContentItem[] {
+  const blogCat = all.find((c) => c.entity_name === "blog")?.id ?? "cb1";
+  const d1 = addDays(SOCIAL_TODAY, -1);
+  const d2 = addDays(SOCIAL_TODAY, -3);
+  const common = { is_active: true, is_public: false, is_draft: true, add_comment: true, show_comment: true, deleted_at: null, attachments: [] as Attachment[], privacy: "EVERYONE" as Privacy, published_at: null, views: 0, content_format: "markdown" as const };
+  return [
+    {
+      ...common,
+      id: "blog-rv1",
+      kind: "blogs",
+      user_id: "u6",
+      title: "پنج درسی که از راه‌اندازی کارگاه‌های اشتغال خرد گرفتیم",
+      excerpt: "تجربه‌ی شش ماه اجرا در سه استان؛ از انتخاب بهره‌بردار تا پایش درآمد.",
+      content: "## چرا این یادداشت؟\nشش ماه از راه‌اندازی نخستین کارگاه‌ها گذشته و وقت مرور است.\n\n## درس‌ها\n1. **انتخاب بهره‌بردار** را به شورای محلی بسپارید.\n2. آموزش پیش از تجهیز، نه بعد از آن.\n3. پایش ماهانه‌ی درآمد را از روز اول طراحی کنید.\n\n> نکته: فرم پایش در مخزن دانش موجود است.",
+      poster: "#0d9488",
+      category_ids: [blogCat],
+      tags: ["اشتغال", "درس‌آموخته"],
+      created_at: at(d1, "۱۰:۱۵:۰۰"),
+      updated_at: at(d1, "۱۱:۰۰:۰۰"),
+      review: { status: "pending", submitted_by: "u6", submitted_at: at(d1, "۱۱:۰۰:۰۰"), history: [{ action: "submit", by: "u6", at: at(d1, "۱۱:۰۰:۰۰") }] },
+    },
+    {
+      ...common,
+      id: "blog-rv2",
+      kind: "blogs",
+      user_id: "u1",
+      title: "راهنمای کوتاه گزارش‌نویسی میدانی",
+      excerpt: "چک‌لیستی برای گزارش بازدیدهای میدانی که در کمتر از یک ساعت نوشته شود.",
+      content: "## پیش از بازدید\n- هدف بازدید را در یک جمله بنویسید.\n- فرم مشاهده را چاپ کنید.\n\n## پس از بازدید\n- عکس‌ها را با شرح بارگذاری کنید.",
+      poster: "#7c3aed",
+      category_ids: [blogCat],
+      tags: ["گزارش"],
+      created_at: at(d2, "۰۹:۰۰:۰۰"),
+      updated_at: at(d1, "۱۵:۳۰:۰۰"),
+      review: {
+        status: "returned",
+        submitted_by: "u1",
+        submitted_at: at(d2, "۰۹:۳۰:۰۰"),
+        reviewed_by: "u2",
+        reviewed_at: at(d1, "۱۵:۳۰:۰۰"),
+        note: "لطفاً یک نمونه‌ی واقعی از گزارش خوب و یک نمونه‌ی ضعیف اضافه کنید.",
+        history: [
+          { action: "submit", by: "u1", at: at(d2, "۰۹:۳۰:۰۰") },
+          { action: "return", by: "u2", at: at(d1, "۱۵:۳۰:۰۰"), note: "لطفاً یک نمونه‌ی واقعی از گزارش خوب و یک نمونه‌ی ضعیف اضافه کنید." },
+        ],
+      },
+    },
+  ];
+}
+
+/** فایل‌هایی که دیگران با افراد مشخص به اشتراک گذاشته‌اند («اشتراک‌گذاشته با من») */
+export function seedSharedFiles(): FileItem[] {
+  const d = at(addDays(SOCIAL_TODAY, -6), "۱۳:۴۰:۰۰");
+  return [
+    { id: "fl8", owner_type: "user", owner_id: "u4", folder_id: null, name: "برآورد-هزینه‌ی-تجهیز-کارگاه-رمشک.xlsx", size: "۲۲۰ کیلوبایت", mime: "application/vnd.ms-excel", created_by_user_id: "u4", created_at: d, share: { token: "r4mshk21", expires_on: addDays(SOCIAL_TODAY, 10), created_by: "u4", created_at: at(addDays(SOCIAL_TODAY, -2), "۰۹:۰۰:۰۰"), allow_download: true, shared_with: ["u1", "u5", "u7"] } },
+    { id: "fl9", owner_type: "user", owner_id: "u7", folder_id: null, name: "پیش‌نویس-برنامه‌ی-آموزشی-ستاد.docx", size: "۱۴۰ کیلوبایت", mime: "application/msword", created_by_user_id: "u7", created_at: at(addDays(SOCIAL_TODAY, -3), "۱۰:۰۰:۰۰"), share: { token: "st4dtr09", expires_on: addDays(SOCIAL_TODAY, 4), created_by: "u7", created_at: at(addDays(SOCIAL_TODAY, -1), "۱۲:۰۰:۰۰"), allow_download: false, shared_with: ["u1", "u4"] } },
+  ];
+}
+
+/** تاریخچه‌ی فعالیت فایل‌های نمونه (بارگذاری، نسخه، اشتراک، حذف) */
+export function seedFileEvents(files: FileItem[], trash: TrashedFile[]): FileEvent[] {
+  const out: FileEvent[] = [];
+  let n = 1;
+  const ev = (f: FileItem, user_id: string, action: FileEvent["action"], when: string, detail?: string) => out.push({ id: `fe${n++}`, file_id: f.id, file_name: f.name, user_id, action, at: when, detail });
+  [...files, ...trash].forEach((f) => {
+    const vs = [...(f.versions ?? [])].sort((a, b) => a.version - b.version);
+    const first = vs[0];
+    ev(f, first?.created_by_user_id ?? f.created_by_user_id, "upload", first?.created_at ?? f.created_at, first ? `نسخه‌ی ${(1).toLocaleString("fa-IR")} · ${first.size}` : f.size);
+    vs.slice(1).forEach((v) => ev(f, v.created_by_user_id, "version", v.created_at, `نسخه‌ی ${v.version.toLocaleString("fa-IR")} · ${v.size}`));
+    if (vs.length) ev(f, f.created_by_user_id, "version", f.created_at, `نسخه‌ی ${(f.version ?? 1).toLocaleString("fa-IR")} · ${f.size}`);
+    if (f.share) ev(f, f.share.created_by, "share", f.share.created_at, f.share.shared_with?.length ? `با ${f.share.shared_with.length.toLocaleString("fa-IR")} نفر · تا ${f.share.expires_on}` : `لینک تا ${f.share.expires_on}`);
+  });
+  trash.forEach((t) => ev(t, t.trashed_by, "delete", t.trashed_at));
+  const fl1 = files.find((f) => f.id === "fl1");
+  if (fl1) {
+    ev(fl1, "u4", "download", at(addDays(SOCIAL_TODAY, -1), "۱۰:۴۰:۰۰"));
+    ev(fl1, "u1", "rename", at(addDays(SOCIAL_TODAY, -7), "۰۹:۰۰:۰۰"), "از «گزارش-فصل-۱.pdf»");
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** گزارش‌های تخلف نمونه در صف نظارت */
+export function seedReports(messages: Message[]): AbuseReport[] {
+  const d = (k: number, t: string) => at(addDays(SOCIAL_TODAY, -k), t);
+  const msg = messages.find((m) => m.chat_id === "g1" && !m.in_thread && m.user_id !== "u1");
+  const out: AbuseReport[] = [
+    { id: "rp1", target_type: "media", target_id: "media-album1", target_owner_id: "u4", target_excerpt: "آلبوم تصاویر بازدید", reporter_id: "u9", reason: "privacy", note: "تصویر چهره‌ی دانش‌آموزان بدون رضایت والدین منتشر شده است.", status: "open", created_at: d(0, "۰۹:۲۰:۰۰") },
+    { id: "rp2", target_type: "comment", target_id: "cmt5", parent_ref: "blog:blog-b1", target_owner_id: "u9", target_excerpt: "تجربه‌ی مشابهی در صبا داشتیم؛ خوشحال می‌شوم هم‌فکری کنیم.", reporter_id: "u3", reason: "spam", note: "تبلیغ شرکت خودش در نظرها.", status: "open", created_at: d(1, "۱۶:۴۰:۰۰") },
+    { id: "rp3", target_type: "content", target_id: "blog-b2", target_owner_id: "u1", target_excerpt: "پست وبلاگ", reporter_id: "u13", reason: "misinformation", note: "آمار ذکرشده با گزارش رسمی سال گذشته نمی‌خواند.", status: "dismissed", created_at: d(4, "۱۱:۰۰:۰۰"), resolved_by: "u2", resolved_at: d(3, "۰۹:۳۰:۰۰"), resolution_note: "آمار با گزارش رسمی تطبیق داده شد و درست است." },
+  ];
+  if (msg) out.splice(2, 0, { id: "rp4", target_type: "message", target_id: msg.id, parent_ref: msg.chat_id, target_owner_id: msg.user_id, target_excerpt: msg.content.slice(0, 90), reporter_id: "u5", reason: "privacy", note: "اطلاعات هزینه‌ای که هنوز تصویب نشده نباید در گروه عمومی منتشر شود.", status: "open", created_at: d(0, "۱۱:۰۵:۰۰") });
+  return out;
+}
+
+/** رویدادهای نظارت نمونه (برای لاگ ممیزی) */
+export function seedModerationLog(): ModerationEvent[] {
+  return [
+    { id: "mv1", at: at(addDays(SOCIAL_TODAY, -3), "۰۹:۳۰:۰۰"), actor_id: "u2", action: "dismiss", target_type: "content", target_id: "blog-b2", target_title: "پست وبلاگ", owner_id: "u1", note: "آمار با گزارش رسمی تطبیق داده شد و درست است.", report_id: "rp3" },
+    { id: "mv2", at: at(addDays(SOCIAL_TODAY, -1), "۱۵:۳۰:۰۰"), actor_id: "u2", action: "review_return", target_type: "content", target_id: "blog-rv2", target_title: "راهنمای کوتاه گزارش‌نویسی میدانی", owner_id: "u1", note: "لطفاً یک نمونه‌ی واقعی از گزارش خوب و یک نمونه‌ی ضعیف اضافه کنید." },
   ];
 }

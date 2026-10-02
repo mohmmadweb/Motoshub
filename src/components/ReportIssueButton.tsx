@@ -18,6 +18,7 @@ export function ReportIssueButton({ className = "" }: { className?: string }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<Ticket | null>(null);
+  const [joined, setJoined] = useState(false);
   const [snap, setSnap] = useState<{ route: string; title: string } | null>(null);
 
   // در صفحه‌ی تیکت‌ها لازم نیست (دکمه‌ی «تیکت جدید» همان‌جاست)
@@ -43,14 +44,22 @@ export function ReportIssueButton({ className = "" }: { className?: string }) {
         <span className="hidden sm:inline">گزارش مشکل</span>
       </button>
 
-      <Modal open={open} onClose={close} title={done ? "تیکت ثبت شد" : "گزارش مشکل"} description={done ? undefined : `برای تیم سازنده‌ی موتوشاب — صفحه‌ی «${snap?.title ?? ""}» خودکار پیوست می‌شود`} width="max-w-xl">
+      <Modal open={open} onClose={close} title={done ? (joined ? "به تیکت موجود پیوستید" : "تیکت ثبت شد") : "گزارش مشکل"} description={done ? undefined : `برای تیم سازنده‌ی موتوشاب — صفحه‌ی «${snap?.title ?? ""}» خودکار پیوست می‌شود`} width="max-w-xl">
         {done ? (
           <div className="text-center space-y-3 py-2">
             <span className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto">
               <CheckCircle2 size={24} />
             </span>
             <p className="text-sm text-ink-800">
-              تیکت <span className="font-mono font-bold" dir="ltr">{done.id}</span> برای تیم سازنده ارسال شد.
+              {joined ? (
+                <>
+                  به تیکت <span className="font-mono font-bold" dir="ltr">{done.id}</span> با عنوان «{done.title}» پیوستید؛ تعداد کاربران درگیر بیشتر شد و از پیشرفت آن باخبر می‌شوید.
+                </>
+              ) : (
+                <>
+                  تیکت <span className="font-mono font-bold" dir="ltr">{done.id}</span> برای تیم سازنده ارسال شد.
+                </>
+              )}
             </p>
             <p className="text-[12px] text-ink-500">پاسخ‌ها در «تیکت پشتیبانی» و صندوق اعلان‌ها به شما اطلاع داده می‌شود.</p>
             <div className="flex justify-center gap-2 pt-1">
@@ -70,7 +79,7 @@ export function ReportIssueButton({ className = "" }: { className?: string }) {
             </div>
           </div>
         ) : (
-          open && <TicketForm compact route={snap?.route} pageTitle={snap?.title} onCancel={close} onCreated={setDone} />
+          open && <TicketForm compact route={snap?.route} pageTitle={snap?.title} onCancel={close} onCreated={(t) => { setJoined(false); setDone(t); }} onJoined={(t) => { setJoined(true); setDone(t); }} />
         )}
       </Modal>
     </>

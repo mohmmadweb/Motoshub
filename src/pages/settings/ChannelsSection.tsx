@@ -12,6 +12,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { nowClock, toEnDigits } from "../../pm/jalali";
 import { Field, SectionHead } from "./iam/shared";
+import { diffKeys, emitSettingsChange } from "../../iam/settingsAudit";
 
 const KEY = "motoshub.channels.v1";
 
@@ -83,6 +84,9 @@ export default function ChannelsSection() {
 
   const commit = () => {
     const next = { ...d, log: saved.log, updatedAt: `${today} ${nowClock()}`, updatedBy: actingUser.name };
+    const strip = (c: ChannelsConfig) => ({ ...c, log: undefined, updatedAt: undefined, updatedBy: undefined, usedThisMonth: undefined, apiKey: c.apiKey ? "••••" + c.apiKey.slice(-3) : "" });
+    const diff = diffKeys(strip(saved), strip(next));
+    if (diff) emitSettingsChange({ area: "کانال‌های اطلاع‌رسانی", summary: `تغییر ${Object.keys(diff.after).join("، ")}`, before: diff.before, after: diff.after });
     setSaved(next);
     setD(next);
     notify("تنظیمات کانال‌ها ذخیره شد.", "success");

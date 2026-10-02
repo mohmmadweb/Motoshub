@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { Diamond, Save, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { Diamond, Save, Trash2, MousePointer2 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import { useToast } from "../../components/ui/ToastProvider";
+import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { criticalPath, dependencyConflicts, depIsDefault, depShort, depType, depTypeLabel, isDone, isOverdue, kindOf, taskLoggedHours } from "../../pm/selectors";
+import { createsCycle, criticalPath, dependencyConflicts, depIsDefault, depShort, depType, depTypeLabel, isDone, isOverdue, kindOf, successorsOf, taskLoggedHours } from "../../pm/selectors";
+import { shiftSuccessors } from "../../pm/schedule";
 import { dayNum, fa, fromDayNum, monthNames, parseJalali } from "../../pm/jalali";
 import { kindColor, useProjectPage } from "./shared";
 import { TypeIcon } from "./taskTypes";
@@ -13,10 +15,20 @@ const LABEL_W = 230;
 const scales = { روز: 30, هفته: 12, ماه: 5 } as const;
 type Scale = keyof typeof scales;
 
+type BarDrag = { id: string; mode: "move" | "start" | "end"; x0: number; dd: number; moved: boolean };
+type LinkDrag = { from: string; sx: number; sy: number; x: number; y: number; over?: string };
+
 export default function GanttTab() {
-  const { p, pid, canEdit, refDate, openTask } = useProjectPage();
+  const { p, pid, canEdit, can, refDate, openTask } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
+  const confirm = useConfirm();
+  // کشیدن نوارها و ساخت وابستگی — مجوز ایجاد و تخصیص وظایف
+  const canMove = can("projects.tasks");
+  const [drag, setDrag] = useState<BarDrag | null>(null);
+  const [link, setLink] = useState<LinkDrag | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const suppress = useRef(false);
   const [showBase, setShowBase] = useState(true);
   const [showCrit, setShowCrit] = useState(false);
   const base = p.baseline;
@@ -48,6 +60,113 @@ export default function GanttTab() {
   const slip = (id: string, due: string) => {
     const b = base?.tasks[id];
     return b ? (dayNum(due) ?? 0) - (dayNum(b.due) ?? 0) : null;
+  };
+
+
+  // ---------------------------------------------------------------- تعامل: کشیدن نوار، تغییر مدت، ساخت وابستگی
+  const span = (t: { id: string; start: string; due: string }) => {
+    let s = dayNum(t.start)!;
+    let e = dayNum(t.due)!;
+    if (drag && drag.id === t.id) {
+      if (drag.mode === "move") {
+        s += drag.dd;
+        e += drag.dd;
+      } else if (drag.mode === "start") s = Math.min(s + drag.dd, e);
+      else e = Math.max(e + drag.dd, s);
+    }
+    return [s, e] as const;
+  };
+
+  const commit = (id: string, mode: BarDrag["mode"], dd: number) => {
+    const t = p.tasks.find((x) => x.id === id);
+    if (!t || !dd) return;
+    const s0 = dayNum(t.start)!;
+    const e0 = dayNum(t.due)!;
+    const ns = mode === "end" ? s0 : mode === "start" ? Math.min(s0 + dd, e0) : s0 + dd;
+    const ne = mode === "start" ? e0 : mode === "end" ? Math.max(e0 + dd, s0) : e0 + dd;
+    if (ns === s0 && ne === e0) return;
+    const start = fromDayNum(ns);
+    const due = fromDayNum(ne);
+    pm.updateTask(pid, id, { start, due });
+    notify(mode === "move" ? `«${t.title}» ${fa(Math.abs(dd))} روز ${dd > 0 ? "عقب" : "جلو"} رفت (${start} تا ${due}).` : `مدت «${t.title}» به ${fa(ne - ns + 1)} روز تغییر کرد.`, "info");
+    if (!successorsOf(p, id).length) return;
+    const patches = shiftSuccessors(p, id, start, due, mode === "start" ? ns - s0 : ne - e0);
+    const ids = Object.keys(patches);
+    if (!ids.length) return;
+    confirm({
+      title: "جابه‌جایی جانشین‌ها",
+      message: `${fa(ids.length)} تسک وابسته (${ids.map((x) => `«${p.tasks.find((t2) => t2.id === x)?.title}»`).slice(0, 3).join("، ")}${ids.length > 3 ? " و …" : ""}) با رعایت نوع وابستگی و تأخیر جابه‌جا شوند؟`,
+      confirmLabel: "جابه‌جایی جانشین‌ها",
+      onConfirm: () => {
+        ids.forEach((x) => pm.updateTask(pid, x, patches[x]));
+        notify(`${fa(ids.length)} تسک جانشین جابه‌جا شد.`);
+      },
+    });
+  };
+
+  const beginBar = (e: RPointerEvent, id: string, mode: BarDrag["mode"]) => {
+    if (!canMove || e.button !== 0 || e.pointerType === "touch") return;
+    e.stopPropagation();
+    e.preventDefault();
+    const x0 = e.clientX;
+    let cur: BarDrag = { id, mode, x0, dd: 0, moved: false };
+    setDrag(cur);
+    const move = (ev: PointerEvent) => {
+      const dx = x0 - ev.clientX; // راست‌به‌چپ: حرکت به چپ = تاریخ بعدتر
+      const dd = Math.round(dx / dw);
+      if (!cur.moved && Math.abs(dx) < 4) return;
+      if (dd === cur.dd && cur.moved) return;
+      cur = { ...cur, dd, moved: true };
+      setDrag(cur);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setDrag(null);
+      if (cur.moved) {
+        suppress.current = true;
+        setTimeout(() => (suppress.current = false), 0);
+        commit(id, mode, cur.dd);
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  const beginLink = (e: RPointerEvent, id: string, sx: number, sy: number) => {
+    if (!canMove || e.button !== 0 || e.pointerType === "touch") return;
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = () => bodyRef.current?.getBoundingClientRect();
+    const r0 = rect();
+    let cur: LinkDrag = { from: id, sx, sy, x: r0 ? e.clientX - r0.left : sx, y: r0 ? e.clientY - r0.top : sy };
+    setLink(cur);
+    const target = (ev: PointerEvent) => (document.elementsFromPoint(ev.clientX, ev.clientY).find((x) => (x as HTMLElement).dataset?.ganttTask) as HTMLElement | undefined)?.dataset.ganttTask;
+    const move = (ev: PointerEvent) => {
+      const r = rect();
+      if (!r) return;
+      const over = target(ev);
+      cur = { ...cur, x: ev.clientX - r.left, y: ev.clientY - r.top, over: over && over !== id ? over : undefined };
+      setLink(cur);
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setLink(null);
+      suppress.current = true;
+      setTimeout(() => (suppress.current = false), 0);
+      const to = target(ev);
+      if (!to || to === id) return;
+      const a = p.tasks.find((x) => x.id === id);
+      const b = p.tasks.find((x) => x.id === to);
+      if (!a || !b) return;
+      if (p.deps.some((d) => (d.predecessor === id && d.successor === to) || (d.predecessor === to && d.successor === id))) return notify("بین این دو تسک از قبل وابستگی هست.", "warning");
+      if (createsCycle(p, id, to)) return notify("این وابستگی حلقه ایجاد می‌کند و مجاز نیست.", "warning");
+      pm.addDependency(pid, id, to, { type: "FS" });
+      notify(`وابستگی «پایان به شروع» ساخته شد: «${b.title}» پس از «${a.title}». نوع و تأخیر را در جزئیات تسک تغییر دهید.`);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
   };
 
   // سربرگ ماه‌ها
@@ -166,7 +285,7 @@ export default function GanttTab() {
                 ) : null;
               })}
             </div>
-            <div className="relative" style={{ height: bodyH }}>
+            <div className="relative" style={{ height: bodyH }} ref={bodyRef}>
               {/* خطوط شبکه */}
               {Array.from({ length: days }, (_, i) => min + i)
                 .filter((d) => parseJalali(fromDayNum(d))![2] === 1)
@@ -214,9 +333,11 @@ export default function GanttTab() {
                     const ty = depType(d);
                     const fromStart = ty === "SS" || ty === "SF";
                     const toEnd = ty === "FF" || ty === "SF";
-                    const sx = fromStart ? width - xr(dayNum(a.start)!) : width - (xr(dayNum(a.due)!) + dw);
+                    const [as_, ae_] = span(a);
+                    const [bs_, be_] = span(b);
+                    const sx = fromStart ? width - xr(as_) : width - (xr(ae_) + dw);
                     const sy = (ra + msTop) * ROW + ROW / 2;
-                    const ex = toEnd ? width - (xr(dayNum(b.due)!) + dw) : width - xr(dayNum(b.start)!);
+                    const ex = toEnd ? width - (xr(be_) + dw) : width - xr(bs_);
                     const ey = (rb + msTop) * ROW + ROW / 2;
                     const bad = conflicts.has(d.id);
                     const onCrit = crit?.edges.has(`${d.predecessor}>${d.successor}`);
@@ -242,8 +363,7 @@ export default function GanttTab() {
 
               {/* نوار تسک‌ها */}
               {tasks.map((t, i) => {
-                const s = dayNum(t.start)!;
-                const e = dayNum(t.due)!;
+                const [s, e] = span(t);
                 const k = kindOf(p, t.status);
                 const prog = isDone(p, t) ? 100 : t.progress;
                 const logged = taskLoggedHours(p, t.id);
@@ -252,6 +372,10 @@ export default function GanttTab() {
                 const bs = b ? dayNum(b.start) : null;
                 const be = b ? dayNum(b.due) : null;
                 const d = slip(t.id, t.due);
+                const barW = Math.max(dw, (e - s + 1) * dw);
+                const top = (i + msTop) * ROW + 7;
+                const dragging = drag?.id === t.id && drag.moved;
+                const isTarget = link?.over === t.id;
                 return (
                   <span key={t.id}>
                   {bs !== null && be !== null && (
@@ -262,24 +386,53 @@ export default function GanttTab() {
                     />
                   )}
                   <button
-                    onClick={() => openTask(t.id)}
-                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}${d ? `\nانحراف از خط مبنا: ${d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}` : ""}${crit?.path.includes(t.id) ? "\nروی مسیر بحرانی" : ""}`}
-                    className={`absolute rounded-md overflow-hidden z-[4] shadow-sm ${late ? "ring-2 ring-rose-400" : crit?.path.includes(t.id) ? "ring-2 ring-navy-700" : ""}`}
-                    style={{ right: xr(s), width: Math.max(dw, (e - s + 1) * dw), top: (i + msTop) * ROW + 7, height: ROW - 18, background: `color-mix(in srgb, ${kindColor[k]} 30%, transparent)` }}
+                    data-gantt-task={t.id}
+                    onClick={() => !suppress.current && openTask(t.id)}
+                    onPointerDown={canMove ? (ev) => beginBar(ev, t.id, "move") : undefined}
+                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}${d ? `\nانحراف از خط مبنا: ${d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}` : ""}${crit?.path.includes(t.id) ? "\nروی مسیر بحرانی" : ""}${canMove ? "\nبکشید: جابه‌جایی · لبه‌ها: تغییر مدت · دایره: ساخت وابستگی" : ""}`}
+                    className={`group absolute rounded-md z-[4] shadow-sm ${late ? "ring-2 ring-rose-400" : crit?.path.includes(t.id) ? "ring-2 ring-navy-700" : ""} ${isTarget ? "ring-2 ring-brand-500" : ""} ${canMove ? "cursor-grab active:cursor-grabbing select-none" : ""} ${dragging ? "opacity-80 shadow-lg" : ""}`}
+                    style={{ right: xr(s), width: barW, top, height: ROW - 18, background: `color-mix(in srgb, ${kindColor[k]} 30%, transparent)` }}
                   >
-                    <span className="absolute top-0 right-0 bottom-0" style={{ width: `${prog}%`, background: kindColor[k] }} />
-                    <span className="relative text-[10px] font-medium px-1.5 text-white mix-blend-normal whitespace-nowrap" style={{ textShadow: "0 0 3px rgba(0,0,0,.45)" }}>
-                      {fa(prog)}٪
+                    <span className="absolute inset-0 rounded-md overflow-hidden pointer-events-none">
+                      <span className="absolute top-0 right-0 bottom-0" style={{ width: `${prog}%`, background: kindColor[k] }} />
                     </span>
+                    <span className="relative text-[10px] font-medium px-1.5 text-white mix-blend-normal whitespace-nowrap pointer-events-none" style={{ textShadow: "0 0 3px rgba(0,0,0,.45)" }}>
+                      {dragging ? `${fromDayNum(s).slice(5)} ← ${fromDayNum(e).slice(5)}` : `${fa(prog)}٪`}
+                    </span>
+                    {canMove && (
+                      <>
+                        <span onPointerDown={(ev) => beginBar(ev, t.id, "start")} className="absolute top-0 bottom-0 right-0 w-1.5 cursor-ew-resize rounded-r-md hover:bg-ink-900/20" aria-hidden title="تغییر تاریخ شروع" />
+                        <span onPointerDown={(ev) => beginBar(ev, t.id, "end")} className="absolute top-0 bottom-0 left-0 w-1.5 cursor-ew-resize rounded-l-md hover:bg-ink-900/20" aria-hidden title="تغییر سررسید" />
+                        <span
+                          onPointerDown={(ev) => beginLink(ev, t.id, width - (xr(e) + dw), (i + msTop) * ROW + ROW / 2)}
+                          className="absolute top-1/2 -translate-y-1/2 -left-3 w-2.5 h-2.5 rounded-full border-2 border-brand-600 bg-white cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-hidden
+                          title="بکشید روی تسک دیگر: ساخت وابستگی پایان‌به‌شروع"
+                        />
+                      </>
+                    )}
                   </button>
                   </span>
                 );
               })}
+              {link && (
+                <svg className="absolute inset-0 pointer-events-none z-[8]" width={width} height={bodyH}>
+                  <line x1={link.sx} y1={link.sy} x2={link.x} y2={link.y} stroke="var(--color-brand-600)" strokeWidth={2} strokeDasharray="4 3" />
+                  <circle cx={link.x} cy={link.y} r={4} fill="var(--color-brand-600)" />
+                </svg>
+              )}
             </div>
           </div>
         </div>
       </div>
-      <p className="text-[11px] text-ink-400">برای دیدن نسبت زمان صرف‌شده، نشانگر را روی نوار هر تسک نگه دارید.</p>
+      <p className="text-[11px] text-ink-400 flex items-center gap-1.5 flex-wrap">
+        {canMove && (
+          <span className="inline-flex items-center gap-1">
+            <MousePointer2 size={12} /> نوار را بکشید تا جابه‌جا شود، لبه‌ها را برای تغییر مدت، و از دایره‌ی انتهای نوار تا تسک دیگر برای ساخت وابستگی. ·
+          </span>
+        )}
+        برای دیدن نسبت زمان صرف‌شده، نشانگر را روی نوار هر تسک نگه دارید.
+      </p>
     </div>
   );
 }

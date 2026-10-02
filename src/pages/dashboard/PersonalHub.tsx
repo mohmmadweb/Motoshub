@@ -5,8 +5,12 @@
 // (اعلان‌ها، پیام‌ها و منشن‌ها، منتظر تصمیم من).
 // کارت نقش: مدیر سامانه / مدیر محتوا / مدیر پروژه / مدیر گروه هر کدام میز کار خودشان را دارند.
 // ---------------------------------------------------------------------------
-import PinnedReports from "../../reports/PinnedReports";
-import { useState, type ReactNode } from "react";
+import { PinnedCard, usePinnedReports } from "../../reports/PinnedReports";
+import { occurrenceDates } from "../../pm/recurrence";
+import { ReportBuilderModal } from "../../reports/ModuleReportsButton";
+import { resolveRange } from "../../reports/engine";
+import type { GlobalFilter, ReportSpec } from "../../reports/types";
+import { useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -35,6 +39,15 @@ import {
   Image as ImageIcon,
   MessagesSquare,
   BookMarked,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  EyeOff,
+  Eye,
+  LayoutGrid,
+  RotateCcw,
+  Filter as FilterIcon,
+  KeyRound,
 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Avatar from "../../components/Avatar";
@@ -53,16 +66,22 @@ import { priorityTone } from "../project/shared";
 import { ProjectIcon } from "../project/projectIcons";
 import { dateOf } from "../social/kit";
 import { entityLabel, type SocialModule } from "../../social/types";
+import Button from "../../components/ui/Button";
+import { EMPTY_FILTER, mergeOrder, spanClass, useUserLayout, type Span } from "./layout";
+import { GlobalFilterBar } from "./GlobalFilterBar";
+import { ManagementAlertsCard, useIsManager } from "./ManagementAlerts";
+import { usePendingAccessRequests } from "../../iam/hooks";
 
 type FeedItem = { key: string; icon: typeof Bell; tone: string; text: string; meta: string; to: string; unread: boolean; seq: number };
 
-function Panel({ title, icon, to, linkLabel = "همه", count, children, className = "" }: { title: string; icon: ReactNode; to?: string; linkLabel?: string; count?: number; children: ReactNode; className?: string }) {
+function Panel({ title, icon, to, linkLabel = "همه", count, children, className = "", filtered }: { title: string; icon: ReactNode; to?: string; linkLabel?: string; count?: number; children: ReactNode; className?: string; filtered?: boolean }) {
   return (
-    <div className={`rounded-xl border border-ink-100 p-3.5 flex flex-col min-w-0 ${className}`}>
+    <div className={`card p-3.5 h-full flex flex-col min-w-0 ${className}`}>
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-xs font-bold text-ink-800 flex items-center gap-1.5">
           {icon} {title}
           {count !== undefined && count > 0 && <span className="text-[10px] font-medium bg-ink-100 text-ink-600 rounded-full px-1.5">{fa(count)}</span>}
+          {filtered && <FilterIcon size={11} className="text-brand-500" aria-label="فیلتر سراسری اعمال شده" />}
         </p>
         {to && (
           <Link to={to} className="text-[11px] text-brand-700 hover:underline flex items-center">
@@ -89,8 +108,11 @@ const Two = ({ a, b }: { a: ReactNode; b?: ReactNode }) => (
   </>
 );
 
+type Widget = { id: string; title: string; span: Span; node: ReactNode };
+
 export default function PersonalHub({ header }: { header: ReactNode }) {
-  const { actingUser, hasPermission, role } = useTenancy();
+  const { actingUser, hasPermission, role, filterScoped, visibleUserIds } = useTenancy();
+  const tn = useTenancy();
   const pm = useProjectsPM();
   const inbox = useInbox();
   const km = useKnowledge();
@@ -104,6 +126,32 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const ref = dayNum(pm.refDate)!;
 
+  // ---------------------------------------------------------------- چیدمان و فیلتر سراسری (برای هر کاربر)
+  const { layout, update } = useUserLayout(meId);
+  const filter: GlobalFilter = layout?.filter ?? EMPTY_FILTER;
+  const setFilter = (f: GlobalFilter) => update((cur) => ({ ...cur, filter: f }));
+  const [edit, setEdit] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [openReport, setOpenReport] = useState<ReportSpec | null>(null);
+  const pinnedReports = usePinnedReports();
+  const isManager = useIsManager();
+  const range = useMemo(() => resolveRange(filter.range, pm.refDate), [filter.range, pm.refDate]);
+  const inRange = (d: string) => {
+    if (range.from === undefined && range.to === undefined) return true;
+    const n = dayNum(d);
+    return n !== null && (range.from === undefined || n >= range.from) && (range.to === undefined || n <= range.to);
+  };
+  const byProject = (name: string) => !filter.project || name === filter.project;
+  const filterOn = filter.range.preset !== "all" || !!filter.project || !!filter.person;
+  const projectNames = filterScoped(pm.projects.map((p) => ({ ...p.meta, _p: p })))
+    .filter((x) => !x.archived)
+    .map((x) => x.name);
+  const visIds = new Set(visibleUserIds());
+  const peopleNames = users.filter((u) => visIds.has(u.id) || u.id === meId).map((u) => u.name);
+  // کارهای فرد انتخاب‌شده در فیلتر (پیش‌فرض: خودم)
+  const wTasks = filter.person && filter.person !== me ? myWork(pm.projects, filter.person) : w;
+  const taskList = wTasks.open.filter((x) => byProject(x.p.meta.name) && inRange(x.t.due));
+
   // ---------------------------------------------------------------- شمارنده‌ها
   const pmNotifs = pm.store.notifications.filter((n) => n.recipient === me);
   const unreadNotifs = personal.notifications.filter((n) => !n.read).length + pmNotifs.filter((n) => !n.read).length + inbox.unread;
@@ -115,14 +163,21 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const kmReview = hasPermission("knowledge.list") ? km.docs.filter((d) => d.status === "در بررسی" && km.isApprover(d)) : [];
   const friendReqs = s.friendships.filter((f) => f.status === "pending" && f.receiver_id === meId);
   const eventInvites = s.eventMembers.filter((m) => m.user_id === meId && m.status === "invited").map((m) => s.events.find((e) => e.id === m.event_id)).filter((e): e is NonNullable<typeof e> => !!e && (dayNum(e.start_date) ?? 0) >= ref);
-  const decisions = w.approvals.length + kmReview.length + friendReqs.length + eventInvites.length;
+  const accessReqs = usePendingAccessRequests();
+  const decisions = w.approvals.length + kmReview.length + friendReqs.length + eventInvites.length + accessReqs.count;
   const overdue = w.open.filter((x) => bucketOf(x.t, pm.refDate) === "overdue").length;
 
   // جلسات پروژه + رویدادهایی که عضو/دعوت‌شده‌ام
   const agenda = [
     ...pm.projects
       .filter((p) => !p.meta.archived)
-      .flatMap((p) => p.meetings.filter((m) => m.status === "برنامه‌ریزی‌شده" && m.participants.includes(me) && (dayNum(m.date) ?? 0) >= ref).map((m) => ({ key: `m-${p.meta.id}-${m.id}`, title: m.title, sub: p.meta.name, date: m.date, time: m.time, to: `/dashboard/projects/${p.meta.id}?tab=minutes&focus=${m.id}`, kind: "meeting" as const }))),
+      .flatMap((p) =>
+        p.meetings
+          .filter((m) => m.status === "برنامه‌ریزی‌شده" && m.participants.includes(me))
+          // جلسات تکرارشونده: هر وقوع در ۶۰ روز آینده یک ردیف
+          .flatMap((m) => occurrenceDates(m.recurrence, m.date, ref, ref + 60).map((date) => ({ m, date })))
+          .map(({ m, date }) => ({ key: `m-${p.meta.id}-${m.id}-${date}`, title: m.title, sub: p.meta.name, date, time: m.time, to: `/dashboard/projects/${p.meta.id}?tab=minutes&focus=${m.id}`, kind: "meeting" as const })),
+      ),
     ...s.events
       .filter((e) => !e.is_draft && (dayNum(e.start_date) ?? 0) >= ref && s.eventMembers.some((m) => m.event_id === e.id && m.user_id === meId && m.status !== "declined"))
       .map((e) => {
@@ -130,8 +185,12 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
         return { key: `e-${e.id}`, title: e.title, sub: e.is_online ? "آنلاین" : e.location, date: e.start_date, time: e.start_time, to: `/dashboard/events/${e.id}`, kind: st === "invited" ? ("invite" as const) : ("event" as const) };
       }),
   ].sort((a, b) => (dayNum(a.date) ?? 0) - (dayNum(b.date) ?? 0) || a.time.localeCompare(b.time));
+  const agendaShown = agenda.filter((a) => inRange(a.date) && (!filter.project || (a.kind === "meeting" && a.sub === filter.project)));
 
   const myProjects = pm.projects.filter((p) => !p.meta.archived && (p.members.some((m) => m.name === me || m.userId === meId) || p.meta.manager === me));
+  const projectsWho = filter.person && filter.person !== me ? pm.projects.filter((p) => !p.meta.archived && (p.members.some((m) => m.name === filter.person) || p.meta.manager === filter.person)) : myProjects;
+  const projectsShown = projectsWho.filter((p) => byProject(p.meta.name));
+  const approvalsShown = w.approvals.filter((x) => byProject(x.p.meta.name));
 
   // اعلان‌های مهم سازمان: آخرین اخبار و مجله‌ی منتشرشده + اطلاعیه‌های سراسری
   // اطلاعیه‌های رسمیِ سنجاق‌شده همیشه اول می‌آیند
@@ -196,8 +255,14 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
     if (done) pm.moveTask(pid, tid, done);
   };
 
-  return (
-    <div className="space-y-4">
+  // ---------------------------------------------------------------- ویجت‌ها
+  const roleKind = roleKindOf(tn);
+  const widgetList: Widget[] = [
+    {
+      id: "summary",
+      title: "خلاصه‌ی امروز",
+      span: 4,
+      node: (
       <div className="card p-4">
         <div className="mb-4 pb-3 border-b border-ink-100">{header}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
@@ -221,15 +286,18 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           </div>
         )}
       </div>
-
-      <RolePanel roleId={role.id} roleTitle={role.title} />
-
-      <PinnedReports hideWhenEmpty />
-
-      <div className="card p-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* ۱) کارهای من */}
-        <Panel title="کارهای من" icon={<ListTodo size={14} className="text-navy-600" />} to="/dashboard/my-work" count={w.open.length + personal.tasks.length}>
-          {w.open.slice(0, 5).map((x) => {
+      ),
+    },
+    ...(roleKind ? [{ id: "role", title: `میز کار ${role.title}`, span: 4 as Span, node: <RolePanel roleId={role.id} roleTitle={role.title} /> }] : []),
+    ...(isManager ? [{ id: "alerts", title: "هشدارهای مدیریتی", span: 2 as Span, node: <ManagementAlertsCard filter={filter} /> }] : []),
+    ...pinnedReports.map((r) => ({ id: `report:${r.id}`, title: `گزارش: ${r.name}`, span: 2 as Span, node: <PinnedCard spec={r} filter={filter} onOpen={() => setOpenReport(r)} /> })),
+    {
+      id: "tasks",
+      title: "کارهای من",
+      span: 2,
+      node: (
+        <Panel title={filter.person && filter.person !== me ? `کارهای ${filter.person}` : "کارهای من"} icon={<ListTodo size={14} className="text-navy-600" />} to="/dashboard/my-work" count={taskList.length + (wTasks === w && !filterOn ? personal.tasks.length : 0)} filtered={filterOn}>
+          {taskList.slice(0, 5).map((x) => {
             const late = bucketOf(x.t, pm.refDate) === "overdue";
             return (
               <div key={x.t.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
@@ -244,7 +312,7 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
               </div>
             );
           })}
-          {personal.tasks.map((a) => {
+          {(wTasks === w && !filterOn ? personal.tasks : []).map((a) => {
             const done = doneIds.includes(a.id);
             return (
               <div key={a.id} className={`flex items-center gap-2 text-[12px] rounded-lg border px-2.5 py-1.5 ${done ? "border-emerald-200 bg-emerald-50/50" : "border-ink-100"}`}>
@@ -258,20 +326,30 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
               </div>
             );
           })}
-          {w.open.length + personal.tasks.length === 0 && <Empty>کاری در انتظار شما نیست. 🎉</Empty>}
+          {taskList.length + (wTasks === w && !filterOn ? personal.tasks.length : 0) === 0 && <Empty>{filterOn ? "با این فیلتر کاری پیدا نشد." : "کاری در انتظار شما نیست. 🎉"}</Empty>}
         </Panel>
-
-        {/* ۲) جلسات و رویدادهای پیش‌رو */}
-        <Panel title="جلسات و رویدادهای پیش‌رو" icon={<CalendarClock size={14} className="text-sky-600" />} to="/dashboard/events" linkLabel="تقویم" count={agenda.length}>
-          {agenda.slice(0, 5).map((a) => (
+      ),
+    },
+    {
+      id: "agenda",
+      title: "جلسات و رویدادهای پیش‌رو",
+      span: 2,
+      node: (
+        <Panel title="جلسات و رویدادهای پیش‌رو" icon={<CalendarClock size={14} className="text-sky-600" />} to="/dashboard/events" linkLabel="تقویم" count={agendaShown.length} filtered={filterOn}>
+          {agendaShown.slice(0, 5).map((a) => (
             <Row key={a.key} to={a.to} icon={a.kind === "meeting" ? <Video size={12} className="text-sky-500" /> : <CalendarClock size={12} className={a.kind === "invite" ? "text-amber-500" : "text-sky-500"} />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{a.date} · {a.time}</span>}>
               <Two a={a.title} b={a.kind === "invite" ? "دعوت — منتظر پاسخ شما" : a.sub} />
             </Row>
           ))}
-          {agenda.length === 0 && <Empty>جلسه یا رویدادی در پیش ندارید.</Empty>}
+          {agendaShown.length === 0 && <Empty>{filterOn ? "با این فیلتر جلسه‌ای پیدا نشد." : "جلسه یا رویدادی در پیش ندارید."}</Empty>}
         </Panel>
-
-        {/* ۳) اعلان‌های مهم سازمان */}
+      ),
+    },
+    {
+      id: "announce",
+      title: "اعلان‌های مهم سازمان",
+      span: 1,
+      node: (
         <Panel title="اعلان‌های مهم سازمان" icon={<Megaphone size={14} className="text-rose-600" />} to="/dashboard/news" linkLabel="اخبار">
           {important.map((c) => (
             <Row key={c.id} to={`/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}`} icon={c.kind === "news" ? <Newspaper size={12} className="text-rose-500" /> : <BookMarked size={12} className="text-brand-500" />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{dateOf(c.published_at)}</span>}>
@@ -280,10 +358,15 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {important.length === 0 && <Empty>اعلان تازه‌ای نیست.</Empty>}
         </Panel>
-
-        {/* ۴) پروژه‌های فعال من */}
-        <Panel title="پروژه‌های فعال من" icon={<KanbanSquare size={14} className="text-brand-600" />} to="/dashboard/projects" count={myProjects.length}>
-          {myProjects.slice(0, 4).map((p) => {
+      ),
+    },
+    {
+      id: "projects",
+      title: "پروژه‌های فعال من",
+      span: 1,
+      node: (
+        <Panel title="پروژه‌های فعال من" icon={<KanbanSquare size={14} className="text-brand-600" />} to="/dashboard/projects" count={projectsShown.length} filtered={filterOn}>
+          {projectsShown.slice(0, 4).map((p) => {
             const mine = p.tasks.filter((t) => t.assignee === me && !t.archived && !isDone(p, t)).length;
             const r = p.members.find((m) => m.name === me || m.userId === meId)?.role ?? (p.meta.manager === me ? "مدیر پروژه" : "");
             return (
@@ -292,10 +375,15 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
               </Row>
             );
           })}
-          {myProjects.length === 0 && <Empty>عضو پروژه‌ی فعالی نیستید.</Empty>}
+          {projectsShown.length === 0 && <Empty>{filterOn ? "با این فیلتر پروژه‌ای پیدا نشد." : "عضو پروژه‌ی فعالی نیستید."}</Empty>}
         </Panel>
-
-        {/* ۵) محتوای پیشنهادی */}
+      ),
+    },
+    {
+      id: "suggest",
+      title: "پیشنهاد برای شما",
+      span: 1,
+      node: (
         <Panel title="پیشنهاد برای شما" icon={<Sparkles size={14} className="text-amber-500" />} to="/dashboard/topics" linkLabel="موضوعات">
           {suggested.map((x) => (
             <Row key={x.id} to={x.to} icon={<x.icon size={12} className="text-brand-500" />} extra={<Badge tone="neutral">{x.type}</Badge>}>
@@ -304,8 +392,13 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {suggested.length === 0 && <Empty>فعلاً پیشنهادی نداریم.</Empty>}
         </Panel>
-
-        {/* ۶) افراد و گروه‌های پیشنهادی */}
+      ),
+    },
+    {
+      id: "people",
+      title: "همکاری پیشنهادی",
+      span: 1,
+      node: (
         <Panel title="همکاری پیشنهادی" icon={<UsersRound size={14} className="text-emerald-600" />} to="/dashboard/members" linkLabel="اعضا">
           {people.map(({ u, why }) => (
             <div key={u.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
@@ -350,8 +443,13 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {people.length + groupsToJoin.length === 0 && <Empty>پیشنهاد تازه‌ای نیست.</Empty>}
         </Panel>
-
-        {/* صندوق ورودی */}
+      ),
+    },
+    {
+      id: "feed",
+      title: "تازه‌ترین اعلان‌ها",
+      span: 2,
+      node: (
         <Panel title="تازه‌ترین اعلان‌ها" icon={<Bell size={14} className="text-brand-600" />} to="/dashboard/notifications" count={unreadNotifs}>
           {feed.map((f) => (
             <Link key={f.key} to={f.to} className={`flex items-start gap-2 text-[12px] rounded-lg border px-2.5 py-1.5 hover:border-brand-300 ${f.unread ? "border-brand-100 bg-brand-50/40" : "border-ink-100"}`}>
@@ -364,7 +462,13 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {feed.length === 0 && <Empty>اعلانی ندارید.</Empty>}
         </Panel>
-
+      ),
+    },
+    {
+      id: "messages",
+      title: "پیام‌ها و منشن‌ها",
+      span: 2,
+      node: (
         <Panel title="پیام‌ها و منشن‌ها" icon={<AtSign size={14} className="text-amber-600" />} to="/dashboard/chat" linkLabel="گفتگوها" count={unreadMessages + mentionCount}>
           {unreadChats.slice(0, 3).map((c) => {
             const last = s.lastMessage(c.id);
@@ -388,9 +492,15 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {unreadMessages + mentionCount === 0 && <Empty>پیام یا منشن تازه‌ای ندارید.</Empty>}
         </Panel>
-
+      ),
+    },
+    {
+      id: "decisions",
+      title: "منتظر تصمیم من",
+      span: 2,
+      node: (
         <Panel title="منتظر تصمیم من" icon={<ShieldCheck size={14} className="text-violet-600" />} count={decisions}>
-          {w.approvals.map((x) => (
+          {approvalsShown.map((x) => (
             <Row key={x.t.id} to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.id}`} icon={<ShieldCheck size={12} className="text-amber-600" />} tone="border-amber-200 bg-amber-50/40">
               <Two a={`تأیید تسک «${x.t.title}»`} b={`درخواست ${x.t.approval!.requestedBy} · ${x.p.meta.name}`} />
             </Row>
@@ -418,6 +528,11 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
               </button>
             </div>
           ))}
+          {accessReqs.items.slice(0, 2).map((r) => (
+            <Row key={r.id} to={accessReqs.link} icon={<KeyRound size={12} className="text-violet-500" />}>
+              <Two a={`درخواست نقش «${r.roleName}» برای ${r.userName}`} b={r.scopeName} />
+            </Row>
+          ))}
           {kmReview.slice(0, 2).map((d) => (
             <Row key={d.id} to={`/dashboard/knowledge?tab=workflow&doc=${d.id}`} icon={<BookOpen size={12} className="text-brand-500" />}>
               <Two a={`بررسی سند «${d.title}»`} />
@@ -425,7 +540,114 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
           ))}
           {decisions === 0 && <Empty>چیزی منتظر تصمیم شما نیست.</Empty>}
         </Panel>
+      ),
+    },
+  ];
+  const DEFAULT_ORDER = ["summary", "role", "alerts", ...pinnedReports.map((r) => `report:${r.id}`), "tasks", "agenda", "decisions", "announce", "projects", "feed", "messages", "suggest", "people"];
+  const byId = new Map(widgetList.map((x) => [x.id, x]));
+  const order = mergeOrder(layout?.order, widgetList.map((x) => x.id), DEFAULT_ORDER);
+  const hidden = new Set(layout?.hidden ?? []);
+  const spanOf = (x: Widget): Span => layout?.spans[x.id] ?? x.span;
+  const setOrder = (next: string[]) => update((cur) => ({ ...cur, order: next }));
+  const visibleOrder = order.filter((id) => !hidden.has(id));
+  const move = (id: string, dir: -1 | 1) => {
+    const i = visibleOrder.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= visibleOrder.length) return;
+    const next = [...order];
+    const a = next.indexOf(visibleOrder[i]);
+    const b = next.indexOf(visibleOrder[j]);
+    [next[a], next[b]] = [next[b], next[a]];
+    setOrder(next);
+  };
+  const dropOn = (target: string) => {
+    if (!dragId || dragId === target) return;
+    const next = order.filter((x) => x !== dragId);
+    next.splice(next.indexOf(target), 0, dragId);
+    setOrder(next);
+    setDragId(null);
+  };
+  const hiddenWidgets = order.filter((id) => hidden.has(id)).map((id) => byId.get(id)).filter((x): x is Widget => !!x);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <GlobalFilterBar value={filter} onChange={setFilter} projects={projectNames} people={peopleNames} />
+        <div className="flex items-center gap-1.5 mr-auto">
+          {edit && (
+            <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} onClick={() => update((cur) => ({ order: [], spans: {}, hidden: [], filter: cur.filter }))}>
+              بازنشانی
+            </Button>
+          )}
+          <Button size="sm" variant={edit ? "primary" : "secondary"} icon={<LayoutGrid size={13} />} onClick={() => setEdit((v) => !v)}>
+            {edit ? "پایان چیدمان" : "چیدمان"}
+          </Button>
+        </div>
       </div>
+
+      {edit && (
+        <div className="card p-3 text-[11.5px] text-ink-600 flex items-center gap-2 flex-wrap">
+          <span className="text-ink-500">با کشیدن یا دکمه‌های بالا/پایین جابه‌جا کنید؛ پهنای هر کارت ۱ تا ۴ ستون است.</span>
+          {hiddenWidgets.length > 0 && <span className="text-ink-400">پنهان‌ها:</span>}
+          {hiddenWidgets.map((x) => (
+            <button key={x.id} type="button" onClick={() => update((cur) => ({ ...cur, hidden: cur.hidden.filter((h) => h !== x.id) }))} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 hover:bg-ink-50 max-w-[200px]">
+              <Eye size={11} className="shrink-0" /> <span className="truncate">{x.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+        {visibleOrder.map((id, idx) => {
+          const x = byId.get(id);
+          if (!x) return null;
+          const sp = spanOf(x);
+          return (
+            <div
+              key={id}
+              className={`${spanClass[sp]} min-w-0 flex flex-col ${edit ? "rounded-xl outline-2 outline-dashed outline-brand-300 outline-offset-2" : ""} ${dragId === id ? "opacity-50" : ""}`}
+              draggable={edit}
+              onDragStart={(e: DragEvent) => {
+                setDragId(id);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragEnd={() => setDragId(null)}
+              onDragOver={(e: DragEvent) => {
+                if (edit && dragId) e.preventDefault();
+              }}
+              onDrop={(e: DragEvent) => {
+                e.preventDefault();
+                dropOn(id);
+              }}
+            >
+              {edit && (
+                <div className="flex items-center gap-1 mb-1.5 rounded-lg bg-brand-50 border border-brand-200 px-1.5 py-1 text-[11px] text-brand-900">
+                  <GripVertical size={13} className="cursor-move text-brand-500 shrink-0" />
+                  <span className="truncate flex-1 font-medium">{x.title}</span>
+                  <span className="hidden md:flex items-center gap-0.5" role="group" aria-label="پهنا">
+                    {([1, 2, 3, 4] as Span[]).map((n) => (
+                      <button key={n} type="button" onClick={() => update((cur) => ({ ...cur, spans: { ...cur.spans, [id]: n } }))} aria-label={`پهنای ${n} ستون`} className={`w-5 h-5 rounded text-[10px] ${sp === n ? "bg-brand-600 text-white" : "hover:bg-brand-100"}`}>
+                        {fa(n)}
+                      </button>
+                    ))}
+                  </span>
+                  <button type="button" onClick={() => move(id, -1)} disabled={idx === 0} aria-label="انتقال به قبل" className="w-6 h-6 rounded hover:bg-brand-100 flex items-center justify-center disabled:opacity-30">
+                    <ArrowUp size={12} />
+                  </button>
+                  <button type="button" onClick={() => move(id, 1)} disabled={idx === visibleOrder.length - 1} aria-label="انتقال به بعد" className="w-6 h-6 rounded hover:bg-brand-100 flex items-center justify-center disabled:opacity-30">
+                    <ArrowDown size={12} />
+                  </button>
+                  <button type="button" onClick={() => update((cur) => ({ ...cur, hidden: [...new Set([...cur.hidden, id])] }))} aria-label="پنهان کردن" className="w-6 h-6 rounded hover:bg-brand-100 flex items-center justify-center">
+                    <EyeOff size={12} />
+                  </button>
+                </div>
+              )}
+              <div className={`flex-1 min-w-0 ${edit ? "pointer-events-none select-none" : ""}`}>{x.node}</div>
+            </div>
+          );
+        })}
+      </div>
+      {openReport && <ReportBuilderModal open onClose={() => setOpenReport(null)} module={openReport.module} initialReportId={openReport.id} />}
     </div>
   );
 }
@@ -433,14 +655,9 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
 // ---------------------------------------------------------------------------
 // کارت نقش — هر نقش میز کار مخصوص خودش را دارد
 // ---------------------------------------------------------------------------
-function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
-  const s = useSocial();
-  const pm = useProjectsPM();
-  const t = useTenancy();
-  const { actingUser } = t;
-  const me = actingUser.name;
-  // کارت نقش از روی «مجوزها» انتخاب می‌شود، نه نام نقش — تا با نقش‌های سفارشی هم کار کند
-  const roleId = t.hasPermission("settings.system")
+// کارت نقش از روی «مجوزها» انتخاب می‌شود، نه نام نقش — تا با نقش‌های سفارشی هم کار کند
+function roleKindOf(t: { hasPermission: (p: string) => boolean }): "" | "r1" | "org" | "r2" | "r3" | "r5" {
+  return t.hasPermission("settings.system")
     ? "r1"
     : t.hasPermission("iam.members.manage") || t.hasPermission("roles.assign")
       ? "org"
@@ -451,6 +668,15 @@ function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
           : t.hasPermission("groups.create")
             ? "r5"
             : "";
+}
+
+function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
+  const s = useSocial();
+  const pm = useProjectsPM();
+  const t = useTenancy();
+  const { actingUser } = t;
+  const me = actingUser.name;
+  const roleId = roleKindOf(t);
 
   if (roleId === "org") {
     const node = t.contextNode;

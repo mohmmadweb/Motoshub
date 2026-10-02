@@ -2,15 +2,20 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { systemIdentity } from "../data/tenancy";
-import { demoPersonas } from "../data/mock";
+import { demoPersonas, users } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import Button from "../components/ui/Button";
+import { OtpForm } from "../iam/OtpChallenge";
+import { loginPolicyStore } from "../iam/loginPolicy";
 
 // ورود ساده: فقط نام کاربری و گذرواژه.
 // جابه‌جایی بین کاربران/نقش‌های نمایشی بعد از ورود، از «مشاهده به‌عنوان» در هدر انجام می‌شود.
+// اگر در «تنظیمات ← سیاست ورود و تأیید دومرحله‌ای» OTP روشن باشد و نقش کاربر زیر پوشش باشد،
+// بعد از گذرواژه یک مرحله‌ی کد (شبیه‌سازی‌شده) نمایش داده می‌شود؛ پیش‌فرض خاموش است.
 export default function Login() {
   const navigate = useNavigate();
-  const { setActingUser } = useTenancy();
+  const { setActingUser, otpRequired } = useTenancy();
+  const [otpFor, setOtpFor] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -23,7 +28,9 @@ export default function Login() {
     };
     setErrors(errs);
     if (errs.u || errs.p) return;
-    setActingUser(demoPersonas[0].id);
+    const id = demoPersonas[0].id;
+    if (otpRequired(id)) return setOtpFor(id);
+    setActingUser(id);
     navigate("/dashboard");
   };
 
@@ -38,6 +45,17 @@ export default function Login() {
           <p className="text-xs text-ink-500 mt-1">{systemIdentity.name}</p>
         </div>
 
+        {otpFor ? (
+          <OtpForm
+            userName={users.find((u) => u.id === otpFor)?.name ?? username}
+            channel={loginPolicyStore.get().otpChannel}
+            onCancel={() => setOtpFor(null)}
+            onVerified={() => {
+              setActingUser(otpFor, { otpVerified: true });
+              navigate("/dashboard");
+            }}
+          />
+        ) : (
         <form
           className="space-y-3"
           onSubmit={(e) => {
@@ -84,6 +102,7 @@ export default function Login() {
             ورود
           </Button>
         </form>
+        )}
       </div>
     </div>
   );

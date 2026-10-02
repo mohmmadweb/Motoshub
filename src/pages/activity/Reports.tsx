@@ -1,6 +1,7 @@
 // تب «گزارش‌ها»: گزارش پویای ساعت‌ها (بر اساس پروژه/تسک/روز/منبع/نوع/شخص) با نمودار SVG،
 // و «تجمیع فعالیت‌ها» = هرچه این شخص در دوره در سامانه انجام داده (تسک‌ها، دانش، محتوا، پیام، جلسه).
 import { useMemo, useState } from "react";
+import { occurrenceDates } from "../../pm/recurrence";
 import { Link } from "react-router-dom";
 import { BookOpen, CalendarCheck, ChartBar, ChartPie, CircleCheck, FileText, ListChecks, MessageSquare, Newspaper, Users, Video, Activity } from "lucide-react";
 import EmptyState from "../../components/ui/EmptyState";
@@ -161,7 +162,9 @@ function ActivityFeed({ person, period }: { person: Person; period: Period }) {
           });
         });
       p.meetings
-        .filter((m) => inP(m.date) && m.status !== "لغوشده" && m.participants.includes(name))
+        .filter((m) => m.status !== "لغوشده" && m.participants.includes(name))
+        .flatMap((m) => occurrenceDates(m.recurrence, m.date, dayNum(period.start) ?? 0, dayNum(period.end) ?? 0).map((date) => ({ ...m, date })))
+        .filter((m) => inP(m.date))
         .forEach((m) => {
           meetings++;
           items.push({ date: m.date, time: m.time, icon: Video, tone: "bg-navy-50 text-navy-700", text: `جلسه: ${m.title}`, meta: `${p.meta.name} · ${fa(m.duration)} دقیقه`, link: `/dashboard/projects/${p.meta.id}?tab=minutes` });

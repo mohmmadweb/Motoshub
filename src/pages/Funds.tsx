@@ -61,6 +61,9 @@ import { faN, rialShort, toRial } from "../innovation/util";
 import { ActivityLogButton, DecisionModal, DecisionsOf, EntityLink, OutcomeModal, OutcomeSummary } from "./innovation/shared";
 import AllocationView from "./innovation/AllocationView";
 import DecisionLog from "./innovation/DecisionLog";
+import { JudgeMatrix } from "./innovation/JudgeMatrix";
+import { DormantAlert, FundSettingsButton, useDormantProjects } from "./innovation/FundWatch";
+import { Moon } from "lucide-react";
 
 const stageTone: Record<FundRecord["stage"], BadgeTone> = {
   "ثبت‌شده": "neutral",
@@ -124,6 +127,7 @@ export default function Funds() {
           <>
             <ModuleReportsButton module="innovation" />
             <ActivityLogButton module="funds" />
+            <FundSettingsButton />
           </>
         }
       />
@@ -278,6 +282,7 @@ function InnovationFundTab() {
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   // پروژه‌های داخلِ دامنه‌ی کاربر — مبنای فهرست، کارت‌های آمار، گام‌ها و اعلان‌ها
   const scopedProjects = filterScoped(projects);
+  const dormantIds = new Set(useDormantProjects("nf").map((d) => d.id));
 
   const updateProject = (updated: NfProject) => {
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)), updated.stage !== projects.find((p) => p.id === updated.id)?.stage ? `طرح را به گام «${updated.stage}» برد` : "پرونده‌ی طرح را به‌روز کرد", { id: updated.id, title: updated.titleFa });
@@ -352,7 +357,7 @@ function InnovationFundTab() {
 
   const columns: Column<NfProject>[] = [
     { key: "id", label: "کد یکتا", render: (p) => <span className="font-mono text-[11px] font-medium text-ink-800" dir="ltr">{p.id}</span> },
-    { key: "titleFa", label: "عنوان پروژه", render: (p) => <span className="font-medium text-ink-900">{p.titleFa}</span> },
+    { key: "titleFa", label: "عنوان پروژه", render: (p) => <span className="font-medium text-ink-900">{p.titleFa}{dormantIds.has(p.id) && <span className="inline-flex align-middle mr-1.5"><Badge tone="warning" icon={<Moon size={10} />}>خوابیده</Badge></span>}</span> },
     { key: "team", label: "مجری", render: (p) => <span>{p.team.name}</span> },
     { key: "stage", label: "گام اصلی", render: (p) => <Badge tone={nfStageTone[p.stage]}>{p.stage}</Badge> },
     {
@@ -384,6 +389,8 @@ function InnovationFundTab() {
         <StatCard label="گزارش در انتظار بررسی" value={pendingReports.toLocaleString("fa-IR")} tone="warning" icon={<FileClock size={16} />} />
         <StatCard label="پرداخت در جریان" value={pendingPayments.toLocaleString("fa-IR")} tone="warning" icon={<Wallet size={16} />} />
       </div>
+
+      <DormantAlert kind="nf" onOpen={(id) => setSelectedId(id)} />
 
       {lateReviews > 0 && (
         <div className="card p-3.5 mb-4 bg-amber-50 border-amber-200 flex items-center gap-2.5 text-xs text-amber-800">
@@ -527,6 +534,10 @@ function InnovationFundTab() {
         {selected && (
           <>
             <NfProjectFile project={selected} onUpdate={updateProject} onDelete={deleteProject} />
+            <div className="mt-5 border-t border-ink-100 pt-4">
+              <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Gavel size={13} className="text-ink-400" /> ماتریس داوری چندداوره</h4>
+              <JudgeMatrix kind="nf" subjectId={selected.id} subjectTitle={selected.titleFa} />
+            </div>
             <NfOutcomeBlock p={selected} onUpdate={updateProject} />
           </>
         )}
@@ -925,12 +936,13 @@ function EmploymentFundTab() {
   };
 
   const scopedFunds = filterScopedF(funds);
+  const dormantEmp = new Set(useDormantProjects("employment").map((d) => d.id));
   const filtered = useMemo(() => (stageFilter === "همه" ? scopedFunds : scopedFunds.filter((f) => f.stage === stageFilter)), [scopedFunds, stageFilter]);
   const inReview = scopedFunds.filter((f) => f.stage === "داوری").sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
   const allocated = scopedFunds.reduce((s, f) => s + f.approved, 0);
 
   const columns: Column<EmploymentFund>[] = [
-    { key: "title", label: "عنوان طرح", render: (f) => <span className="font-medium text-ink-900">{f.title}</span> },
+    { key: "title", label: "عنوان طرح", render: (f) => <span className="font-medium text-ink-900">{f.title}{dormantEmp.has(f.id) && <span className="inline-flex align-middle mr-1.5"><Badge tone="warning" icon={<Moon size={10} />}>خوابیده</Badge></span>}</span> },
     { key: "applicant", label: "متقاضی", render: (f) => <EntityLink id={f.entityId} name={f.applicant} /> },
     { key: "stage", label: "وضعیت", render: (f) => <Badge tone={stageTone[f.stage]}>{f.stage}</Badge> },
     { key: "amount", label: "میزان تخصیص", render: (f) => (f.approved ? rialShort(f.approved) : f.requested ? `درخواستی ${rialShort(f.requested)}` : "—") },
@@ -947,6 +959,8 @@ function EmploymentFundTab() {
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFundScope(defaultScopeF()); setOpen(true); }}>ثبت طرح جدید</Button>
         )}
       </div>
+
+      <DormantAlert kind="employment" onOpen={(id) => setSelectedId(id)} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         <StatCard label="سرمایه صندوق" value={fundOverview.totalCapital} tone="brand" icon={<Landmark size={16} />} />
@@ -1007,6 +1021,12 @@ function EmploymentFundTab() {
                 <p><span className="text-ink-400">کارگروه بررسی‌کننده:</span> {selected.committee}</p>
               </div>
             </div>
+            {(selected.stage === "داوری" || inn.judging?.some((j) => j.subjectId === selected.id)) && (
+              <div className="border-t border-ink-100 pt-4">
+                <h4 className="text-xs font-bold text-ink-900 mb-2 flex items-center gap-1.5"><Gavel size={13} className="text-ink-400" /> ماتریس داوری چندداوره</h4>
+                <JudgeMatrix kind="employment" subjectId={selected.id} subjectTitle={selected.title} />
+              </div>
+            )}
             {selected.score !== undefined && (
               <div className="border-t border-ink-100 pt-4">
                 <div className="flex items-center justify-between text-xs mb-1"><span className="font-bold text-ink-900">امتیاز داوری</span><span className="text-ink-500">{faN(selected.score)} از ۱۰۰</span></div>

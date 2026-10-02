@@ -34,6 +34,8 @@ import {
   Timer,
 } from "lucide-react";
 import { useTenancy } from "../context/TenancyContext";
+import { useEffectiveBranding } from "../iam/hooks";
+import { BrandMark } from "../iam/BrandMark";
 
 /**
  * ناوبری نقش‌محور، در دو سطح:
@@ -228,17 +230,17 @@ export function NavTree({ onNavigate, mobile = false }: { onNavigate?: () => voi
 }
 
 export default function Sidebar() {
-  const { identity, session, activeScopeLabel } = useTenancy();
+  const { session, activeScopeLabel } = useTenancy();
+  // برند مؤثرِ کانتکست فعلی (هر هلدینگ/شرکت می‌تواند نام، رنگ و لوگو را بازنویسی کند)
+  const brand = useEffectiveBranding();
   return (
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-l border-ink-200 bg-navy-900 h-screen sticky top-0">
-      <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10">
-        <span className="h-9 rounded-lg bg-white flex items-center justify-center px-1.5 shrink-0">
-          <img src="/bonyad-logo.png" alt="بنیاد مستضعفان انقلاب اسلامی" className="h-7 w-auto" />
-        </span>
+      <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10" style={{ boxShadow: `inset 0 -2px 0 ${brand.color}` }}>
+        <BrandMark logo={brand.logo} initials={brand.initials} color={brand.color} />
         <div className="min-w-0">
-          <p className="font-bold text-[12.5px] leading-[1.35] text-white line-clamp-2">{identity.name}</p>
+          <p className="font-bold text-[12.5px] leading-[1.35] text-white line-clamp-2" title={brand.name}>{brand.name}</p>
           <p className="text-[10.5px] text-navy-300 leading-4 truncate mt-0.5">
-            {session.level === "سیستم" ? "فضای کاری سازمانی" : activeScopeLabel}
+            {session.level === "سیستم" ? brand.tagline : brand.sourceScopeId && brand.sourceScopeId !== "sys" && activeScopeLabel === brand.name ? brand.tagline : activeScopeLabel}
           </p>
         </div>
       </div>

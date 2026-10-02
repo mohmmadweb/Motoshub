@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat, Archive, ArchiveRestore, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat, Archive, ArchiveRestore, Zap, GitBranch } from "lucide-react";
 import { useTenancy } from "../../context/TenancyContext";
 import Modal from "../../components/ui/Modal";
 import TaskCostItems from "./TaskCostItems";
@@ -16,8 +16,12 @@ import { TaskKey, TypeIcon, taskTypes } from "./taskTypes";
 import { defaultLabels } from "../../pm/seed";
 import type { DepType, PMTask, Recurrence, TaskType, ColumnKind } from "../../pm/types";
 import { Field, MemberSelect, Progress, TaskFlags, TaskSelect, kindColor, kindTone, numIn, priorities, priorityTone, useProjectPage } from "./shared";
+import { CustomFieldInputs } from "./CustomFieldsCard";
+import DevSection from "./DevSection";
+import { useTimesheet } from "../../context/TimesheetContext";
+import { gitActivity } from "../../pm/git";
 
-type Section = "details" | "subtasks" | "checklist" | "deps" | "cost" | "comments" | "history";
+type Section = "details" | "subtasks" | "checklist" | "deps" | "cost" | "dev" | "comments" | "history";
 
 /** نمایش hh:mm:ss برای تایمر */
 const clock = (ms: number) => {
@@ -52,6 +56,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const [decisionNote, setDecisionNote] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const { actingUser } = useTenancy();
+  const ts = useTimesheet();
   const me = actingUser.name;
   const running = !!t?.timer;
   useEffect(() => {
@@ -78,6 +83,8 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const history = p.logs.filter((l) => l.entity?.id === t.id || (l.entity?.type === "dependency" && p.deps.some((d) => d.id === l.entity?.id && (d.predecessor === t.id || d.successor === t.id)))).sort((a, b) => b.seq - a.seq);
   const dirty = JSON.stringify({ ...draft, ...liveKeys }) !== JSON.stringify({ ...t, ...liveKeys });
   const subtasks = p.tasks.filter((x) => x.parentId === t.id && !x.archived);
+  const dev = t.key ? gitActivity(p, t, ts.entries, (id) => ts.personById(id)?.name ?? id) : null;
+  const devCount = dev ? dev.branches.length + dev.commits.length + dev.mrs.length : 0;
   const subDone = subtasks.filter((x) => isDone(p, x)).length;
   const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
   const epic = t.epicId ? p.tasks.find((x) => x.id === t.epicId) : undefined;
@@ -138,6 +145,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
     { id: "checklist", label: "چک‌لیست", icon: CheckSquare, count: t.checklist.length },
     { id: "deps", label: "وابستگی", icon: Link2, count: preds.length + succs.length },
     { id: "cost", label: "زمان و هزینه", icon: Wallet },
+    ...(t.key ? [{ id: "dev" as Section, label: "توسعه", icon: GitBranch, count: devCount }] : []),
     { id: "comments", label: "نظرات", icon: MessageSquare, count: t.comments.length },
     { id: "history", label: "تاریخچه", icon: History, count: history.length },
   ];
@@ -323,30 +331,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   })}
                 </div>
               </Field>
-              {fields.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
-                  {fields.map((f) => {
-                    const v = draft.customFields?.[f.id] ?? "";
-                    const set = (val: string) => setDraft({ ...draft, customFields: { ...(draft.customFields ?? {}), [f.id]: val } });
-                    return (
-                      <Field key={f.id} label={f.name}>
-                        {f.type === "انتخابی" ? (
-                          <select className="input-field" value={v} disabled={!canEdit} onChange={(e) => set(e.target.value)}>
-                            <option value="">—</option>
-                            {(f.options ?? []).map((o) => (
-                              <option key={o}>{o}</option>
-                            ))}
-                          </select>
-                        ) : f.type === "تاریخ" ? (
-                          <JalaliDatePicker value={v} onChange={set} />
-                        ) : (
-                          <input className="input-field" value={v} disabled={!canEdit} inputMode={f.type === "عدد" ? "numeric" : undefined} onChange={(e) => set(e.target.value)} />
-                        )}
-                      </Field>
-                    );
-                  })}
-                </div>
-              )}
+              {fields.length > 0 && <CustomFieldInputs p={p} draft={draft} disabled={!canEdit} onChange={(values) => setDraft({ ...draft, customFields: values })} />}
               <div className="rounded-lg border border-ink-100 p-3">
                 <p className="text-xs font-medium text-ink-600 mb-2 flex items-center gap-1">
                   <ShieldCheck size={13} /> تأیید
@@ -802,6 +787,8 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
             </div>
           </div>
         )}
+
+        {section === "dev" && dev && <DevSection p={p} t={t} activity={dev} />}
 
         {section === "comments" && (
           <div className="space-y-3">

@@ -6,7 +6,7 @@ import { personalFor } from "../data/personal";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useInbox, inboxKindLabel, digestKinds, urgentKinds, type InboxItem, type InboxKind } from "../context/InboxContext";
-import { UserPlus, Megaphone, Mail as MailIcon, CalendarPlus, Reply, Hash, BookOpen, UserCheck, UserX } from "lucide-react";
+import { UserPlus, Megaphone, Mail as MailIcon, CalendarPlus, Reply, Hash, BookOpen, UserCheck, UserX, Clock3, BarChart3, KeyRound } from "lucide-react";
 import { categoryLabel, channelLabel, eventByCode, type EventCategory } from "../pm/events";
 import type { NotifChannel, PMNotification } from "../pm/types";
 import PageHeader from "../components/ui/PageHeader";
@@ -44,6 +44,9 @@ const kindIcon: Record<InboxKind, typeof AtSign> = {
   chat_added: UserPlus,
   group_message: Users,
   announcement: Siren,
+  timesheet: Clock3,
+  report: BarChart3,
+  access: KeyRound,
 };
 
 /** «۲۲:۰۰» یا «22:00» → دقیقه از نیمه‌شب */

@@ -19,7 +19,11 @@ import { users } from "../../data/mock";
 import { dayNum, fromDayNum, parseJalali, formatJalali, monthNames, monthLength, weekdayOf, weekDayNames, toEnDigits, fa } from "../../pm/jalali";
 import { EventEditor, useEventVisibility } from "../social/EventsCalendar";
 import { defaultPublish } from "../social/kit";
-import { busyOf, collectItems, findCommonSlot, fmtRange, layerMeta, layerOrder, type CalItem, type Layer } from "./model";
+import { busyOf, collectItems, fmtMin, fmtRange, layerMeta, layerOrder, personalRule, type CalItem, type Layer, type PersonalItem } from "./model";
+import { splitDelete, splitEdit, type EditScope } from "../../pm/recurrence";
+import type { PMMeeting, ProjectState } from "../../pm/types";
+import { SeriesScopeDialog } from "./RecurrenceFields";
+import { slotLabel, useAvailability, type Slot } from "./availability";
 import { useCalendarStore, type CalView } from "./store";
 import { buildIcs, downloadIcs, appUrl } from "./ics";
 import { TimeGrid, DayHead, MonthView, AgendaView, MiniMonth, FreeBusyMatrix, ItemPopover, useNowMin, type Column, type PopState, type FbRow } from "./views";
@@ -60,6 +64,9 @@ export default function UnifiedCalendar() {
   const [q, setQ] = useState("");
   const [duration, setDuration] = useState(60);
   const [slot, setSlot] = useState<{ day: number; start: number; end: number } | null | "none">(null);
+  const [alts, setAlts] = useState<Slot[]>([]);
+  const av = useAvailability();
+  const [scopeAsk, setScopeAsk] = useState<{ title: string; run: (s: EditScope) => void } | null>(null);
 
   const teamOn = canTeam && cal.prefs.teamOn;
   const teamIds = cal.prefs.team.filter((id) => id !== meId && users.some((u) => u.id === id));
@@ -71,7 +78,8 @@ export default function UnifiedCalendar() {
   const range: [number, number] =
     view === "day" ? [cursor, cursor] : view === "week" ? [weekStart, weekStart + 6] : view === "month" ? [monthStart, monthStart + monthLength(jy, jm) - 1] : [cursor, cursor + 29];
 
-  const base = { meId, meName, events: social.events, eventMembers: social.eventMembers, visibleEvent, projects: pm.projects, personal: cal.items };
+  const canEditMeeting = (p: ProjectState) => hasPermission("projects.meetings") && !p.meta.archived && (p.meta.manager === meName || p.members.some((m) => (m.userId === meId || m.name === meName) && m.role !== "مشاهده‌گر"));
+  const base = { meId, meName, events: social.events, eventMembers: social.eventMembers, visibleEvent, projects: pm.projects, personal: cal.items, canEditMeeting };
   const items = useMemo(
     () => collectItems({ ...base, from: range[0], to: range[1], layers }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,12 +161,47 @@ export default function UnifiedCalendar() {
     notify("رویداد ایجاد شد و در تقویم شما قرار گرفت.", "success");
   };
 
-  const removePersonal = (id: string) => {
-    const it = cal.items.find((x) => x.id === id);
-    if (!it) return;
+  // ---------------------------------------------------------------- سری‌های تکرارشونده
+  const ruleOfPersonal = (x: PersonalItem) => personalRule(x);
+  const setRuleOfPersonal = (x: PersonalItem, r: PersonalItem["rrule"]): PersonalItem => ({ ...x, rrule: r, repeat: "none" });
+  /** ذخیره‌ی یک قلم شخصی؛ اگر وقوعی از سری ویرایش شده، دامنه پرسیده می‌شود */
+  const savePersonal = (next: Omit<PersonalItem, "id"> & { id?: string }, occDate?: string) => {
+    const orig = next.id ? cal.items.find((x) => x.id === next.id) : undefined;
+    if (!orig || !personalRule(orig) || !occDate) {
+      cal.saveItem(next);
+      return;
+    }
+    const apply = (scope: EditScope) => {
+      const r = splitEdit(orig, occDate, scope, { ...orig, ...next, id: orig.id } as PersonalItem, ruleOfPersonal, setRuleOfPersonal);
+      if (r.update) cal.saveItem(r.update);
+      r.create.forEach((c) => cal.saveItem({ ...c, id: undefined }));
+      setScopeAsk(null);
+      notify(scope === "one" ? "فقط همین وقوع تغییر کرد." : scope === "following" ? "این وقوع و بعدی‌ها تغییر کرد." : "همه‌ی سری به‌روزرسانی شد.", "success");
+    };
+    setScopeAsk({ title: `ویرایش «${orig.title}»`, run: apply });
+  };
+
+  const removePersonal = (id: string, it?: CalItem) => {
+    const orig = cal.items.find((x) => x.id === id);
+    if (!orig) return;
+    const occ = it?.source?.occDate;
+    if (personalRule(orig) && occ) {
+      setPop(null);
+      setScopeAsk({
+        title: `حذف «${orig.title}»`,
+        run: (scope) => {
+          const r = splitDelete(orig, occ, scope, ruleOfPersonal, setRuleOfPersonal);
+          if (r) cal.saveItem(r);
+          else cal.removeItem(id);
+          setScopeAsk(null);
+          notify("حذف شد.", "success");
+        },
+      });
+      return;
+    }
     confirm({
       title: "حذف یادآور",
-      message: `«${it.title}»${it.repeat !== "none" ? " و همه‌ی تکرارهای آن" : ""} حذف شود؟`,
+      message: `«${orig.title}» حذف شود؟`,
       confirmLabel: "حذف",
       onConfirm: () => {
         cal.removeItem(id);
@@ -167,11 +210,76 @@ export default function UnifiedCalendar() {
       },
     });
   };
-  const editPersonal = (id: string) => {
-    const it = cal.items.find((x) => x.id === id);
-    if (!it) return;
+  const editPersonal = (id: string, it?: CalItem) => {
+    const orig = cal.items.find((x) => x.id === id);
+    if (!orig) return;
     setPop(null);
-    setQuick({ date: it.date, start: 0, end: 0, mode: "personal", edit: it });
+    setQuick({ date: orig.date, start: 0, end: 0, mode: "personal", edit: orig, occDate: it?.source?.series ? it.source.occDate : undefined });
+  };
+
+  /** کشیدن و رها کردن در نمای روز/هفته */
+  const moveItem = (it: CalItem, day: number, start: number, end: number) => {
+    const src = it.source;
+    if (!src) return;
+    const date = fromDayNum(day);
+    if (src.kind === "personal") {
+      const orig = cal.items.find((x) => x.id === src.id);
+      if (!orig) return;
+      savePersonal({ ...orig, date, start: fmtMin(start), end: fmtMin(end) }, src.series ? src.occDate : undefined);
+      if (!src.series) notify(`«${orig.title}» به ${date} ساعت ${fmtMin(start)} منتقل شد.`, "success");
+      return;
+    }
+    if (src.kind === "meeting" && src.pid) {
+      const p = pm.getProject(src.pid);
+      const m = p?.meetings.find((x) => x.id === src.id);
+      if (!p || !m) return;
+      const next: PMMeeting = { ...m, date, time: fmtMin(start), duration: end - start };
+      const done = (msg: string) => notify(`${msg} شرکت‌کنندگان مطلع شدند.`, "success");
+      if (!m.recurrence) {
+        pm.saveMeeting(src.pid, next);
+        return done(`جلسه‌ی «${m.title}» به ${date} ساعت ${fmtMin(start)} منتقل شد؛`);
+      }
+      setScopeAsk({
+        title: `جابه‌جایی «${m.title}»`,
+        run: (scope) => {
+          const r = splitEdit(m, src.occDate, scope, next, (x) => x.recurrence, (x, rr) => ({ ...x, recurrence: rr }));
+          if (r.update) pm.saveMeeting(src.pid!, r.update);
+          r.create.forEach((c) => pm.saveMeeting(src.pid!, { ...c, id: undefined, seriesOf: m.id }));
+          setScopeAsk(null);
+          done("جلسه جابه‌جا شد؛");
+        },
+      });
+      return;
+    }
+    if (src.kind === "event") {
+      const ev = social.events.find((x) => x.id === src.id);
+      if (!ev) return;
+      social.saveEvent({
+        id: ev.id,
+        title: ev.title,
+        description: ev.description,
+        poster: ev.poster ?? "#1f4f99",
+        start_date: date,
+        end_date: date,
+        start_time: fmtMin(start),
+        end_time: fmtMin(end),
+        is_online: ev.is_online,
+        meeting_link: ev.meeting_link,
+        location: ev.location,
+        capacity: ev.capacity,
+        add_comment: ev.add_comment,
+        show_comment: ev.show_comment,
+        is_repeat: false,
+        repeat_days: [],
+        privacy: ev.privacy,
+        category_ids: ev.category_ids,
+        tags: ev.tags,
+        is_draft: ev.is_draft,
+        uploaded_files: [],
+        send_notification: false,
+      });
+      notify(`رویداد «${ev.title}» به ${date} ساعت ${fmtMin(start)} منتقل شد.`, "success");
+    }
   };
 
   const exportIcs = () => {
@@ -211,7 +319,10 @@ export default function UnifiedCalendar() {
   };
   const findSlot = () => {
     if (!teamIds.length) return notify("ابتدا دست‌کم یک همکار انتخاب کنید.", "warning");
-    const r = findCommonSlot((d) => people.flatMap((p) => busyOf(p.id, p.name, d, busyCtx)), duration, todayN, nowMin);
+    // جلسات، رویدادها، بلوک‌های مشغول، مرخصی‌های کارکرد و تعطیلات — شنبه تا چهارشنبه ۸ تا ۱۶
+    const list = av.suggest(people.map((p) => ({ id: p.id, name: p.name })), duration);
+    setAlts(list);
+    const r = list[0] ?? null;
     setSlot(r ?? "none");
     if (r) {
       setCursor(r.day);
@@ -249,7 +360,18 @@ export default function UnifiedCalendar() {
     allDay: items.filter((it) => it.day === d && it.start === null).map((it) => ({ key: it.key, title: it.title, color: it.color, dim: it.dim, onClick: (e: MouseEvent) => openItem(it, e) })),
     blocks: items
       .filter((it) => it.day === d && it.start !== null)
-      .map((it) => ({ key: it.key, start: it.start!, end: it.end ?? it.start! + 30, title: it.title, sub: it.sub, color: it.color, tentative: it.tentative, dim: it.dim, onClick: (e: MouseEvent) => openItem(it, e) })),
+      .map((it) => ({
+        key: it.key,
+        start: it.start!,
+        end: it.end ?? it.start! + 30,
+        title: it.title,
+        sub: it.sub,
+        color: it.color,
+        tentative: it.tentative,
+        dim: it.dim,
+        onClick: (e: MouseEvent) => openItem(it, e),
+        onMove: it.editable ? (d2: number, s2: number, e2: number) => moveItem(it, d2, s2, e2) : undefined,
+      })),
   });
   let columns: Column[] = [];
   if (view === "week") columns = Array.from({ length: 7 }, (_, i) => weekStart + i).map((d) => myColumn(d, String(d), <DayHead day={d} today={d === todayN} />));
@@ -454,13 +576,34 @@ export default function UnifiedCalendar() {
                         بیاب
                       </Button>
                     </div>
-                    <p className="text-[10.5px] text-ink-400 leading-5">در ۱۰ روز کاری آینده، ساعات اداری (پنجشنبه تا ۱۳:۰۰)، برای شما و {fa(teamIds.length)} همکار.</p>
-                    {slot === "none" && <p className="text-[11.5px] text-rose-600">در ۱۰ روز کاری آینده زمان آزاد مشترکی با این مدت پیدا نشد.</p>}
+                    <p className="text-[10.5px] text-ink-400 leading-5">ساعات اداری شنبه تا چهارشنبه (۸ تا ۱۶)، با درنظرگرفتن جلسات، مرخصی‌ها و تعطیلات، برای شما و {fa(teamIds.length)} همکار.</p>
+                    {slot === "none" && <p className="text-[11.5px] text-rose-600">در ۲۰ روز کاری آینده زمان آزاد مشترکی با این مدت پیدا نشد.</p>}
                     {slotObj && (
                       <div className="rounded-md bg-emerald-50 border border-emerald-200 p-2.5 space-y-2">
                         <p className="text-[12.5px] text-emerald-700 font-medium">
                           {weekDayNames[weekdayOf(fromDayNum(slotObj.day))]} {fromDayNum(slotObj.day)} · {fmtRange(slotObj.start, slotObj.end)}
                         </p>
+                        {alts.length > 1 && (
+                          <div className="flex flex-wrap gap-1">
+                            {alts.map((a) => {
+                              const on = a.day === slotObj.day && a.start === slotObj.start;
+                              return (
+                                <button
+                                  key={`${a.day}-${a.start}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSlot(a);
+                                    setCursor(a.day);
+                                  }}
+                                  className={`text-[10.5px] px-1.5 py-0.5 rounded border tabular-nums ${on ? "border-emerald-500 bg-white text-emerald-800" : "border-emerald-200 text-emerald-700 hover:bg-white"}`}
+                                  title={slotLabel(a)}
+                                >
+                                  {fromDayNum(a.day).slice(5)} · {fmtMin(a.start)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-1.5">
                           <Button
                             size="sm"
@@ -497,11 +640,12 @@ export default function UnifiedCalendar() {
         onClose={() => setQuick(null)}
         canEvent={canEvent}
         meId={meId}
-        onSavePersonal={(it) => cal.saveItem(it)}
+        onSavePersonal={(it) => savePersonal(it, quick?.occDate)}
         onSaveEvent={saveEvent}
         onOpenFull={(date) => setFullEditor({ open: true, date })}
       />
       {canEvent && <EventEditor open={fullEditor.open} initialDate={fullEditor.date} onClose={() => setFullEditor({ open: false })} />}
+      <SeriesScopeDialog open={!!scopeAsk} title={scopeAsk?.title ?? ""} onPick={(sc) => scopeAsk?.run(sc)} onClose={() => setScopeAsk(null)} />
     </div>
   );
 }

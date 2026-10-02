@@ -4,11 +4,11 @@
 // ماژول‌ها بدون تغییر کار کنند؛ اما همه‌چیز اکنون از درخت واحدها، نقش‌های سفارشی،
 // تخصیص‌های چندگانه (اجتماع مجوزها) و تاریخچه‌ی تغییرناپذیر محاسبه می‌شود.
 // ---------------------------------------------------------------------------
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { systemIdentity as initialIdentity, type Company, type ContentScope, type Holding, type Scoped, type ScopeLevel, type SessionScope, type SystemIdentity } from "../data/tenancy";
 import { currentUser, users as allUsers, type UserProfile, type RoleDef, type RoleGrant } from "../data/mock";
 import { DEMO_REF_DATE } from "../pm/seed";
-import { nowClock } from "../pm/jalali";
+import { addDays, nowClock } from "../pm/jalali";
 import {
   ADMIN_PERMS,
   ROOT_ID,
@@ -26,6 +26,10 @@ import {
   pathLabel,
   reachableScopes,
   scopeTypeLabel,
+  sodConflicts,
+  sodPermsIn,
+  type AccessRequest,
+  type SodConfig,
   type Audit,
   type AuditEvent,
   type Binding,
@@ -36,14 +40,23 @@ import {
   type ScopeNode,
   type ScopeType,
 } from "../iam/model";
-import { IAM_VERSION, seedIam } from "../iam/seed";
+import { migrateIam, seedIam } from "../iam/seed";
+import { loginPolicyStore, otpRequiredFor } from "../iam/loginPolicy";
+import { onSettingsChange } from "../iam/settingsAudit";
+import { OtpForm } from "../iam/OtpChallenge";
+import Modal from "../components/ui/Modal";
 
-export type Check = { ok: true } | { ok: false; reason: string };
+/** نتیجه‌ی یک بررسی؛ `warning` یعنی مجاز است ولی باید به کاربر هشدار داد (مثلاً تفکیک وظایف) */
+export type Check = { ok: true; warning?: string } | { ok: false; reason: string };
 const ok: Check = { ok: true };
 const no = (reason: string): Check => ({ ok: false, reason });
 
 export type RoleInput = Pick<Role, "name" | "code" | "description" | "allowedTypes" | "permissions"> & { id?: string; createdIn: string };
 export type BindingInput = { userId: string; roleId: string; scopeId: string; validFrom?: string; validUntil?: string; note?: string };
+export type AccessRequestInput = { roleId: string; scopeId: string; durationDays: number | null; reason: string; perm?: string };
+/** «مشاهده به‌عنوان کاربر» رسمی و ممیزی‌شده (جدا از پرسوناهای دمو) — فقط‌خواندنی */
+export type Impersonation = { userId: string; by: string; reason: string; startedAt: string; minutes: number; endsAt: number };
+const RO_REASON = "حالت فقط‌خواندنی";
 
 type TenancyValue = {
   // --- هویت این نصب ---
@@ -64,7 +77,8 @@ type TenancyValue = {
 
   // --- نشست ---
   actingUser: UserProfile;
-  setActingUser: (userId: string) => void;
+  /** جابه‌جایی پرسونای دمو؛ اگر سیاست ورود برای این کاربر OTP بخواهد، اول مرحله‌ی کد نمایش داده می‌شود */
+  setActingUser: (userId: string, opts?: { otpVerified?: boolean }) => void;
   session: SessionScope;
   /** نقش اصلیِ کاربر در کانتکست فعلی (برای نمایش) */
   role: RoleDef;
@@ -144,23 +158,53 @@ type TenancyValue = {
   removeMembership: (id: string) => Check;
   completeReview: (scopeId: string, revokedIds: string[]) => void;
   resetIam: () => void;
+
+  // ======================= موج ۴: حاکمیت دسترسی =======================
+  /** در حالت «مشاهده به‌عنوان» همه‌ی اکشن‌های IAM رد می‌شوند */
+  readOnly: boolean;
+  /** کاربرِ واقعی (مدیری که «مشاهده به‌عنوان» را شروع کرده) */
+  realActingUser: UserProfile;
+  impersonation: Impersonation | null;
+  checkImpersonate: (userId: string) => Check;
+  startImpersonation: (userId: string, reason: string, minutes: number) => Check;
+  endImpersonation: () => void;
+  /** آیا ورود/جابه‌جایی به این کاربر طبق سیاست ورود OTP می‌خواهد؟ */
+  otpRequired: (userId: string) => boolean;
+  // درخواست دسترسی (JIT)
+  checkRequestAccess: (input: AccessRequestInput) => Check;
+  requestAccess: (input: AccessRequestInput) => Check & { id?: string };
+  checkDecideRequest: (r: AccessRequest) => Check;
+  approveRequest: (id: string, note?: string) => Check & { validUntil?: string };
+  rejectRequest: (id: string, reason: string) => Check;
+  cancelRequest: (id: string) => Check;
+  // تفکیک وظایف
+  canEditSod: boolean;
+  saveSod: (cfg: SodConfig, summary: string) => Check;
 };
 
 const ACTING_USER_KEY = "motoshub.actingUser.v1";
 const IAM_KEY = "motoshub.iam.v1";
 const CTX_KEY = "motoshub.iamContext.v1";
+const IMP_KEY = "motoshub.impersonation.v1";
 
 function loadIam(): IamState {
   try {
     const raw = localStorage.getItem(IAM_KEY);
     if (raw) {
-      const s = JSON.parse(raw) as IamState;
-      if (s.version === IAM_VERSION) return s;
+      const s = migrateIam(JSON.parse(raw));
+      if (s) return s;
     }
   } catch {
     /* بدون حافظه‌ی مرورگر */
   }
   return seedIam();
+}
+
+type AuditInput = Omit<Audit, "id" | "seq" | "actorId" | "at">;
+/** افزودن یک رویداد تغییرناپذیر به تاریخچه (تابع خالص — امن برای setState تابعی) */
+function withAudit(s: IamState, a: AuditInput, actorId: string, today: string): IamState {
+  const seq = s.seq + 1;
+  return { ...s, seq, audits: [{ ...a, id: `a${seq}`, seq, actorId, at: `${today} ${nowClock()}` }, ...s.audits] };
 }
 const readJson = <T,>(k: string, d: T): T => {
   try {
@@ -190,6 +234,11 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     return saved && allUsers.some((u) => u.id === saved) ? saved : currentUser.id;
   });
   const [ctxMap, setCtxMap] = useState<Record<string, string>>(() => readJson(CTX_KEY, {}));
+  const [impersonation, setImpersonation] = useState<Impersonation | null>(() => {
+    const v = readJson<Impersonation | null>(IMP_KEY, null);
+    return v && v.endsAt > Date.now() && allUsers.some((u) => u.id === v.userId) ? v : null;
+  });
+  const [pendingOtp, setPendingOtp] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -206,8 +255,37 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     }
   }, [ctxMap]);
 
-  const actingUser = allUsers.find((u) => u.id === actingUserId) ?? currentUser;
+  useEffect(() => {
+    try {
+      if (impersonation) localStorage.setItem(IMP_KEY, JSON.stringify(impersonation));
+      else localStorage.removeItem(IMP_KEY);
+    } catch {
+      /* نادیده */
+    }
+  }, [impersonation]);
+
+  const realActingUser = allUsers.find((u) => u.id === actingUserId) ?? currentUser;
+  const realMe = realActingUser.id;
+  // در «مشاهده به‌عنوان»، همه‌چیز از دید کاربرِ هدف محاسبه می‌شود (فقط‌خواندنی)
+  const impActive = impersonation && impersonation.by === realMe ? impersonation : null;
+  const actingUser = (impActive && allUsers.find((u) => u.id === impActive.userId)) || realActingUser;
   const me = actingUser.id;
+  const readOnly = !!impActive;
+
+  // پایان خودکارِ «مشاهده به‌عنوان» پس از مهلت + ثبت رویداد
+  const realRef = useRef(realMe);
+  realRef.current = realMe;
+  useEffect(() => {
+    if (!impActive) return;
+    const tick = () => {
+      if (Date.now() < impActive.endsAt) return;
+      setIam((prev) => withAudit(prev, { event: "impersonation.ended", scopeId: ROOT_ID, targetType: "review", kind: "impersonation", targetId: impActive.userId, affectedUserId: impActive.userId, summary: `مهلت مشاهده به‌عنوان «${allUsers.find((u) => u.id === impActive.userId)?.name}» تمام شد و نشست خودکار بسته شد.` }, impActive.by, today));
+      setImpersonation(null);
+    };
+    tick();
+    const h = window.setInterval(tick, 15000);
+    return () => window.clearInterval(h);
+  }, [impActive, today]);
 
   // ---------------------------------------------------------------- کانتکست
   const reachable = useMemo(() => reachableScopes(iam, me, today), [iam, me, today]);
@@ -217,6 +295,19 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
   }, [iam, me, reachable]);
   const contextId = ctxMap[me] && reachable.some((r) => r.id === ctxMap[me]) ? ctxMap[me] : primaryScope;
   const contextNode = byId(iam, contextId) ?? iam.scopes[0];
+
+  // تغییرات تنظیمات (از هر انبار) → رویداد settings.changed در تاریخچه
+  const ctxRef = useRef(contextId);
+  ctxRef.current = contextId;
+  useEffect(
+    () =>
+      onSettingsChange((c) =>
+        setIam((prev) =>
+          withAudit(prev, { event: "settings.changed", scopeId: c.scopeId ?? ctxRef.current, targetType: "review", kind: "settings", targetId: c.area, summary: `${c.area}: ${c.summary}`, before: c.before, after: c.after }, realRef.current, today)
+        )
+      ),
+    [today]
+  );
 
   const value = useMemo<TenancyValue>(() => {
     const scopes = iam.scopes;
@@ -282,6 +373,13 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       if (isAdminRole(r) && !strictlyBelowMyAnchor(b.scopeId)) return no("مدیرِ هم‌سطح یا بالاتر را فقط مدیرِ لایه‌ی بالاتر تعیین می‌کند.");
       if (b.validFrom && b.validUntil && b.validUntil < b.validFrom) return no("تاریخ پایان قبل از تاریخ شروع است.");
       if (iam.bindings.some((x) => x.active && x.userId === b.userId && x.roleId === b.roleId && x.scopeId === b.scopeId)) return no("این نقش در این واحد از قبل به کاربر داده شده است.");
+      // تفکیک وظایف: تعارض جدیدی که این تخصیص برای همین کاربر در همین واحد می‌سازد
+      const before = sodPermsIn(iam, b.userId, b.scopeId, today);
+      const after = sodPermsIn(iam, b.userId, b.scopeId, today, b.roleId);
+      const fresh = sodConflicts(iam, after).filter((rule) => !(before.has(rule.a) && before.has(rule.b)));
+      const blocked = fresh.find((rule) => rule.mode === "block");
+      if (blocked) return no(`تفکیک وظایف: «${blocked.title}» — این تخصیص برای این کاربر تعارض وظایف می‌سازد و مسدود است.`);
+      if (fresh.length) return { ok: true, warning: `هشدار تفکیک وظایف: ${fresh.map((rule) => `«${rule.title}»`).join("، ")} — کاربر هر دو طرف را خواهد داشت.` };
       return ok;
     };
     const checkRevoke = (b: Binding): Check => {
@@ -299,12 +397,10 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     };
 
     // ------------------------------------------------ نوشتن + تاریخچه
-    const commit = (fn: (s: IamState) => IamState, a?: { event: AuditEvent; scopeId: string; targetType: Audit["targetType"]; targetId: string; summary: string; affectedUserId?: string; before?: Record<string, unknown>; after?: Record<string, unknown> }) =>
+    const commit = (fn: (s: IamState) => IamState, a?: { event: AuditEvent; scopeId: string; targetType: Audit["targetType"]; kind?: Audit["kind"]; targetId: string; summary: string; affectedUserId?: string; before?: Record<string, unknown>; after?: Record<string, unknown> }) =>
       setIam((prev) => {
         const next = fn(structuredClone(prev));
-        if (!a) return next;
-        const seq = next.seq + 1;
-        return { ...next, seq, audits: [{ ...a, id: `a${seq}`, seq, actorId: me, at: `${today} ${nowClock()}` }, ...next.audits] };
+        return a ? withAudit(next, a, realMe, today) : next;
       });
     const uname = (id: string) => allUsers.find((u) => u.id === id)?.name ?? id;
     const nid = (p: string) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 1e3)}`;
@@ -389,7 +485,7 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       });
       return ok;
     };
-    const assignRole: TenancyValue["assignRole"] = (b) => {
+    const assignRole = (b: BindingInput): Check & { id?: string } => {
       const c = checkAssign(b);
       if (!c.ok) return c;
       const r = roleById(b.roleId)!;
@@ -414,7 +510,7 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
           after: { role: r.name, validFrom: b.validFrom, validUntil: b.validUntil },
         }
       );
-      return ok;
+      return { ok: true, id, warning: c.warning };
     };
     const revokeBinding: TenancyValue["revokeBinding"] = (id) => {
       const b = iam.bindings.find((x) => x.id === id);
@@ -488,6 +584,164 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         targetId: scopeId,
         summary: `بازبینی دسترسی‌های «${node(scopeId)?.name}» انجام شد: ${revokedIds.length.toLocaleString("fa-IR")} تخصیص لغو و بقیه تأیید شد.`,
       });
+
+    // ------------------------------------------------ درخواست دسترسی (JIT)
+    const checkRequestAccess = (input: AccessRequestInput): Check => {
+      const n = node(input.scopeId);
+      const r = roleById(input.roleId);
+      if (!n || !r) return no("واحد یا نقش نامعتبر است.");
+      if (!reachable.some((x) => x.id === input.scopeId)) return no("فقط در واحدهایی که عضو آن‌ها هستید می‌توانید درخواست دهید.");
+      if (!assignableRoles(iam, input.scopeId).some((x) => x.id === r.id)) return no(`نقش «${r.name}» در «${n.name}» قابل تخصیص نیست.`);
+      if (iam.bindings.some((x) => x.userId === me && x.roleId === r.id && x.scopeId === input.scopeId && bindingLive(x, today))) return no("این نقش را در این واحد همین حالا دارید.");
+      if (iam.requests.some((x) => x.status === "pending" && x.userId === me && x.roleId === r.id && x.scopeId === input.scopeId)) return no("برای همین نقش در همین واحد درخواست در انتظار دارید.");
+      if (input.reason.trim().length < 5) return no("دلیل درخواست را بنویسید.");
+      return ok;
+    };
+    const requestAccess: TenancyValue["requestAccess"] = (input) => {
+      const c = checkRequestAccess(input);
+      if (!c.ok) return c;
+      const id = nid("rq");
+      const r = roleById(input.roleId)!;
+      const req: AccessRequest = { id, userId: me, roleId: input.roleId, scopeId: input.scopeId, durationDays: input.durationDays, reason: input.reason.trim(), perm: input.perm, status: "pending", createdAt: `${today} ${nowClock()}` };
+      commit((s) => ({ ...s, requests: [req, ...s.requests] }), {
+        event: "access.requested",
+        scopeId: input.scopeId,
+        targetType: "review",
+        kind: "request",
+        targetId: id,
+        affectedUserId: me,
+        summary: `«${uname(me)}» نقش «${r.name}» را در «${node(input.scopeId)?.name}»${input.durationDays ? ` برای ${input.durationDays.toLocaleString("fa-IR")} روز` : " (دائمی)"} درخواست کرد.`,
+        after: { role: r.name, durationDays: input.durationDays, reason: input.reason.trim() },
+      });
+      return { ok: true, id };
+    };
+    const checkDecideRequest = (r: AccessRequest): Check => {
+      if (r.status !== "pending") return no("این درخواست قبلاً بررسی شده است.");
+      if (r.userId === me) return no("درخواست خودتان را نمی‌توانید بررسی کنید.");
+      if (!canAdmin(r.scopeId, "roles.assign")) return no("در این واحد اختیار تخصیص نقش ندارید.");
+      return ok;
+    };
+    const approveRequest: TenancyValue["approveRequest"] = (id, note) => {
+      const r = iam.requests.find((x) => x.id === id);
+      if (!r) return no("درخواست پیدا نشد.");
+      const c = checkDecideRequest(r);
+      if (!c.ok) return c;
+      const validUntil = r.durationDays ? addDays(today, r.durationDays) : undefined;
+      const a = assignRole({ userId: r.userId, roleId: r.roleId, scopeId: r.scopeId, validFrom: today, validUntil, note: `درخواست دسترسی ${r.id}${note?.trim() ? ` — ${note.trim()}` : ""}` });
+      if (!a.ok) return a;
+      const role = roleById(r.roleId);
+      commit((s) => ({ ...s, requests: s.requests.map((x) => (x.id === id ? { ...x, status: "approved", decidedBy: me, decidedAt: `${today} ${nowClock()}`, decisionNote: note?.trim() || undefined, bindingId: a.id, validUntil } : x)) }), {
+        event: "access.approved",
+        scopeId: r.scopeId,
+        targetType: "review",
+        kind: "request",
+        targetId: id,
+        affectedUserId: r.userId,
+        summary: `درخواست «${uname(r.userId)}» برای نقش «${role?.name}» در «${node(r.scopeId)?.name}» تأیید شد${validUntil ? ` (زمان‌دار تا ${validUntil})` : ""}.`,
+        after: { bindingId: a.id, validUntil, note: note?.trim() },
+      });
+      return { ok: true, validUntil, warning: a.warning };
+    };
+    const rejectRequest: TenancyValue["rejectRequest"] = (id, reason) => {
+      const r = iam.requests.find((x) => x.id === id);
+      if (!r) return no("درخواست پیدا نشد.");
+      const c = checkDecideRequest(r);
+      if (!c.ok) return c;
+      if (reason.trim().length < 3) return no("دلیل رد درخواست الزامی است.");
+      commit((s) => ({ ...s, requests: s.requests.map((x) => (x.id === id ? { ...x, status: "rejected", decidedBy: me, decidedAt: `${today} ${nowClock()}`, decisionNote: reason.trim() } : x)) }), {
+        event: "access.rejected",
+        scopeId: r.scopeId,
+        targetType: "review",
+        kind: "request",
+        targetId: id,
+        affectedUserId: r.userId,
+        summary: `درخواست «${uname(r.userId)}» برای نقش «${roleById(r.roleId)?.name}» رد شد. دلیل: ${reason.trim()}`,
+        after: { reason: reason.trim() },
+      });
+      return ok;
+    };
+    const cancelRequest: TenancyValue["cancelRequest"] = (id) => {
+      const r = iam.requests.find((x) => x.id === id);
+      if (!r || r.userId !== me || r.status !== "pending") return no("این درخواست قابل انصراف نیست.");
+      commit((s) => ({ ...s, requests: s.requests.map((x) => (x.id === id ? { ...x, status: "cancelled", decidedAt: `${today} ${nowClock()}` } : x)) }), {
+        event: "access.cancelled",
+        scopeId: r.scopeId,
+        targetType: "review",
+        kind: "request",
+        targetId: id,
+        affectedUserId: me,
+        summary: `«${uname(me)}» از درخواست نقش «${roleById(r.roleId)?.name}» انصراف داد.`,
+      });
+      return ok;
+    };
+
+    // ------------------------------------------------ تفکیک وظایف
+    const canEditSod = canAdmin(ROOT_ID, "iam.review.manage");
+    const saveSod: TenancyValue["saveSod"] = (cfg, summary) => {
+      if (!canEditSod) return no("قواعد تفکیک وظایف سراسری‌اند و فقط مدیر سامانه تغییرشان می‌دهد.");
+      const bad = cfg.rules.find((r) => !r.a || !r.b || r.a === r.b);
+      if (bad) return no("هر قاعده باید دو مجوز متفاوت داشته باشد.");
+      const before = iam.sod;
+      commit((s) => ({ ...s, sod: cfg }), {
+        event: "sod.updated",
+        scopeId: ROOT_ID,
+        targetType: "review",
+        kind: "sod",
+        targetId: "sod",
+        summary,
+        before: { rules: before.rules.length, active: before.rules.filter((r) => r.active).length },
+        after: { rules: cfg.rules.length, active: cfg.rules.filter((r) => r.active).length },
+      });
+      return ok;
+    };
+
+    // ------------------------------------------------ مشاهده به‌عنوان (رسمی، ممیزی‌شده)
+    const myRealPerms = realMe === me ? effective : effectiveIn(iam, realMe, contextId, today);
+    const checkImpersonate = (userId: string): Check => {
+      if (readOnly) return no("الان در حالت مشاهده به‌عنوان هستید؛ اول آن را پایان دهید.");
+      if (!myRealPerms.has("iam.impersonate")) return no("مجوز «مشاهده‌ی سامانه از دید کاربر دیگر» را ندارید.");
+      if (userId === realMe) return no("نمی‌توانید خودتان را انتخاب کنید.");
+      const targetAdmin = adminAnchor(iam, userId, today);
+      if (targetAdmin.length && !targetAdmin.every((a) => strictlyBelowMyAnchor(a))) return no("مشاهده به‌عنوان مدیرِ هم‌سطح یا بالاتر مجاز نیست.");
+      return ok;
+    };
+    const startImpersonation: TenancyValue["startImpersonation"] = (userId, reason, minutes) => {
+      const c = checkImpersonate(userId);
+      if (!c.ok) return c;
+      if (reason.trim().length < 5) return no("دلیل مشاهده (مثلاً شماره‌ی تیکت) الزامی است.");
+      const m = Math.max(5, Math.min(240, Math.round(minutes)));
+      const startedAt = `${today} ${nowClock()}`;
+      commit((s) => s, {
+        event: "impersonation.started",
+        scopeId: contextId,
+        targetType: "review",
+        kind: "impersonation",
+        targetId: userId,
+        affectedUserId: userId,
+        summary: `«${uname(realMe)}» مشاهده‌ی سامانه به‌عنوان «${uname(userId)}» را برای ${m.toLocaleString("fa-IR")} دقیقه شروع کرد. دلیل: ${reason.trim()}`,
+        after: { reason: reason.trim(), minutes: m },
+      });
+      setImpersonation({ userId, by: realMe, reason: reason.trim(), startedAt, minutes: m, endsAt: Date.now() + m * 60000 });
+      return ok;
+    };
+    const endImpersonation = () => {
+      if (!impActive) return;
+      commit((s) => s, {
+        event: "impersonation.ended",
+        scopeId: ROOT_ID,
+        targetType: "review",
+        kind: "impersonation",
+        targetId: impActive.userId,
+        affectedUserId: impActive.userId,
+        summary: `«${uname(impActive.by)}» مشاهده به‌عنوان «${uname(impActive.userId)}» را پایان داد (شروع ${impActive.startedAt}).`,
+      });
+      setImpersonation(null);
+    };
+    const otpRequired = (userId: string) => otpRequiredFor(loginPolicyStore.get(), iam, userId, today);
+
+    /** در حالت فقط‌خواندنی هر بررسی/اکشنِ نوشتنی رد می‌شود */
+    const RO: Check = { ok: false, reason: RO_REASON };
+    const guard = <A extends unknown[], R extends Check>(f: (...a: A) => R) => (...a: A): R => (readOnly ? (RO as R) : f(...a));
 
     // ------------------------------------------------ سازگاری با API قبلی
     const holdings: Holding[] = scopes.filter((x) => x.type === "holding").map((h) => ({ id: h.id, name: h.name, color: h.color ?? "#1f4f99", lead: h.lead, active: h.active }));
@@ -581,7 +835,13 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       removeCompany: (id) => void setScopeActive(id, false),
 
       actingUser,
-      setActingUser: (userId) => {
+      setActingUser: (userId, opts) => {
+        if (impActive) endImpersonation();
+        if (!opts?.otpVerified && userId !== realMe && otpRequired(userId)) {
+          setPendingOtp(userId);
+          return;
+        }
+        setPendingOtp(null);
         setActingUserId(userId);
         try {
           localStorage.setItem(ACTING_USER_KEY, userId);
@@ -665,31 +925,61 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       assignableRoles: (scopeId) => assignableRoles(iam, scopeId),
       isAdminRole,
       canAdmin,
-      checkCreateScope,
-      checkEditScope,
-      checkRole,
-      checkDeleteRole,
-      checkAssign,
-      checkRevoke,
-      checkMembership,
+      checkCreateScope: guard(checkCreateScope),
+      checkEditScope: guard(checkEditScope),
+      checkRole: guard(checkRole),
+      checkDeleteRole: guard(checkDeleteRole),
+      checkAssign: guard(checkAssign),
+      checkRevoke: guard(checkRevoke),
+      checkMembership: guard(checkMembership),
       grantablePermissions,
-      createScope,
-      updateScope,
-      setScopeActive,
-      saveRole,
-      deleteRole,
-      assignRole,
-      revokeBinding,
-      addMembership,
-      setMembershipStatus,
-      removeMembership,
-      completeReview,
-      resetIam: () => setIam(seedIam()),
+      createScope: guard(createScope),
+      updateScope: guard(updateScope),
+      setScopeActive: guard(setScopeActive),
+      saveRole: guard(saveRole),
+      deleteRole: guard(deleteRole),
+      assignRole: guard(assignRole),
+      revokeBinding: guard(revokeBinding),
+      addMembership: guard(addMembership),
+      setMembershipStatus: guard(setMembershipStatus),
+      removeMembership: guard(removeMembership),
+      completeReview: (scopeId, revokedIds) => {
+        if (!readOnly) completeReview(scopeId, revokedIds);
+      },
+      resetIam: () => {
+        if (!readOnly) setIam(seedIam());
+      },
+
+      readOnly,
+      realActingUser,
+      impersonation: impActive,
+      checkImpersonate,
+      startImpersonation,
+      endImpersonation,
+      otpRequired,
+      checkRequestAccess: guard(checkRequestAccess),
+      requestAccess: guard(requestAccess),
+      checkDecideRequest: guard(checkDecideRequest),
+      approveRequest: guard(approveRequest),
+      rejectRequest: guard(rejectRequest),
+      cancelRequest: guard(cancelRequest),
+      canEditSod: canEditSod && !readOnly,
+      saveSod: guard(saveSod),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity, iam, me, contextId, reachable, primaryScope]);
+  }, [identity, iam, me, realMe, impActive, contextId, reachable, primaryScope]);
 
-  return <TenancyContext.Provider value={value}>{children}</TenancyContext.Provider>;
+  const otpUser = pendingOtp ? allUsers.find((u) => u.id === pendingOtp) : undefined;
+  return (
+    <TenancyContext.Provider value={value}>
+      {children}
+      {otpUser && (
+        <Modal open onClose={() => setPendingOtp(null)} title="تأیید دومرحله‌ای" description="سیاست ورود سازمان برای این نقش رمز یک‌بارمصرف می‌خواهد." width="max-w-sm">
+          <OtpForm userName={otpUser.name} channel={loginPolicyStore.get().otpChannel} onCancel={() => setPendingOtp(null)} onVerified={() => value.setActingUser(otpUser.id, { otpVerified: true })} />
+        </Modal>
+      )}
+    </TenancyContext.Provider>
+  );
 }
 
 export function useTenancy() {

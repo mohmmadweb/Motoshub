@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // ساخت سریع از تقویم: یادآور/بلوک شخصی (انبار محلی) یا رویداد اجتماعی با دعوت همکاران.
 // ---------------------------------------------------------------------------
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Video, Lock, CircleSlash, FileText } from "lucide-react";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
@@ -10,7 +10,11 @@ import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import { useToast } from "../../components/ui/ToastProvider";
 import { parseJalali, fa } from "../../pm/jalali";
 import { Field, UserPicker } from "../social/kit";
-import { fmtMin, personalColors, repeatLabel, timeOptions, toMin, type PersonalItem, type Repeat } from "./model";
+import { fmtMin, personalColors, personalRule, timeOptions, toMin, type PersonalItem } from "./model";
+import type { RecurRule, Reminder } from "../../pm/recurrence";
+import { RecurrenceEditor, RemindersEditor } from "./RecurrenceFields";
+import AvailabilityPanel from "./AvailabilityPanel";
+import { attendeeFromId } from "./availability";
 
 export type QuickInit = {
   date: string;
@@ -19,6 +23,8 @@ export type QuickInit = {
   mode: "personal" | "event";
   invite?: string[];
   edit?: PersonalItem;
+  /** تاریخ وقوعی از سری که کاربر باز کرده (برای ویرایش «فقط این / این و بعدی‌ها / همه») */
+  occDate?: string;
 };
 
 export type QuickEventInput = { title: string; date: string; start: string; end: string; is_online: boolean; place: string; description: string; invite: string[] };
@@ -68,10 +74,11 @@ function Body({
   const e = init.edit;
   const [mode, setMode] = useState<"personal" | "event">(canEvent ? init.mode : "personal");
   const [title, setTitle] = useState(e?.title ?? "");
-  const [date, setDate] = useState(e?.date ?? init.date);
+  const [date, setDate] = useState(init.occDate ?? e?.date ?? init.date);
   const [start, setStart] = useState(e ? (toMin(e.start) ?? init.start) : init.start);
   const [end, setEnd] = useState(e ? (toMin(e.end) ?? init.end) : init.end);
-  const [repeat, setRepeat] = useState<Repeat>(e?.repeat ?? "none");
+  const [rule, setRule] = useState<RecurRule | undefined>(e ? personalRule(e) : undefined);
+  const [reminders, setReminders] = useState<Reminder[]>(e?.reminders ?? []);
   const [color, setColor] = useState(e?.color ?? personalColors[0]);
   const [priv, setPriv] = useState(e?.private ?? false);
   const [busy, setBusy] = useState(e?.busy ?? true);
@@ -81,13 +88,15 @@ function Body({
   const [invite, setInvite] = useState<string[]>(init.invite ?? []);
   const [showInvite, setShowInvite] = useState((init.invite ?? []).length > 0);
 
+  const attendees = useMemo(() => [attendeeFromId(meId), ...(mode === "event" ? invite.map(attendeeFromId) : [])], [meId, mode, invite]);
+
   const save = () => {
     if (!title.trim()) return notify("عنوان را وارد کنید.", "warning");
     if (!parseJalali(date)) return notify("تاریخ را انتخاب کنید.", "warning");
     if (end <= start) return notify("ساعت پایان باید بعد از ساعت شروع باشد.", "warning");
     if (mode === "personal") {
-      onSavePersonal({ id: e?.id, ownerId: e?.ownerId ?? meId, title: title.trim(), date, start: fmtMin(start), end: fmtMin(end), repeat, color, private: priv, busy, note: note.trim() || undefined });
-      notify(e ? "یادآور به‌روزرسانی شد." : "به تقویم شما اضافه شد.", "success");
+      onSavePersonal({ id: e?.id, ownerId: e?.ownerId ?? meId, title: title.trim(), date, start: fmtMin(start), end: fmtMin(end), repeat: "none", rrule: rule, reminders: reminders.length ? reminders : undefined, color, private: priv, busy, note: note.trim() || undefined });
+      if (!(e && personalRule(e))) notify(e ? "یادآور به‌روزرسانی شد." : "به تقویم شما اضافه شد.", "success");
     } else {
       if (online && !place.trim()) return notify("برای رویداد آنلاین لینک جلسه لازم است.", "warning");
       onSaveEvent({ title: title.trim(), date, start: fmtMin(start), end: fmtMin(end), is_online: online, place: place.trim(), description: note.trim(), invite });
@@ -137,17 +146,31 @@ function Body({
         <Field label="تا ساعت">{timeSelect(end, setEnd, "ساعت پایان")}</Field>
       </div>
 
+      {(mode === "event" || busy) && (
+        <AvailabilityPanel
+          attendees={attendees}
+          date={date}
+          start={start}
+          duration={end - start}
+          exclude={e ? [`pr:${e.id}`] : []}
+          onPick={(d, s0, e0) => {
+            setDate(d);
+            setStart(s0);
+            setEnd(e0);
+          }}
+        />
+      )}
+
       {mode === "personal" ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="تکرار">
-              <select className="input-field" value={repeat} onChange={(ev) => setRepeat(ev.target.value as Repeat)}>
-                {(Object.keys(repeatLabel) as Repeat[]).map((r) => (
-                  <option key={r} value={r}>
-                    {repeatLabel[r]}
-                  </option>
-                ))}
-              </select>
+            <div className="sm:col-span-2">
+              <Field label="تکرار">
+                <RecurrenceEditor value={rule} onChange={setRule} startDate={date} />
+              </Field>
+            </div>
+            <Field label="یادآوری">
+              <RemindersEditor value={reminders} onChange={setReminders} />
             </Field>
             <Field label="رنگ">
               <div className="flex flex-wrap gap-1.5 pt-1">

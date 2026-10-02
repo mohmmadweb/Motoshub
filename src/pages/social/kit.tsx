@@ -17,6 +17,7 @@ import { dayNum } from "../../pm/jalali";
 import { API_BASE, fmtEndpoint, type Ep } from "../../social/endpoints";
 import type { Attachment, EntityName, Privacy, Publishable } from "../../social/types";
 import { privacyLabel } from "../../social/types";
+import { HiddenBadge, ReportButton } from "./moderation";
 
 export const fa = (n: number) => n.toLocaleString("fa-IR");
 /** «۱۴۰۵/۰۳/۰۸ ۰۹:۳۰:۰۰» → «۱۴۰۵/۰۳/۰۸ ۰۹:۳۰» */
@@ -334,7 +335,7 @@ export function AttachmentList({ items, onRemove }: { items: Attachment[]; onRem
 // ---------------------------------------------------------------- publish options
 export type PublishState = { privacy: Privacy; category_ids: string[]; tags: string[]; is_draft: boolean; published_date: string; published_time: string; send_notification: boolean; add_comment?: boolean; show_comment?: boolean };
 /** گزینه‌های انتشار مشترک همه‌ی *StoreRequest ها */
-export function PublishOptions({ entity, value, onChange, comments = true, notifyOption = true }: { entity: EntityName; value: PublishState; onChange: (v: PublishState) => void; comments?: boolean; notifyOption?: boolean }) {
+export function PublishOptions({ entity, value, onChange, comments = true, notifyOption = true, draftOption = true }: { entity: EntityName; value: PublishState; onChange: (v: PublishState) => void; comments?: boolean; notifyOption?: boolean; /** false = انتشار مستقیم ممکن نیست (بازبینی پیش از انتشار) */ draftOption?: boolean }) {
   const set = (p: Partial<PublishState>) => onChange({ ...value, ...p });
   return (
     <div className="space-y-3">
@@ -357,11 +358,13 @@ export function PublishOptions({ entity, value, onChange, comments = true, notif
             <input type="checkbox" checked={value.send_notification} onChange={(e) => set({ send_notification: e.target.checked })} className="accent-[var(--color-brand-600)]" /> ارسال اعلان به همه (send_notification)
           </label>
         )}
-        <label className="flex items-center gap-2 text-xs text-ink-700">
-          <input type="checkbox" checked={value.is_draft} onChange={(e) => set({ is_draft: e.target.checked })} className="accent-[var(--color-brand-600)]" /> ذخیره به‌صورت پیش‌نویس (is_draft)
-        </label>
+        {draftOption && (
+          <label className="flex items-center gap-2 text-xs text-ink-700">
+            <input type="checkbox" checked={value.is_draft} onChange={(e) => set({ is_draft: e.target.checked })} className="accent-[var(--color-brand-600)]" /> ذخیره به‌صورت پیش‌نویس (is_draft)
+          </label>
+        )}
       </div>
-      {!value.is_draft && (
+      {draftOption && !value.is_draft && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="تاریخ انتشار (اختیاری)" hint="خالی = همین حالا">
             <input className="input-field" value={value.published_date} onChange={(e) => set({ published_date: e.target.value })} placeholder="۱۴۰۵/۰۳/۱۰" />
@@ -433,6 +436,8 @@ export function CommentsPanel({ entity, id, ownerId, allowAdd = true, show = tru
           <UserLine id={c.user_id} size={22} sub={stamp(c.created_at)} />
           <span className="flex items-center gap-1">
             {!c.approved && <Badge tone="warning">در انتظار تأیید</Badge>}
+            <HiddenBadge m={c.moderation} />
+            {c.user_id !== s.me && <ReportButton iconOnly target={{ target_type: "comment", target_id: c.id, parent_ref: `${entity}:${id}`, target_owner_id: c.user_id, target_excerpt: c.content.slice(0, 90) }} />}
             {!c.approved && moderator && (
               <button onClick={() => s.approveComment(c.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="تأیید (POST …/approve/)" aria-label="تأیید نظر">
                 <Check size={13} />

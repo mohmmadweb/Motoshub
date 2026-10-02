@@ -65,6 +65,8 @@ export type DataSource = {
   rows?: () => Row[];
   /** منبعی که استورش هنوز ساخته نشده — «به‌زودی» */
   placeholder?: boolean;
+  /** پیوند هر ردیف به رکورد اصلی (برای drill-down)؛ اگر نباشد از پیوندهای پیش‌فرض منبع استفاده می‌شود */
+  link?: (row: Row) => string | undefined;
 };
 
 export type MeasureSpec = { id: string; field: string; agg: Agg; label?: string };
@@ -165,3 +167,30 @@ export const bucketLabel: Record<DateBucket, string> = { day: "روزانه", we
 export const COUNT_FIELD = "__count";
 
 export const PALETTE = ["#1f4f99", "#059669", "#dc2626", "#d97706", "#7c3aed", "#0d9488", "#db2777", "#0f172a"];
+
+// ----------------------------------------------------------------- زمان‌بندی ارسال
+
+export type ScheduleFreq = "daily" | "weekly" | "monthly" | "payroll";
+export const freqLabel: Record<ScheduleFreq, string> = { daily: "روزانه", weekly: "هفتگی (شنبه‌ها)", monthly: "ماهانه (اول ماه)", payroll: "پایان دوره‌ی کارکرد (۲۵ هر ماه)" };
+export type ScheduleChannel = "inapp" | "email";
+export const channelLabel: Record<ScheduleChannel, string> = { inapp: "اعلان درون‌برنامه", email: "ایمیل (شبیه‌سازی)" };
+
+export type ReportSchedule = {
+  id: string;
+  reportId: string;
+  freq: ScheduleFreq;
+  /** شناسه‌ی کاربران گیرنده */
+  recipients: string[];
+  channels: ScheduleChannel[];
+  active: boolean;
+  createdBy: string;
+  createdAt: string;
+  /** کلید آخرین دوره‌ای که ارسال شد (جلوگیری از ارسال تکراری) */
+  lastPeriod?: string;
+  lastSentAt?: string;
+};
+
+export type ScheduleDelivery = { id: string; scheduleId: string; reportId: string; reportName: string; period: string; periodLabel: string; at: string; recipients: string[]; channels: ScheduleChannel[] };
+
+/** فیلتر سراسری داشبورد که روی گزارش‌های سنجاق‌شده اعمال می‌شود */
+export type GlobalFilter = { range: DateRange; project?: string; person?: string };

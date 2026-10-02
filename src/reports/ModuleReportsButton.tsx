@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { BarChart3, X } from "lucide-react";
 import Button from "../components/ui/Button";
 import { ReportBuilder } from "./ReportBuilder";
+import { REPORT_NAVIGATE_EVENT } from "./DrillDrawer";
 import { moduleLabel, type ReportModule } from "./types";
 
 export function ReportBuilderModal({
@@ -28,10 +29,13 @@ export function ReportBuilderModal({
       if (e.key === "Escape" && !document.querySelector('[role="alertdialog"]')) onClose();
     };
     window.addEventListener("keydown", onKey);
+    // رفتن به رکورد از کشوی drill-down ← بستن گزارش‌ساز
+    window.addEventListener(REPORT_NAVIGATE_EVENT, onClose);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener(REPORT_NAVIGATE_EVENT, onClose);
       document.body.style.overflow = prev;
     };
   }, [open, onClose]);

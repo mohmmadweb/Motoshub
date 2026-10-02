@@ -1,22 +1,24 @@
 // «بازبینی دسترسی‌ها» — مرور دوره‌ای تخصیص‌های زنده (مانند Access Reviews در Entra).
 import { useMemo, useState } from "react";
-import { AlarmClock, Ban, ClipboardCheck, History, Lightbulb, ShieldAlert, Sparkles, UserX } from "lucide-react";
+import { AlarmClock, Ban, ClipboardCheck, History, Lightbulb, Scale, ShieldAlert, Sparkles, UserX } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useConfirm } from "../../../components/ui/ConfirmProvider";
 import { useToast } from "../../../components/ui/ToastProvider";
 import { useTenancy, type Check } from "../../../context/TenancyContext";
-import { ancestorsOrSelf, descendantsOrSelf, type Binding } from "../../../iam/model";
+import { ancestorsOrSelf, descendantsOrSelf, sodViolations, type Binding } from "../../../iam/model";
+import { SodViolationList } from "../SodSection";
 import { Callout, GuardButton, ScopeName, ScopeSelect, SectionHead, UserCell, ValidityText, bindingStatus, daysAgoLabel, daysLeft, fmtN, lastActivityDays, userName, useSubtree } from "./shared";
 
 type Decision = "keep" | "revoke";
-type Flag = "admin" | "expiring" | "suspended" | "unused";
+type Flag = "admin" | "expiring" | "suspended" | "unused" | "sod";
 const flagMeta: Record<Flag, { label: string; tone: "warning" | "danger" | "neutral" | "navy"; icon: typeof Ban }> = {
   admin: { label: "نقش مدیریتی", tone: "navy", icon: ShieldAlert },
   expiring: { label: "انقضا تا ۳۰ روز", tone: "warning", icon: AlarmClock },
   suspended: { label: "عضویت معلق", tone: "danger", icon: UserX },
   unused: { label: "بدون استفاده", tone: "neutral", icon: Ban },
+  sod: { label: "تعارض وظایف", tone: "danger", icon: Scale },
 };
 const UNUSED_DAYS = 75;
 
@@ -30,6 +32,8 @@ export function AccessReviewSection() {
   const [scopeId, setScopeId] = useState(reviewable.find((n) => n.id === sub.root.id)?.id ?? reviewable[0]?.id ?? "");
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
 
+  // تعارض‌های تفکیک وظایف در واحد مورد بازبینی
+  const violations = useMemo(() => (scopeId ? sodViolations(iam, today, new Set(descendantsOrSelf(iam, scopeId).map((n) => n.id))) : []), [iam, today, scopeId]);
   const items = useMemo(() => {
     if (!scopeId) return [];
     const set = new Set(descendantsOrSelf(iam, scopeId).map((n) => n.id));
@@ -45,9 +49,10 @@ export function AccessReviewSection() {
         if (dl !== null && dl <= 30) flags.push("expiring");
         if (iam.memberships.some((m) => m.userId === b.userId && m.status === "suspended" && chain.has(m.scopeId))) flags.push("suspended");
         if (last > UNUSED_DAYS) flags.push("unused");
+        if (violations.some((v) => v.userId === b.userId && v.roleIds.includes(b.roleId))) flags.push("sod");
         return { b, role, last, flags, check: t.checkRevoke(b) };
       });
-  }, [iam, scopeId, today, t]);
+  }, [iam, scopeId, today, t, violations]);
 
   const byUser = useMemo(() => {
     const m = new Map<string, typeof items>();
@@ -195,6 +200,13 @@ export function AccessReviewSection() {
         <GuardButton variant="primary" icon={<ClipboardCheck size={14} />} check={canSubmit} onClick={submit}>
           ثبت نتیجه‌ی بازبینی
         </GuardButton>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-[12.5px] font-bold text-ink-700 mb-2 flex items-center gap-1.5">
+          <Scale size={14} /> تعارض‌های تفکیک وظایف ({fmtN(violations.length)})
+        </p>
+        <SodViolationList items={violations} />
       </div>
 
       <div className="mt-6">

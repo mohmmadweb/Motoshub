@@ -11,6 +11,7 @@ export type KSection =
   | "workflow"
   | "review"
   | "archive"
+  | "retention"
   | "registry"
   | "processes"
   | "rnd"

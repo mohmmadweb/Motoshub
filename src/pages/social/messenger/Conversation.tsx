@@ -28,6 +28,8 @@ import {
   Pin,
   PinOff,
   Search,
+  Flag,
+  EyeOff,
 } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 import Button from "../../../components/ui/Button";
@@ -41,6 +43,7 @@ import { AttachmentList, Field, TagList, fa, toAttachments } from "../kit";
 import type { Attachment, Chat, Message } from "../../../social/types";
 import { ChatAvatar, RichText, chatTitle, modeConf, otherUserId, stickers, tagsIn, timeOf, type MessengerMode } from "./shared";
 import { ChatSearchBar, PinnedBar, ReactionChips, ReactionPicker, ThreadDrawer } from "./extras";
+import { ReportModal } from "../moderation";
 
 export default function Conversation({ mode, root, initialSub, onBack, onInfo }: { mode: MessengerMode; root: Chat; initialSub: string | null; onBack: () => void; onInfo: () => void }) {
   const s = useSocial();
@@ -58,6 +61,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
   const [menu, setMenu] = useState<string | null>(null);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [forwarding, setForwarding] = useState<Message | null>(null);
+  const [reporting, setReporting] = useState<Message | null>(null);
   const [subModal, setSubModal] = useState(false);
   const [subForm, setSubForm] = useState({ title: "", description: "", is_private: root.is_private });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -349,6 +353,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                     notify("در «پیام‌های ذخیره‌شده» ذخیره شد.", "success");
                   },
                 },
+                !own && root.chat_type !== "saved_messages" && { k: "report", label: s.myReportOn("message", m.id)?.status === "open" ? "گزارش شد" : "گزارش تخلف", icon: Flag, run: () => setReporting(m) },
                 canDelete && { k: "del", label: "حذف", icon: Trash2, run: () => del(m), danger: true },
               ].filter(Boolean) as { k: string; label: string; icon: typeof Pencil; run: () => void; danger?: boolean }[];
               return (
@@ -418,6 +423,11 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                           </div>
                         )}
                         <p className="text-[10px] text-ink-400 mt-0.5 flex items-center gap-1 justify-end">
+                          {m.moderation?.hidden && (
+                            <span className="text-rose-600 flex items-center gap-0.5" title={`پنهان‌شده توسط ناظر: ${m.moderation.reason}`}>
+                              <EyeOff size={10} /> پنهان برای دیگران ·
+                            </span>
+                          )}
                           {pins.includes(m.id) && <Pin size={10} className="rotate-45 text-brand-600" aria-label="سنجاق‌شده" />}
                           {m.edited && <span>ویرایش‌شده ·</span>}
                           {timeOf(m.created_at)}
@@ -574,6 +584,10 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
       )}
 
       <ThreadDrawer chat={active} rootId={threadRoot} canPost={canPost} onClose={() => setThreadRoot(null)} />
+      <ReportModal
+        target={reporting ? { target_type: "message", target_id: reporting.id, parent_ref: reporting.chat_id, target_owner_id: reporting.user_id, target_excerpt: reporting.type === "sticker" ? `برچسب ${reporting.content}` : reporting.content.slice(0, 90) || "پیوست" } : null}
+        onClose={() => setReporting(null)}
+      />
 
       {/* ---------------- forward */}
       <Modal open={!!forwarding} onClose={() => setForwarding(null)} title="فوروارد پیام" description="گفتگوی مقصد را انتخاب کنید (POST messages/{id}/forward/)">

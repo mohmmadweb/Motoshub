@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Clock3,
   CheckCircle2,
@@ -12,6 +12,8 @@ import {
 import { useTenancy } from "../context/TenancyContext";
 import PageHeader from "../components/ui/PageHeader";
 import PersonalHub from "./dashboard/PersonalHub";
+import { ReportBuilderModal } from "../reports/ModuleReportsButton";
+import { reportStore } from "../reports/store";
 
 // «شروع سریع سازمان» — چک‌لیست راه‌اندازی برای راهبر؛ قابل بستن (localStorage)
 const quickStartSteps = [
@@ -115,6 +117,20 @@ function LiveDateTime() {
   );
 }
 
+/** ?report=<id> (از اعلان گزارش زمان‌بندی‌شده) ← گزارش در گزارش‌ساز باز می‌شود */
+function ReportFromLink() {
+  const [params, setParams] = useSearchParams();
+  const id = params.get("report");
+  const spec = id ? reportStore.all().find((r) => r.id === id) : undefined;
+  if (!spec) return null;
+  const close = () => {
+    const n = new URLSearchParams(params);
+    n.delete("report");
+    setParams(n, { replace: true });
+  };
+  return <ReportBuilderModal open onClose={close} module={spec.module} initialReportId={spec.id} />;
+}
+
 export default function Dashboard() {
   const { actingUser, role, hasPermission } = useTenancy();
   return (
@@ -122,6 +138,7 @@ export default function Dashboard() {
       <PageHeader title={`خوش آمدید، ${actingUser.name}`} description={`میز کار شخصی شما به‌عنوان «${role.title}»: کارها، جلسات، اعلان‌های مهم، پیام‌ها و پیشنهادهای همکاری`} />
       {hasPermission("settings.system") && <QuickStart />}
       <PersonalHub header={<LiveDateTime />} />
+      <ReportFromLink />
     </div>
   );
 }

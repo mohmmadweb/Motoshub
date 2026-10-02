@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Send, Save, X, FileUp, PenSquare, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Save, X, FileUp, PenSquare, ShieldCheck, ChevronDown, ChevronUp, LayoutTemplate, BadgeCheck, Plus } from "lucide-react";
+import Toggle from "../../components/ui/Toggle";
+import { useConfirm } from "../../components/ui/ConfirmProvider";
+import { isCircularType, templateForType } from "../../km/templates";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -9,7 +12,7 @@ import { useKnowledge } from "../../context/KnowledgeContext";
 import { users } from "../../data/mock";
 import type { Scoped } from "../../data/tenancy";
 import { addDays } from "../../pm/jalali";
-import { accessLevels, type AccessLevel, type KAcl, type KDoc, type KFile } from "../../km/types";
+import { accessLevels, type AccessLevel, type KAcl, type KAudienceEntry, type KDoc, type KFile } from "../../km/types";
 import { Field, FilePicker } from "./shared";
 import { MarkdownEditor } from "./Markdown";
 import { AclEditor, AccessSummary } from "./AccessEditor";
@@ -31,6 +34,8 @@ type Draft = {
   body: string;
   acl?: KAcl;
 };
+/** ابلاغ: مخاطبان، مهلت و نیاز به «خواندم و پذیرفتم» */
+type CircularDraft = { on: boolean; audience: KAudienceEntry[]; deadline: string };
 
 /** ثبت سند جدید (چند فایل) یا ویرایش اطلاعات سند موجود */
 export default function DocFormModal({ open, doc, onClose, defaultCategory }: { open: boolean; doc?: KDoc | null; onClose: () => void; defaultCategory?: string }) {
@@ -41,6 +46,8 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
   const [scope, setScope] = useState<Scoped>({ scope: "سراسری" });
   const [tagInput, setTagInput] = useState("");
   const [aclOpen, setAclOpen] = useState(false);
+  const [circ, setCirc] = useState<CircularDraft>({ on: false, audience: [], deadline: "" });
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +55,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
       setD({ title: doc.title, description: doc.description, type: doc.type, categoryId: doc.categoryId, tags: doc.tags, unit: doc.unit, owner: doc.owner, access: doc.access, importance: doc.importance, approvers: doc.approvers, reviewDate: doc.reviewDate, files: doc.files, format: doc.format ?? "file", body: doc.body ?? "", acl: doc.acl });
       setAclOpen(!!doc.acl);
       setScope({ scope: doc.scope, holdingId: doc.holdingId, companyId: doc.companyId });
+      setCirc({ on: !!doc.circular, audience: doc.circular?.audience ?? [], deadline: doc.circular?.deadline ?? "" });
     } else {
       setD({
         title: "",
@@ -68,6 +76,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
       });
       setAclOpen(false);
       setScope(defaultScopeForNew());
+      setCirc({ on: false, audience: [], deadline: "" });
     }
     setTagInput("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,20 +97,29 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
     if (d.format === "article" && !d.body.trim()) return notify("متن مقاله را بنویسید.", "warning");
     if (!d.description.trim()) return notify("توضیح سند الزامی است.", "warning");
     const { body, format, ...meta } = d;
+    // ابلاغ (فقط بخشنامه/دستورالعمل/آیین‌نامه) — تأییدهای قبلی حفظ می‌شود
+    const circular = isCircularType(d.type) && circ.on ? { audience: circ.audience, deadline: circ.deadline || null, acks: doc?.circular?.acks ?? {}, lastReminderAt: doc?.circular?.lastReminderAt ?? null } : null;
     if (doc) {
-      km.updateDoc(doc.id, { ...meta, format, title: d.title.trim(), ...scope });
+      km.updateDoc(doc.id, { ...meta, format, title: d.title.trim(), ...scope, circular });
       // تغییر متن مقاله = نسخه‌ی جدید (برای تاریخچه و مقایسه‌ی متنی)
       if (format === "article" && body !== (doc.body ?? "")) km.newVersion(doc.id, [], "ویرایش متن مقاله", body);
       notify(format === "article" && body !== (doc.body ?? "") ? "تغییرات ذخیره و نسخه‌ی جدید متن ثبت شد." : "اطلاعات سند ذخیره شد.");
     } else {
       const skipReview = !km.settings.workflowSteps.review;
-      km.createDoc({ ...meta, format, body: format === "article" ? body : undefined, title: d.title.trim(), relations: [], ...scope, authorId: actingUser.id, submit: sendForReview && !skipReview });
+      km.createDoc({ ...meta, format, body: format === "article" ? body : undefined, title: d.title.trim(), relations: [], ...scope, authorId: actingUser.id, circular, submit: sendForReview && !skipReview });
       notify(sendForReview ? (skipReview ? "سند ثبت شد." : `سند ثبت و برای بررسی به ${d.approvers.length.toLocaleString("fa-IR")} نفر ارسال شد.`) : "پیش‌نویس سند ذخیره شد.");
     }
     onClose();
   };
 
   const leaves = km.categories.filter((c) => c.parentId || !km.categories.some((x) => x.parentId === c.id));
+  // قالب مقاله‌ی نوع سند (هدف، دامنه، تعاریف، مسئولیت‌ها، روش اجرا…)
+  const tpl = templateForType(d.type, km.settings.docTemplates);
+  const insertTemplate = () => {
+    if (!tpl) return;
+    if (!d.body.trim()) return setD({ ...d, body: tpl });
+    confirm({ title: `جایگزینی متن با قالب «${d.type}»؟`, message: "متن فعلی مقاله با قالب جایگزین می‌شود.", confirmLabel: "جایگزینی", onConfirm: () => setD({ ...d, body: tpl }) });
+  };
 
   return (
     <Modal open={open} onClose={onClose} title={doc ? "ویرایش اطلاعات سند" : "افزودن سند به مخزن دانش"} description={doc ? `${doc.code} · نسخه‌ی ${doc.version.toLocaleString("fa-IR")}${(doc.format ?? "file") === "file" ? " — برای تغییر فایل، «نسخه‌ی جدید» بارگذاری کنید." : ""}` : "فایل بارگذاری کنید یا مقاله را همین‌جا بنویسید؛ سند پس از طی گردش کار منتشر می‌شود."} width="max-w-3xl">
@@ -122,6 +140,15 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
         )}
         {d.format === "article" ? (
           <Field label="متن مقاله" hint={doc ? "با ذخیره‌ی تغییر متن، نسخه‌ی جدید ثبت می‌شود و تفاوت‌ها در «نسخه‌ها» قابل مقایسه است." : undefined}>
+            {tpl && (
+              <div className="flex items-center gap-2 flex-wrap rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 mb-2 text-[11.5px] text-ink-700">
+                <LayoutTemplate size={14} className="text-brand-600 shrink-0" />
+                <span className="flex-1 min-w-[160px]">قالب «{d.type}»: {tpl.split("\n").filter((l) => l.startsWith("## ")).slice(0, 5).map((l) => l.replace(/^##\s*[۰-۹\d.]*\s*/, "").replace(/^ماده [۰-۹]+ — /, "")).join("، ")}…</span>
+                <Button size="sm" variant={d.body.trim() ? "ghost" : "primary"} onClick={insertTemplate}>
+                  {d.body.trim() ? "جایگزینی با قالب" : "شروع با قالب"}
+                </Button>
+              </div>
+            )}
             <MarkdownEditor value={d.body} onChange={(body) => setD({ ...d, body })} />
           </Field>
         ) : (
@@ -249,6 +276,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
             </Field>
           </div>
         </div>
+        {isCircularType(d.type) && <CircularBox value={circ} onChange={setCirc} type={d.type} />}
         <div className="rounded-lg border border-ink-200">
           <button type="button" onClick={() => setAclOpen((v) => !v)} className="w-full flex items-center gap-2 px-3 py-2.5 text-right">
             <ShieldCheck size={15} className="text-brand-600 shrink-0" />
@@ -287,5 +315,69 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** ابلاغ بخشنامه/دستورالعمل/آیین‌نامه: مخاطبان (واحد/نقش) و مهلت «خواندم و پذیرفتم» */
+function CircularBox({ value, onChange, type }: { value: CircularDraft; onChange: (v: CircularDraft) => void; type: string }) {
+  const { iam, scopePath } = useTenancy();
+  const [kind, setKind] = useState<"scope" | "role">("scope");
+  const [target, setTarget] = useState("");
+  const options =
+    kind === "scope"
+      ? iam.scopes.filter((x) => x.type !== "system" && x.active).map((x) => ({ id: x.id, label: scopePath(x.id).split(" › ").slice(1).join(" › ") || x.name }))
+      : iam.roles.filter((r) => r.active).map((r) => ({ id: r.id, label: r.name }));
+  const label = (e: KAudienceEntry) => (e.kind === "scope" ? scopePath(e.id).split(" › ").slice(1).join(" › ") || e.id : iam.roles.find((r) => r.id === e.id)?.name ?? e.id);
+  const add = () => {
+    if (!target || value.audience.some((e) => e.kind === kind && e.id === target)) return;
+    onChange({ ...value, audience: [...value.audience, { kind, id: target }] });
+    setTarget("");
+  };
+  return (
+    <div className={`rounded-lg border p-3 space-y-3 ${value.on ? "border-amber-200 bg-amber-50/50" : "border-ink-200"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-ink-800 flex items-center gap-1.5">
+          <BadgeCheck size={14} className="text-amber-600" /> ابلاغ {type} و «خواندم و پذیرفتم»
+        </span>
+        <Toggle on={value.on} onChange={() => onChange({ ...value, on: !value.on })} label="نیاز به تأیید خواندن" />
+      </div>
+      {value.on && (
+        <>
+          <p className="text-[11px] text-ink-500 leading-5">پس از انتشار، به مخاطبان اعلان فوری می‌رود و بنر تأیید خواندن برایشان نمایش داده می‌شود. بدون مخاطب = همه‌ی کسانی که سند را می‌بینند.</p>
+          {value.audience.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {value.audience.map((e) => (
+                <span key={`${e.kind}-${e.id}`} className="inline-flex items-center gap-1 text-[11px] bg-white border border-ink-200 rounded px-1.5 py-0.5">
+                  <span className="text-ink-400">{e.kind === "scope" ? "واحد" : "نقش"}:</span> {label(e)}
+                  <button type="button" onClick={() => onChange({ ...value, audience: value.audience.filter((x) => x !== e) })} aria-label="حذف">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            <select className="input-field !w-auto" value={kind} onChange={(e) => (setKind(e.target.value as "scope" | "role"), setTarget(""))} aria-label="نوع مخاطب">
+              <option value="scope">واحد سازمانی</option>
+              <option value="role">نقش</option>
+            </select>
+            <select className="input-field flex-1 min-w-[160px]" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="مخاطب">
+              <option value="">انتخاب…</option>
+              {options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" icon={<Plus size={13} />} onClick={add} disabled={!target}>
+              افزودن
+            </Button>
+          </div>
+          <Field label="مهلت تأیید خواندن" hint="خالی = بدون مهلت">
+            <JalaliDatePicker value={value.deadline} onChange={(deadline) => onChange({ ...value, deadline })} placeholder="بدون مهلت" />
+          </Field>
+        </>
+      )}
+    </div>
   );
 }

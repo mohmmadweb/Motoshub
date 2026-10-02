@@ -1,13 +1,19 @@
 // فرم ثبت تیکت — نسخه‌ی کامل (صفحه‌ی تیکت‌ها) و فشرده (دکمه‌ی شناور «گزارش مشکل»).
-import { useMemo, useState } from "react";
-import { Bug, Lightbulb, HelpCircle, KeyRound, Gauge, MessageSquarePlus, ChevronDown, Cpu, Send } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Bug, Lightbulb, HelpCircle, KeyRound, Gauge, MessageSquarePlus, ChevronDown, Cpu, Send, BookOpen, Users, HandHelping } from "lucide-react";
+import { useSettings } from "../../context/SettingsContext";
+import { searchHelp } from "../knowledge/helpArticles";
 import Button from "../../components/ui/Button";
 import { useTenancy } from "../../context/TenancyContext";
 import { useTickets } from "../../context/TicketsContext";
 import { fa } from "../../pm/jalali";
 import {
+  affectedCount,
   captureContext,
   fmtTs,
+  similarTickets,
+  statusShort,
   moduleFromPath,
   modules,
   priorities,
@@ -40,6 +46,7 @@ export default function TicketForm({
   pageTitle,
   onCreated,
   onCancel,
+  onJoined,
 }: {
   compact?: boolean;
   /** مسیر صفحه‌ای که مشکل در آن رخ داده (پیش‌فرض: صفحه‌ی فعلی) */
@@ -47,6 +54,8 @@ export default function TicketForm({
   pageTitle?: string;
   onCreated: (t: Ticket) => void;
   onCancel: () => void;
+  /** «من هم این مشکل را دارم» روی تیکت مشابه — پیش‌فرض: همان onCreated */
+  onJoined?: (t: Ticket) => void;
 }) {
   const { contextId, scopePath, myBindings } = useTenancy();
   const tk = useTickets();
@@ -67,6 +76,20 @@ export default function TicketForm({
   const [showRepro, setShowRepro] = useState(!compact);
   const [showCtx, setShowCtx] = useState(false);
   const [tried, setTried] = useState(false);
+
+  // پیشنهاد هنگام نوشتن عنوان (با تأخیر): ۳ مقاله‌ی راهنما و ۳ تیکت باز مشابه — کاهش تیکت تکراری
+  const { settings } = useSettings();
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const h = window.setTimeout(() => setDebounced(title.trim()), 350);
+    return () => window.clearTimeout(h);
+  }, [title]);
+  const helpHits = useMemo(() => (debounced.length >= 4 ? searchHelp(debounced, settings, 3) : []), [debounced, settings]);
+  const similar = useMemo(() => (debounced.length >= 4 ? similarTickets(tk.tickets, debounced, 3) : []), [debounced, tk.tickets]);
+  const join = (t: Ticket) => {
+    tk.meToo(t.id);
+    (onJoined ?? onCreated)(t);
+  };
 
   const valid = title.trim().length >= 5 && description.trim().length >= 5;
   const submit = () => {
@@ -123,6 +146,53 @@ export default function TicketForm({
           autoFocus
         />
       </Field>
+
+      {(helpHits.length > 0 || similar.length > 0) && (
+        <div className="rounded-lg border border-brand-200 bg-brand-50/50 p-2.5 space-y-2" aria-live="polite">
+          {helpHits.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-ink-600 mb-1 flex items-center gap-1">
+                <BookOpen size={12} /> شاید پاسخ در راهنما باشد
+              </p>
+              <ul className="space-y-0.5">
+                {helpHits.map((a) => (
+                  <li key={a.id}>
+                    <Link to={`/dashboard/knowledge?tab=help&article=${encodeURIComponent(a.id)}`} target="_blank" className="text-[12px] text-brand-700 hover:underline">
+                      {a.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {similar.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-ink-600 mb-1 flex items-center gap-1">
+                <Users size={12} /> تیکت‌های باز مشابه
+              </p>
+              <ul className="space-y-1">
+                {similar.map((t) => {
+                  const already = tk.involved(t);
+                  return (
+                    <li key={t.id} className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[10.5px] text-ink-400" dir="ltr">
+                        {t.id}
+                      </span>
+                      <span className="text-[12px] text-ink-800 flex-1 min-w-[140px] truncate">{t.title}</span>
+                      <span className="text-[10.5px] text-ink-400 shrink-0">
+                        {statusShort[t.status]} · {fa(affectedCount(t))} نفر
+                      </span>
+                      <Button size="sm" variant={already ? "ghost" : "secondary"} icon={<HandHelping size={12} />} onClick={() => join(t)}>
+                        {already ? "پیگیری همین" : "من هم این مشکل را دارم"}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <Field label="شرح">
         <textarea

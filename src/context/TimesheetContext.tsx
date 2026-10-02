@@ -3,11 +3,13 @@
 // ورودی‌های زمان، فهرست کارکنان، وضعیت دوره‌های حقوق (ارسال/تأیید/برگشت)،
 // اتصال ابزارهای بیرونی و تنظیمات ساعت موظف.
 // ---------------------------------------------------------------------------
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEMO_REF_DATE } from "../pm/seed";
 import { nowClock } from "../pm/jalali";
 import { TS_VERSION, seedTimesheet } from "../timesheet/seed";
-import type { Integration, IntegrationKind, PeriodRecord, PeriodStatus, Person, TimeEntry, TsSettings, TsState } from "../timesheet/types";
+import { dueReminders, type Integration, type IntegrationKind, type PeriodRecord, type PeriodStatus, type Person, type TimeEntry, type TsSettings, type TsState } from "../timesheet/types";
+import { useTenancy } from "./TenancyContext";
+import { useInbox } from "./InboxContext";
 
 const KEY = "motoshub.timesheet.v1";
 
@@ -70,6 +72,29 @@ export function TimesheetProvider({ children }: { children: ReactNode }) {
       /* فضای ذخیره پر است — نادیده */
     }
   }, [state]);
+
+  // یادآوری‌های کارکرد: روزی یک بار برای کاربر فعلی (روز بدون ثبت در عصر، دو روز مانده به پایان دوره)
+  const { actingUser } = useTenancy();
+  const inbox = useInbox();
+  const ranFor = useRef("");
+  useEffect(() => {
+    const person = state.roster.find((p) => p.userId === actingUser.id);
+    if (!person) return;
+    const runDay = new Date().toDateString();
+    if (state.lastReminderRun?.[person.id] === runDay || ranFor.current === `${person.id}:${runDay}`) return;
+    ranFor.current = `${person.id}:${runDay}`;
+    const status = (key: string) => state.periods.find((p) => p.personId === person.id && p.key === key)?.status ?? "draft";
+    const sent = new Set(state.remindLog ?? []);
+    const due = dueReminders(person, state.settings, state.entries, DEMO_REF_DATE, new Date().getHours(), status).filter((r) => !sent.has(r.key));
+    due.forEach((r) => inbox.send([actingUser.name], "timesheet", r.text, "/dashboard/activity", { system: true }));
+    setState((s) => ({
+      ...s,
+      remindLog: [...(s.remindLog ?? []), ...due.map((r) => r.key)].slice(-300),
+      lastReminderRun: { ...(s.lastReminderRun ?? {}), [person.id]: runDay },
+    }));
+    // فقط با تغییر کاربر یا بارگذاری دوباره
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actingUser.id]);
 
   const value = useMemo<Ctx>(() => {
     const nextIds = (s: TsState, n: number) => Array.from({ length: n }, (_, i) => `te${s.seq + i + 1}`);

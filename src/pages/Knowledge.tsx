@@ -2,7 +2,7 @@ import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useState } from "react";
 import { useInbox } from "../context/InboxContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { BookOpen, LayoutDashboard, FileText, Search, Inbox, CalendarClock, Archive, IdCard, Workflow, Lightbulb, BookA, Sparkles, Users, KanbanSquare, GraduationCap, Network, BarChart3, Bot, Settings, LifeBuoy, Bell, MessageSquareHeart, Share2, History, ScrollText, ChevronDown } from "lucide-react";
+import { BookOpen, LayoutDashboard, FileText, Search, Inbox, CalendarClock, Archive, IdCard, Workflow, Lightbulb, BookA, Sparkles, Users, KanbanSquare, GraduationCap, Network, BarChart3, Bot, Settings, LifeBuoy, Bell, MessageSquareHeart, Share2, History, ScrollText, ChevronDown, Hourglass, BadgeCheck } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import { useKnowledge } from "../context/KnowledgeContext";
 import { useTenancy } from "../context/TenancyContext";
@@ -26,6 +26,8 @@ import SearchSection from "./knowledge/SearchSection";
 import AuditSection from "./knowledge/AuditSection";
 import { NotificationsSection, FeedbackSection, RelationsSection, VersionsSection } from "./knowledge/AggregateSections";
 import { HelpSection } from "./knowledge/HelpSection";
+import RetentionSection from "./knowledge/RetentionSection";
+import { retentionInfo } from "../km/templates";
 
 const NAV_KEY = "motoshub.km.nav.collapsed";
 const loadCollapsed = (): string[] => {
@@ -64,6 +66,8 @@ export default function Knowledge() {
   const overdue = km.docs.filter((d) => (km.flowInfo(d)?.overdueDays ?? 0) > 0).length;
 
   const myQueue = km.docs.filter((d) => (d.status === "در بررسی" || d.status === "تأییدشده") && km.isApprover(d)).length;
+  const readyToDispose = km.docs.filter((d) => !d.legalHold && retentionInfo(d, km.settings.retention, km.today).eligible).length;
+  const pendingAcks = km.myPendingAcks();
   const groups: { label: string; items: NavItem[] }[] = [
     {
       label: "",
@@ -81,6 +85,7 @@ export default function Knowledge() {
         { id: "versions", label: "نسخه‌بندی و تاریخچه", icon: History },
         { id: "review", label: "تقویم بازبینی", icon: CalendarClock },
         { id: "archive", label: "آرشیو", icon: Archive, count: km.docs.filter((d) => d.status === "آرشیو").length || undefined },
+        { id: "retention", label: "نگهداشت و امحا", icon: Hourglass, count: readyToDispose || undefined, tone: "amber", perm: ["knowledge.archive", "knowledge.settings"] },
       ],
     },
     {
@@ -216,12 +221,27 @@ export default function Knowledge() {
           </nav>
 
           <main className="min-w-0">
+            {pendingAcks.length > 0 && section !== "help" && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 flex items-center gap-2 flex-wrap text-[12.5px] text-amber-800">
+                <BadgeCheck size={16} className="shrink-0" />
+                <span className="flex-1 min-w-[180px] leading-6">
+                  {pendingAcks.length.toLocaleString("fa-IR")} سند ابلاغی منتظر «خواندم و پذیرفتم» شماست
+                  {pendingAcks.some((d) => d.circular?.deadline) && ` — نزدیک‌ترین مهلت ${pendingAcks.map((d) => d.circular?.deadline).filter(Boolean).sort()[0]}`}
+                </span>
+                {pendingAcks.slice(0, 3).map((d) => (
+                  <button key={d.id} onClick={() => openDoc(d.id)} className="text-[11.5px] rounded-md bg-white/70 border border-amber-200 px-2 py-1 hover:bg-white truncate max-w-[220px]">
+                    {d.title}
+                  </button>
+                ))}
+              </div>
+            )}
             {section === "dashboard" && <DashboardSection />}
             {section === "bank" && <BankSection />}
             {section === "search" && <SearchSection />}
             {section === "workflow" && <WorkflowSection />}
             {section === "review" && <ReviewSection />}
             {section === "archive" && <ArchiveSection />}
+            {section === "retention" && <RetentionSection />}
             {section === "registry" && <RegistrySection />}
             {section === "processes" && <ProcessesSection />}
             {section === "rnd" && <RndSection />}

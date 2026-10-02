@@ -25,13 +25,14 @@ import { dayNum, toEnDigits } from "../../pm/jalali";
 import { moduleTitle } from "../../innovation/types";
 import { fmtTs, statusLabel, type TicketStatus } from "../tickets/model";
 import { users } from "../../data/mock";
-import { contentKindLabel } from "../../social/types";
+import { contentKindLabel, moderationActionLabel } from "../../social/types";
 import { ownerScopeOf } from "../search/liveData";
 import { ScopeSelect, SearchBox, SectionHead, downloadCsv, useSubtree } from "./iam/shared";
 
-type ModuleId = "iam" | "knowledge" | "projects" | "innovation" | "tickets" | "social";
+type ModuleId = "iam" | "settings" | "knowledge" | "projects" | "innovation" | "tickets" | "social";
 const MODULES: { id: ModuleId; label: string; tone: BadgeTone }[] = [
   { id: "iam", label: "هویت و دسترسی", tone: "navy" },
+  { id: "settings", label: "تغییر تنظیمات", tone: "warning" },
   { id: "knowledge", label: "مدیریت دانش", tone: "brand" },
   { id: "projects", label: "پروژه‌ها", tone: "success" },
   { id: "innovation", label: "دانش و نوآوری", tone: "warning" },
@@ -51,6 +52,8 @@ function sortKey(at: string): { day: number; sort: number } {
   return { day, sort: day * 1440 + h * 60 + m };
 }
 const PAGE = 50;
+
+const ticketKindLabel: Record<string, string> = { affected: "«من هم» — کاربر آسیب‌دیده", severity: "تغییر شدت", attachment: "پیوست", labels: "برچسب‌ها", link: "پیوند تیکت", release: "نسخه‌ی رفع" };
 
 export default function UnifiedAuditSection() {
   const t = useTenancy();
@@ -79,7 +82,8 @@ export default function UnifiedAuditSection() {
     const push = (e: Omit<Entry, "sort" | "day">) => out.push({ ...e, ...sortKey(e.at) });
 
     // ۱) هویت و دسترسی
-    t.iam.audits.forEach((a) => push({ id: `iam-${a.id}`, module: "iam", at: a.at, actor: userName(a.actorId), action: auditLabel[a.event], target: a.summary, scopeId: a.scopeId, detail: a.before || a.after ? `قبل: ${JSON.stringify(a.before ?? {})}\nبعد: ${JSON.stringify(a.after ?? {})}` : undefined }));
+    // (رویداد settings.changed — از SettingsContext، کانال‌ها، طبقه‌بندی، سیاست ورود و تنظیمات لایه‌ای — ماژول جدا دارد)
+    t.iam.audits.forEach((a) => push({ id: `iam-${a.id}`, module: a.event === "settings.changed" ? "settings" : "iam", at: a.at, actor: userName(a.actorId), action: auditLabel[a.event], target: a.summary, scopeId: a.scopeId, detail: a.before || a.after ? `قبل: ${JSON.stringify(a.before ?? {})}\nبعد: ${JSON.stringify(a.after ?? {})}` : undefined }));
 
     // ۲) مدیریت دانش
     const docById = new Map(km.docs.map((d) => [d.id, d]));
@@ -105,7 +109,7 @@ export default function UnifiedAuditSection() {
         .filter((e) => !e.internal || tk.isVendor)
         .forEach((e) => {
           const at = fmtTs(e.at).replace(" — ", " ");
-          const label = e.kind === "status" ? `تغییر وضعیت${e.to ? ` به «${statusLabel[e.to as TicketStatus] ?? e.to}»` : ""}` : e.kind === "created" ? "ثبت تیکت" : e.kind === "comment" ? "پیام" : e.kind === "note" ? "یادداشت داخلی" : e.kind === "assign" ? "ارجاع" : e.kind === "priority" ? "تغییر اولویت" : e.kind === "rating" ? "امتیاز رضایت" : e.kind;
+          const label = e.kind === "status" ? `تغییر وضعیت${e.to ? ` به «${statusLabel[e.to as TicketStatus] ?? e.to}»` : ""}` : e.kind === "created" ? "ثبت تیکت" : e.kind === "comment" ? "پیام" : e.kind === "note" ? "یادداشت داخلی" : e.kind === "assign" ? "ارجاع" : e.kind === "priority" ? "تغییر اولویت" : e.kind === "rating" ? "امتیاز رضایت" : (ticketKindLabel[e.kind] ?? e.kind);
           out.push({ id: `tk-${tic.id}-${e.id}`, module: "tickets", at, sort: e.at, day: Math.floor(e.at / 1440), actor: e.actor, action: label, target: `${tic.id} — ${tic.title}`, scopeId: tic.reporterScopeId, detail: e.text });
         })
     );
@@ -123,7 +127,9 @@ export default function UnifiedAuditSection() {
       .forEach(({ x, label }) => push({ id: `so-d-${x.id}`, module: "social", at: x.deleted_at!, actor: userName(x.user_id), action: "حذف محتوا", target: label, scopeId: ownerScopeOf(x) }));
 
     return out;
-  }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events]);
+    // نظارت محتوا: گزارش تخلف، پنهان‌سازی، بازبینی پیش از انتشار
+    s.moderationLog.forEach((e) => push({ id: `so-m-${e.id}`, module: "social", at: e.at, actor: userName(e.actor_id), action: moderationActionLabel[e.action], target: e.target_title, scopeId: ROOT_ID, detail: e.note }));
+  }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events, s.moderationLog]);
 
   // دامنه‌ی بیننده: فقط واحد فعلی و زیرمجموعه‌ها
   const inScope = useMemo(() => all.filter((e) => sub.ids.has(e.scopeId)), [all, sub]);
@@ -177,7 +183,7 @@ export default function UnifiedAuditSection() {
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-3">
         {MODULES.map((m) => (
           <button key={m.id} onClick={() => setModF(modF === m.id ? "" : m.id)} className={`text-right rounded-xl ${modF === m.id ? "ring-2 ring-brand-500" : ""}`} aria-pressed={modF === m.id}>
             <StatCard label={m.label} value={perModule[m.id].toLocaleString("fa-IR")} />

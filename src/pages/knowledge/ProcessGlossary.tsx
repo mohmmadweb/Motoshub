@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Workflow, Plus, X, BookA, Search, ArrowLeft } from "lucide-react";
+import { Workflow, Plus, X, BookA, Search, ArrowLeft, GitBranch, ChevronDown } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -13,6 +13,7 @@ import { fa } from "../../pm/jalali";
 import type { GlossaryTerm, KProcess, ProcessKind } from "../../km/types";
 import { Field, RelationsEditor, SectionHead } from "./shared";
 import { useKPage } from "./ctx";
+import { ProcessFlowEditor, RaciTable, SwimlaneDiagram } from "./ProcessFlow";
 
 const kinds: ProcessKind[] = ["اصلی", "پشتیبان", "مدیریتی"];
 const kindTone = { اصلی: "brand", پشتیبان: "neutral", مدیریتی: "navy" } as const;
@@ -47,6 +48,8 @@ export function ProcessesSection() {
   const [kind, setKind] = useState<ProcessKind | "">("");
   const [draft, setDraft] = useState<(Omit<KProcess, "id"> & { id?: string }) | null>(null);
   const [viewId, setViewId] = useState<string | null>(page.focus && km.processes.some((p) => p.id === page.focus) ? page.focus : null);
+  const [diagram, setDiagram] = useState<"lanes" | "simple">("lanes");
+  const [flowOpen, setFlowOpen] = useState(false);
   const list = km.processes.filter((p) => !kind || p.kind === kind);
   const view = viewId ? km.processes.find((p) => p.id === viewId) : undefined;
   const lessons = (id: string) => km.experiences.filter((e) => e.processId === id || e.relations.some((r) => r.type === "process" && r.id === id));
@@ -113,7 +116,31 @@ export function ProcessesSection() {
           <div className="space-y-4">
             {view.description && <p className="text-sm text-ink-700 leading-7">{view.description}</p>}
             <div>
-              <p className="text-xs font-bold text-ink-700 mb-2">نمودار فرآیند</p>
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <p className="text-xs font-bold text-ink-700">نمودار فرآیند</p>
+                <div className="flex rounded-lg border border-ink-200 p-0.5 bg-ink-50">
+                  {(
+                    [
+                      ["lanes", "خطوط شنا و تصمیم‌ها"],
+                      ["simple", "ورودی ← گام‌ها ← خروجی"],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button key={id} onClick={() => setDiagram(id)} className={`text-[11px] px-2 py-1 rounded-md ${diagram === id ? "bg-white text-brand-700 font-medium shadow-sm" : "text-ink-500"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {diagram === "lanes" && (
+                <div className="space-y-3">
+                  <SwimlaneDiagram process={view} />
+                  <div>
+                    <p className="text-xs font-bold text-ink-700 mb-1.5">ماتریس مسئولیت (RACI)</p>
+                    <RaciTable process={view} />
+                  </div>
+                </div>
+              )}
+              {diagram === "simple" && (
               <div className="flex items-stretch gap-2 overflow-x-auto pb-2">
                 <div className="shrink-0 w-32 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-2 text-[11px] text-emerald-800">
                   <p className="font-bold mb-1">ورودی‌ها</p>
@@ -140,6 +167,7 @@ export function ProcessesSection() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
             <div>
               <p className="text-xs font-bold text-ink-700 mb-1.5">اسناد، فرم‌ها، شناسنامه و خبرگان مرتبط</p>
@@ -186,6 +214,21 @@ export function ProcessesSection() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <ListInput label="ورودی‌ها" items={draft.inputs} onChange={(inputs) => setDraft({ ...draft, inputs })} placeholder="+ ورودی" />
               <ListInput label="خروجی‌ها" items={draft.outputs} onChange={(outputs) => setDraft({ ...draft, outputs })} placeholder="+ خروجی" />
+            </div>
+            <div className="rounded-lg border border-ink-200">
+              <button type="button" onClick={() => setFlowOpen((v) => !v)} className="w-full flex items-center gap-2 px-3 py-2.5 text-right">
+                <GitBranch size={15} className="text-brand-600 shrink-0" />
+                <span className="text-xs font-medium text-ink-800 flex-1">
+                  نمودار تصمیم‌دار، خطوط شنا و RACI
+                  <span className="text-ink-400 font-normal mr-1">— {draft.flow?.length ? `${fa(draft.flow.length)} گام` : "از روی گام‌های خطی"}</span>
+                </span>
+                <ChevronDown size={14} className={`text-ink-400 transition-transform ${flowOpen ? "rotate-180" : ""}`} />
+              </button>
+              {flowOpen && (
+                <div className="px-3 pb-3 pt-3 border-t border-ink-100">
+                  <ProcessFlowEditor value={draft} onChange={(v) => setDraft({ ...draft, ...v })} />
+                </div>
+              )}
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="primary" className="flex-1 justify-center" onClick={save}>

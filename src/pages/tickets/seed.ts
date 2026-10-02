@@ -34,8 +34,18 @@ function mk(t: Base, createdHoursAgo: number, events: TicketEvent[]): Ticket {
   return { labels: [], links: [], attachments: [], ...t, createdAt: created.at, updatedAt: all[all.length - 1].at, events: all };
 }
 
+/** دنبال‌کنندگان و «من هم»های نمونه (MSH-1033 تکراریِ MSH-1024 است، پس گزارش‌دهنده‌اش درگیر تیکت اصلی است) */
+export const seedTicketPeople: Record<string, Pick<Ticket, "followers" | "affected">> = {
+  "MSH-1024": { affected: ["u12", "u5", "u9"], followers: ["u12", "u5", "u9", "u2"] },
+  "MSH-1027": { affected: ["u7"], followers: ["u7"] },
+};
+
 export function seedTickets(): Ticket[] {
   evSeq = 0;
+  return seedTicketsRaw().map((t) => ({ ...t, ...(seedTicketPeople[t.id] ?? {}) }));
+}
+
+function seedTicketsRaw(): Ticket[] {
   return [
     mk(
       {

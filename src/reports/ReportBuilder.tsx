@@ -38,6 +38,8 @@ import {
   Database,
   FilePlus2,
   Clock3,
+  FileSpreadsheet,
+  CalendarClock,
 } from "lucide-react";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
@@ -73,6 +75,10 @@ import { useSourceRows, useSources, getSource } from "./sources";
 import { PRESETS } from "./presets";
 import { newReportId, reportStore, useSavedReports } from "./store";
 import { ReportChart, ResultTable, colorAt } from "./charts";
+import { DrillDrawer, type DrillPick } from "./DrillDrawer";
+import { downloadXlsx, reportSheets } from "./xlsx";
+import { ScheduleModal } from "./Schedules";
+import { useSchedules } from "./store";
 
 // ----------------------------------------------------------------- ثابت‌ها
 
@@ -642,6 +648,7 @@ function Preview({
   onPin,
   onShare,
   onOpenConfig,
+  onSchedule,
 }: {
   spec: ReportSpec;
   setName: (n: string) => void;
@@ -658,8 +665,12 @@ function Preview({
   onPin: () => void;
   onShare: () => void;
   onOpenConfig: () => void;
+  onSchedule: () => void;
 }) {
   const { activeScopeLabel, scopeLabel } = useTenancy();
+  const [pick, setPick] = useState<DrillPick | null>(null);
+  const { schedules } = useSchedules(spec.id || "__none");
+  const activeSchedules = isSaved ? schedules.filter((x) => x.active).length : 0;
   const printRef = useRef<HTMLDivElement>(null);
   const result = useMemo(() => (source ? runReport(spec, source, rows, today) : null), [spec, source, rows, today]);
   const showData = result && !["table", "pivot", "kpi"].includes(spec.chart) && result.dims.length > 0;
@@ -668,6 +679,10 @@ function Preview({
   const exportCsv = () => {
     if (!result) return;
     downloadFile(`${safeFileName(spec.name)}.csv`, toCSV(result));
+  };
+  const exportXlsx = () => {
+    if (!result) return;
+    downloadXlsx(safeFileName(spec.name), reportSheets(spec.name, metaText, result, source));
   };
 
   return (
@@ -730,8 +745,14 @@ function Preview({
                 <Share2 size={14} />
               </IconBtn>
             )}
-            <IconBtn title={canExport ? "خروجی CSV (اکسل)" : "دسترسی دریافت خروجی ندارید"} onClick={exportCsv} disabled={!canExport || !result?.rowCount}>
+            <IconBtn title={canExport ? "خروجی اکسل (XLSX راست‌به‌چپ)" : "دسترسی دریافت خروجی ندارید"} onClick={exportXlsx} disabled={!canExport || !result?.rowCount}>
+              <FileSpreadsheet size={14} />
+            </IconBtn>
+            <IconBtn title={canExport ? "خروجی CSV" : "دسترسی دریافت خروجی ندارید"} onClick={exportCsv} disabled={!canExport || !result?.rowCount}>
               <Download size={14} />
+            </IconBtn>
+            <IconBtn title={activeSchedules ? `زمان‌بندی ارسال (${faNum(activeSchedules)} فعال)` : "زمان‌بندی ارسال"} onClick={onSchedule} active={activeSchedules > 0}>
+              <CalendarClock size={14} />
             </IconBtn>
             <IconBtn title={canExport ? "چاپ / ذخیره‌ی PDF" : "دسترسی دریافت خروجی ندارید"} onClick={() => printPreview(printRef.current, spec.name, metaText)} disabled={!canExport || !result?.rowCount}>
               <Printer size={14} />
@@ -751,7 +772,7 @@ function Preview({
             </div>
           ) : result ? (
             <>
-              <ReportChart result={result} chart={spec.chart} />
+              <ReportChart result={result} chart={spec.chart} onPick={setPick} />
               {showData && (
                 <div className="hidden print:block mt-5">
                   <ResultTable result={result} />
@@ -775,13 +796,19 @@ function Preview({
             <span className="text-ink-400 font-normal">({faNum(result.groups.length)} ردیف)</span>
           </summary>
           <div className="px-2 pb-3">
-            <ResultTable result={result} />
+            <ResultTable result={result} onGroup={(gi, ci) => {
+              const g = result.groups[gi];
+              const c = ci !== undefined ? g?.children[ci] : undefined;
+              if (g) setPick({ title: c ? `${g.label} · ${c.label}` : g.label, rows: c ? c.rows : g.rows });
+            }} />
           </div>
         </details>
       )}
+      <DrillDrawer pick={pick} source={source} onClose={() => setPick(null)} />
 
       <p className="text-[11px] text-ink-400 flex items-start gap-1.5 px-1">
         <Info size={12} className="mt-0.5 shrink-0" />
+        {available && result?.rowCount ? "برای دیدن ردیف‌های هر میله، برش یا خانه رویش کلیک کنید. " : ""}
         فقط داده‌هایی تجمیع شده که شما در دامنه‌ی «{activeScopeLabel}» و با سطح دسترسی فعلی‌تان اجازه‌ی دیدنش را دارید.
       </p>
     </div>
@@ -987,6 +1014,7 @@ export function ReportBuilder({ module, defaultSourceId, initialReportId }: Repo
   });
   const [view, setView] = useState<"build" | "presets" | "saved">("build");
   const [sheet, setSheet] = useState(false);
+  const [scheduleFor, setScheduleFor] = useState<ReportSpec | null>(null);
 
   const { rows, available, today, source } = useSourceRows(spec.sourceId);
   const stored = saved.find((r) => r.id === spec.id);
@@ -1099,6 +1127,10 @@ export function ReportBuilder({ module, defaultSourceId, initialReportId }: Repo
               onPin={togglePin}
               onShare={toggleShare}
               onOpenConfig={() => setSheet(true)}
+              onSchedule={() => {
+                if (isSaved) setScheduleFor(spec);
+                else setScheduleFor(save(false));
+              }}
             />
           </div>
           <ConfigSheet open={sheet} onClose={() => setSheet(false)}>
@@ -1106,6 +1138,8 @@ export function ReportBuilder({ module, defaultSourceId, initialReportId }: Repo
           </ConfigSheet>
         </div>
       )}
+
+      {scheduleFor && <ScheduleModal spec={scheduleFor} onClose={() => setScheduleFor(null)} />}
 
       {view === "presets" && (
         <div className="flex-1 min-h-0 overflow-y-auto pb-2">

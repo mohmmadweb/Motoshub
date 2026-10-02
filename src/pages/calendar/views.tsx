@@ -2,7 +2,7 @@
 // نماهای تقویم یکپارچه: شبکه‌ی زمانی (روز/هفته/کنار هم)، ماه، فهرست، ماه کوچک،
 // ماتریس آزاد/مشغول و پاپ‌اوور جزئیات.
 // ---------------------------------------------------------------------------
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, ExternalLink, Lock, Pencil, Trash2, X, CalendarDays } from "lucide-react";
 import Badge from "../../components/ui/Badge";
@@ -28,7 +28,21 @@ export function useNowMin() {
 }
 
 // ---------------------------------------------------------------- شبکه‌ی زمانی
-export type Block = { key: string; start: number; end: number; title: string; sub?: string; color: string; tentative?: boolean; dim?: boolean; locked?: boolean; onClick?: (e: MouseEvent) => void };
+export type Block = {
+  key: string;
+  start: number;
+  end: number;
+  title: string;
+  sub?: string;
+  color: string;
+  tentative?: boolean;
+  dim?: boolean;
+  locked?: boolean;
+  onClick?: (e: MouseEvent) => void;
+  /** کشیدن برای جابه‌جایی و کشیدن لبه‌ی پایین برای تغییر مدت (فقط با ماوس/قلم) */
+  onMove?: (day: number, start: number, end: number) => void;
+};
+type DragState = { key: string; mode: "move" | "resize"; colKey: string; day: number; start: number; end: number; title: string; color: string };
 export type AllDayChip = { key: string; title: string; color: string; dim?: boolean; onClick?: (e: MouseEvent) => void };
 export type Column = { key: string; day: number; head: ReactNode; allDay: AllDayChip[]; blocks: Block[]; today: boolean; slot?: boolean };
 
@@ -37,6 +51,54 @@ const GRID_H = ((GRID_END - GRID_START) / 60) * HOUR_PX;
 
 export function TimeGrid({ columns, onSlot, nowMin, minColWidth = 92 }: { columns: Column[]; onSlot?: (col: Column, min: number) => void; nowMin: number; minColWidth?: number }) {
   const hasAllDay = columns.some((c) => c.allDay.length > 0);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const live = useRef<{ s: DragState; block: Block; x0: number; y0: number; o: { start: number; end: number }; moved: boolean } | null>(null);
+  const suppress = useRef(false);
+
+  const begin = useCallback((e: RPointerEvent, col: Column, b: Block, mode: "move" | "resize") => {
+    if (!b.onMove || e.button !== 0 || e.pointerType === "touch") return;
+    e.stopPropagation();
+    const st: DragState = { key: b.key, mode, colKey: col.key, day: col.day, start: b.start, end: b.end, title: b.title, color: b.color };
+    live.current = { s: st, block: b, x0: e.clientX, y0: e.clientY, o: { start: b.start, end: b.end }, moved: false };
+    const move = (ev: PointerEvent) => {
+      const L = live.current;
+      if (!L) return;
+      const dy = ev.clientY - L.y0;
+      if (!L.moved && Math.abs(dy) < 5 && Math.abs(ev.clientX - L.x0) < 5) return;
+      L.moved = true;
+      const dmin = Math.round(((dy / HOUR_PX) * 60) / 15) * 15;
+      const dur = L.o.end - L.o.start;
+      let next: DragState = L.s;
+      if (L.s.mode === "resize") next = { ...L.s, end: Math.min(GRID_END, Math.max(L.o.start + 15, L.o.end + dmin)) };
+      else {
+        const start = Math.min(GRID_END - dur, Math.max(GRID_START, L.o.start + dmin));
+        let colKey = L.s.colKey;
+        let day = L.s.day;
+        const el = document.elementsFromPoint(ev.clientX, ev.clientY).find((x) => (x as HTMLElement).dataset?.tgDrop === "1") as HTMLElement | undefined;
+        if (el?.dataset.tgKey) {
+          colKey = el.dataset.tgKey;
+          day = Number(el.dataset.tgDay);
+        }
+        next = { ...L.s, colKey, day, start, end: start + dur };
+      }
+      L.s = next;
+      setDrag(next);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const L = live.current;
+      live.current = null;
+      setDrag(null);
+      if (!L || !L.moved) return;
+      suppress.current = true;
+      setTimeout(() => (suppress.current = false), 0);
+      if (L.s.day !== col.day || L.s.start !== L.o.start || L.s.end !== L.o.end) L.block.onMove?.(L.s.day, L.s.start, L.s.end);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, []);
+
   return (
     <div className="overflow-x-auto -mx-1 px-1">
       <div style={{ minWidth: columns.length > 1 ? 44 + columns.length * minColWidth : undefined }}>
@@ -81,7 +143,7 @@ export function TimeGrid({ columns, onSlot, nowMin, minColWidth = 92 }: { column
             ))}
           </div>
           {columns.map((c) => (
-            <DayColumn key={c.key} col={c} onSlot={onSlot} nowMin={nowMin} />
+            <DayColumn key={c.key} col={c} onSlot={onSlot} nowMin={nowMin} drag={drag} onBegin={begin} suppress={suppress} />
           ))}
         </div>
       </div>
@@ -89,21 +151,39 @@ export function TimeGrid({ columns, onSlot, nowMin, minColWidth = 92 }: { column
   );
 }
 
-function DayColumn({ col, onSlot, nowMin }: { col: Column; onSlot?: (col: Column, min: number) => void; nowMin: number }) {
+function DayColumn({
+  col,
+  onSlot,
+  nowMin,
+  drag,
+  onBegin,
+  suppress,
+}: {
+  col: Column;
+  onSlot?: (col: Column, min: number) => void;
+  nowMin: number;
+  drag: DragState | null;
+  onBegin: (e: RPointerEvent, col: Column, b: Block, mode: "move" | "resize") => void;
+  suppress: { current: boolean };
+}) {
   const lay = layoutBlocks(col.blocks);
   const off = isOffDay(col.day);
   const [ws, we] = workHours(col.day);
   const click = (e: MouseEvent<HTMLDivElement>) => {
-    if (!onSlot || col.slot === false) return;
+    if (!onSlot || col.slot === false || suppress.current) return;
     const r = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - r.top;
     const min = GRID_START + Math.floor((y / HOUR_PX) * 2) * 30;
     onSlot(col, Math.min(GRID_END - 30, Math.max(GRID_START, min)));
   };
   const showNow = col.today && nowMin >= GRID_START && nowMin <= GRID_END;
+  const ghost = drag && drag.colKey === col.key ? drag : null;
   return (
     <div
       onClick={click}
+      data-tg-drop={col.slot === false ? undefined : "1"}
+      data-tg-key={col.key}
+      data-tg-day={col.day}
       className={`flex-1 min-w-0 relative border-r border-ink-100 ${off ? "bg-ink-50" : ""} ${onSlot && col.slot !== false ? "cursor-pointer" : ""}`}
       style={{ height: GRID_H }}
       title={onSlot && col.slot !== false ? "کلیک روی جای خالی: افزودن" : undefined}
@@ -119,15 +199,18 @@ function DayColumn({ col, onSlot, nowMin }: { col: Column; onSlot?: (col: Column
         const e = Math.min(Math.max(b.end, s + 15), GRID_END);
         const top = ((s - GRID_START) / 60) * HOUR_PX;
         const height = Math.max(18, ((e - s) / 60) * HOUR_PX - 2);
+        const dragging = drag?.key === b.key;
         return (
           <button
             key={b.key}
+            onPointerDown={b.onMove ? (ev) => onBegin(ev, col, b, "move") : undefined}
             onClick={(ev) => {
               ev.stopPropagation();
+              if (suppress.current) return;
               b.onClick?.(ev);
             }}
-            title={`${b.title} — ${fmtRange(b.start, b.end)}`}
-            className={`absolute rounded-md px-1 py-0.5 text-right overflow-hidden hover:z-10 hover:shadow-md transition-shadow ${b.tentative ? "border border-dashed" : ""} ${b.dim ? "opacity-50" : ""}`}
+            title={`${b.title} — ${fmtRange(b.start, b.end)}${b.onMove ? " · برای جابه‌جایی بکشید" : ""}`}
+            className={`absolute rounded-md px-1 py-0.5 text-right overflow-hidden hover:z-10 hover:shadow-md transition-shadow ${b.tentative ? "border border-dashed" : ""} ${b.dim ? "opacity-50" : ""} ${dragging ? "opacity-40" : ""} ${b.onMove ? "cursor-grab active:cursor-grabbing select-none" : ""}`}
             style={{
               top,
               height,
@@ -144,9 +227,25 @@ function DayColumn({ col, onSlot, nowMin }: { col: Column; onSlot?: (col: Column
             </span>
             {height >= 34 && <span className="block text-[9.5px] text-ink-500 tabular-nums leading-4 truncate">{fmtRange(b.start, b.end)}</span>}
             {height >= 52 && b.sub && <span className="block text-[9.5px] text-ink-500 leading-4 truncate">{b.sub}</span>}
+            {b.onMove && (
+              <span
+                onPointerDown={(ev) => onBegin(ev, col, b, "resize")}
+                className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize hover:bg-ink-900/10"
+                aria-hidden
+              />
+            )}
           </button>
         );
       })}
+      {ghost && (
+        <div
+          className="absolute inset-x-0.5 z-30 rounded-md border-2 border-dashed pointer-events-none px-1 py-0.5"
+          style={{ top: ((Math.max(ghost.start, GRID_START) - GRID_START) / 60) * HOUR_PX, height: Math.max(18, ((ghost.end - ghost.start) / 60) * HOUR_PX - 2), borderColor: ghost.color, background: `color-mix(in srgb, ${ghost.color} 22%, var(--color-ink-50))` }}
+        >
+          <span className="block text-[10.5px] font-medium text-ink-900 truncate">{ghost.title}</span>
+          <span className="block text-[9.5px] text-ink-600 tabular-nums">{fmtRange(ghost.start, ghost.end)}</span>
+        </div>
+      )}
       {showNow && (
         <div className="absolute inset-x-0 z-20 pointer-events-none flex items-center" style={{ top: ((nowMin - GRID_START) / 60) * HOUR_PX }}>
           <span className="w-2 h-2 rounded-full bg-rose-500 -mr-1" />
@@ -393,7 +492,7 @@ export function FreeBusyMatrix({ days, rows, todayN, onDay, highlight }: { days:
 // ---------------------------------------------------------------- پاپ‌اوور جزئیات
 export type PopState = { item: CalItem; x: number; y: number } | null;
 
-export function ItemPopover({ pop, onClose, onEdit, onDelete }: { pop: PopState; onClose: () => void; onEdit?: (id: string) => void; onDelete?: (id: string) => void }) {
+export function ItemPopover({ pop, onClose, onEdit, onDelete }: { pop: PopState; onClose: () => void; onEdit?: (id: string, it: CalItem) => void; onDelete?: (id: string, it: CalItem) => void }) {
   useEffect(() => {
     if (!pop) return;
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -446,12 +545,12 @@ export function ItemPopover({ pop, onClose, onEdit, onDelete }: { pop: PopState;
             </Link>
           )}
           {it.personalId && onEdit && (
-            <Button size="sm" icon={<Pencil size={13} />} onClick={() => onEdit(it.personalId!)}>
+            <Button size="sm" icon={<Pencil size={13} />} onClick={() => onEdit(it.personalId!, it)}>
               ویرایش
             </Button>
           )}
           {it.personalId && onDelete && (
-            <Button size="sm" variant="danger" icon={<Trash2 size={13} />} onClick={() => onDelete(it.personalId!)}>
+            <Button size="sm" variant="danger" icon={<Trash2 size={13} />} onClick={() => onDelete(it.personalId!, it)}>
               حذف
             </Button>
           )}

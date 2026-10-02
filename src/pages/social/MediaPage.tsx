@@ -18,6 +18,7 @@ import { endpoints } from "../../social/endpoints";
 import type { Attachment, MediaPost, MediaPostType } from "../../social/types";
 import { mediaTypeLabel } from "../../social/types";
 import { ApiChip, AttachmentList, AttachmentPicker, Field, Poster, PosterPicker, PrivacyBadge, PublishBadge, PublishOptions, defaultPublish, fa, type PublishState } from "./kit";
+import { HiddenBadge } from "./moderation";
 import { Segmented, StatStrip, matchesStatus, statusTabs, type StatusFilter } from "./ContentModule";
 
 export const mediaTypeIcon: Record<MediaPostType, typeof ImageIcon> = { image: ImageIcon, video: Film, album: Layers };
@@ -144,6 +145,7 @@ function MediaTile({ m }: { m: MediaPost }) {
             <span className="flex items-start justify-between gap-1">
               <span className="flex flex-wrap gap-1">
                 <PublishBadge item={m} />
+                <HiddenBadge m={m.moderation} />
                 {m.privacy !== "EVERYONE" && <PrivacyBadge value={m.privacy} />}
               </span>
               <span className="flex items-center gap-1 text-[11px] bg-black/35 rounded-md px-1.5 py-0.5 shrink-0" title={mediaTypeLabel[m.post_type]}>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { recursOn } from "../../pm/recurrence";
 import { ChevronLeft, ChevronRight, Flag, Video, CircleDot, PlayCircle } from "lucide-react";
 import Button from "../../components/ui/Button";
 import { dayNum, fa, formatJalali, monthLength, monthNames, parseJalali, weekDayNames, weekdayOf } from "../../pm/jalali";
@@ -27,7 +28,7 @@ export default function CalendarTab() {
       if (showStarts && dayNum(t.start) === d) out.push({ id: `s-${t.id}`, kind: "start", title: t.title, onClick: () => openTask(t.id), tone: "bg-sky-50 text-sky-700" });
     });
     p.milestones.forEach((m) => dayNum(m.due) === d && out.push({ id: `m-${m.id}`, kind: "milestone", title: m.title, onClick: () => goTab("milestones", m.id), tone: "bg-brand-50 text-brand-700" }));
-    p.meetings.forEach((m) => m.status !== "لغوشده" && dayNum(m.date) === d && out.push({ id: `mt-${m.id}`, kind: "meeting", title: `${m.time} ${m.title}`, onClick: () => goTab("minutes", m.id), tone: "bg-amber-50 text-amber-700" }));
+    p.meetings.forEach((m) => m.status !== "لغوشده" && d !== null && recursOn(m.recurrence, m.date, d) && out.push({ id: `mt-${m.id}`, kind: "meeting", title: `${m.time} ${m.title}`, onClick: () => goTab("minutes", m.id), tone: "bg-amber-50 text-amber-700" }));
     return out;
   };
 

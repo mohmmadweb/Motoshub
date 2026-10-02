@@ -93,7 +93,31 @@ export type KDoc = {
   acl?: KAcl;
   /** بند ۹: گردش کار قالب‌دار */
   flow?: KDocFlow;
+  /** بخشنامه/دستورالعمل/آیین‌نامه: مخاطبان، مهلت و «خواندم و پذیرفتم» */
+  circular?: KCircular | null;
+  /** نگهداشت قانونی: مانع حذف و امحا */
+  legalHold?: KLegalHold | null;
 } & Scoped;
+
+/** مخاطب ابلاغ: واحد سازمانی (با زیرمجموعه) یا نقش IAM */
+export type KAudienceEntry = { kind: "scope" | "role"; id: string };
+export type KCircular = {
+  /** خالی = همه‌ی کسانی که سند را می‌بینند */
+  audience: KAudienceEntry[];
+  /** مهلت تأیید خواندن (شمسی) */
+  deadline: string | null;
+  /** نام کاربر ← زمان «خواندم و پذیرفتم» */
+  acks: Record<string, string>;
+  lastReminderAt?: string | null;
+};
+export type KLegalHold = { by: string; at: string; reason: string };
+/** گواهی امحا (سند حذف‌شده طبق جدول نگهداشت) */
+export type KDisposal = { id: string; docId: string; code: string; title: string; type: string; at: string; by: string; note: string; retentionYears: number; basis: string };
+
+/** فرآیند تصمیم‌دار: گام (با مسیر بله/خیر برای تصمیم) در یک «خط شنا» (نقش) */
+export type ProcStepKind = "start" | "task" | "decision" | "end";
+export type ProcStep = { id: string; label: string; kind: ProcStepKind; lane: string; next?: string | null; yes?: string | null; no?: string | null };
+export type RaciCode = "R" | "A" | "C" | "I";
 
 export type KCategory = { id: string; name: string; parentId?: string };
 export type KDocType = { id: string; name: string; color: string };
@@ -145,6 +169,11 @@ export type KProcess = {
   outputs: string[];
   steps: string[];
   relations: KRelation[];
+  /** نمودار تصمیم‌دار با خطوط شنا (نقش‌ها) — اگر نباشد از «گام‌ها» ساخته می‌شود */
+  flow?: ProcStep[];
+  lanes?: string[];
+  /** ماتریس RACI: شناسه‌ی گام ← نقش ← R/A/C/I */
+  raci?: Record<string, Record<string, RaciCode>>;
 };
 
 /** بند ۵ و ۲۱: دانش، تجربیات و درس‌آموخته‌ها */
@@ -190,7 +219,7 @@ export type Expert = {
 export type GlossaryTerm = { id: string; term: string; abbr?: string; english?: string; definition: string; unit: string; relations: KRelation[] };
 
 /** کد اقدام برای فیلتر لاگ ممیزی (بند ۸ و ۱۱) */
-export type KLogCode = "view" | "preview" | "download" | "create" | "edit" | "delete" | "version" | "workflow" | "archive" | "restore" | "access" | "feedback" | "comment" | "settings" | "other";
+export type KLogCode = "view" | "preview" | "download" | "create" | "edit" | "delete" | "version" | "workflow" | "archive" | "restore" | "access" | "feedback" | "comment" | "settings" | "retention" | "other";
 export const logCodeLabel: Record<KLogCode, string> = {
   view: "مشاهده",
   preview: "پیش‌نمایش فایل",
@@ -206,6 +235,7 @@ export const logCodeLabel: Record<KLogCode, string> = {
   feedback: "بازخورد",
   comment: "نظر",
   settings: "تنظیمات",
+  retention: "نگهداشت و امحا",
   other: "سایر",
 };
 export type KLog = { id: string; at: string; seq: number; actor: string; action: string; entity: { type: string; id: string; title: string }; code?: KLogCode; detail?: string; access?: AccessLevel };
@@ -232,4 +262,8 @@ export type KSettings = {
   delegations?: KDelegation[];
   /** بند ۸: سیاست مشاهده/دانلود هر سطح */
   accessPolicy?: Record<AccessLevel, AccessPolicy>;
+  /** دوره‌ی نگهداشت هر نوع سند (سال، از تاریخ آرشیو) — ۰ = نگهداری دائم */
+  retention?: Record<string, number>;
+  /** قالب مقاله‌ی هر نوع سند (Markdown) — جایگزین قالب پیش‌فرض */
+  docTemplates?: Record<string, string>;
 };

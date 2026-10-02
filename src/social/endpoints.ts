@@ -54,6 +54,10 @@ export const endpoints = {
   fileShare: (o: OwnerType, id: string, f: string) => p("POST", `${fm(o, id)}/files/${f}/share-link/`),
   fileShareRevoke: (o: OwnerType, id: string, f: string) => p("DELETE", `${fm(o, id)}/files/${f}/share-link/`),
   fileQuota: (o: OwnerType, id: string) => p("GET", `${fm(o, id)}/quota/`),
+  // «پیشنهادی» — تغییر نام، فعالیت فایل و «اشتراک‌گذاشته با من»
+  fileRename: (o: OwnerType, id: string, f: string) => p("PATCH", `${fm(o, id)}/files/${f}/`),
+  fileActivity: (o: OwnerType, id: string, f: string) => p("GET", `${fm(o, id)}/files/${f}/activity/`),
+  fileSharedWithMe: () => p("GET", "/core/file-manager/shared-with-me/"),
 
   // ---------------- content (blogs / news / magazines)
   contentList: (k: ContentKind) => e("GET", `/content/${k}/published/`),
@@ -70,6 +74,20 @@ export const endpoints = {
   newsReadStatus: (id: string) => p("GET", `/content/news/${id}/read-status/`),
   newsRemind: (id: string) => p("POST", `/content/news/${id}/remind-unread/`),
   newsPinned: () => p("GET", "/content/news/pinned/"),
+  // «پیشنهادی» — بازبینی پیش از انتشار و آمار هر مطلب
+  contentSubmitReview: (k: ContentKind, id: string) => p("POST", `/content/${k}/${id}/submit-review/`),
+  contentApproveReview: (k: ContentKind, id: string) => p("POST", `/content/${k}/${id}/approve/`),
+  contentReturnReview: (k: ContentKind, id: string) => p("POST", `/content/${k}/${id}/return/`),
+  contentReviewQueue: (k: ContentKind) => p("GET", `/content/${k}/pending-review/`),
+  contentAnalytics: (k: ContentKind, id: string) => p("GET", `/content/${k}/${id}/analytics/`),
+  mediaAnalytics: (id: string) => p("GET", `/media/media/posts/${id}/analytics/`),
+
+  // ---------------- «پیشنهادی» — گزارش تخلف و صف نظارت
+  reportCreate: () => p("POST", "/core/reports/"),
+  reportQueue: () => p("GET", "/core/reports/?status=open"),
+  reportDismiss: (id: string) => p("POST", `/core/reports/${id}/dismiss/`),
+  reportHide: (id: string) => p("POST", `/core/reports/${id}/hide/`),
+  reportRemoveWarn: (id: string) => p("POST", `/core/reports/${id}/remove-and-warn/`),
 
   // ---------------- media
   mediaList: () => e("GET", "/media/media/posts/published/"),

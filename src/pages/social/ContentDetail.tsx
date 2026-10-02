@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BookOpen, Newspaper, Pencil, Trash2, Send, EyeOff, Eye, Lock, Paperclip, Megaphone, BadgeCheck, BellRing, Pin, Users } from "lucide-react";
+import { BookOpen, Newspaper, Pencil, Trash2, Send, EyeOff, Eye, Lock, Paperclip, Megaphone, BadgeCheck, BellRing, Pin, Users, CheckCircle2, Undo2, Clock } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -18,6 +18,9 @@ import type { Attachment, ContentItem } from "../../social/types";
 import { contentEntity, contentKindLabel } from "../../social/types";
 import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, CommentsPanel, Poster, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp } from "./kit";
 import { ContentEditor, permPrefix } from "./ContentModule";
+import { MarkdownView } from "../knowledge/Markdown";
+import { HiddenBanner, ReportButton, ReviewBadge } from "./moderation";
+import { AnalyticsButton, useCompanyOf } from "./ItemAnalytics";
 
 export default function ContentDetail({ section }: { section: "magazines" | "news" | "blogs" }) {
   const { id = "" } = useParams();
@@ -67,7 +70,14 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
   const entity = contentEntity[kind];
   const published = item.is_public && !item.is_draft;
 
+  // «پیشنهادی» — بازبینی پیش از انتشار: نویسنده‌ی بدون مجوز manage به‌جای «انتشار»، «ارسال برای بازبینی» دارد
+  const review = item.review;
+  const pendingReview = review?.status === "pending";
   const togglePublish = () => {
+    if (!published && !manager) {
+      const r = s.submitForReview(item.id);
+      return notify(r.ok ? `${label} برای بازبینی فرستاده شد.` : r.error, r.ok ? "success" : "warning");
+    }
     s.publishContent(item.id, !published);
     notify(published ? `انتشار ${label} لغو شد.` : `${label} منتشر شد.`, published ? "info" : "success");
   };
@@ -106,6 +116,11 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
                 { label: "واکنش", ep: endpoints.reactionToggle(entity) },
                 { label: "نظرها", ep: endpoints.comments(entity) },
                 { label: "ثبت نظر", ep: endpoints.commentCreate(entity) },
+                { label: "ارسال برای بازبینی", ep: endpoints.contentSubmitReview(kind, item.id) },
+                { label: "تأیید و انتشار", ep: endpoints.contentApproveReview(kind, item.id) },
+                { label: "برگشت با یادداشت", ep: endpoints.contentReturnReview(kind, item.id) },
+                { label: "آمار مطلب", ep: endpoints.contentAnalytics(kind, item.id) },
+                { label: "گزارش تخلف", ep: endpoints.reportCreate() },
                 ...(item.announcement
                   ? [
                       { label: "خواندم و پذیرفتم", ep: endpoints.newsAcknowledge(item.id) },
@@ -115,14 +130,18 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
                   : []),
               ]}
             />
+            {canEdit && <AnalyticsButton entity="content" item={item} />}
+            {!owner && <ReportButton target={{ target_type: "content", target_id: item.id, target_owner_id: item.user_id, target_excerpt: item.title }} />}
             {canEdit && (
               <>
                 <Button size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(true)}>
                   ویرایش
                 </Button>
-                <Button size="sm" icon={published ? <EyeOff size={13} /> : <Send size={13} />} onClick={togglePublish}>
-                  {published ? "لغو انتشار" : "انتشار"}
-                </Button>
+                {!(pendingReview && !manager) && (
+                  <Button size="sm" icon={published ? <EyeOff size={13} /> : <Send size={13} />} onClick={togglePublish}>
+                    {published ? "لغو انتشار" : manager ? "انتشار" : "ارسال برای بازبینی"}
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" icon={<Trash2 size={13} />} onClick={remove} className="!text-rose-600">
                   حذف
                 </Button>
@@ -134,6 +153,12 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <article className="lg:col-span-2 card overflow-hidden">
+          {(review && review.status !== "approved") || item.moderation?.hidden ? (
+            <div className="p-3 border-b border-ink-100 space-y-2">
+              <HiddenBanner m={item.moderation} onUnhide={() => (s.unhide("content", item.id), notify("مطلب دوباره برای مخاطبان نمایش داده می‌شود.", "success"))} />
+              {review && review.status !== "approved" && <ReviewBox item={item} manager={manager} owner={owner} />}
+            </div>
+          ) : null}
           {item.announcement && (
             <div className="flex items-center gap-2 flex-wrap px-4 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-600">
               <Megaphone size={14} className="shrink-0" />
@@ -161,7 +186,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
               </span>
             </div>
             {item.excerpt && <p className="text-[13px] text-ink-600 leading-7 border-r-2 border-brand-300 pr-3">{item.excerpt}</p>}
-            <div className="text-[14px] text-ink-800 leading-8 whitespace-pre-wrap">{item.content}</div>
+            {item.content_format === "markdown" ? <MarkdownView md={item.content} className="!text-[14px] !leading-8 !text-ink-800" /> : <div className="text-[14px] text-ink-800 leading-8 whitespace-pre-wrap">{item.content}</div>}
             {item.announcement?.requires_ack && !owner && published && <AckBox item={item} />}
             {(item.category_ids.length > 0 || item.tags.length > 0) && (
               <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-ink-100">
@@ -220,6 +245,86 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
   );
 }
 
+// ---------------------------------------------------------------- بازبینی پیش از انتشار («پیشنهادی»)
+function ReviewBox({ item, manager, owner }: { item: ContentItem; manager: boolean; owner: boolean }) {
+  const s = useSocial();
+  const { notify } = useToast();
+  const [returning, setReturning] = useState(false);
+  const [note, setNote] = useState("");
+  const rv = item.review!;
+  const last = [...rv.history].reverse()[0];
+  if (rv.status === "pending")
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap text-[12.5px] text-amber-800">
+          <Clock size={14} className="shrink-0" />
+          <span className="flex-1 min-w-[180px] leading-6">
+            <ReviewBadge review={rv} /> ارسال‌شده توسط {s.userName(rv.submitted_by)} در {stamp(rv.submitted_at)}
+            {!manager && owner && " — پس از تأیید مدیر منتشر می‌شود."}
+          </span>
+          {manager && !returning && (
+            <span className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="primary"
+                icon={<CheckCircle2 size={13} />}
+                onClick={() => {
+                  const r = s.approveReview(item.id);
+                  notify(r.ok ? "تأیید و منتشر شد؛ نویسنده مطلع شد." : r.error, r.ok ? "success" : "warning");
+                }}
+              >
+                تأیید و انتشار
+              </Button>
+              <Button size="sm" icon={<Undo2 size={13} />} onClick={() => setReturning(true)}>
+                برگشت با یادداشت
+              </Button>
+            </span>
+          )}
+        </div>
+        {returning && (
+          <div className="flex gap-2 flex-wrap">
+            <input className="input-field flex-1 min-w-[200px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder="چه چیزی باید اصلاح شود؟" autoFocus />
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                const r = s.returnReview(item.id, note);
+                notify(r.ok ? "مطلب با یادداشت به نویسنده برگشت." : r.error, r.ok ? "success" : "warning");
+                if (r.ok) setReturning(false);
+              }}
+            >
+              ثبت برگشت
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setReturning(false)}>
+              انصراف
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  return (
+    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 flex items-start gap-2 flex-wrap text-[12.5px] text-rose-700">
+      <Undo2 size={14} className="shrink-0 mt-1" />
+      <span className="flex-1 min-w-[180px] leading-6">
+        برگشت برای اصلاح توسط {s.userName(rv.reviewed_by ?? "")}
+        {rv.reviewed_at ? ` در ${stamp(rv.reviewed_at)}` : ""}: «{rv.note ?? last?.note ?? "—"}»
+      </span>
+      {owner && (
+        <Button
+          size="sm"
+          icon={<Send size={13} />}
+          onClick={() => {
+            const r = s.submitForReview(item.id);
+            notify(r.ok ? "دوباره برای بازبینی فرستاده شد." : r.error, r.ok ? "success" : "warning");
+          }}
+        >
+          ارسال دوباره
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- اطلاعیه‌ی رسمی («پیشنهادی»)
 /** دکمه‌ی «خواندم و پذیرفتم» برای خواننده */
 function AckBox({ item }: { item: ContentItem }) {
@@ -253,7 +358,6 @@ function AckBox({ item }: { item: ContentItem }) {
 /** پنل «وضعیت خواندن» برای ناشر: درصد کل، تفکیک شرکت، نخوانده‌ها و یادآوری */
 function ReadStatusPanel({ item }: { item: ContentItem }) {
   const s = useSocial();
-  const { iam, membershipsOf, scopeLabel } = useTenancy();
   const { notify } = useToast();
   const [open, setOpen] = useState(false);
   const ann = item.announcement!;
@@ -263,18 +367,7 @@ function ReadStatusPanel({ item }: { item: ContentItem }) {
   const pct = audience.length ? Math.round((done.length / audience.length) * 100) : 0;
 
   /** شرکتِ هر کاربر: عضویت اصلی (یا اولین عضویت فعال)؛ واحد ← شرکتِ بالادست */
-  const companyOf = (uid: string) => {
-    const ms = membershipsOf(uid).filter((m) => m.status === "active");
-    const m = ms.find((x) => x.primary) ?? ms[0];
-    if (!m) return "بدون عضویت";
-    let node = m.scope;
-    while (node.type === "unit" && node.parentId) {
-      const up = iam.scopes.find((x) => x.id === node.parentId);
-      if (!up) break;
-      node = up;
-    }
-    return node.type === "company" ? scopeLabel(node.id) : node.type === "holding" ? `ستاد ${scopeLabel(node.id)}` : "ستاد مرکزی";
-  };
+  const companyOf = useCompanyOf();
   const groups = new Map<string, { total: number; done: number }>();
   audience.forEach((u) => {
     const k = companyOf(u);

@@ -27,8 +27,11 @@ import {
   seedSavedSearches,
   seedSettings,
   seedWorkflows,
+  seedRetentionDocs,
+  A3_CIRCULAR,
 } from "../km/seed";
-import { DEFAULT_ACCESS_POLICY, evaluateAccess, stepActors, subjectFor, templateFor, type AccessSubject, type AccessVerdict } from "../km/access";
+import { defaultRetention, retentionInfo, seedProcessFlows } from "../km/templates";
+import { DEFAULT_ACCESS_POLICY, aclEntryMatches, evaluateAccess, stepActors, subjectFor, templateFor, type AccessSubject, type AccessVerdict } from "../km/access";
 import { matchesAll, mdToPlain, queryTerms } from "../km/text";
 import type {
   AccessLevel,
@@ -41,6 +44,7 @@ import type {
   KCategory,
   KComment,
   KDelegation,
+  KDisposal,
   KDoc,
   KDocFlow,
   KDocType,
@@ -81,6 +85,10 @@ type Store = {
   reminded: string[];
   /** بند ۷: جستجوهای ذخیره‌شده */
   savedSearches: KSavedSearch[];
+  /** گواهی‌های امحا (اسناد حذف‌شده طبق جدول نگهداشت) */
+  disposals?: KDisposal[];
+  /** وصله‌ی داده‌ی نمونه‌ی نگهداشت/فرآیند تصمیم‌دار روی ذخیره‌ی موجود اعمال شده است */
+  patched?: number;
 };
 
 function initial(): Store {
@@ -93,7 +101,7 @@ function initial(): Store {
     registryTypes: seedRegistryTypes(),
     registry: seedRegistry(),
     rnd: seedRnd(),
-    processes: seedProcesses(),
+    processes: seedProcesses().map((p) => (seedProcessFlows[p.id] ? { ...p, ...seedProcessFlows[p.id] } : p)),
     experiences: seedExperiences(),
     experts: seedExperts(),
     glossary: seedGlossary(),
@@ -111,6 +119,8 @@ function initial(): Store {
     ],
     reminded: [],
     savedSearches: seedSavedSearches(),
+    disposals: [],
+    patched: 1,
   };
 }
 
@@ -119,7 +129,17 @@ function load(): Store {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Store;
-      if (s.version === VERSION) return s;
+      if (s.version === VERSION) {
+        // وصله‌ی یک‌باره بدون از دست رفتن داده‌ی کاربر: اسناد نمونه‌ی نگهداشت و نمودار تصمیم‌دار فرآیند
+        if (!s.patched) {
+          const have = new Set(s.docs.map((d) => d.id));
+          s.docs = [...s.docs, ...seedRetentionDocs().filter((d) => !have.has(d.id))];
+          s.processes = s.processes.map((p) => (p.flow || !seedProcessFlows[p.id] ? p : { ...p, ...seedProcessFlows[p.id] }));
+          s.docs = s.docs.map((d) => (d.id === "a3" && d.circular === undefined ? { ...d, circular: A3_CIRCULAR } : d));
+          s.patched = 1;
+        }
+        return s;
+      }
     }
   } catch {
     /* ذخیره‌ساز در دسترس نیست */
@@ -224,6 +244,19 @@ type Ctx = Store & {
   deleteSearch: (id: string) => void;
   toggleSearchNotify: (id: string) => void;
   resetKm: () => void;
+  // ابلاغ (بخشنامه/دستورالعمل/آیین‌نامه) — «خواندم و پذیرفتم»
+  /** نام مخاطبان ابلاغ سند (به‌جز مالک/ثبت‌کننده) */
+  circularAudience: (d: KDoc) => string[];
+  acknowledgeDoc: (id: string) => void;
+  remindCircular: (id: string) => number;
+  /** اسناد منتشرشده‌ای که کاربر جاری باید «خواندم و پذیرفتم» بزند */
+  myPendingAcks: () => KDoc[];
+  // نگهداشت، امحا و نگهداشت قانونی
+  retention: Record<string, number>;
+  setLegalHold: (id: string, reason: string | null) => void;
+  /** امحای سند پس از پایان دوره‌ی نگهداشت (ممیزی می‌شود)؛ نگهداشت قانونی مانع است */
+  disposeDoc: (id: string, note: string) => boolean;
+  disposals: KDisposal[];
 };
 
 const KnowledgeContext = createContext<Ctx | null>(null);
@@ -426,6 +459,26 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
   const relKey: Record<EntityKind, keyof Store> = { doc: "docs", registry: "registry", process: "processes", lesson: "experiences", expert: "experts", glossary: "glossary" };
   const aclSummary = (acl?: KAcl) => (acl?.entries.length ? `${acl.entries.length.toLocaleString("fa-IR")} ردیف دسترسی${acl.viewOnly ? " · فقط مشاهده" : ""}` : acl?.viewOnly ? "فقط مشاهده" : "فقط سطح دسترسی");
 
+  /** مخاطبان ابلاغ: کسانی که سند را می‌بینند و (اگر مخاطب تعیین شده) با یکی از واحدها/نقش‌ها منطبق‌اند */
+  const circularAudience = (d: KDoc) => {
+    if (!d.circular) return [];
+    const entries = d.circular.audience;
+    return users
+      .filter((u) => u.name !== d.owner && u.name !== d.author)
+      .filter((u) => {
+        const subj = u.id === actingUser.id ? meSubject : { ...subjectFor(iam, u.id, KM_TODAY), name: u.name };
+        if (!evaluateAccess(d, subj, iam, policy).view) return false;
+        return !entries.length || entries.some((e) => aclEntryMatches({ kind: e.kind, id: e.id, download: false }, subj, iam));
+      })
+      .map((u) => u.name);
+  };
+  const notifyCircular = (d: KDoc) => {
+    if (!d.circular) return;
+    const to = circularAudience(d);
+    if (to.length) inbox.send(to, "announcement", `ابلاغ ${d.type} «${d.title}»${d.circular.deadline ? ` — مهلت تأیید خواندن تا ${d.circular.deadline}` : ""}. پس از مطالعه «خواندم و پذیرفتم» را بزنید.`, `/dashboard/knowledge?tab=bank&doc=${d.id}`, { urgent: true });
+  };
+  const retention = { ...defaultRetention, ...(store.settings.retention ?? {}) };
+
   const value: Ctx = {
     ...store,
     today: KM_TODAY,
@@ -497,7 +550,8 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
     deleteDoc: (id) =>
       setStore((prev) => {
         const d = prev.docs.find((x) => x.id === id);
-        if (!d) return prev;
+        // نگهداشت قانونی: حذف ممنوع
+        if (!d || d.legalHold) return prev;
         return log({ ...prev, docs: prev.docs.filter((x) => x.id !== id) }, "سند را حذف کرد", { type: "doc", id, title: d.title }, "delete", undefined, d.access);
       }),
     newVersion: (id, files, note, body) => {
@@ -561,6 +615,7 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
         if (action === "return") inbox.send([d.owner, d.author], "knowledge", `سند «${d.title}» در مرحله‌ی «${f.step.name}» برای اصلاح به شما ارجاع شد${note ? `: «${note}»` : "."}`, link);
         else if (finishing) {
           inbox.send([d.owner, d.author, ...d.followers], "knowledge", `سند «${d.title}» منتشر شد.`, link);
+          notifyCircular(d);
           const interested = interestedIn(d.categoryId);
           if (interested.length) inbox.send(interested, "knowledge", `دانش جدید در حوزه‌ی مورد علاقه‌ی شما: «${d.title}»`, link);
           notifySavedSearches(d);
@@ -593,6 +648,7 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
       if (action === "return") inbox.send([d.owner, d.author], "knowledge", `سند «${d.title}» برای اصلاح به شما ارجاع شد${note ? `: «${note}»` : "."}`, link);
       if (action === "publish") {
         inbox.send([d.owner, d.author, ...d.followers], "knowledge", `سند «${d.title}» منتشر شد.`, link);
+        notifyCircular(d);
         const interested = interestedIn(d.categoryId);
         if (interested.length) inbox.send(interested, "knowledge", `دانش جدید در حوزه‌ی مورد علاقه‌ی شما: «${d.title}»`, link);
         notifySavedSearches(d);
@@ -796,6 +852,34 @@ export function KnowledgeProvider({ children }: { children: ReactNode }) {
     saveSearch: (x) => setStore((prev) => ({ ...prev, savedSearches: [{ ...x, id: nid(prev, "ss"), owner: me, createdAt: KM_TODAY }, ...prev.savedSearches] })),
     deleteSearch: (id) => setStore((prev) => ({ ...prev, savedSearches: prev.savedSearches.filter((x) => x.id !== id) })),
     toggleSearchNotify: (id) => setStore((prev) => ({ ...prev, savedSearches: prev.savedSearches.map((x) => (x.id === id ? { ...x, notify: !x.notify } : x)) })),
+    circularAudience,
+    acknowledgeDoc: (id) => patchDoc(id, (x) => (x.circular && !x.circular.acks[me] ? { ...x, circular: { ...x.circular, acks: { ...x.circular.acks, [me]: stamp() } } } : x), "«خواندم و پذیرفتم» را برای سند ثبت کرد", "feedback"),
+    remindCircular: (id) => {
+      const d = store.docs.find((x) => x.id === id);
+      if (!d?.circular) return 0;
+      const pending = circularAudience(d).filter((n) => !d.circular!.acks[n]);
+      if (!pending.length) return 0;
+      patchDoc(id, (x) => (x.circular ? { ...x, circular: { ...x.circular, lastReminderAt: stamp() } } : x), "یادآوری ابلاغ به نخوانده‌ها فرستاد", "workflow", `${pending.length.toLocaleString("fa-IR")} نفر`);
+      inbox.send(pending, "announcement", `یادآوری: ${d.type} «${d.title}» را بخوانید و «خواندم و پذیرفتم» را بزنید${d.circular.deadline ? ` (مهلت ${d.circular.deadline})` : ""}.`, `/dashboard/knowledge?tab=bank&doc=${id}`, { urgent: true });
+      return pending.length;
+    },
+    myPendingAcks: () => store.docs.filter((d) => d.circular && d.status === "منتشرشده" && !d.circular.acks[me] && d.owner !== me && d.author !== me && circularAudience(d).includes(me)),
+    retention,
+    setLegalHold: (id, reason) =>
+      patchDoc(id, (x) => ({ ...x, legalHold: reason ? { by: me, at: KM_TODAY, reason } : null }), reason ? "نگهداشت قانونی روی سند گذاشت" : "نگهداشت قانونی سند را برداشت", "retention", reason ?? undefined),
+    disposeDoc: (id, note) => {
+      const d = store.docs.find((x) => x.id === id);
+      if (!d || d.legalHold || !hasPermission("knowledge.archive")) return false;
+      const info = retentionInfo(d, store.settings.retention, KM_TODAY);
+      if (!info.eligible) return false;
+      setStore((prev) => {
+        const rec: KDisposal = { id: `dp${prev.seq + 1}-${Date.now().toString(36)}`, docId: d.id, code: d.code, title: d.title, type: d.type, at: stamp(), by: me, note: note.trim(), retentionYears: info.years, basis: info.basis };
+        return log({ ...prev, docs: prev.docs.filter((x) => x.id !== id), disposals: [rec, ...(prev.disposals ?? [])] }, "سند را طبق جدول نگهداشت امحا کرد", { type: "doc", id, title: d.title }, "retention", `${d.code} · نگهداشت ${info.years.toLocaleString("fa-IR")} سال از ${info.basis}${note.trim() ? ` · ${note.trim()}` : ""}`, d.access);
+      });
+      inbox.send([d.owner], "knowledge", `سند آرشیوی «${d.title}» پس از پایان دوره‌ی نگهداشت امحا شد.`, "/dashboard/knowledge?tab=retention");
+      return true;
+    },
+    disposals: store.disposals ?? [],
     resetKm: () => {
       try {
         localStorage.removeItem(KEY);

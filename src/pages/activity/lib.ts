@@ -1,6 +1,7 @@
 // کمکی‌های مشترک صفحه‌ی «گزارش فعالیت‌های من»: داده‌ی ترکیبی کارکرد (ثبت‌ها + تایمر پروژه +
 // ساعت ثابت)، محدوده‌ی دید مدیر، نام پروژه/تسک و شبیه‌ساز همگام‌سازی ابزارهای بیرونی.
 import { useMemo } from "react";
+import { recursOn } from "../../pm/recurrence";
 import { useTenancy } from "../../context/TenancyContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { useTimesheet, type NewEntry } from "../../context/TimesheetContext";
@@ -221,8 +222,8 @@ export function simulateSync(
     } else if (k === "calendar") {
       projects.forEach((p) =>
         p.meetings
-          .filter((m) => dayNum(m.date) === dayNum(date) && m.status !== "لغوشده" && m.participants.includes(person.name))
-          .forEach((m) => out.push({ ...base(date, m.duration / 60, p.meta.name, `جلسه: ${m.title}`, `gcal:${p.meta.id}-${m.id}`, r), projectId: p.meta.id, taskId: undefined })),
+          .filter((m) => recursOn(m.recurrence, m.date, dayNum(date) ?? -1) && m.status !== "لغوشده" && m.participants.includes(person.name))
+          .forEach((m) => out.push({ ...base(date, m.duration / 60, p.meta.name, `جلسه: ${m.title}`, `gcal:${p.meta.id}-${m.id}${m.recurrence ? `@${date}` : ""}`, r), projectId: p.meta.id, taskId: undefined })),
       );
       if (r() < 0.45) out.push(base(date, 0.5, ext, "جلسه: هماهنگی روزانه‌ی تیم", `gcal:daily@${date}`, r));
     }

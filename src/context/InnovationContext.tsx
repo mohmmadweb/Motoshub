@@ -10,10 +10,12 @@ import { useTenancy } from "./TenancyContext";
 import { useInbox } from "./InboxContext";
 import { nowClock } from "../pm/jalali";
 import { initialInnovation, INN_VERSION } from "../innovation/seed";
+import { ensureExtras } from "../innovation/extras";
 import type { DataSourceKind, Decision, EcoEntity, EcoFieldDef, FieldChange, ILog, InnModule, InnStore, Outcome } from "../innovation/types";
 import { keyFields, moduleTitle } from "../innovation/types";
 import { completeness, displayValue, findEntityByName, toRial, uid } from "../innovation/util";
 import { publishSourceRows, registerSource } from "../reports/sources";
+import { ReportScheduleRunner } from "../reports/Schedules";
 import type { Row } from "../reports/types";
 
 const KEY = "motoshub.innovation.v1";
@@ -23,12 +25,12 @@ function load(): InnStore {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as InnStore;
-      if (s.version === INN_VERSION) return s;
+      if (s.version === INN_VERSION) return ensureExtras(s);
     }
   } catch {
     /* ذخیره‌ساز در دسترس نیست */
   }
-  return initialInnovation();
+  return ensureExtras(initialInnovation());
 }
 
 export type Subject = { id: string; title: string };
@@ -204,7 +206,7 @@ export function InnovationProvider({ children }: { children: ReactNode }) {
 
   const logsOf = useCallback((module: InnModule) => store.logs.filter((l) => l.module === module || (module === "research" && l.module === "ecosystem")), [store.logs]);
 
-  const resetInnovation = useCallback(() => setStore(initialInnovation()), []);
+  const resetInnovation = useCallback(() => setStore(ensureExtras(initialInnovation())), []);
 
   // ---------------------------------------------------- اتصال به گزارش‌ساز پویا
   useEffect(() => {
@@ -263,18 +265,19 @@ export function InnovationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const ents: Row[] = store.entities.map((e) => ({
+      id: e.id,
       name: e.name, kind: e.kind === "company" ? "شرکت" : "پژوهشگر", field: e.field, city: e.city, kbType: e.kbType ?? null,
       trl: e.trl ?? null, employees: e.employees ?? null, hIndex: e.hIndex ?? null, completeness: completeness(e),
       contracts: store.contracts.filter((c) => c.vendorEntityId === e.id || (!c.vendorEntityId && findEntityByName([e], c.vendor))).length,
     }));
     publishSourceRows("innovation.entities", ents);
-    publishSourceRows("innovation.decisions", store.decisions.map((d) => ({ module: moduleTitle[d.module], question: d.question, subject: d.subjectTitle, chosen: d.chosenLabel, deviates: d.deviates, committee: d.committee ?? "—", decidedBy: d.decidedBy })));
-    publishSourceRows("innovation.outcomes", store.outcomes.map((o) => ({ module: moduleTitle[o.module], subject: o.subjectTitle, delivered: o.delivered, schedule: o.schedule, budget: o.budget, successPct: o.successPct, quality: o.quality, trlGain: o.trlAfter !== undefined && o.trlBefore !== undefined ? o.trlAfter - o.trlBefore : null })));
+    publishSourceRows("innovation.decisions", store.decisions.map((d) => ({ id: d.id, mod: d.module, subjectId: d.subjectId, module: moduleTitle[d.module], question: d.question, subject: d.subjectTitle, chosen: d.chosenLabel, deviates: d.deviates, committee: d.committee ?? "—", decidedBy: d.decidedBy })));
+    publishSourceRows("innovation.outcomes", store.outcomes.map((o) => ({ id: o.id, mod: o.module, subjectId: o.subjectId, module: moduleTitle[o.module], subject: o.subjectTitle, delivered: o.delivered, schedule: o.schedule, budget: o.budget, successPct: o.successPct, quality: o.quality, trlGain: o.trlAfter !== undefined && o.trlBefore !== undefined ? o.trlAfter - o.trlBefore : null })));
     const alloc: Row[] = [
-      ...store.contracts.map((c) => ({ module: "قرارداد", title: c.title, holding: c.holdingId ?? "—", allocated: c.value, paid: c.payments.filter((p) => p.status === "پرداخت‌شده").reduce((a, p) => a + p.amount, 0) })),
-      ...store.nfProjects.map((p) => ({ module: "صندوق نوآور", title: p.titleFa, holding: p.holdingId ?? "—", allocated: toRial(p.budget), paid: toRial(p.finance.paid) })),
-      ...store.employment.map((f) => ({ module: "صندوق اشتغال", title: f.title, holding: f.holdingId ?? "—", allocated: f.approved, paid: f.tranches.filter((t) => t.status === "پرداخت‌شده").reduce((a, t) => a + t.amount, 0) })),
-      ...store.calls.map((c) => ({ module: "فرصت پژوهشی", title: c.title, holding: c.holdingId ?? "—", allocated: c.budget, paid: c.paid })),
+      ...store.contracts.map((c) => ({ id: c.id, mod: "contracts", module: "قرارداد", title: c.title, holding: c.holdingId ?? "—", allocated: c.value, paid: c.payments.filter((p) => p.status === "پرداخت‌شده").reduce((a, p) => a + p.amount, 0) })),
+      ...store.nfProjects.map((p) => ({ id: p.id, mod: "nf", module: "صندوق نوآور", title: p.titleFa, holding: p.holdingId ?? "—", allocated: toRial(p.budget), paid: toRial(p.finance.paid) })),
+      ...store.employment.map((f) => ({ id: f.id, mod: "employment", module: "صندوق اشتغال", title: f.title, holding: f.holdingId ?? "—", allocated: f.approved, paid: f.tranches.filter((t) => t.status === "پرداخت‌شده").reduce((a, t) => a + t.amount, 0) })),
+      ...store.calls.map((c) => ({ id: c.id, mod: "research", module: "فرصت پژوهشی", title: c.title, holding: c.holdingId ?? "—", allocated: c.budget, paid: c.paid })),
     ];
     publishSourceRows("innovation.allocations", alloc);
   }, [store.entities, store.contracts, store.decisions, store.outcomes, store.nfProjects, store.employment, store.calls]);
@@ -284,7 +287,13 @@ export function InnovationProvider({ children }: { children: ReactNode }) {
     [store, today, me, stamp, commit, entityById, resolveEntity, saveEntity, deleteEntity, importEntities, saveFieldDef, deleteFieldDef, recordDecision, recordOutcome, logsOf, resetInnovation]
   );
 
-  return <InnovationContext.Provider value={value}>{children}</InnovationContext.Provider>;
+  return (
+    <InnovationContext.Provider value={value}>
+      {children}
+      {/* اجراکننده‌ی زمان‌بندی ارسال گزارش‌ها — این Provider در سطح کل برنامه است، پس «هنگام بارگذاری برنامه» اجرا می‌شود */}
+      <ReportScheduleRunner />
+    </InnovationContext.Provider>
+  );
 }
 
 export function useInnovation() {

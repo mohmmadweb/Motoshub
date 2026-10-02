@@ -55,3 +55,53 @@
 ## کارت‌های داشبورد (برای همه‌ی نقش‌ها)
 کارهای من · جلسات و رویدادهای پیش‌رو · اعلان‌های مهم سازمان · پروژه‌های فعال من · پیشنهاد برای شما (محتوای هم‌خوان با مهارت‌ها و تعامل‌های کاربر) ·
 همکاری پیشنهادی (افراد با ارتباط مشترک/هم‌سازمانی/مهارت مشترک و گروه‌های عمومی) · تازه‌ترین اعلان‌ها · پیام‌ها و منشن‌ها · منتظر تصمیم من.
+
+## endpointهای «پیشنهادی» (در API فعلی نیستند)
+
+رابط کاربری دمو این‌ها را شبیه‌سازی می‌کند و در دکمه‌ی «API» هر صفحه با برچسب کهربایی «پیشنهادی» نشان داده می‌شوند. فهرست از `src/social/endpoints.ts` استخراج شده است.
+
+| حوزه | متد | مسیر | کلید در کد |
+|---|---|---|---|
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `${fm(o, id)}/files/{f}/preview/` | `filePreview` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `${fm(o, id)}/files/{f}/versions/` | `fileVersions` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `POST` | `${fm(o, id)}/files/{f}/versions/` | `fileVersionUpload` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `POST` | `${fm(o, id)}/files/{f}/versions/{v}/restore/` | `fileVersionRestore` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `/core/file-manager/trash/` | `fileTrash` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `POST` | `/core/file-manager/trash/{f}/restore/` | `fileRestore` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `DELETE` | `/core/file-manager/trash/{f}/` | `filePurge` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `POST` | `/core/file-manager/files/{f}/star/` | `fileStar` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `/core/file-manager/starred/` | `fileStarred` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `/core/file-manager/recent/` | `fileRecent` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `POST` | `${fm(o, id)}/files/{f}/share-link/` | `fileShare` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `DELETE` | `${fm(o, id)}/files/{f}/share-link/` | `fileShareRevoke` |
+| پیش‌نمایش، نسخه، سطل بازیافت، ستاره، اخیر، اشتراک و سهمیه | `GET` | `${fm(o, id)}/quota/` | `fileQuota` |
+| تغییر نام، فعالیت فایل و «اشتراک‌گذاشته با من» | `PATCH` | `${fm(o, id)}/files/{f}/` | `fileRename` |
+| تغییر نام، فعالیت فایل و «اشتراک‌گذاشته با من» | `GET` | `${fm(o, id)}/files/{f}/activity/` | `fileActivity` |
+| تغییر نام، فعالیت فایل و «اشتراک‌گذاشته با من» | `GET` | `/core/file-manager/shared-with-me/` | `fileSharedWithMe` |
+| اطلاعیه‌ی رسمی و تأیید خواندن | `POST` | `/content/news/{id}/acknowledge/` | `newsAcknowledge` |
+| اطلاعیه‌ی رسمی و تأیید خواندن | `GET` | `/content/news/{id}/read-status/` | `newsReadStatus` |
+| اطلاعیه‌ی رسمی و تأیید خواندن | `POST` | `/content/news/{id}/remind-unread/` | `newsRemind` |
+| اطلاعیه‌ی رسمی و تأیید خواندن | `GET` | `/content/news/pinned/` | `newsPinned` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/content/{k}/{id}/submit-review/` | `contentSubmitReview` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/content/{k}/{id}/approve/` | `contentApproveReview` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/content/{k}/{id}/return/` | `contentReturnReview` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `GET` | `/content/{k}/pending-review/` | `contentReviewQueue` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `GET` | `/content/{k}/{id}/analytics/` | `contentAnalytics` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `GET` | `/media/media/posts/{id}/analytics/` | `mediaAnalytics` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/core/reports/` | `reportCreate` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `GET` | `/core/reports/?status=open` | `reportQueue` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/core/reports/{id}/dismiss/` | `reportDismiss` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/core/reports/{id}/hide/` | `reportHide` |
+| بازبینی پیش از انتشار و آمار هر مطلب | `POST` | `/core/reports/{id}/remove-and-warn/` | `reportRemoveWarn` |
+| رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه | `POST` | `/forums/forums/topics/{id}/vote/` | `topicVote` |
+| رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه | `POST` | `/forums/forums/posts/{id}/vote/` | `postVote` |
+| رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه | `POST` | `/forums/forums/topics/{id}/accept-answer/` | `topicAccept` |
+| رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه | `POST` | `/forums/forums/topics/{id}/mark-duplicate/` | `topicDuplicate` |
+| رأی، پاسخ پذیرفته‌شده، تکراری و پرسش مشابه | `GET` | `/forums/forums/topics/similar/?q=` | `topicSimilar` |
+| واکنش، رشته، سنجاق و جستجو داخل گفتگو | `POST` | `/messaging/messaging/messages/{id}/reactions/` | `messageReact` |
+| واکنش، رشته، سنجاق و جستجو داخل گفتگو | `GET` | `/messaging/messaging/messages/{id}/thread/` | `messageThread` |
+| واکنش، رشته، سنجاق و جستجو داخل گفتگو | `POST` | `/messaging/messaging/messages/{id}/pin/` | `messagePin` |
+| واکنش، رشته، سنجاق و جستجو داخل گفتگو | `GET` | `/messaging/messaging/{t}/{id}/pinned/` | `chatPinned` |
+| واکنش، رشته، سنجاق و جستجو داخل گفتگو | `GET` | `/messaging/messaging/{t}/{id}/messages/?q=` | `chatSearch` |
+
+سایر نیازهای بک‌اند: فیلد دامنه‌ی سازمانی (`scope_id`) روی همه‌ی موجودیت‌ها، و نگاشت مجوزها در [PERMISSION_MAPPING.md](PERMISSION_MAPPING.md).

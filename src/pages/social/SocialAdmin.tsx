@@ -4,8 +4,8 @@
 //   واکنش‌های مجاز (core/allowed-reactions) و تنظیمات ماژول‌ها (PATCH /{module}/setting/{key}/).
 // ---------------------------------------------------------------------------
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { LayoutDashboard, FileText, Image as ImageIcon, CalendarDays, MessagesSquare, MessageCircle, UserPlus, Check, Trash2, CheckCheck, Plus, RotateCcw, Settings2, Smile, ShieldCheck, Trophy } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { LayoutDashboard, FileText, Image as ImageIcon, CalendarDays, MessagesSquare, MessageCircle, UserPlus, Check, Trash2, CheckCheck, Plus, RotateCcw, Settings2, Smile, ShieldCheck, Trophy, CheckCircle2, Undo2, Flag, EyeOff, Ban, History } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Tabs from "../../components/ui/Tabs";
 import Button from "../../components/ui/Button";
@@ -18,11 +18,15 @@ import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useSocial } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints, fmtEndpoint, type Ep } from "../../social/endpoints";
-import type { Comment, EntityName, Setting, SocialModule } from "../../social/types";
-import { entityLabel } from "../../social/types";
+import type { AbuseReport, Comment, ContentKind, EntityName, Setting, SocialModule } from "../../social/types";
+import { contentKindLabel, entityLabel, moderationActionLabel, reportReasonLabel, reportStatusLabel, reportTargetLabel } from "../../social/types";
+import { contentPerm } from "../../context/SocialContext";
+import Modal from "../../components/ui/Modal";
+import { contentPath } from "./ContentModule";
+import { MarkdownView } from "../knowledge/Markdown";
 import { ApiChip, Field, UserLine, fa, stamp } from "./kit";
 
-type Tab = "dash" | "comments" | "reactions" | "settings";
+type Tab = "dash" | "review" | "reports" | "comments" | "reactions" | "settings";
 
 const modules: { id: SocialModule; label: string; path: Parameters<typeof endpoints.dashboard>[0]; icon: typeof FileText; to: string }[] = [
   { id: "content", label: "محتوا (مجله، خبر، بلاگ)", path: "content/content", icon: FileText, to: "/dashboard/magazines" },
@@ -65,13 +69,21 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
   const confirm = useConfirm();
   const canComments = hasPermission("comments.moderate");
   const canSettings = hasPermission("social.settings");
-  const [tab, setTab] = useState<Tab>("dash");
+  // ?social_tab=review|reports — پیوند اعلان‌های بازبینی و گزارش تخلف مستقیم به همان زبانه
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => (params.get("social_tab") as Tab | null) ?? "dash");
 
   if (!hasPermission("social.dashboards")) return <AccessDenied module="داشبورد مدیریتی شبکه" />;
 
   const pending = s.comments.filter((c) => !c.approved).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  // «پیشنهادی» — صف بازبینی پیش از انتشار (برای دارندگان مجوز manage هر بخش) و صف گزارش‌های تخلف
+  const reviewKinds = (["news", "blogs", "magazines"] as ContentKind[]).filter((k) => hasPermission(`${contentPerm(k)}.manage`));
+  const reviewQueue = s.content.filter((x) => x.review?.status === "pending" && reviewKinds.includes(x.kind) && s.canView(x, true));
+  const openReports = s.reports.filter((r) => r.status === "open");
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "dash", label: "داشبورد" },
+    ...(reviewKinds.length ? [{ id: "review" as Tab, label: "صف بازبینی", count: reviewQueue.length }] : []),
+    ...(canComments ? [{ id: "reports" as Tab, label: "گزارش‌های تخلف", count: openReports.length }] : []),
     ...(canComments ? [{ id: "comments" as Tab, label: "صف تأیید نظرها", count: pending.length }] : []),
     ...(canSettings ? [{ id: "reactions" as Tab, label: "واکنش‌های مجاز" }, { id: "settings" as Tab, label: "تنظیمات ماژول‌ها" }] : []),
   ];
@@ -116,6 +128,19 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
   const apiItems: { label: string; ep: Ep }[] =
     active === "dash"
       ? modules.map((m) => ({ label: `داشبورد مدیر — ${m.label}`, ep: endpoints.dashboard(m.path, "admin") }))
+      : active === "review"
+        ? [
+            ...reviewKinds.map((k) => ({ label: `صف بازبینی ${contentKindLabel[k]}`, ep: endpoints.contentReviewQueue(k) })),
+            { label: "تأیید و انتشار", ep: endpoints.contentApproveReview("{kind}" as ContentKind, "{id}") },
+            { label: "برگشت با یادداشت", ep: endpoints.contentReturnReview("{kind}" as ContentKind, "{id}") },
+          ]
+        : active === "reports"
+          ? [
+              { label: "صف گزارش‌های باز", ep: endpoints.reportQueue() },
+              { label: "رد گزارش", ep: endpoints.reportDismiss("{id}") },
+              { label: "پنهان‌سازی", ep: endpoints.reportHide("{id}") },
+              { label: "حذف و اخطار", ep: endpoints.reportRemoveWarn("{id}") },
+            ]
       : active === "comments"
         ? [
             { label: "نظرهای تأییدنشده (برای هر entity_name)", ep: endpoints.commentsUnapproved("{entity_name}" as EntityName) },
@@ -145,6 +170,8 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
       <Tabs tabs={tabs} active={active} onChange={setTab} />
 
       {active === "dash" && <DashboardTab />}
+      {active === "review" && <ReviewQueueTab />}
+      {active === "reports" && <ReportsTab />}
 
       {active === "comments" && (
         <div className="card">
@@ -491,6 +518,272 @@ function SettingsTab() {
           </ul>
         </section>
       ))}
+    </div>
+  );
+}
+
+// ================================================================ «پیشنهادی» — صف بازبینی پیش از انتشار
+function ReviewQueueTab() {
+  const s = useSocial();
+  const { hasPermission } = useTenancy();
+  const { notify } = useToast();
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [returnFor, setReturnFor] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const kinds = (["news", "blogs", "magazines"] as ContentKind[]).filter((k) => hasPermission(`${contentPerm(k)}.manage`));
+  const queue = s.content.filter((x) => x.review?.status === "pending" && kinds.includes(x.kind) && s.canView(x, true)).sort((a, b) => (a.review?.submitted_at ?? "").localeCompare(b.review?.submitted_at ?? ""));
+  const recent = s.moderationLog.filter((e) => e.action === "review_approve" || e.action === "review_return").slice(0, 6);
+  const view = viewId ? s.content.find((x) => x.id === viewId) : undefined;
+  const approve = (id: string) => {
+    const r = s.approveReview(id);
+    notify(r.ok ? "تأیید و منتشر شد؛ نویسنده مطلع شد." : r.error, r.ok ? "success" : "warning");
+    setViewId(null);
+  };
+  return (
+    <div className="space-y-4">
+      <div className="card">
+        <p className="p-3 border-b border-ink-100 text-[12.5px] text-ink-600">
+          {queue.length ? `${fa(queue.length)} مطلب منتظر بازبینی پیش از انتشار است (قدیمی‌ترین بالا).` : "صف بازبینی خالی است."} <span className="text-ink-400">مطالب کاربرانی که مجوز انتشار مستقیم ندارند اینجا می‌آیند.</span>
+        </p>
+        {queue.length === 0 ? (
+          <div className="py-10">
+            <EmptyState icon={<CheckCircle2 size={22} />} title="مطلبی در انتظار بازبینی نیست" />
+          </div>
+        ) : (
+          <ul className="divide-y divide-ink-100">
+            {queue.map((x) => (
+              <li key={x.id} className="p-3 flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <button onClick={() => setViewId(x.id)} className="min-w-0 flex-1 text-right">
+                  <span className="flex items-center gap-2 flex-wrap mb-1">
+                    <Badge tone="brand">{contentKindLabel[x.kind]}</Badge>
+                    <span className="text-[13px] font-medium text-ink-900 hover:text-brand-700 truncate">{x.title}</span>
+                  </span>
+                  <span className="block text-[11px] text-ink-400 truncate">
+                    {s.userName(x.user_id)} · ارسال {stamp(x.review?.submitted_at)}
+                    {(x.review?.history.filter((h) => h.action === "return").length ?? 0) > 0 && ` · ${fa(x.review!.history.filter((h) => h.action === "return").length)} بار برگشت خورده`}
+                  </span>
+                </button>
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <Button size="sm" variant="primary" icon={<CheckCircle2 size={13} />} onClick={() => approve(x.id)}>
+                    تأیید و انتشار
+                  </Button>
+                  <Button
+                    size="sm"
+                    icon={<Undo2 size={13} />}
+                    onClick={() => {
+                      setReturnFor(x.id);
+                      setNote("");
+                    }}
+                  >
+                    برگشت
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {recent.length > 0 && (
+        <div className="card p-3">
+          <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
+            <History size={13} /> آخرین تصمیم‌ها
+          </p>
+          <ul className="space-y-1">
+            {recent.map((e) => (
+              <li key={e.id} className="text-[11.5px] text-ink-600 flex items-center gap-2 flex-wrap">
+                <Badge tone={e.action === "review_approve" ? "success" : "danger"}>{moderationActionLabel[e.action]}</Badge>
+                <span className="truncate max-w-[260px]">{e.target_title}</span>
+                <span className="text-ink-400 mr-auto">
+                  {s.userName(e.actor_id)} · {stamp(e.at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Modal open={!!view} onClose={() => setViewId(null)} title={view?.title ?? ""} description={view ? `${contentKindLabel[view.kind]} · ${s.userName(view.user_id)}` : undefined} width="max-w-2xl">
+        {view && (
+          <div className="space-y-3">
+            {view.excerpt && <p className="text-[12.5px] text-ink-600 border-r-2 border-brand-300 pr-3 leading-6">{view.excerpt}</p>}
+            <div className="max-h-[50vh] overflow-y-auto">{view.content_format === "markdown" ? <MarkdownView md={view.content} /> : <p className="text-[13px] text-ink-800 leading-7 whitespace-pre-wrap">{view.content}</p>}</div>
+            <div className="flex items-center gap-2 pt-2 border-t border-ink-100 flex-wrap">
+              <Button variant="primary" size="sm" icon={<CheckCircle2 size={13} />} onClick={() => approve(view.id)}>
+                تأیید و انتشار
+              </Button>
+              <Button size="sm" icon={<Undo2 size={13} />} onClick={() => (setReturnFor(view.id), setNote(""), setViewId(null))}>
+                برگشت با یادداشت
+              </Button>
+              <Link to={contentPath(view)} className="text-[11.5px] text-brand-700 hover:underline mr-auto">
+                صفحه‌ی مطلب
+              </Link>
+            </div>
+          </div>
+        )}
+      </Modal>
+      <Modal open={!!returnFor} onClose={() => setReturnFor(null)} title="برگشت با یادداشت" description={s.content.find((x) => x.id === returnFor)?.title}>
+        <div className="space-y-3">
+          <textarea className="input-field min-h-[90px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder="چه چیزی باید اصلاح شود؟ (برای نویسنده ارسال می‌شود)" autoFocus />
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (!returnFor) return;
+                const r = s.returnReview(returnFor, note);
+                notify(r.ok ? "مطلب با یادداشت به نویسنده برگشت." : r.error, r.ok ? "success" : "warning");
+                if (r.ok) setReturnFor(null);
+              }}
+            >
+              ثبت برگشت
+            </Button>
+            <Button variant="ghost" onClick={() => setReturnFor(null)}>
+              انصراف
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+// ================================================================ «پیشنهادی» — صف گزارش‌های تخلف
+function ReportsTab() {
+  const s = useSocial();
+  const { notify } = useToast();
+  const [filter, setFilter] = useState<"open" | "done">("open");
+  const [act, setAct] = useState<{ r: AbuseReport; decision: "dismiss" | "hide" | "remove_warn" } | null>(null);
+  const [note, setNote] = useState("");
+  const list = s.reports.filter((r) => (filter === "open" ? r.status === "open" : r.status !== "open")).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const same = (r: AbuseReport) => s.reports.filter((x) => x.target_type === r.target_type && x.target_id === r.target_id && x.status === "open").length;
+  const warnings = (uid: string) => s.moderationLog.filter((e) => e.action === "remove_warn" && e.owner_id === uid).length;
+  const linkOf = (r: AbuseReport): string | null => {
+    if (r.target_type === "content") {
+      const x = s.content.find((c) => c.id === r.target_id);
+      return x ? contentPath(x) : null;
+    }
+    if (r.target_type === "media") return s.media.some((m) => m.id === r.target_id) ? `/dashboard/media/${r.target_id}` : null;
+    if (r.target_type === "message") {
+      const m = s.messages.find((x) => x.id === r.target_id);
+      const c = m ? s.chats.find((x) => x.id === m.chat_id) : undefined;
+      if (!c) return null;
+      const root = c.parent ?? c.id;
+      return c.chat_type === "group" ? `/dashboard/groups/${root}` : c.chat_type === "channel" ? `/dashboard/channels/${root}` : `/dashboard/chat/${c.id}`;
+    }
+    const cm = s.comments.find((x) => x.id === r.target_id);
+    if (!cm) return null;
+    if (["news", "blog", "magazine"].includes(cm.entity_name)) {
+      const x = s.content.find((c) => c.id === cm.entity_id);
+      return x ? contentPath(x) : null;
+    }
+    return cm.entity_name === "media" ? `/dashboard/media/${cm.entity_id}` : cm.entity_name === "event" ? `/dashboard/events/${cm.entity_id}` : cm.entity_name === "topic" ? `/dashboard/forum/${cm.entity_id}` : null;
+  };
+  const decisionLabel = { dismiss: "رد گزارش", hide: "پنهان‌سازی", remove_warn: "حذف و اخطار" } as const;
+  const run = () => {
+    if (!act) return;
+    const res = s.resolveReport(act.r.id, act.decision, note);
+    notify(res.ok ? (act.decision === "dismiss" ? "گزارش رد شد." : act.decision === "hide" ? "مورد برای دیگران پنهان شد؛ صاحب آن مطلع شد." : "مورد حذف و به صاحب آن اخطار داده شد.") : res.error, res.ok ? "success" : "warning");
+    if (res.ok) setAct(null);
+  };
+  return (
+    <div className="card">
+      <div className="p-3 border-b border-ink-100 flex items-center gap-2 flex-wrap">
+        <p className="text-[12.5px] text-ink-600 flex-1 min-w-[200px]">گزارش‌های کاربران درباره‌ی محتوا، نظر، پیام و رسانه. هر تصمیم در لاگ ممیزی ثبت و به صاحب مورد و گزارش‌دهنده اعلان می‌شود.</p>
+        <div className="flex rounded-lg border border-ink-200 p-0.5 bg-ink-50">
+          {(
+            [
+              ["open", `باز (${fa(s.reports.filter((r) => r.status === "open").length)})`],
+              ["done", "رسیدگی‌شده"],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} onClick={() => setFilter(id)} className={`text-xs px-2.5 py-1.5 rounded-md ${filter === id ? "bg-white text-brand-700 font-medium shadow-sm" : "text-ink-500"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {list.length === 0 ? (
+        <div className="py-10">
+          <EmptyState icon={<ShieldCheck size={22} />} title={filter === "open" ? "گزارش بازی نیست" : "هنوز گزارشی رسیدگی نشده"} />
+        </div>
+      ) : (
+        <ul className="divide-y divide-ink-100">
+          {list.map((r) => {
+            const to = linkOf(r);
+            const n = same(r);
+            const w = warnings(r.target_owner_id);
+            return (
+              <li key={r.id} className="p-3 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge tone="danger" icon={<Flag size={10} />}>
+                    {reportReasonLabel[r.reason]}
+                  </Badge>
+                  <Badge tone="neutral">{reportTargetLabel[r.target_type]}</Badge>
+                  {n > 1 && r.status === "open" && <Badge tone="warning">{fa(n)} گزارش</Badge>}
+                  {r.status !== "open" && <Badge tone={r.status === "dismissed" ? "neutral" : "navy"}>{reportStatusLabel[r.status]}</Badge>}
+                  <span className="text-[11px] text-ink-400 mr-auto">
+                    گزارش {s.userName(r.reporter_id)} · {stamp(r.created_at)}
+                  </span>
+                </div>
+                <div className="rounded-lg bg-ink-50 px-3 py-2">
+                  <p className="text-[12.5px] text-ink-800 leading-6 break-words">«{r.target_excerpt}»</p>
+                  <p className="text-[11px] text-ink-500 mt-0.5">
+                    صاحب: {s.userName(r.target_owner_id)}
+                    {w > 0 && <span className="text-rose-600"> · {fa(w)} اخطار قبلی</span>}
+                    {to ? (
+                      <Link to={to} className="text-brand-700 hover:underline mr-2">
+                        مشاهده
+                      </Link>
+                    ) : (
+                      <span className="text-ink-400 mr-2">(حذف‌شده)</span>
+                    )}
+                  </p>
+                </div>
+                {r.note && <p className="text-[11.5px] text-ink-600">توضیح گزارش‌دهنده: {r.note}</p>}
+                {r.status === "open" ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Button size="sm" icon={<Check size={13} />} onClick={() => (setAct({ r, decision: "dismiss" }), setNote(""))} title={fmtEndpoint(endpoints.reportDismiss(r.id))}>
+                      رد گزارش
+                    </Button>
+                    <Button size="sm" icon={<EyeOff size={13} />} onClick={() => (setAct({ r, decision: "hide" }), setNote(reportReasonLabel[r.reason]))} disabled={!to} title={fmtEndpoint(endpoints.reportHide(r.id))}>
+                      پنهان‌سازی
+                    </Button>
+                    <Button size="sm" variant="danger" icon={<Ban size={13} />} onClick={() => (setAct({ r, decision: "remove_warn" }), setNote(reportReasonLabel[r.reason]))} disabled={!to} title={fmtEndpoint(endpoints.reportRemoveWarn(r.id))}>
+                      حذف و اخطار
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-ink-500">
+                    {s.userName(r.resolved_by ?? "")} · {stamp(r.resolved_at)}
+                    {r.resolution_note && ` — «${r.resolution_note}»`}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <Modal open={!!act} onClose={() => setAct(null)} title={act ? decisionLabel[act.decision] : ""} description={act ? `«${act.r.target_excerpt.slice(0, 80)}»` : undefined}>
+        {act && (
+          <div className="space-y-3">
+            <p className="text-[12px] text-ink-600 leading-6">
+              {act.decision === "dismiss"
+                ? "گزارش بدون اقدام بسته می‌شود و به گزارش‌دهنده اطلاع داده می‌شود."
+                : act.decision === "hide"
+                  ? "مورد برای همه به‌جز صاحبش و ناظران پنهان می‌شود و قابل نمایش دوباره است."
+                  : "مورد حذف می‌شود و اخطار فوری برای صاحب آن ارسال می‌شود. این اقدام برگشت‌پذیر نیست."}
+            </p>
+            <textarea className="input-field min-h-[70px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder={act.decision === "dismiss" ? "توضیح (اختیاری)" : "دلیل (الزامی؛ برای صاحب مورد ارسال می‌شود)"} />
+            <div className="flex gap-2">
+              <Button variant={act.decision === "remove_warn" ? "danger" : "primary"} onClick={run}>
+                {decisionLabel[act.decision]}
+              </Button>
+              <Button variant="ghost" onClick={() => setAct(null)}>
+                انصراف
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

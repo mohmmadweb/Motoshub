@@ -25,7 +25,7 @@ export const Field = ({ label, children, hint, required }: { label: string; chil
 
 export const Section = ({ title, icon, children, action }: { title: string; icon?: ReactNode; children: ReactNode; action?: ReactNode }) => (
   <div className="border-t border-ink-100 pt-4">
-    <div className="flex items-center justify-between gap-2 mb-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
       <h4 className="text-xs font-bold text-ink-900 flex items-center gap-1.5">{icon}{title}</h4>
       {action}
     </div>

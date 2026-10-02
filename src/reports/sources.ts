@@ -43,7 +43,7 @@ import { useKnowledge } from "../context/KnowledgeContext";
 import { useSocial } from "../context/SocialContext";
 import { users as allUsers, contracts, funds, researchOpportunities } from "../data/mock";
 import { nfProjects, nfStages } from "../data/mockInnovationFund";
-import { activeTasks, columnLabel, isDone, isOverdue, kindOf, paidTotal, committedTotal, budgetUsage, projectProgress, taskLoggedHours } from "../pm/selectors";
+import { activeTasks, columnLabel, isDone, isOverdue, kindOf, paidTotal, committedTotal, budgetUsage, projectProgress, taskKey, taskLoggedHours } from "../pm/selectors";
 import { dayNum, diffDays, parseRial, toEnDigits, weekDayNames, weekdayOf } from "../pm/jalali";
 import { ancestorsOrSelf, descendantsOrSelf, bindingLive, isAdminRole, auditLabel, scopeTypeLabel, type IamState } from "../iam/model";
 import { normDate } from "./engine";
@@ -662,6 +662,64 @@ export function useSources(module?: ReportModule): DataSource[] {
   return useMemo(() => (module ? sourcesFor(module) : allSources()), [module, v]);
 }
 
+// ----------------------------------------------------------------- پیوند ردیف به رکورد (drill-down)
+
+const str = (v: unknown) => (typeof v === "string" && v ? v : typeof v === "number" ? String(v) : undefined);
+const q = (v: unknown) => encodeURIComponent(String(v));
+const CONTENT_PATH: Record<string, string> = { وبلاگ: "blog", خبر: "news", مجله: "magazines" };
+const INNOV_LINK: Record<string, (id: string, r: Row) => string> = {
+  research: (id) => `/dashboard/research?open=${q(id)}`,
+  contracts: (id) => `/dashboard/contracts?open=${q(id)}`,
+  funds: (id) => `/dashboard/funds?focus=${q(id)}`,
+  nf: (id) => `/dashboard/funds?focus=${q(id)}`,
+  employment: (id) => `/dashboard/funds?tab=employment&focus=${q(id)}`,
+  award: () => `/dashboard/award`,
+  training: () => `/dashboard/training`,
+  ecosystem: (id) => `/dashboard/research?tab=bank&entity=${q(id)}`,
+};
+
+/** پیوندهای پیش‌فرض منابع اصلی — وقتی خود منبع `link` ندارد (مثلاً منابعی که بیرونی ثبت می‌شوند) */
+const DEFAULT_LINKS: Record<string, (r: Row) => string | undefined> = {
+  "projects.tasks": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=board&focus=${q(str(r.key) ?? str(r.id) ?? "")}` : undefined),
+  "projects.projects": (r) => (str(r.pid ?? r.id) ? `/dashboard/projects/${q(r.pid ?? r.id)}` : undefined),
+  "projects.timeLogs": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=time` : undefined),
+  "projects.expenses": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=budget` : undefined),
+  "projects.risks": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=risks&focus=${q(r.id)}` : undefined),
+  "projects.milestones": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=milestones&focus=${q(r.id)}` : undefined),
+  "knowledge.docs": (r) => (str(r.id) ? `/dashboard/knowledge?doc=${q(r.id)}` : undefined),
+  "knowledge.experiences": () => `/dashboard/knowledge?tab=experiences`,
+  "social.content": (r) => (str(r.id) && CONTENT_PATH[String(r.kind)] ? `/dashboard/${CONTENT_PATH[String(r.kind)]}/${q(r.id)}` : undefined),
+  "social.media": (r) => (str(r.id) ? `/dashboard/media/${q(r.id)}` : undefined),
+  "social.topics": (r) => (str(r.id) ? `/dashboard/forum/${q(r.id)}` : undefined),
+  "social.events": (r) => (str(r.id) ? `/dashboard/events/${q(r.id)}` : undefined),
+  "social.messages": () => `/dashboard/chat`,
+  "members.memberships": (r) => (str(r.uid) ? `/dashboard/profile/${q(r.uid)}` : undefined),
+  "members.bindings": (r) => (str(r.uid) ? `/dashboard/profile/${q(r.uid)}` : undefined),
+  "members.scopes": () => `/dashboard/settings?section=structure`,
+  "members.audits": () => `/dashboard/settings?section=audit`,
+  "innovation.nf": (r) => (str(r.id) ? INNOV_LINK.nf(String(r.id), r) : undefined),
+  "innovation.contracts": (r) => (str(r.id) ? INNOV_LINK.contracts(String(r.id), r) : undefined),
+  "innovation.research": (r) => (str(r.id) ? INNOV_LINK.research(String(r.id), r) : undefined),
+  "innovation.funds": (r) => (str(r.id) ? INNOV_LINK.employment(String(r.id), r) : undefined),
+  "innovation.entities": (r) => (str(r.id) ? INNOV_LINK.ecosystem(String(r.id), r) : undefined),
+  "innovation.decisions": (r) => (str(r.subjectId) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.subjectId), r) : undefined),
+  "innovation.outcomes": (r) => (str(r.subjectId) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.subjectId), r) : undefined),
+  "innovation.allocations": (r) => (str(r.id) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.id), r) : undefined),
+  "tickets.tickets": (r) => (str(r.id) ? `/dashboard/tickets?id=${q(r.id)}` : undefined),
+  "timesheet.entries": () => `/dashboard/activity`,
+};
+
+/** پیوند یک ردیف به رکورد اصلی‌اش (یا undefined) */
+export function rowLink(source: DataSource | undefined, row: Row): string | undefined {
+  if (!source) return undefined;
+  try {
+    return source.link?.(row) ?? DEFAULT_LINKS[source.id]?.(row);
+  } catch {
+    return undefined;
+  }
+}
+export const hasRowLinks = (source?: DataSource) => !!source && (!!source.link || !!DEFAULT_LINKS[source.id]);
+
 // ----------------------------------------------------------------- کمکی‌ها
 
 const userName = (id?: string | null) => (id ? allUsers.find((u) => u.id === id)?.name ?? id : "");
@@ -697,6 +755,8 @@ function useProjectRows(id: string): Row[] | null {
             const logged = taskLoggedHours(p, t.id);
             return {
               id: t.id,
+              pid: p.meta.id,
+              key: taskKey(t),
               title: t.title,
               project: p.meta.name,
               projectGroup: groupName(p.meta.groupId),
@@ -734,6 +794,7 @@ function useProjectRows(id: string): Row[] | null {
           const r = dayNum(ref);
           return {
             id: p.meta.id,
+            pid: p.meta.id,
             name: p.meta.name,
             manager: p.meta.manager,
             health: p.meta.health,
@@ -768,13 +829,14 @@ function useProjectRows(id: string): Row[] | null {
           p.timeLogs.map((l) => {
             const t = p.tasks.find((x) => x.id === l.taskId);
             const d = normDate(l.date);
-            return { id: l.id, member: l.member, project: p.meta.name, projectGroup: groupName(p.meta.groupId), task: t?.title ?? "—", labels: t?.labels ?? [], weekday: weekdayName(d), hours: l.hours, date: d } satisfies Row;
+            return { id: l.id, pid: p.meta.id, member: l.member, project: p.meta.name, projectGroup: groupName(p.meta.groupId), task: t?.title ?? "—", labels: t?.labels ?? [], weekday: weekdayName(d), hours: l.hours, date: d } satisfies Row;
           })
         );
       case "projects.expenses":
         return visible.flatMap((p) =>
           p.expenses.map((e) => ({
             id: e.id,
+            pid: p.meta.id,
             project: p.meta.name,
             category: e.category,
             status: e.status,
@@ -787,7 +849,7 @@ function useProjectRows(id: string): Row[] | null {
       case "projects.risks": {
         const lvl = (x: string) => (x === "زیاد" ? 3 : x === "متوسط" ? 2 : 1);
         return visible.flatMap((p) =>
-          p.risks.map((r) => ({ id: r.id, project: p.meta.name, severity: r.severity, probability: r.probability, impact: r.impact, status: r.status, owner: r.owner, open: r.status !== "بسته", score: lvl(r.probability) * lvl(r.impact) }))
+          p.risks.map((r) => ({ id: r.id, pid: p.meta.id, project: p.meta.name, severity: r.severity, probability: r.probability, impact: r.impact, status: r.status, owner: r.owner, open: r.status !== "بسته", score: lvl(r.probability) * lvl(r.impact) }))
         );
       }
       case "projects.milestones": {
@@ -799,6 +861,7 @@ function useProjectRows(id: string): Row[] | null {
             const due = dayNum(m.due);
             return {
               id: m.id,
+              pid: p.meta.id,
               title: m.title,
               project: p.meta.name,
               status: m.status,
@@ -1053,6 +1116,7 @@ function useMemberRows(id: string): Row[] | null {
             const s = scope(m.scopeId);
             return {
               id: m.id,
+              uid: m.userId,
               user: userName(m.userId),
               userTitle: m.title || userTitle(m.userId),
               scope: s?.name ?? m.scopeId,
@@ -1076,6 +1140,7 @@ function useMemberRows(id: string): Row[] | null {
             const status = !b.active ? "لغوشده" : live ? "معتبر" : from !== null && from > t ? "آینده" : "منقضی";
             return {
               id: b.id,
+              uid: b.userId,
               user: userName(b.userId),
               role: r?.name ?? b.roleId,
               scope: s?.name ?? b.scopeId,

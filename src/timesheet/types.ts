@@ -127,6 +127,29 @@ export type Integration = {
   rule: EstimateRule;
 };
 
+/** سیاست مرخصی: سهمیه‌ی سالانه از annualLeaveDays؛ اندوخته‌ی ماهانه = سهمیه ÷ ۱۲ */
+export type LeavePolicy = {
+  /** monthly: هر ماه یک‌دوازدهم سهمیه اضافه می‌شود · upfront: کل سهمیه از ابتدای سال */
+  accrual: "monthly" | "upfront";
+  /** سقف انتقال مانده به سال بعد (روز) — نمایشی */
+  carryOverDays: number;
+  /** مبنای تبدیل مرخصی ساعتی به روز: ساعت کاری خود شخص یا ساعت موظف سازمان */
+  hourlyBase: "person" | "org";
+};
+export const defaultLeavePolicy: LeavePolicy = { accrual: "monthly", carryOverDays: 9, hourlyBase: "person" };
+
+/** یادآوری‌های کارکرد (اعلان درون‌برنامه، روزی یک بار هنگام ورود) */
+export type ReminderPolicy = {
+  /** یادآوری عصر برای روز کاریِ بدون ثبت */
+  eveningMissing: boolean;
+  /** ساعت یادآوری عصر (۰ تا ۲۳) */
+  eveningHour: number;
+  /** یادآوری چند روز پیش از پایان دوره (۲۵ هر ماه) */
+  periodEnd: boolean;
+  periodDaysBefore: number;
+};
+export const defaultReminderPolicy: ReminderPolicy = { eveningMissing: true, eveningHour: 17, periodEnd: true, periodDaysBefore: 2 };
+
 export type TsSettings = {
   dailyHours: number;
   /** ساعت موظف پنجشنبه: ۰ (تعطیل)، ۴ (نیمه‌وقت) یا ۸ */
@@ -134,6 +157,9 @@ export type TsSettings = {
   /** سقف مرخصی سالانه (روز) */
   annualLeaveDays: number;
   holidays: { date: string; title: string }[];
+  /** اختیاری (داده‌ی قدیمی بدون آن هم بار می‌شود) */
+  leavePolicy?: LeavePolicy;
+  reminders?: ReminderPolicy;
 };
 
 export type TsState = {
@@ -144,6 +170,10 @@ export type TsState = {
   periods: PeriodRecord[];
   integrations: Integration[];
   settings: TsSettings;
+  /** کلید یادآوری‌های فرستاده‌شده (جلوگیری از تکرار) */
+  remindLog?: string[];
+  /** آخرین روزی (تاریخ واقعی) که یادآوری‌های هر شخص بررسی شد */
+  lastReminderRun?: Record<string, string>;
 };
 
 // ======================================================== ساعت
@@ -376,3 +406,105 @@ export function fixedEntries(p: Person, s: TsSettings, days: string[], today: st
       readOnly: true,
     }));
 }
+
+// ======================================================== مانده‌ی مرخصی
+export type LeaveBalance = {
+  quota: number;
+  monthly: number;
+  /** اندوخته تا این ماه (یا کل سهمیه در حالت upfront) */
+  accrued: number;
+  usedBefore: number;
+  usedDaily: number;
+  usedHourlyHours: number;
+  usedHourlyDays: number;
+  used: number;
+  /** مانده‌ی قابل استفاده تا امروز */
+  available: number;
+  /** مانده‌ی کل سال */
+  remainingYear: number;
+  /** ساعت یک روز کاری این شخص — مبنای تبدیل ساعت به روز */
+  dayHours: number;
+  policy: LeavePolicy;
+};
+
+/** مانده‌ی مرخصی امسال: سهمیه، اندوخته‌ی ماهانه، استفاده‌شده (روزانه + ساعتی تبدیل‌شده) و مانده */
+export function leaveBalance(p: Pick<Person, "dailyHours" | "leaveUsedBefore">, s: TsSettings, yearEntries: TimeEntry[], today: string): LeaveBalance {
+  const policy = { ...defaultLeavePolicy, ...(s.leavePolicy ?? {}) };
+  const [, jm] = parseJalali(today) ?? [0, 1];
+  const quota = s.annualLeaveDays;
+  const monthly = quota / 12;
+  const accrued = policy.accrual === "monthly" ? Math.min(quota, monthly * jm) : quota;
+  const dayHrs = policy.hourlyBase === "person" ? p.dailyHours || s.dailyHours : s.dailyHours;
+  const t = dayNum(today) ?? 0;
+  const list = yearEntries.filter((e) => counts(e) && (dayNum(e.date) ?? 0) <= t);
+  const usedDaily = new Set(list.filter((e) => e.type === "leave_daily").map((e) => dayNum(e.date))).size;
+  const usedHourlyHours = list.filter((e) => e.type === "leave_hourly").reduce((a, e) => a + e.hours, 0);
+  const usedHourlyDays = usedHourlyHours / dayHrs;
+  const used = (p.leaveUsedBefore || 0) + usedDaily + usedHourlyDays;
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return {
+    quota,
+    monthly: r(monthly),
+    accrued: r(accrued),
+    usedBefore: p.leaveUsedBefore || 0,
+    usedDaily,
+    usedHourlyHours: r(usedHourlyHours),
+    usedHourlyDays: r(usedHourlyDays),
+    used: r(used),
+    available: r(accrued - used),
+    remainingYear: r(quota - used),
+    dayHours: dayHrs,
+    policy,
+  };
+}
+
+/** «۲ روز و ۳:۳۰ ساعت» — روز اعشاری به روز + ساعت با ساعت کاری شخص */
+export function daysToText(days: number, dayHours: number): string {
+  const neg = days < 0;
+  const a = Math.abs(days);
+  let d = Math.floor(a + 1e-9);
+  let h = Math.round((a - d) * dayHours * 2) / 2;
+  if (h >= dayHours) {
+    d += 1;
+    h = 0;
+  }
+  const parts = [d ? `${fa(d)} روز` : "", h ? `${fmtHM(h)} ساعت` : ""].filter(Boolean);
+  return `${neg ? "منفی " : ""}${parts.join(" و ") || "۰ روز"}`;
+}
+
+// ======================================================== یادآوری‌ها
+export type DueReminder = { key: string; text: string };
+
+/**
+ * یادآوری‌های امروزِ یک نفر: روزهای کاری اخیرِ بدون ثبت (امروز فقط بعد از ساعت عصر)
+ * و نزدیک‌شدن پایان دوره (۲۵ هر ماه) اگر دوره هنوز ارسال نشده.
+ */
+export function dueReminders(p: Pick<Person, "id" | "dailyHours">, s: TsSettings, entries: TimeEntry[], today: string, nowHour: number, periodStatus: (key: string) => PeriodStatus): DueReminder[] {
+  const pol = { ...defaultReminderPolicy, ...(s.reminders ?? {}) };
+  const out: DueReminder[] = [];
+  const t = dayNum(today) ?? 0;
+  if (pol.eveningMissing) {
+    const has = new Set(entries.filter((e) => e.personId === p.id && e.review !== "rejected").map((e) => dayNum(e.date)));
+    const missing: string[] = [];
+    for (let d = t; d >= t - 7 && missing.length < 2; d--) {
+      const date = fromDayNum(d);
+      if (expectedOn(s, date, p) <= 0 || has.has(d)) continue;
+      if (d === t && nowHour < pol.eveningHour) continue;
+      if (LOCKED_STATUS.includes(periodStatus(periodOf(date).key))) continue;
+      missing.push(date);
+    }
+    missing.forEach((date) =>
+      out.push({ key: `ts-missing:${p.id}:${date}`, text: `کارکرد ${d2w(date)} ${shortDate(date)} هنوز ثبت نشده است؛ پیش از پایان دوره تکمیلش کنید.` }),
+    );
+  }
+  if (pol.periodEnd) {
+    const per = periodOf(today);
+    const left = (dayNum(per.end) ?? 0) - t;
+    const st = periodStatus(per.key);
+    if (left >= 0 && left <= pol.periodDaysBefore && (st === "draft" || st === "returned"))
+      out.push({ key: `ts-period:${p.id}:${per.key}`, text: `${left === 0 ? "امروز آخرین روز" : `${fa(left)} روز تا پایان`} دوره‌ی کارکرد ${per.label} (${shortDate(per.end)}) است؛ ثبت‌ها را کامل و دوره را برای تأیید ارسال کنید.` });
+  }
+  return out;
+}
+const LOCKED_STATUS: PeriodStatus[] = ["submitted", "approved"];
+const d2w = (date: string) => ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"][weekdayOf(date)];

@@ -3,9 +3,9 @@ import { holdings, companies } from "../data/tenancy";
 import { roles as baseRoles, allPermissionIds } from "../data/mock";
 import { DEMO_REF_DATE } from "../pm/seed";
 import { addDays } from "../pm/jalali";
-import { ROOT_ID, type Audit, type Binding, type IamState, type Membership, type Role, type ScopeNode, type ScopeType } from "./model";
+import { ROOT_ID, type AccessRequest, type Audit, type Binding, type IamState, type Membership, type Role, type ScopeNode, type ScopeType, type SodConfig } from "./model";
 
-export const IAM_VERSION = 2;
+export const IAM_VERSION = 3;
 const D = DEMO_REF_DATE;
 const at = (d: string, t = "۰۹:۰۰") => `${d} ${t}`;
 
@@ -52,7 +52,7 @@ function roles(): Role[] {
       description: "اداره‌ی کامل شرکت: ساخت واحدهای داخلی، تعریف نقش برای شرکت و تخصیص آن به اعضای شرکت.",
       createdIn: ROOT_ID,
       allowedTypes: ["company"],
-      permissions: without(["settings.", "tickets.vendor", "companies."], ["iam.impersonate"]),
+      permissions: [...without(["settings.", "tickets.vendor", "companies."], ["iam.impersonate"]), "settings.branding"],
       builtIn: true,
     }),
     mk({ id: "r2", name: "مدیر محتوا", code: "content-manager", description: base("r2").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r2").permissions, "blog.list", "blog.create", "blog.manage", "calendar.view", "timesheet.log", "tickets.create", "award.list", "award.submit"], builtIn: true }),
@@ -172,7 +172,40 @@ function audits(): Audit[] {
   return rows.map((r, i) => ({ ...r, id: `a${i + 1}`, seq: i + 1 }));
 }
 
+/** قواعد پیش‌فرض تفکیک وظایف — از مجوزهای واقعی کاتالوگ */
+export function defaultSod(): SodConfig {
+  return {
+    exemptRoleIds: ["r1"],
+    rules: [
+      { id: "sod-exp", a: "projects.expenses", b: "projects.expenses.approve", title: "ثبت هزینه و تأیید/پرداخت همان هزینه", mode: "warn", active: true },
+      { id: "sod-contract", a: "contracts.create", b: "contracts.stage", title: "ثبت قرارداد و تغییر مرحله (تأیید) آن", mode: "warn", active: true },
+      { id: "sod-fund", a: "funds.submit", b: "funds.score", title: "ثبت طرح و داوری طرح‌های صندوق", mode: "block", active: true },
+      { id: "sod-fund-alloc", a: "funds.score", b: "funds.allocate", title: "داوری طرح و تخصیص منابع به آن", mode: "warn", active: true },
+      { id: "sod-award", a: "award.submit", b: "award.judge", title: "ارسال اثر به جایزه و داوری آثار", mode: "block", active: true },
+      { id: "sod-payroll", a: "timesheet.approve", b: "timesheet.finance", title: "تأیید کارکرد و خروجی حقوق", mode: "warn", active: true },
+    ],
+  };
+}
+
+function requests(): AccessRequest[] {
+  return [
+    { id: "rq1", userId: "u3", roleId: "rc-behnoush-prod", scopeId: "u-behnoush-prod", durationDays: 30, reason: "پوشش مرخصی سرپرست تولید در خط بسته‌بندی", status: "pending", createdAt: at(addDays(D, -1), "۱۰:۱۵") },
+    { id: "rq2", userId: "u10", roleId: "r3", scopeId: "c-dashtnaz", durationDays: 90, reason: "راهبری پروژه‌ی آبیاری هوشمند فاز ۲", status: "pending", createdAt: at(D, "۰۸:۴۰") },
+    { id: "rq3", userId: "u9", roleId: "r3", scopeId: "c-saba-niru", durationDays: 7, reason: "دسترسی موقت برای گزارش ماهانه", status: "rejected", createdAt: at(addDays(D, -6), "۰۹:۳۰"), decidedBy: "u1", decidedAt: at(addDays(D, -5), "۱۱:۰۰"), decisionNote: "گزارش ماهانه با نقش فعلی قابل تهیه است." },
+  ];
+}
+
 export function seedIam(): IamState {
   const mb = membershipsAndBindings();
-  return { version: IAM_VERSION, seq: 100, scopes: scopes(), roles: roles(), bindings: mb.bindings, memberships: mb.memberships, audits: audits() };
+  return { version: IAM_VERSION, seq: 100, scopes: scopes(), roles: roles(), bindings: mb.bindings, memberships: mb.memberships, audits: audits(), requests: requests(), sod: defaultSod() };
+}
+
+/** بارگذاری مدارا‌گر: نسخه‌ی ۲ (قبل از درخواست/تفکیک وظایف) بدون از دست رفتن تغییرات کاربر ارتقا می‌یابد */
+export function migrateIam(raw: unknown): IamState | null {
+  const s = raw as Partial<IamState> | null;
+  if (!s || typeof s !== "object" || !Array.isArray(s.scopes) || !Array.isArray(s.roles)) return null;
+  if (s.version !== 2 && s.version !== IAM_VERSION) return null;
+  const out = { ...s, version: IAM_VERSION, requests: Array.isArray(s.requests) ? s.requests : requests(), sod: s.sod && Array.isArray(s.sod.rules) ? s.sod : defaultSod() } as IamState;
+  if (s.version === 2) out.roles = out.roles.map((r) => (r.id === "r7" && !r.permissions.includes("settings.branding") ? { ...r, permissions: [...r.permissions, "settings.branding"] } : r));
+  return out;
 }

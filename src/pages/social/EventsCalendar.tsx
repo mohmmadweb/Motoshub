@@ -5,6 +5,7 @@
 // تقویم یکپارچه‌ی شخصی/تیمی جداگانه در /dashboard/calendar است.
 // ---------------------------------------------------------------------------
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
+import { occurrenceDates } from "../../pm/recurrence";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, ChevronRight, ChevronLeft, Plus, Video, MapPin, Repeat, Check, X, Clock, CalendarClock, MailQuestion, Users, ExternalLink, CalendarRange } from "lucide-react";
@@ -26,6 +27,9 @@ import type { PMMeeting } from "../../pm/types";
 import { eventStatusLabel } from "../../social/types";
 import { dayNum, fromDayNum, parseJalali, monthNames, weekDayNames, monthLength, weekdayOf, formatJalali, toEnDigits, fa } from "../../pm/jalali";
 import { ApiChip, Field, UserPicker, PosterPicker, AttachmentPicker, AttachmentList, PublishOptions, defaultPublish, type PublishState } from "./kit";
+import AvailabilityPanel from "../calendar/AvailabilityPanel";
+import { attendeeFromId } from "../calendar/availability";
+import { fmtMin, toMin } from "../calendar/model";
 
 // ---------------------------------------------------------------- کمکی‌ها (مشترک با EventDetail)
 const dn = (s: string) => dayNum(s) ?? 0;
@@ -490,14 +494,15 @@ function ListView({ from, todayN, events }: { from: number; todayN: number; even
 }
 
 // ---------------------------------------------------------------- جلسات پروژه (فقط‌خواندنی)
-type MeetingRow = { pid: string; project: string; color: string; mt: PMMeeting; mine: boolean };
+type MeetingRow = { pid: string; project: string; color: string; mt: PMMeeting; mine: boolean; /** تاریخ وقوع (برای جلسات تکرارشونده) */ date: string };
 
 /** جلسات پروژه‌هایی که کاربر می‌بیند (محدوده‌ی سازمانی + عمومی یا عضو) */
 function useMyProjectMeetings(): MeetingRow[] {
   const pm = useProjectsPM();
-  const { filterScoped, actingUser } = useTenancy();
+  const { filterScoped, actingUser, today } = useTenancy();
   return useMemo(() => {
     const me = actingUser.name;
+    const t = dn(today);
     const visible = filterScoped(pm.projects.map((p) => ({ ...p.meta, _p: p }))).map((x) => x._p);
     return visible
       .filter((p) => !p.meta.archived)
@@ -505,9 +510,10 @@ function useMyProjectMeetings(): MeetingRow[] {
         const member = p.meta.manager === me || p.members.some((m) => m.userId === actingUser.id || m.name === me);
         return p.meetings
           .filter((mt) => member || p.meta.visibility === "عمومی سازمان" || mt.participants.includes(me))
-          .map((mt) => ({ pid: p.meta.id, project: p.meta.name, color: p.meta.color, mt, mine: mt.participants.includes(me) }));
+          // جلسه‌ی تکرارشونده: وقوع‌های ۶۰ روز گذشته تا ۶۰ روز آینده
+          .flatMap((mt) => (mt.recurrence ? occurrenceDates(mt.recurrence, mt.date, t - 60, t + 60) : [mt.date]).map((date) => ({ pid: p.meta.id, project: p.meta.name, color: p.meta.color, mt, mine: mt.participants.includes(me), date })));
       });
-  }, [pm.projects, filterScoped, actingUser]);
+  }, [pm.projects, filterScoped, actingUser, today]);
 }
 
 const meetingTone: Record<string, "brand" | "success" | "neutral"> = { "برنامه‌ریزی‌شده": "brand", "برگزارشده": "success", "لغوشده": "neutral" };
@@ -520,8 +526,8 @@ function ProjectMeetingsTab() {
   const [who, setWho] = useState<"mine" | "all">("mine");
   const list = rows
     .filter((r) => (who === "mine" ? r.mine : true))
-    .filter((r) => (when === "upcoming" ? dn(r.mt.date) >= todayN : when === "past" ? dn(r.mt.date) < todayN : true))
-    .sort((a, b) => (when === "past" ? -1 : 1) * (dn(a.mt.date) - dn(b.mt.date) || timeKey(a.mt.time) - timeKey(b.mt.time)));
+    .filter((r) => (when === "upcoming" ? dn(r.date) >= todayN : when === "past" ? dn(r.date) < todayN : true))
+    .sort((a, b) => (when === "past" ? -1 : 1) * (dn(a.date) - dn(b.date) || timeKey(a.mt.time) - timeKey(b.mt.time)));
   return (
     <div>
       <div className="card p-3 mb-4 flex flex-wrap items-center gap-2">
@@ -549,10 +555,13 @@ function ProjectMeetingsTab() {
       ) : (
         <div className="card divide-y divide-ink-100">
           {list.map((r) => (
-            <Link key={`${r.pid}:${r.mt.id}`} to={`/dashboard/projects/${r.pid}?tab=minutes&focus=${r.mt.id}`} className={`flex items-center gap-3 p-3 hover:bg-ink-50 ${r.mt.status === "لغوشده" ? "opacity-60" : ""}`}>
+            <Link key={`${r.pid}:${r.mt.id}:${r.date}`} to={`/dashboard/projects/${r.pid}?tab=minutes&focus=${r.mt.id}`} className={`flex items-center gap-3 p-3 hover:bg-ink-50 ${r.mt.status === "لغوشده" ? "opacity-60" : ""}`}>
               <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: r.color }} />
               <span className="shrink-0 w-[86px] text-[11.5px] text-ink-500 tabular-nums">
-                <span className="block text-ink-700">{r.mt.date}</span>
+                <span className="block text-ink-700">
+                  {r.date}
+                  {r.mt.recurrence && <Repeat size={10} className="inline mr-1 text-ink-400" />}
+                </span>
                 <span className="block">
                   <Clock size={11} className="inline ml-1" />
                   {r.mt.time} · {fa(r.mt.duration)} دقیقه
@@ -818,6 +827,16 @@ function EditorBody({ event, initialDate, onCancel, onDone }: { event: SocialEve
           <input className="input-field" dir="ltr" value={f.end_time} onChange={(e) => set({ end_time: e.target.value })} placeholder="۱۱:۳۰" />
         </Field>
       </div>
+
+      {/* هم‌پوشانی با تقویم دعوت‌شدگان (جلسات، رویدادها، بلوک‌های مشغول، مرخصی، تعطیلات) */}
+      <AvailabilityPanel
+        attendees={[...new Set([s.me, ...invite, ...(event ? s.eventMembersOf(event.id).filter((m) => m.status !== "declined").map((m) => m.user_id) : [])])].map(attendeeFromId)}
+        date={f.start_date}
+        start={toMin(f.start_time)}
+        duration={Math.max(15, (toMin(f.end_time) ?? (toMin(f.start_time) ?? 0) + 60) - (toMin(f.start_time) ?? 0))}
+        exclude={event ? [`ev:${event.id}`] : []}
+        onPick={(d, st, en) => set({ start_date: d, end_date: d, start_time: fmtMin(st), end_time: fmtMin(en) })}
+      />
 
       <div className="rounded-lg border border-ink-100 p-3 space-y-3">
         <div className="flex items-center justify-between gap-2">

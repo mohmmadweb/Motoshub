@@ -9,9 +9,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
-import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa } from "../pm/jalali";
+import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa, weekdayOf } from "../pm/jalali";
 import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, nextProjectKey, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
+import { conditionsMatch, isScheduled, ruleActions, scheduledTargets } from "../pm/automation";
 import { budgetUsage, columnLabel, depShort, depTypeLabel, defaultMeetingSettings, depViolation, isDone, kindOf, openPredecessors, projectProgress, typeLabel, successorsOf, taskActualCost } from "../pm/selectors";
 import type {
   ActionItem,
@@ -375,17 +376,58 @@ function initialStore(): StoreState {
   return runScheduler(base);
 }
 
+/**
+ * وصله‌ی یک‌باره (بدون تغییر STORE_VERSION): یک جلسه‌ی هفتگی تکرارشونده با دستور جلسه به pr1 اضافه می‌شود
+ * — فقط اگر هیچ جلسه‌ای تکرار ندارد و این وصله قبلاً اعمال نشده (نشانگر در firedReminders).
+ */
+const RECUR_SEED_KEY = "seed:recurring-meeting";
+function withRecurringDemo(s: StoreState): StoreState {
+  const idx = s.projects.findIndex((p) => p.meta.id === "pr1");
+  if (idx < 0) return s;
+  const p0 = s.projects[idx];
+  if (p0.firedReminders.includes(RECUR_SEED_KEY) || s.projects.some((p) => p.meetings.some((m) => m.recurrence))) return s;
+  const p = structuredClone(p0);
+  let date = s.refDate;
+  while (weekdayOf(date) !== 1) date = addDays(date, 1); // نخستین یکشنبه
+  const names = p.members.filter((m) => m.role !== "مشاهده‌گر").map((m) => m.name);
+  const participants = [...new Set([p.meta.manager, ...names])].slice(0, 5);
+  const seq = s.seq + 1;
+  p.meetings.unshift({
+    id: `mt${seq}`,
+    title: "جلسه‌ی هفتگی تیم",
+    date,
+    time: "۱۰:۰۰",
+    duration: 45,
+    mode: "ویدیویی",
+    participants,
+    description: "مرور پیشرفت هفته، موانع و برنامه‌ی هفته‌ی بعد.",
+    taskIds: [],
+    status: "برنامه‌ریزی‌شده",
+    recurrence: { freq: "weekly", days: [1] },
+    reminders: [{ minutes: 15, channel: "inapp" }],
+    agenda: [
+      { id: "ag1", title: "مرور کارهای انجام‌شده‌ی هفته", owner: p.meta.manager, minutes: 15 },
+      { id: "ag2", title: "موانع و ریسک‌های باز", owner: participants[1] ?? p.meta.manager, minutes: 15 },
+      { id: "ag3", title: "برنامه‌ی هفته‌ی بعد و تقسیم کار", owner: p.meta.manager, minutes: 15 },
+    ],
+  });
+  p.firedReminders.push(RECUR_SEED_KEY);
+  const projects = [...s.projects];
+  projects[idx] = p;
+  return { ...s, seq, projects };
+}
+
 function loadStore(): StoreState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as StoreState;
-      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return parsed;
+      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withRecurringDemo(parsed);
     }
   } catch {
     /* ذخیره‌سازی مرورگر در دسترس نیست — از داده‌ی نمونه شروع می‌کنیم */
   }
-  return initialStore();
+  return withRecurringDemo(initialStore());
 }
 
 // --------------------------------------------------------------------------
@@ -647,37 +689,111 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     return `${p.meta.key}-${n}`;
   };
 
-  /** قواعد سفارشی «وقتی … آنگاه …» */
+  /** قواعد سفارشی «وقتی … اگر … آنگاه …» — عمق اجرای زنجیره‌ای محدود است تا حلقه نسازد */
+  const ruleGuard = { depth: 0 };
   const runCustomRules = (p: ProjectState, emit: Emit, s: StoreState, t: PMTask, trig: { type: "moved"; columnId: string } | { type: "created" } | { type: "labelAdded"; label: string }) => {
+    if (ruleGuard.depth > 1) return;
     (p.customRules ?? []).forEach((r) => {
       if (!r.enabled || r.trigger.type !== trig.type) return;
       if (r.trigger.type === "moved" && trig.type === "moved" && r.trigger.columnId !== trig.columnId) return;
       if (r.trigger.type === "labelAdded" && trig.type === "labelAdded" && r.trigger.label !== trig.label) return;
-      const a = r.action;
-      let what = "";
-      if (a.type === "assign" && t.assignee !== a.member) {
-        const old = clean(t.assignee);
-        t.assignee = a.member;
-        what = `مسئول «${a.member}» شد`;
-        emit(old ? "TASK_REASSIGNED" : "TASK_ASSIGNED", `تسک «${t.title}» به‌صورت خودکار به «${a.member}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: a.member, previousAssignee: old }, actor: SYSTEM_ACTOR });
-      } else if (a.type === "priority" && t.priority !== a.priority) {
-        t.priority = a.priority;
-        what = `اولویت «${a.priority}» شد`;
-      } else if (a.type === "label" && !t.labels.includes(a.label)) {
-        t.labels = [...t.labels, a.label];
-        what = `برچسب «${a.label}» گرفت`;
-      } else if (a.type === "watch" && !(t.watchers ?? []).includes(a.member)) {
-        t.watchers = [...(t.watchers ?? []), a.member];
-        what = `«${a.member}» دنبال‌کننده شد`;
-      } else if (a.type === "checklist" && !t.checklist.some((c) => c.text === a.text)) {
-        t.checklist.push({ id: nid(s, "c"), text: a.text, done: false });
-        what = `مورد «${a.text}» به چک‌لیست اضافه شد`;
-      }
-      if (!what) return;
-      r.runs += 1;
-      emit("AUTOMATION_TRIGGERED", `قاعده‌ی سفارشی «${r.name}» روی تسک «${t.title}» اجرا شد: ${what}.`, { entity: { type: "task", id: t.id }, meta: { rule: r.id }, actor: SYSTEM_ACTOR });
+      if (!conditionsMatch(p, t, r.conditions)) return;
+      execRule(p, emit, s, t, r);
     });
   };
+
+  const execRule = (p: ProjectState, emit: Emit, s: StoreState, t: PMTask, r: CustomRule) => {
+    ruleGuard.depth += 1;
+    const did: string[] = [];
+    try {
+      ruleActions(r).forEach((a) => {
+        if (a.type === "assign" && t.assignee !== a.member) {
+          const old = clean(t.assignee);
+          t.assignee = a.member;
+          did.push(`مسئول «${a.member}» شد`);
+          emit(old ? "TASK_REASSIGNED" : "TASK_ASSIGNED", `تسک «${t.title}» به‌صورت خودکار به «${a.member}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: a.member, previousAssignee: old }, actor: SYSTEM_ACTOR });
+        } else if (a.type === "priority" && t.priority !== a.priority) {
+          t.priority = a.priority;
+          did.push(`اولویت «${a.priority}» شد`);
+        } else if (a.type === "label" && !t.labels.includes(a.label)) {
+          t.labels = [...t.labels, a.label];
+          did.push(`برچسب «${a.label}» گرفت`);
+        } else if (a.type === "watch" && !(t.watchers ?? []).includes(a.member)) {
+          t.watchers = [...(t.watchers ?? []), a.member];
+          did.push(`«${a.member}» دنبال‌کننده شد`);
+        } else if (a.type === "checklist" && !t.checklist.some((c) => c.text === a.text)) {
+          t.checklist.push({ id: nid(s, "c"), text: a.text, done: false });
+          did.push(`مورد «${a.text}» به چک‌لیست اضافه شد`);
+        } else if (a.type === "move" && t.status !== a.columnId && p.columns.some((c) => c.id === a.columnId)) {
+          did.push(`به «${columnLabel(p, a.columnId)}» منتقل شد`);
+          doMove(p, emit, t, a.columnId, s);
+        } else if (a.type === "setField" && (t.customFields?.[a.fieldId] ?? "") !== a.value && (p.customFields ?? []).some((f) => f.id === a.fieldId)) {
+          t.customFields = { ...(t.customFields ?? {}), [a.fieldId]: a.value };
+          did.push(`فیلد «${p.customFields?.find((f) => f.id === a.fieldId)?.name}» مقدار «${a.value}» گرفت`);
+        } else if (a.type === "subtask" && !t.parentId && !p.tasks.some((x) => x.parentId === t.id && x.title === a.title && !x.archived)) {
+          insertTask(p, emit, s, { title: a.title, assignee: a.assignee || clean(t.assignee) || "", priority: t.priority, start: t.start, due: t.due, parentId: t.id });
+          did.push(`زیرتسک «${a.title}» ساخته شد`);
+        } else if (a.type === "notify") {
+          const names = a.to === "assignee" ? [clean(t.assignee)] : a.to === "manager" ? [p.meta.manager] : a.to === "watchers" ? t.watchers ?? [] : [a.to];
+          const to = [...new Set(names.filter((x): x is string => !!x))];
+          to.forEach((name) => {
+            s.seq += 1;
+            s.notifications.unshift({
+              id: `nt${s.seq}`,
+              projectId: p.meta.id,
+              projectName: p.meta.name,
+              event: "AUTOMATION_TRIGGERED",
+              text: a.text?.trim() || `قاعده‌ی «${r.name}»: تسک «${t.title}»${t.due ? ` (سررسید ${t.due})` : ""} نیاز به توجه شما دارد.`,
+              recipient: name,
+              reason: "قاعده‌ی خودکارسازی",
+              channels: ["inapp"],
+              priority: "عادی",
+              actor: SYSTEM_ACTOR,
+              date: s.refDate,
+              time: nowClock(),
+              seq: s.seq,
+              read: false,
+              link: { tab: "board", entityId: t.id },
+            });
+          });
+          if (to.length) did.push(`اعلان برای ${to.map((x) => `«${x}»`).join("، ")}`);
+        }
+      });
+    } finally {
+      ruleGuard.depth -= 1;
+    }
+    if (!did.length) return;
+    r.runs += 1;
+    emit("AUTOMATION_TRIGGERED", `قاعده‌ی سفارشی «${r.name}» روی تسک «${t.title}» اجرا شد: ${did.join("، ")}.`, { entity: { type: "task", id: t.id }, meta: { rule: r.id }, actor: SYSTEM_ACTOR });
+  };
+
+  /** قواعد زمان‌بندی‌شده (هر روز ساعت X / N روز پیش از سررسید) — یک بار برای هر تسک در هر روز */
+  const runScheduledRules = (prev: StoreState): StoreState => {
+    const d = new Date();
+    const nowMin = d.getHours() * 60 + d.getMinutes();
+    let s = prev;
+    prev.projects
+      .filter((x) => !x.meta.archived && (x.customRules ?? []).some((r) => r.enabled && isScheduled(r.trigger)))
+      .forEach((proj) => {
+        const due = (proj.customRules ?? []).flatMap((r) => scheduledTargets(proj, r, prev.refDate, nowMin, (t) => isDone(proj, t)).filter((x) => !proj.firedReminders.includes(x.key)).map((x) => ({ r, ...x })));
+        if (!due.length) return;
+        s = apply(s, proj.meta.id, SYSTEM_ACTOR, (p, emit, st) => {
+          due.forEach(({ r, t, key }) => {
+            const rule = (p.customRules ?? []).find((x) => x.id === r.id);
+            const task = p.tasks.find((x) => x.id === t.id);
+            if (!rule || !task || p.firedReminders.includes(key)) return;
+            p.firedReminders.push(key);
+            execRule(p, emit, st, task, rule);
+          });
+        });
+      });
+    return s;
+  };
+
+  useEffect(() => {
+    setStore((prev) => runScheduledRules(prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.refDate]);
 
   const recurStep: Record<Recurrence, number> = { روزانه: 1, هفتگی: 7, ماهانه: 30 };
   /** تسک تکرارشونده: با انجام‌شدن، نمونه‌ی بعدی با همان مشخصات و تاریخ‌های جلوبرده ساخته می‌شود */
@@ -1983,7 +2099,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       } catch {
         /* نادیده */
       }
-      setStore(initialStore());
+      setStore(withRecurringDemo(initialStore()));
     },
   };
 

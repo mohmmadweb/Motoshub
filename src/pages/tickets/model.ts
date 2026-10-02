@@ -211,7 +211,8 @@ export type EventKind =
   | "labels"
   | "link"
   | "release"
-  | "rating";
+  | "rating"
+  | "affected";
 
 export type TicketEvent = {
   id: string;
@@ -268,7 +269,35 @@ export type Ticket = {
   context: CapturedContext;
   rating?: { score: number; comment?: string; at: number };
   events: TicketEvent[];
+  /** دنبال‌کنندگان (شناسه‌ی کاربر) — در هر به‌روزرسانی عمومی اعلان می‌گیرند */
+  followers?: string[];
+  /** کاربرانی که «من هم این مشکل را دارم» زده‌اند یا تیکت تکراری‌شان به این تیکت پیوند شده (به‌جز گزارش‌دهنده) */
+  affected?: string[];
 };
+
+/** تعداد کاربران درگیر = گزارش‌دهنده + «من هم»ها */
+export const affectedCount = (t: Ticket) => 1 + (t.affected?.length ?? 0);
+
+const nrm = (x: string) => x.replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\u200c/g, " ").toLowerCase();
+/** تیکت‌های باز مشابه یک عنوان (واژه‌های مشترک) — برای پیشنهاد «من هم این مشکل را دارم» */
+export function similarTickets(list: Ticket[], title: string, max = 3, excludeId?: string): Ticket[] {
+  const words = nrm(title)
+    .split(/[\s،,.؟?!:؛()«»"']+/)
+    .filter((w) => w.length >= 3);
+  if (!words.length) return [];
+  return list
+    .filter((t) => t.id !== excludeId && isOpen(t.status))
+    .map((t) => {
+      const ti = nrm(t.title);
+      const hay = nrm(`${t.description} ${t.labels.join(" ")} ${t.module}`);
+      const score = words.reduce((a, w) => a + (ti.includes(w) ? 2 : 0) + (hay.includes(w) ? 1 : 0), 0);
+      return { t, score };
+    })
+    .filter((x) => x.score >= 2)
+    .sort((a, b) => b.score - a.score || affectedCount(b.t) - affectedCount(a.t))
+    .slice(0, max)
+    .map((x) => x.t);
+}
 
 export type NewTicketInput = {
   title: string;

@@ -11,6 +11,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { classLevels, classStyle, routeLevel, useClassification, type ClassLevel } from "../../components/ClassificationBanner";
 import { Callout, Field, SectionHead } from "./iam/shared";
+import { diffKeys, emitSettingsChange } from "../../iam/settingsAudit";
 
 const ROUTE_HINTS = [
   { route: "/dashboard/knowledge", label: "مدیریت دانش" },
@@ -24,7 +25,13 @@ const ROUTE_HINTS = [
 ];
 
 export default function ClassificationSection() {
-  const { config, setConfig } = useClassification();
+  const { config, setConfig: rawSet } = useClassification();
+  // هر تغییر در تاریخچه‌ی ممیزی (settings.changed) ثبت می‌شود
+  const setConfig = (patch: Partial<typeof config>) => {
+    const d = diffKeys(config, { ...config, ...patch });
+    if (d) emitSettingsChange({ area: "طبقه‌بندی اطلاعات", summary: `تغییر ${Object.keys(d.after).join("، ")}`, before: d.before, after: d.after });
+    rawSet(patch);
+  };
   const { hasPermission } = useTenancy();
   const { notify } = useToast();
   const canEdit = hasPermission("settings.security");

@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FolderOpen, Folder, FolderPlus, Upload, Download, Pencil, Trash2, MoveRight, Search, ChevronLeft, HardDrive, Users, Megaphone, Briefcase, Lock, Home, X, Star, Clock, RotateCcw, Link2 } from "lucide-react";
+import { FolderOpen, Folder, FolderPlus, Upload, Download, Pencil, Trash2, MoveRight, Search, ChevronLeft, HardDrive, Users, Megaphone, Briefcase, Lock, Home, X, Star, Clock, RotateCcw, Link2, Share2 } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -25,7 +25,7 @@ import { ApiChip, Field, UserLine, fa, fileIcon, stamp, toAttachments } from "./
 type Drive = { type: OwnerType; id: string; title: string; chat?: Chat };
 const driveKey = (d: { type: OwnerType; id: string }) => `${d.type}:${d.id}`;
 /** نمای صفحه: درایو، دسترسی سریع (اخیر/ستاره‌دار) یا سطل بازیافت — «پیشنهادی» */
-type View = "drive" | "recent" | "starred" | "trash";
+type View = "drive" | "recent" | "starred" | "shared" | "trash";
 /** سهمیه‌ی نمایشی هر درایو */
 const QUOTA: Record<OwnerType, number> = { user: 2 * 1024 ** 3, group: 10 * 1024 ** 3, channel: 10 * 1024 ** 3 };
 const fmtBytes = (b: number) =>
@@ -51,7 +51,7 @@ export default function FilesPage() {
 
   const ownerParam = params.get("owner");
   const viewParam = params.get("view");
-  const view: View = viewParam === "recent" || viewParam === "starred" || viewParam === "trash" ? viewParam : "drive";
+  const view: View = viewParam === "recent" || viewParam === "starred" || viewParam === "trash" || viewParam === "shared" ? viewParam : "drive";
   const setView = (v: View) => {
     const next = new URLSearchParams(params);
     if (v === "drive") next.delete("view");
@@ -94,6 +94,17 @@ export default function FilesPage() {
   const recentFiles = reachableFiles.filter((f) => lastTouch(f)).sort((a, b) => lastTouch(b).localeCompare(lastTouch(a))).slice(0, 15);
   const starredFiles = reachableFiles.filter((f) => (f.starred_by ?? []).includes(s.me)).sort((a, b) => a.name.localeCompare(b.name, "fa"));
   const trashFiles = s.fileTrash.filter((f) => f.trashed_by === s.me || writeIn(f)).sort((a, b) => b.trashed_at.localeCompare(a.trashed_at));
+  // «پیشنهادی» — اشتراک‌گذاشته با من: فایل‌های دیگران در درایو گروه/کانال‌های من + لینک‌های اشتراکی که مرا نام برده‌اند
+  const sharedVia = (f: FileItem): { label: string; when: string } | null => {
+    if (f.created_by_user_id === s.me) return null;
+    if (f.share?.shared_with?.includes(s.me) && shareAlive(f, s.today)) return { label: `${s.userName(f.share.created_by)} · تا ${f.share.expires_on}${f.share.allow_download ? "" : " · فقط مشاهده"}`, when: f.share.created_at };
+    if (f.owner_type !== "user" && driveKeys.has(driveKey({ type: f.owner_type, id: f.owner_id }))) return { label: `${f.owner_type === "group" ? "گروه" : "کانال"} ${driveTitle(f)} · ${s.userName(f.created_by_user_id)}`, when: f.created_at };
+    return null;
+  };
+  const sharedFiles = s.files
+    .map((f) => ({ f, via: sharedVia(f) }))
+    .filter((x): x is { f: FileItem; via: { label: string; when: string } } => !!x.via)
+    .sort((a, b) => b.via.when.localeCompare(a.via.when));
   const ageDays = (stampStr: string) => (dayNum(s.today) ?? 0) - (dayNum(stampStr.split(" ")[0]) ?? 0);
   // سهمیه: فایل‌ها + نسخه‌های قبلی + سطل بازیافتِ همان درایو
   const usedOf = (d: Drive) =>
@@ -209,7 +220,11 @@ export default function FilesPage() {
     s.uploadFiles(drive.type, drive.id, cwd, at);
     notify(`${fa(at.length)} فایل بارگذاری شد.`, "success");
   };
-  const download = (f: FileItem) => notify(`دریافت «${f.name}» — ${fmtEndpoint(endpoints.fileDownload(drive.type, drive.id, f.id))}`, "info");
+  const download = (f: FileItem) => {
+    if (f.owner_type === "user" && f.owner_id !== s.me && f.share && !f.share.allow_download) return notify("این فایل فقط برای مشاهده به اشتراک گذاشته شده است.", "warning");
+    s.logFileDownload(f.id);
+    notify(`دریافت «${f.name}» — ${fmtEndpoint(endpoints.fileDownload(f.owner_type, f.owner_id, f.id))}`, "info");
+  };
 
   const crumbs = pathOf(cwd);
   const moveOptions = moveOf ? folders.filter((f) => !descendants(moveOf.id).has(f.id)) : [];
@@ -305,6 +320,9 @@ export default function FilesPage() {
               { label: "بازگردانی از سطل", ep: endpoints.fileRestore("{id}") },
               { label: "حذف دائم", ep: endpoints.filePurge("{id}") },
               { label: "سهمیه‌ی فضا", ep: endpoints.fileQuota(drive.type, drive.id) },
+              { label: "اشتراک‌گذاشته با من", ep: endpoints.fileSharedWithMe() },
+              { label: "تغییر نام فایل", ep: endpoints.fileRename(drive.type, drive.id, "{id}") },
+              { label: "فعالیت فایل", ep: endpoints.fileActivity(drive.type, drive.id, "{id}") },
             ]}
           />
         }
@@ -318,6 +336,7 @@ export default function FilesPage() {
               {(
                 [
                   ["recent", "اخیر", Clock, recentFiles.length],
+                  ["shared", "اشتراک‌گذاشته با من", Share2, sharedFiles.length],
                   ["starred", "ستاره‌دار", Star, starredFiles.length],
                   ["trash", "سطل بازیافت", Trash2, trashFiles.length],
                 ] as const
@@ -384,7 +403,7 @@ export default function FilesPage() {
           <section className="card min-w-0">
             <div className="p-3 border-b border-ink-100 flex items-center gap-2 flex-wrap">
               <p className="text-[13px] font-bold text-ink-900 flex-1 min-w-0">
-                {view === "recent" ? "فایل‌هایی که اخیراً باز یا بارگذاری کرده‌اید" : view === "starred" ? "فایل‌های ستاره‌دار" : `سطل بازیافت — تا ${fa(TRASH_DAYS)} روز قابل بازگردانی`}
+                {view === "recent" ? "فایل‌هایی که اخیراً باز یا بارگذاری کرده‌اید" : view === "starred" ? "فایل‌های ستاره‌دار" : view === "shared" ? "اشتراک‌گذاشته با من — از گروه‌ها، کانال‌ها و لینک‌هایی که شما را نام برده‌اند" : `سطل بازیافت — تا ${fa(TRASH_DAYS)} روز قابل بازگردانی`}
               </p>
               {view === "trash" && trashFiles.length > 0 && (
                 <Button
@@ -408,7 +427,32 @@ export default function FilesPage() {
                 </Button>
               )}
             </div>
-            {view === "trash" ? (
+            {view === "shared" ? (
+              sharedFiles.length === 0 ? (
+                <div className="py-10">
+                  <EmptyState icon={<Share2 size={22} />} title="فایلی با شما به اشتراک گذاشته نشده" description="فایل‌های گروه‌ها و کانال‌هایتان و لینک‌هایی که دیگران برایتان می‌سازند اینجا جمع می‌شوند." />
+                </div>
+              ) : (
+                <ul className="divide-y divide-ink-100">
+                  {sharedFiles.map(({ f, via }) => {
+                    const I = fileIcon(f.mime);
+                    return (
+                      <li key={f.id} className="flex items-center gap-2.5 px-3 sm:px-4 py-2.5">
+                        <I size={18} className="text-brand-600 shrink-0" />
+                        <button onClick={() => openPreview(f)} className="flex-1 min-w-0 text-right">
+                          <span className="block text-[13px] text-ink-800 hover:text-brand-700 truncate">{f.name}</span>
+                          <span className="block text-[10.5px] text-ink-400 truncate">
+                            {via.label} · {f.size} · {stamp(via.when)}
+                          </span>
+                        </button>
+                        {f.owner_type === "user" && <Badge tone="success" icon={<Link2 size={10} />}>لینک</Badge>}
+                        {fileActions(f)}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+            ) : view === "trash" ? (
               trashFiles.length === 0 ? (
                 <div className="py-10">
                   <EmptyState icon={<Trash2 size={22} />} title="سطل بازیافت خالی است" description="فایل‌های حذف‌شده تا ۳۰ روز اینجا می‌مانند." />

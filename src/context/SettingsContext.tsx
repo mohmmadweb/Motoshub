@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { diffKeys, emitSettingsChange } from "../iam/settingsAudit";
 
 // پارامترهای گردش کار — همه‌ی اعداد ثابت روندها از اینجا خوانده می‌شوند و در
 // «پنل راهبری ← پارامترهای گردش کار» قابل تغییرند.
@@ -49,14 +50,30 @@ type SettingsValue = {
 
 const SettingsContext = createContext<SettingsValue | null>(null);
 
+// هر تغییر با رویداد settings.changed (قبل/بعد) در تاریخچه‌ی IAM ثبت می‌شود (از راه گذرگاه settingsAudit)
+const labelOf = (k: string) => settingsMeta.find((m) => m.key === k)?.label ?? k;
+function audit(before: WorkflowSettings, after: WorkflowSettings, what: string) {
+  const d = diffKeys(before, after);
+  if (!d) return;
+  const names = Object.keys(d.after).map(labelOf).join("، ");
+  emitSettingsChange({ area: "پارامترهای گردش کار", summary: `${what}: ${names}`, before: d.before, after: d.after });
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<WorkflowSettings>(defaultSettings);
   return (
     <SettingsContext.Provider
       value={{
         settings,
-        update: (patch) => setSettings((prev) => ({ ...prev, ...patch })),
-        reset: () => setSettings(defaultSettings),
+        update: (patch) => {
+          const next = { ...settings, ...patch };
+          audit(settings, next, "تغییر");
+          setSettings((prev) => ({ ...prev, ...patch }));
+        },
+        reset: () => {
+          audit(settings, defaultSettings, "بازگشت به پیش‌فرض");
+          setSettings(defaultSettings);
+        },
       }}
     >
       {children}

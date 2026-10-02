@@ -16,6 +16,8 @@ import { accessLevels } from "../../km/types";
 import { Field, SectionHead, avg } from "./shared";
 import { TaxonomyManager } from "./TaxonomyManager";
 import { WorkflowSettings } from "./WorkflowEditor";
+import { MarkdownEditor } from "./Markdown";
+import { defaultTemplates, retentionOf, templateForType } from "../../km/templates";
 import { useKPage } from "./ctx";
 
 /** بند ۲۳: آموزش و یادگیری — از ماژول «آموزش و توانمندسازی» استفاده می‌شود */
@@ -548,11 +550,90 @@ export function SettingsSection() {
           </div>
         </div>
       </div>
+      <RetentionAndTemplates />
       <div className="card p-4 border-dashed flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-ink-500">ابزار دمو: بازگرداندن همه‌ی داده‌های مدیریت دانش به حالت اولیه.</p>
         <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} onClick={() => confirm({ title: "بازنشانی داده‌های مدیریت دانش؟", confirmLabel: "بازنشانی", onConfirm: () => { km.resetKm(); notify("داده‌ی نمونه بازنشانی شد.", "info"); } })}>
           بازنشانی
         </Button>
+      </div>
+    </div>
+  );
+}
+
+/** دوره‌ی نگهداشت هر نوع سند و قالب مقاله‌ی هر نوع */
+function RetentionAndTemplates() {
+  const km = useKnowledge();
+  const { notify } = useToast();
+  const types = km.docTypes.map((t) => t.name);
+  const [tplType, setTplType] = useState(types.find((t) => templateForType(t, km.settings.docTemplates)) ?? types[0] ?? "");
+  const [tplBody, setTplBody] = useState(() => templateForType(tplType, km.settings.docTemplates) ?? "");
+  const [tplOpen, setTplOpen] = useState(false);
+  const toNum = (v: string) => Number(v.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c)))) || 0;
+  const setYears = (t: string, v: string) => km.updateSettings({ retention: { ...(km.settings.retention ?? {}), [t]: Math.max(0, Math.min(100, toNum(v))) } });
+  const pickType = (t: string) => {
+    setTplType(t);
+    setTplBody(templateForType(t, km.settings.docTemplates) ?? "");
+  };
+  const custom = !!km.settings.docTemplates?.[tplType];
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="card p-4 space-y-3">
+        <p className="text-sm font-bold text-ink-900">دوره‌ی نگهداشت اسناد</p>
+        <p className="text-[11px] text-ink-400 leading-5">سال‌ها از تاریخ آرشیو محاسبه می‌شود؛ پس از آن سند در «نگهداشت و امحا» برای تأیید امحا می‌آید. ۰ = نگهداری دائم. نگهداشت قانونی روی هر سند مانع امحاست.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {types.map((t) => (
+            <label key={t} className="text-[11.5px] text-ink-600 flex flex-col gap-1">
+              <span className="truncate">{t}</span>
+              <span className="flex items-center gap-1">
+                <input className="input-field !py-1 !text-xs" key={`${t}-${retentionOf(t, km.settings.retention)}`} defaultValue={fa(retentionOf(t, km.settings.retention))} onBlur={(e) => setYears(t, e.target.value)} aria-label={`نگهداشت ${t} (سال)`} />
+                <span className="text-[10.5px] text-ink-400 shrink-0">سال</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-bold text-ink-900">قالب مقاله‌ی هر نوع سند</p>
+          <Button size="sm" variant="ghost" onClick={() => setTplOpen((v) => !v)}>
+            {tplOpen ? "بستن" : "ویرایش قالب‌ها"}
+          </Button>
+        </div>
+        <p className="text-[11px] text-ink-400 leading-5">هنگام نوشتن مقاله، قالب نوع سند (هدف، دامنه، تعاریف، مسئولیت‌ها، روش اجرا…) پیشنهاد می‌شود. {fa(types.filter((t) => templateForType(t, km.settings.docTemplates)).length)} نوع قالب دارند.</p>
+        {tplOpen && (
+          <div className="space-y-2">
+            <select className="input-field" value={tplType} onChange={(e) => pickType(e.target.value)} aria-label="نوع سند">
+              {types.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                  {templateForType(t, km.settings.docTemplates) ? "" : " (بدون قالب)"}
+                </option>
+              ))}
+            </select>
+            <MarkdownEditor value={tplBody} onChange={setTplBody} minHeight={200} />
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="primary" onClick={() => { km.updateSettings({ docTemplates: { ...(km.settings.docTemplates ?? {}), [tplType]: tplBody } }); notify(`قالب «${tplType}» ذخیره شد.`); }}>
+                ذخیره‌ی قالب
+              </Button>
+              {custom && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const next = { ...(km.settings.docTemplates ?? {}) };
+                    delete next[tplType];
+                    km.updateSettings({ docTemplates: next });
+                    setTplBody(defaultTemplates[tplType] ?? "");
+                    notify("قالب پیش‌فرض بازگردانده شد.", "info");
+                  }}
+                >
+                  بازگشت به پیش‌فرض
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

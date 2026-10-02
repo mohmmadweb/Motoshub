@@ -2,7 +2,7 @@
 // ویجت داشبورد — گزارش‌هایی که با «افزودن به داشبورد» سنجاق شده‌اند، به‌صورت نمودار کوچک.
 // ---------------------------------------------------------------------------
 import { useMemo, useState } from "react";
-import { LayoutDashboard, Maximize2, PinOff, Share2 } from "lucide-react";
+import { Filter, LayoutDashboard, Maximize2, PinOff, Share2 } from "lucide-react";
 import { useTenancy } from "../context/TenancyContext";
 import { useToast } from "../components/ui/ToastProvider";
 import { ReportChart } from "./charts";
@@ -10,16 +10,53 @@ import { runReport, rangeText, faNum } from "./engine";
 import { useSourceRows } from "./sources";
 import { reportStore, useSavedReports } from "./store";
 import { ReportBuilderModal } from "./ModuleReportsButton";
-import { moduleLabel, type ReportSpec } from "./types";
+import { moduleLabel, presetLabel, type DataSource, type FilterSpec, type GlobalFilter, type ReportSpec } from "./types";
+import { DrillDrawer, type DrillPick } from "./DrillDrawer";
 
-function PinnedCard({ spec, onOpen }: { spec: ReportSpec; onOpen: () => void }) {
-  const { rows, available, today, source } = useSourceRows(spec.sourceId);
+const PERSON_FIELDS = ["assignee", "member", "owner", "manager", "author", "user", "organizer", "requester", "createdBy", "decidedBy", "sender", "applicant"];
+
+/** اعمال فیلتر سراسری داشبورد (بازه، پروژه، فرد) روی پیکربندی یک گزارش — هرجا منبع فیلد مناسب داشته باشد */
+export function applyGlobalFilter(spec: ReportSpec, source: DataSource | undefined, gf?: GlobalFilter): { spec: ReportSpec; applied: string[]; skipped: string[] } {
+  if (!gf || !source) return { spec, applied: [], skipped: [] };
+  const applied: string[] = [];
+  const skipped: string[] = [];
+  let next: ReportSpec = spec;
+  const extra: FilterSpec[] = [];
+  if (gf.range.preset !== "all") {
+    const df = spec.dateField ?? source.defaultDateField ?? source.fields.find((f) => f.type === "date")?.key;
+    if (df) {
+      next = { ...next, dateField: df, dateRange: gf.range };
+      applied.push(gf.range.preset === "custom" ? "بازه‌ی دلخواه" : presetLabel[gf.range.preset]);
+    } else skipped.push("بازه");
+  }
+  if (gf.project) {
+    const pf = source.fields.find((f) => f.key === "project") ?? (source.id === "projects.projects" ? source.fields.find((f) => f.key === "name") : undefined);
+    if (pf) {
+      extra.push({ id: "gf-project", field: pf.key, op: "eq", value: gf.project });
+      applied.push(gf.project);
+    } else skipped.push("پروژه");
+  }
+  if (gf.person) {
+    const pf = PERSON_FIELDS.map((k) => source.fields.find((f) => f.key === k)).find(Boolean);
+    if (pf) {
+      extra.push({ id: "gf-person", field: pf.key, op: "eq", value: gf.person });
+      applied.push(gf.person);
+    } else skipped.push("فرد");
+  }
+  if (extra.length) next = { ...next, filters: [...next.filters, ...extra] };
+  return { spec: next, applied, skipped };
+}
+
+export function PinnedCard({ spec: base, onOpen, filter, className = "" }: { spec: ReportSpec; onOpen: () => void; filter?: GlobalFilter; className?: string }) {
+  const { rows, available, today, source } = useSourceRows(base.sourceId);
   const { actingUser } = useTenancy();
   const { notify } = useToast();
+  const [pick, setPick] = useState<DrillPick | null>(null);
+  const { spec, applied, skipped } = useMemo(() => applyGlobalFilter(base, source, filter), [base, source, filter]);
   const result = useMemo(() => (source && available ? runReport(spec, source, rows, today) : null), [spec, source, rows, today, available]);
   const own = spec.createdBy === actingUser.id;
   return (
-    <div className="card p-3.5 flex flex-col gap-2 min-w-0">
+    <div className={`card p-3.5 flex flex-col gap-2 min-w-0 h-full ${className}`}>
       <div className="flex items-start gap-2">
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-right group">
           <p className="text-[13px] font-bold text-ink-900 truncate group-hover:text-brand-700">{spec.name}</p>
@@ -47,17 +84,31 @@ function PinnedCard({ spec, onOpen }: { spec: ReportSpec; onOpen: () => void }) 
           </button>
         )}
       </div>
+      {(applied.length > 0 || skipped.length > 0) && (
+        <p className="text-[10.5px] flex items-center gap-1 flex-wrap -mt-1">
+          <Filter size={10} className="text-brand-500 shrink-0" />
+          {applied.length > 0 && <span className="text-brand-700">{applied.join(" · ")}</span>}
+          {skipped.length > 0 && <span className="text-ink-400">({skipped.join("، ")} برای این منبع اعمال‌پذیر نیست)</span>}
+        </p>
+      )}
       <div className="min-h-[150px]">
         {!available ? (
           <p className="text-xs text-ink-400 text-center py-10">منبع داده‌ی این گزارش به‌زودی فعال می‌شود.</p>
         ) : result ? (
-          <ReportChart result={result} chart={spec.chart} mini height={170} />
+          <ReportChart result={result} chart={spec.chart} mini height={170} onPick={setPick} />
         ) : (
           <p className="text-xs text-ink-400 text-center py-10">منبع داده‌ی این گزارش در دسترس نیست.</p>
         )}
       </div>
+      <DrillDrawer pick={pick} source={source} onClose={() => setPick(null)} />
     </div>
   );
+}
+
+/** گزارش‌های سنجاق‌شده‌ی قابل مشاهده برای کاربر فعلی */
+export function usePinnedReports() {
+  const saved = useSavedReports();
+  return useMemo(() => saved.filter((r) => r.pinned), [saved]);
 }
 
 export function PinnedReports({ title = "گزارش‌های داشبورد", hideWhenEmpty = false, max }: { title?: string; hideWhenEmpty?: boolean; max?: number }) {

@@ -1,7 +1,8 @@
 // «تنظیمات سامانه» — جایگزین پنل راهبری. همه‌ی تنظیمات در یک جا، گروه‌بندی‌شده و هرکدام با
 // مجوز جداگانه؛ هر مدیر فقط بخش‌هایی را می‌بیند که در کانتکست فعلی اختیارش را دارد.
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings as SettingsIcon, Network, Users, KeyRound, UserCheck, ClipboardCheck, History, Palette, Brush, MessagesSquare, LogIn, ShieldCheck, Plug, LayoutTemplate, Webhook, Globe2, Gauge, Activity, SlidersHorizontal, HardDrive, UserPlus, Layers, ShieldAlert, BellRing } from "lucide-react";
+import { Settings as SettingsIcon, Network, Users, KeyRound, UserCheck, ClipboardCheck, History, Palette, Brush, MessagesSquare, LogIn, ShieldCheck, Plug, LayoutTemplate, Webhook, Globe2, Gauge, Activity, SlidersHorizontal, HardDrive, UserPlus, Layers, ShieldAlert, BellRing, Smartphone, Inbox, Scale, PaintBucket, Eye } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import { useTenancy } from "../../context/TenancyContext";
 import Admin, { type SectionId } from "../Admin";
@@ -16,7 +17,15 @@ import { AuditSection } from "./iam/AuditSection";
 import UnifiedAuditSection from "./UnifiedAuditSection";
 import ChannelsSection from "./ChannelsSection";
 import ClassificationSection from "./ClassificationSection";
+import LoginPolicySection from "./LoginPolicySection";
+import AccessRequestsSection from "./AccessRequestsSection";
+import SodSection from "./SodSection";
+import ScopedSettingsSection from "./ScopedSettingsSection";
+import { ScopeSelect } from "./iam/shared";
+import { ADMIN_PERMS, ROOT_ID, descendantsOrSelf } from "../../iam/model";
 
+/** مجوزهایی که «مدیریت تنظیمات» در یک واحد را ممکن می‌کنند (برای انتخابگر واحد تحت مدیریت) */
+const SETTINGS_PERMS = [...ADMIN_PERMS, "settings.branding", "settings.security", "settings.pages", "iam.audit.view", "iam.review.manage"];
 type Sec = { id: string; label: string; icon: typeof Network; perms: string[]; legacy?: SectionId };
 const groups: { title: string; items: Sec[] }[] = [
   {
@@ -26,7 +35,9 @@ const groups: { title: string; items: Sec[] }[] = [
       { id: "members", label: "اعضا و عضویت‌ها", icon: Users, perms: ["iam.members.manage"] },
       { id: "roles", label: "نقش‌ها و مجوزها", icon: KeyRound, perms: ["roles.list", "roles.create", "roles.edit"] },
       { id: "bindings", label: "تخصیص نقش", icon: UserCheck, perms: ["roles.assign"] },
+      { id: "access-requests", label: "درخواست‌های دسترسی", icon: Inbox, perms: ["roles.assign"] },
       { id: "review", label: "بازبینی دسترسی‌ها", icon: ClipboardCheck, perms: ["iam.review.manage"] },
+      { id: "sod", label: "تفکیک وظایف", icon: Scale, perms: ["iam.review.manage"] },
       { id: "audit", label: "تاریخچه‌ی تغییرات", icon: History, perms: ["iam.audit.view"] },
       { id: "import", label: "واردسازی و دعوت کاربران", icon: UserPlus, perms: ["users.import", "users.create"], legacy: "users" },
     ],
@@ -35,6 +46,7 @@ const groups: { title: string; items: Sec[] }[] = [
     title: "ظاهر و برندسازی",
     items: [
       { id: "branding", label: "برندسازی سازمان", icon: Palette, perms: ["settings.branding"], legacy: "branding" },
+      { id: "scoped", label: "برند و تنظیمات لایه‌ای", icon: PaintBucket, perms: ["settings.branding", "settings.security", "settings.system"] },
       { id: "appearance", label: "ظاهر و نمایش", icon: Brush, perms: [] },
     ],
   },
@@ -54,6 +66,7 @@ const groups: { title: string; items: Sec[] }[] = [
     items: [
       { id: "identity", label: "ورود یکپارچه (SSO)", icon: LogIn, perms: ["settings.security"], legacy: "system-identity" },
       { id: "security", label: "امنیت و انطباق", icon: ShieldCheck, perms: ["settings.security"], legacy: "security" },
+      { id: "login-policy", label: "سیاست ورود و تأیید دومرحله‌ای", icon: Smartphone, perms: ["settings.security"] },
       { id: "classification", label: "طبقه‌بندی اطلاعات", icon: ShieldAlert, perms: ["settings.security"] },
       { id: "audit-all", label: "لاگ ممیزی یکپارچه", icon: Layers, perms: ["iam.audit.view"] },
       { id: "network", label: "تعامل بین‌سازمانی", icon: Globe2, perms: ["settings.system"], legacy: "network" },
@@ -65,7 +78,13 @@ const groups: { title: string; items: Sec[] }[] = [
 ];
 
 export default function Settings() {
-  const { hasPermission, contextNode, scopePath, contextId } = useTenancy();
+  const t = useTenancy();
+  const { hasPermission, contextNode, scopePath, contextId, readOnly } = t;
+  // واحدهایی که کاربر می‌تواند تنظیماتشان را مدیریت کند (انتخاب = ایستادن در آن واحد)
+  const adminNodes = useMemo(() => {
+    const ids = new Set(t.reachable.filter((n) => SETTINGS_PERMS.some((p) => t.canAdmin(n.id, p))).map((n) => n.id));
+    return descendantsOrSelf(t.iam, ROOT_ID).filter((n) => ids.has(n.id));
+  }, [t]);
   const [params, setParams] = useSearchParams();
   const visible = groups.map((g) => ({ ...g, items: g.items.filter((s) => !s.perms.length || s.perms.some((p) => hasPermission(p))) })).filter((g) => g.items.length);
   const all = visible.flatMap((g) => g.items);
@@ -78,7 +97,21 @@ export default function Settings() {
 
   return (
     <div>
-      <PageHeader title="تنظیمات سامانه" description={`در حال مدیریت: ${scopePath(contextId)} — هر بخش فقط برای کسانی دیده می‌شود که در این واحد اختیارش را دارند.`} icon={<SettingsIcon size={18} />} />
+      <PageHeader
+        title="تنظیمات سامانه"
+        description={`در حال مدیریت: ${scopePath(contextId)} — هر بخش فقط برای کسانی دیده می‌شود که در این واحد اختیارش را دارند.`}
+        icon={<SettingsIcon size={18} />}
+        actions={
+          adminNodes.length > 1 ? (
+            <ScopeSelect value={adminNodes.some((n) => n.id === contextId) ? contextId : ""} onChange={(id) => id && t.setContext(id)} nodes={adminNodes} allLabel={adminNodes.some((n) => n.id === contextId) ? undefined : "واحد تحت مدیریت…"} className="w-full sm:w-72" ariaLabel="واحد تحت مدیریت" />
+          ) : undefined
+        }
+      />
+      {readOnly && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
+          <Eye size={14} className="shrink-0" /> حالت فقط‌خواندنی (مشاهده به‌عنوان کاربر) — هیچ تنظیمی قابل تغییر نیست.
+        </div>
+      )}
       {/* موبایل */}
       <select className="input-field mb-4 lg:hidden" value={current?.id} onChange={(e) => go(e.target.value)} aria-label="بخش تنظیمات">
         {visible.map((g) => (
@@ -109,7 +142,7 @@ export default function Settings() {
             </div>
           ))}
         </nav>
-        <div className="min-w-0">
+        <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">
           {!current && <p className="text-sm text-ink-500">در «{contextNode.name}» به هیچ بخشی از تنظیمات دسترسی ندارید.</p>}
           {current?.id === "structure" && <StructureSection />}
           {current?.id === "members" && <MembersSection />}
@@ -122,8 +155,12 @@ export default function Settings() {
           {current?.id === "classification" && <ClassificationSection />}
           {current?.id === "appearance" && <Appearance embedded />}
           {current?.id === "social" && <SocialAdmin embedded />}
+          {current?.id === "login-policy" && <LoginPolicySection />}
+          {current?.id === "access-requests" && <AccessRequestsSection />}
+          {current?.id === "sod" && <SodSection />}
+          {current?.id === "scoped" && <ScopedSettingsSection />}
           {current?.legacy && <Admin key={current.legacy} section={current.legacy} />}
-        </div>
+        </fieldset>
       </div>
     </div>
   );

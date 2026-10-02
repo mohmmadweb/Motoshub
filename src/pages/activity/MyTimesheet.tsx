@@ -20,6 +20,7 @@ import {
   fmtHM,
   holidayOf,
   isLeave,
+  leaveBalance,
   parseHours,
   periodOf,
   periodStatusLabel,
@@ -38,6 +39,7 @@ import { daysToDate, useTs } from "./lib";
 import { SourceIcon } from "./ui";
 import EntryModal from "./EntryModal";
 import SettingsModal from "./SettingsModal";
+import LeaveBalanceModal from "./LeaveBalance";
 
 const LOCKED = ["submitted", "approved"];
 const clampDate = (d: string, a: string, b: string) => ((dayNum(d) ?? 0) < (dayNum(a) ?? 0) ? a : (dayNum(d) ?? 0) > (dayNum(b) ?? 0) ? b : d);
@@ -56,6 +58,7 @@ export default function MyTimesheet({ period, onReview }: { period: Period; onRe
   const [modal, setModal] = useState<{ entry: TimeEntry | null; date: string } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   const rec = ts.periodRecord(me.id, period.key);
   const lockedOn = (date: string) => LOCKED.includes(ts.periodRecord(me.id, periodOf(date).key).status);
@@ -73,6 +76,11 @@ export default function MyTimesheet({ period, onReview }: { period: Period; onRe
     return s.annualLeaveDays - me.leaveUsedBefore - y.leaveDays;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ts.entries, s, me, period.jy, today]);
+  const leaveBal = useMemo(() => {
+    const ty = (parseJalali(today) ?? [period.jy])[0];
+    return leaveBalance(me, s, entriesOf(me, formatJalali(ty, 1, 1), today), today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ts.entries, s, me, today]);
   const pending = ts.entries.filter((e) => e.personId === me.id && e.review === "pending").length;
 
   const byDate = (date: string) => entries.filter((e) => dayNum(e.date) === dayNum(date));
@@ -205,7 +213,9 @@ export default function MyTimesheet({ period, onReview }: { period: Period; onRe
           icon={<Scale size={16} />}
           tone={sumToDate.balance >= 0 ? "success" : "danger"}
         />
-        <StatCard label="مرخصی این دوره" value={`${fa(sumToDate.leaveDays)} روز`} hint={`مانده‌ی سالانه: ${fa(Math.round(leaveLeft * 10) / 10)} از ${fa(s.annualLeaveDays)} روز`} icon={<Plane size={16} />} tone="neutral" />
+        <button type="button" onClick={() => setLeaveOpen(true)} className="text-right block rounded-xl focus-visible:ring-2 focus-visible:ring-brand-400" title="جزئیات مانده‌ی مرخصی" aria-label="جزئیات مانده‌ی مرخصی">
+          <StatCard label="مرخصی این دوره" value={`${fa(sumToDate.leaveDays)} روز`} hint={`قابل استفاده: ${fa(Math.round(leaveBal.available * 10) / 10)} · مانده‌ی سال: ${fa(Math.round(leaveLeft * 10) / 10)} از ${fa(s.annualLeaveDays)} روز`} icon={<Plane size={16} />} tone="neutral" />
+        </button>
         <StatCard label="روز کاری بدون ثبت" value={fa(sumToDate.missingDays)} hint={sumToDate.missingDays ? "تا پیش از ارسال تکمیل کنید" : "همه‌ی روزها ثبت شده"} icon={<CalendarX2 size={16} />} tone={sumToDate.missingDays ? "warning" : "success"} />
       </div>
 
@@ -252,6 +262,7 @@ export default function MyTimesheet({ period, onReview }: { period: Period; onRe
         <PeriodCalendar period={period} entries={entries} onOpen={setDayOpen} today={today} me={me} />
       )}
 
+      <LeaveBalanceModal open={leaveOpen} onClose={() => setLeaveOpen(false)} b={leaveBal} name={me.name} onPolicy={() => { setLeaveOpen(false); setSettingsOpen(true); }} />
       <Modal open={!!dayOpen} onClose={() => setDayOpen(null)} title={dayOpen ? `${weekDayNames[weekdayOf(dayOpen)]} ${shortDate(dayOpen)}` : ""} width="max-w-xl">
         {dayOpen && (
           <div className="-m-5">

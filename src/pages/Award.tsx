@@ -23,6 +23,8 @@ import { awardPhases } from "../innovation/types";
 import { faN, mean, printHtml, stdev, uid, weighted } from "../innovation/util";
 import { ActivityLogButton, DecisionModal, DecisionsOf, EntityLink, EntityPicker, Field, Info2, OutcomeModal, OutcomeSummary, Section, Stepper } from "./innovation/shared";
 import { RubricEditor } from "./innovation/researchParts";
+import { EligibilityResult, emptySubmission, FormAnswersView, FormDesignButton, FormFill, FormStatusBadge, useOwnerForm, type FormValue } from "./innovation/FormBuilder";
+import { evaluateForm, type FormCheck } from "../innovation/forms";
 
 // ---------------------------------------------------------------------------
 // جایزه نوآوری و فناوری بنیاد — چرخه‌ی کامل: دوره و مراحل، ثبت‌نام و ارسال اثر با
@@ -266,6 +268,9 @@ function EntriesTab({ cycle }: { cycle: AwardCycle }) {
   const [form, setForm] = useState<EntryForm | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [trackFilter, setTrackFilter] = useState("همه");
+  const cycleForm = useOwnerForm("award", cycle.id);
+  const [fv, setFv] = useState<FormValue>(() => emptySubmission(cycleForm));
+  const [fcheck, setFcheck] = useState<FormCheck | null>(null);
   const tracks = inn.awardTracks.filter((t) => t.cycleId === cycle.id);
   const entries = inn.awardEntries.filter((e) => e.cycleId === cycle.id && (trackFilter === "همه" || e.trackId === trackFilter));
   const open = openId ? inn.awardEntries.find((e) => e.id === openId) : undefined;
@@ -280,13 +285,25 @@ function EntriesTab({ cycle }: { cycle: AwardCycle }) {
     }
     const partner = e.entityId ? inn.entityById(e.entityId)?.name ?? "" : "";
     setForm({ id: e.id, title: e.title, trackId: e.trackId, category: e.category, companyName: e.companyName, entityId: e.entityId, techPartner: partner, summary: e.summary, benefits: e.benefits, attachments: e.attachments.join("، ") });
+    setFv(e.form ? { answers: e.form.answers, refs: e.form.refs } : emptySubmission(cycleForm));
+    setFcheck(null);
   };
 
   const save = (send: boolean) => {
     if (!form || !form.title.trim() || !form.companyName.trim() || !form.trackId) return notify("عنوان، محور و شرکت الزامی است.", "warning");
     if (send && (!form.summary.trim() || !form.benefits.trim())) return notify("برای ارسال اثر، شرح و نتایج کمّی الزامی است.", "warning");
+    // فرم سفارشی دوره: فیلدهای الزامی و شرایط احراز هنگام ثبت سنجیده می‌شوند
+    let formSub: AwardEntryX["form"];
+    let formEntity: string | undefined;
+    if (cycleForm) {
+      const c = evaluateForm(cycleForm, fv, inn.entities);
+      setFcheck(c);
+      if (c.missing.length || !c.eligible) return notify(c.missing.length ? "فیلدهای الزامی فرم دوره تکمیل نشده است." : "شرایط شرکت در این دوره احراز نشد — دلایل در پایین فرم آمده است.", "warning");
+      formSub = { formId: cycleForm.id, answers: fv.answers, refs: fv.refs, eligible: true, reasons: [], at: inn.stamp() };
+      formEntity = Object.values(fv.refs)[0];
+    }
     const holdingId = companies.find((c) => c.name === form.companyName.trim())?.holdingId;
-    const patch = { title: form.title.trim(), trackId: form.trackId, category: form.category, companyName: form.companyName.trim(), entityId: form.entityId, holdingId, summary: form.summary.trim(), benefits: form.benefits.trim(), attachments: form.attachments.split(/[،,]/).map((s) => s.trim()).filter(Boolean) };
+    const patch = { form: formSub, title: form.title.trim(), trackId: form.trackId, category: form.category, companyName: form.companyName.trim(), entityId: form.entityId ?? formEntity, holdingId, summary: form.summary.trim(), benefits: form.benefits.trim(), attachments: form.attachments.split(/[،,]/).map((s) => s.trim()).filter(Boolean) };
     if (form.id) {
       const prev = inn.awardEntries.find((e) => e.id === form.id)!;
       const counts = prev.status !== "ثبت‌نام‌شده";
@@ -311,7 +328,7 @@ function EntriesTab({ cycle }: { cycle: AwardCycle }) {
           {tracks.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
         </select>
         {hasPermission("award.submit") && (
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} disabled={!canSubmitPhase} title={canSubmitPhase ? "" : "ثبت اثر فقط در مراحل ثبت‌نام و ارسال اثر ممکن است"} onClick={() => setForm({ title: "", trackId: tracks[0]?.id ?? "", category: tracks[0]?.categories[0] ?? "", companyName: "", techPartner: "", summary: "", benefits: "", attachments: "" })}>
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} disabled={!canSubmitPhase} title={canSubmitPhase ? "" : "ثبت اثر فقط در مراحل ثبت‌نام و ارسال اثر ممکن است"} onClick={() => { setFv(emptySubmission(cycleForm)); setFcheck(null); setForm({ title: "", trackId: tracks[0]?.id ?? "", category: tracks[0]?.categories[0] ?? "", companyName: "", techPartner: "", summary: "", benefits: "", attachments: "" }); }}>
             {cycle.phase === "ثبت‌نام" ? "ثبت‌نام اثر" : "ثبت اثر"}
           </Button>
         )}
@@ -329,6 +346,7 @@ function EntriesTab({ cycle }: { cycle: AwardCycle }) {
               </button>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {manage && sc.avg !== undefined && <Badge tone="navy">میانگین {faN(sc.avg, 1)}</Badge>}
+                <FormStatusBadge sub={e.form} />
                 {e.status !== "ثبت‌نام‌شده" && <Badge tone={e.editsUsed >= cycle.editLimit ? "neutral" : "brand"}>ویرایش {faN(e.editsUsed)}/{faN(cycle.editLimit)}</Badge>}
                 <Badge tone={statusTone[e.status]}>{e.status}</Badge>
                 {canEditEntry(e) && <RowActions onEdit={() => startEdit(e)} onDelete={manage || e.submitter === actingUser.name ? () => confirm({ title: `انصراف و حذف اثر «${e.title}»؟`, onConfirm: () => inn.commit("award", "اثر را حذف کرد", { id: e.id, title: e.title }, (s) => ({ ...s, awardEntries: s.awardEntries.filter((x) => x.id !== e.id), assignments: s.assignments.filter((a) => a.entryId !== e.id) })) }) : undefined} />}
@@ -356,6 +374,13 @@ function EntriesTab({ cycle }: { cycle: AwardCycle }) {
             <Field label="شرح مسئله و راه‌حل" required={cycle.phase === "ارسال اثر"}><textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2} className="input-field" /></Field>
             <Field label="نتایج کمّی (صرفه‌جویی ریالی، کاهش زمان…)" required={cycle.phase === "ارسال اثر"}><input value={form.benefits} onChange={(e) => setForm({ ...form, benefits: e.target.value })} className="input-field" /></Field>
             <Field label="پیوست‌ها" hint="نام فایل‌ها با «،» — مستندات، تأییدیه‌ی مدیرعامل، ویدئو"><input value={form.attachments} onChange={(e) => setForm({ ...form, attachments: e.target.value })} className="input-field" /></Field>
+            {cycleForm && (
+              <div className="border-t border-ink-100 pt-3 space-y-3">
+                <p className="text-xs font-bold text-ink-900">{cycleForm.title}</p>
+                <FormFill def={cycleForm} value={fv} onChange={(v) => { setFv(v); setFcheck(null); }} missing={fcheck?.missing} />
+                {fcheck && <EligibilityResult def={cycleForm} check={fcheck} />}
+              </div>
+            )}
             <div className="flex gap-2">
               {cycle.phase === "ارسال اثر" && <Button variant="primary" className="flex-1 justify-center" onClick={() => save(true)}>ارسال اثر</Button>}
               <Button variant={cycle.phase === "ارسال اثر" ? "secondary" : "primary"} className={cycle.phase === "ارسال اثر" ? "" : "flex-1 justify-center"} onClick={() => save(false)}>{form.id ? "ذخیره" : "ثبت‌نام"}</Button>
@@ -391,6 +416,7 @@ function EntryFile({ e, cycle }: { e: AwardEntryX; cycle: AwardCycle }) {
       </div>
       {e.summary && <Section title="شرح"><p className="text-xs text-ink-600 leading-6">{e.summary}</p></Section>}
       {e.benefits && <Section title="نتایج کمّی"><p className="text-xs text-ink-600">{e.benefits}</p></Section>}
+      {e.form && <Section title="فرم تکمیلی دوره" icon={<FileText size={13} />}><EntryFormAnswers e={e} /></Section>}
       {e.attachments.length > 0 && <Section title="پیوست‌ها" icon={<FileText size={13} />}><div className="flex flex-wrap gap-1.5">{e.attachments.map((a) => <Badge key={a} tone="neutral">{a}</Badge>)}</div></Section>}
       {showFeedback && reviews.some((r) => r.scores) && (
         <Section title={manage ? "داوری‌ها" : "بازخورد داوران (بدون نام)"} icon={<Gavel size={13} />}>
@@ -536,7 +562,10 @@ function ManageTab({ cycle }: { cycle: AwardCycle }) {
         <Field label="معیارهای امتیازدهی (معیار × وزن)">
           <RubricEditor value={rubric} onChange={setRubric} />
         </Field>
-        <Button size="sm" variant="secondary" onClick={() => { setCycle("معیارهای داوری را به‌روز کرد", { rubric }); notify("معیارها ذخیره شد."); }}>ذخیره‌ی معیارها</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={() => { setCycle("معیارهای داوری را به‌روز کرد", { rubric }); notify("معیارها ذخیره شد."); }}>ذخیره‌ی معیارها</Button>
+          <FormDesignButton kind="award" ownerId={cycle.id} ownerTitle={cycle.title} />
+        </div>
       </div>
 
       <div className="card p-4 space-y-3">
@@ -683,4 +712,11 @@ function ResultsTab({ cycle }: { cycle: AwardCycle }) {
       <p className="text-[10.5px] text-ink-400 flex items-center gap-1"><Pencil size={11} /> گواهی‌ها قابل چاپ‌اند؛ بازخورد داوران پس از اعلام نتایج بدون نام داور به شرکت‌کننده نمایش داده می‌شود.</p>
     </div>
   );
+}
+
+function EntryFormAnswers({ e }: { e: AwardEntryX }) {
+  const inn = useInnovation();
+  if (!e.form) return null;
+  const def = inn.forms?.find((f) => f.id === e.form!.formId);
+  return def ? <FormAnswersView def={def} sub={e.form} /> : <p className="text-[11px] text-ink-400">تعریف فرم حذف شده است.</p>;
 }

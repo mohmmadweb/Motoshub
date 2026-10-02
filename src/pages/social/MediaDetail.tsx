@@ -2,7 +2,7 @@
 // جزئیات پست رسانه — /media/media/posts/{id}/
 // نمایشگر بزرگ (آلبوم با نوار بندانگشتی)، کپشن، واکنش‌ها، نظرها و اقدام‌های صاحب/مدیر.
 // ---------------------------------------------------------------------------
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Image as ImageIcon, Lock, Pencil, Trash2, Send, EyeOff, Play, ChevronRight, ChevronLeft } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
@@ -17,6 +17,8 @@ import { endpoints } from "../../social/endpoints";
 import { mediaTypeLabel } from "../../social/types";
 import { ApiChip, CategoryBadges, CommentsPanel, Poster, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, fileIcon, stamp } from "./kit";
 import { MediaEditor, mediaTypeIcon } from "./MediaPage";
+import { HiddenBanner, ReportButton } from "./moderation";
+import { AnalyticsButton } from "./ItemAnalytics";
 
 export default function MediaDetail() {
   const { id = "" } = useParams();
@@ -34,6 +36,15 @@ export default function MediaDetail() {
   const canEdit = owner || manager;
   const allowed = !!m && s.canView(m, manager) && ((m.is_public && !m.is_draft) || canEdit);
   const crumbs = [{ label: "شبکه اجتماعی" }, { label: "رسانه", to: "/dashboard/media" }];
+  // «پیشنهادی» — ثبت بازدید هر کاربر برای آمار پست (یک بار در هر بار باز شدن)
+  const viewed = useRef<string | null>(null);
+  useEffect(() => {
+    if (m && allowed && viewed.current !== id) {
+      viewed.current = id;
+      s.viewMedia(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, !!m, allowed]);
 
   if (!m || !allowed)
     return (
@@ -88,8 +99,12 @@ export default function MediaDetail() {
                 { label: "واکنش", ep: endpoints.reactionToggle("media") },
                 { label: "نظرها", ep: endpoints.comments("media") },
                 { label: "ثبت نظر", ep: endpoints.commentCreate("media") },
+                { label: "آمار پست", ep: endpoints.mediaAnalytics(m.id) },
+                { label: "گزارش تخلف", ep: endpoints.reportCreate() },
               ]}
             />
+            {canEdit && <AnalyticsButton entity="media" item={m} />}
+            {!owner && <ReportButton target={{ target_type: "media", target_id: m.id, target_owner_id: m.user_id, target_excerpt: m.caption || "پست رسانه" }} />}
             {canEdit && (
               <>
                 <Button size="sm" icon={<Pencil size={13} />} onClick={() => setEditing(true)}>
@@ -109,6 +124,7 @@ export default function MediaDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-3">
+          <HiddenBanner m={m.moderation} onUnhide={() => (s.unhide("media", m.id), notify("پست دوباره برای مخاطبان نمایش داده می‌شود.", "success"))} />
           <div className="card overflow-hidden">
             <Poster color={m.poster} className="h-64 sm:h-96 !rounded-none !p-0 !items-stretch">
               <div className="relative w-full flex flex-col justify-between p-3">

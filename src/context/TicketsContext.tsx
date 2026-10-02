@@ -6,6 +6,8 @@
 // ---------------------------------------------------------------------------
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTenancy } from "./TenancyContext";
+import { useInbox } from "./InboxContext";
+import { users } from "../data/mock";
 import {
   clockNow,
   nextTicketId,
@@ -20,7 +22,7 @@ import {
   type TicketSeverity,
   type TicketStatus,
 } from "../pages/tickets/model";
-import { seedTickets } from "../pages/tickets/seed";
+import { seedTicketPeople, seedTickets } from "../pages/tickets/seed";
 
 const KEY = "motoshub.tickets.v1";
 const VERSION = 1;
@@ -33,7 +35,8 @@ function load(): Store {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Store;
-      if (s.version === VERSION && Array.isArray(s.tickets)) return s;
+      // دنبال‌کنندگان/«من هم»های نمونه به ذخیره‌ی قدیمی هم افزوده می‌شوند (فیلدهای اختیاری)
+      if (s.version === VERSION && Array.isArray(s.tickets)) return { ...s, tickets: s.tickets.map((t) => (t.followers || t.affected || !seedTicketPeople[t.id] ? t : { ...t, ...seedTicketPeople[t.id] })) };
     }
   } catch {
     /* بدون حافظه‌ی مرورگر */
@@ -70,6 +73,15 @@ export type TicketsValue = {
   reopen: (id: string, reason: string) => void;
   rate: (id: string, score: number, comment?: string) => void;
   reset: () => void;
+  // ------------------------------------------------ دنبال‌کنندگان و «من هم»
+  isFollowing: (t: Ticket, userId?: string) => boolean;
+  toggleFollow: (id: string) => void;
+  addFollower: (id: string, userId: string) => void;
+  removeFollower: (id: string, userId: string) => void;
+  /** «من هم این مشکل را دارم» — کاربر به درگیرها و دنبال‌کنندگان اضافه می‌شود */
+  meToo: (id: string) => boolean;
+  /** آیا کاربر جاری درگیر تیکت است (گزارش‌دهنده، دنبال‌کننده یا «من هم») */
+  involved: (t: Ticket) => boolean;
 };
 
 const maxUpdated = (list: Ticket[]) => list.reduce((m, t) => Math.max(m, t.updatedAt), 0);
@@ -79,6 +91,7 @@ const newEvId = () => `e${Date.now().toString(36)}${(++evCounter).toString(36)}`
 
 export function TicketsProvider({ children }: { children: ReactNode }) {
   const { actingUser, hasPermission } = useTenancy();
+  const inbox = useInbox();
   const [store, setStore] = useState<Store>(load);
   const [tick, setTick] = useState(() => clockNow());
 
@@ -138,6 +151,17 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
     return p;
   };
 
+  const nameOf = (uid: string) => users.find((u) => u.id === uid)?.name ?? uid;
+  /** اعلان به دنبال‌کنندگان و «من هم»ها (به‌جز خودِ اقدام‌کننده؛ گزارش‌دهنده جداگانه مطلع می‌شود) */
+  const notifyFollowers = (id: string, text: string) => {
+    const t = store.tickets.find((x) => x.id === id);
+    if (!t) return;
+    const to = [...new Set([...(t.followers ?? []), ...(t.affected ?? [])])].filter((u) => u !== actingUser.id && u !== t.reporterId);
+    if (to.length) inbox.send(to.map(nameOf), "reply", `تیکت ${t.id} («${t.title}»): ${text}`, `/dashboard/tickets?id=${t.id}`);
+  };
+  const setPeople = (id: string, fn: (t: Ticket) => Partial<Ticket> | null) =>
+    setStore((s) => ({ ...s, tickets: s.tickets.map((t) => (t.id === id ? { ...t, ...(fn(t) ?? {}) } : t)) }));
+
   const value: TicketsValue = {
     tickets: store.tickets,
     now,
@@ -178,7 +202,8 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
       setStore((s) => ({ ...s, tickets: [ticket, ...s.tickets] }));
       return ticket;
     },
-    comment: (id, text, opts = {}) =>
+    comment: (id, text, opts = {}) => {
+      if (!(opts.internal && isVendor)) notifyFollowers(id, "پیام جدید ثبت شد.");
       apply(id, (t, actor, at) => {
         const files = opts.files ?? [];
         const internal = !!opts.internal && actor.kind === "vendor";
@@ -191,8 +216,11 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
           patch.status = "triage";
         }
         return { patch, events };
-      }),
-    setStatus: (id, to, text, fixedIn) =>
+      });
+    },
+    setStatus: (id, to, text, fixedIn) => {
+      const cur = store.tickets.find((x) => x.id === id);
+      if (cur && cur.status !== to) notifyFollowers(id, `وضعیت به «${to === "resolved" ? "رفع‌شده" : to === "closed" ? "بسته‌شده" : to === "in-progress" ? "در حال رفع" : to === "need-info" ? "نیاز به اطلاعات بیشتر" : to === "rejected" ? "ردشده" : "در حال بررسی"}» تغییر کرد.`);
       apply(id, (t, _a, at) => {
         if (t.status === to) return null;
         const events: Draft[] = [];
@@ -203,7 +231,8 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
         }
         events.push({ kind: "status", from: t.status, to, text: text?.trim() || undefined });
         return { patch, events };
-      }),
+      });
+    },
     assign: (id, assigneeId) =>
       apply(id, (t) => (t.assigneeId === assigneeId ? null : { patch: { assigneeId }, events: [{ kind: "assign", from: vendorById(t.assigneeId)?.name, to: vendorById(assigneeId)?.name ?? "بدون مسئول" }] })),
     bulkAssign: (ids, assigneeId) => ids.forEach((id) => value.assign(id, assigneeId)),
@@ -215,7 +244,18 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
         files.length ? { patch: { attachments: [...t.attachments, ...files.map((f) => ({ ...f, at, by: actor.name }))] }, events: [{ kind: "attachment", files: files.map((f) => f.name) }] } : null,
       ),
     setLabels: (id, labels) => apply(id, (t) => (labels.join("،") === t.labels.join("،") ? null : { patch: { labels }, events: [{ kind: "labels", from: t.labels.join("، ") || undefined, to: labels.join("، ") || "بدون برچسب" }] })),
-    addLink: (id, link) =>
+    addLink: (id, link) => {
+      // تیکت تکراری: گزارش‌دهنده و «من هم»های آن به درگیرها و دنبال‌کنندگان تیکت اصلی اضافه می‌شوند
+      const dup = store.tickets.find((x) => x.id === id);
+      if (dup && link.kind === "duplicate-of" && link.id !== id) {
+        const people = [dup.reporterId, ...(dup.affected ?? [])];
+        setPeople(link.id, (main) => {
+          const fresh = people.filter((u) => u !== main.reporterId && !(main.affected ?? []).includes(u));
+          return fresh.length ? { affected: [...(main.affected ?? []), ...fresh], followers: [...new Set([...(main.followers ?? []), ...fresh])] } : null;
+        });
+        notifyFollowers(id, `به‌عنوان تکراریِ ${link.id} بسته شد؛ پیگیری در همان تیکت انجام می‌شود.`);
+        if (dup.reporterId !== actingUser.id) inbox.send([dup.reporterName], "reply", `تیکت ${dup.id} تکراریِ ${link.id} است؛ شما به دنبال‌کنندگان تیکت اصلی اضافه شدید.`, `/dashboard/tickets?id=${link.id}`);
+      }
       apply(id, (t, _a, at) => {
         if (link.id === t.id || t.links.some((l) => l.id === link.id)) return null;
         const events: Draft[] = [{ kind: "link", to: link.id, text: link.kind === "duplicate-of" ? "تکراریِ" : "مرتبط با" }];
@@ -225,7 +265,8 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
           events.push({ kind: "status", from: t.status, to: "closed", text: `به‌عنوان تکراریِ ${link.id} بسته شد؛ پیگیری در همان تیکت انجام می‌شود.` });
         }
         return { patch, events };
-      }),
+      });
+    },
     removeLink: (id, otherId) => apply(id, (t) => (t.links.some((l) => l.id === otherId) ? { patch: { links: t.links.filter((l) => l.id !== otherId) }, events: [{ kind: "link", from: otherId, text: "حذف پیوند" }] } : null)),
     setRelease: (id, version) => apply(id, (t) => (t.fixedIn === version ? null : { patch: { fixedIn: version }, events: [{ kind: "release", from: t.fixedIn, to: version ?? "نامشخص" }] })),
     confirmResolution: (id, score, comment) =>
@@ -236,12 +277,36 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
           { kind: "rating", to: String(score), text: comment?.trim() || undefined },
         ],
       })),
-    reopen: (id, reason) =>
+    reopen: (id, reason) => {
+      notifyFollowers(id, `بازگشایی شد: ${reason.trim()}`);
       apply(id, (t, _a, at) => ({
         patch: { ...statusPatch(t, "triage", at), rating: undefined },
         events: [{ kind: "status", from: t.status, to: "triage", text: `بازگشایی: ${reason.trim()}` }],
-      })),
+      }));
+    },
     rate: (id, score, comment) => apply(id, (_t, _a, at) => ({ patch: { rating: { score, comment: comment?.trim() || undefined, at } }, events: [{ kind: "rating", to: String(score), text: comment?.trim() || undefined }] })),
+    isFollowing: (t, userId = actingUser.id) => (t.followers ?? []).includes(userId),
+    toggleFollow: (id) =>
+      setPeople(id, (t) => {
+        const f = t.followers ?? [];
+        return { followers: f.includes(actingUser.id) ? f.filter((u) => u !== actingUser.id) : [...f, actingUser.id] };
+      }),
+    addFollower: (id, userId) => {
+      const t = store.tickets.find((x) => x.id === id);
+      if (!t || (t.followers ?? []).includes(userId)) return;
+      setPeople(id, (x) => ({ followers: [...(x.followers ?? []), userId] }));
+      if (userId !== actingUser.id) inbox.send([nameOf(userId)], "reply", `«${actingUser.name}» شما را دنبال‌کننده‌ی تیکت ${t.id} («${t.title}») کرد؛ به‌روزرسانی‌ها به شما اعلان می‌شود.`, `/dashboard/tickets?id=${t.id}`);
+    },
+    removeFollower: (id, userId) => setPeople(id, (t) => ({ followers: (t.followers ?? []).filter((u) => u !== userId) })),
+    meToo: (id) => {
+      const t = store.tickets.find((x) => x.id === id);
+      if (!t || t.reporterId === actingUser.id || (t.affected ?? []).includes(actingUser.id)) return false;
+      setPeople(id, (x) => ({ affected: [...(x.affected ?? []), actingUser.id], followers: [...new Set([...(x.followers ?? []), actingUser.id])] }));
+      apply(id, () => ({ events: [{ kind: "affected", text: `«${actingUser.name}» هم این مشکل را دارد (${(2 + (t.affected?.length ?? 0)).toLocaleString("fa-IR")} کاربر درگیر).` }] }));
+      if (t.reporterId !== actingUser.id) inbox.send([t.reporterName], "reply", `«${actingUser.name}» هم مشکل تیکت ${t.id} را دارد.`, `/dashboard/tickets?id=${t.id}`);
+      return true;
+    },
+    involved: (t) => t.reporterId === actingUser.id || (t.followers ?? []).includes(actingUser.id) || (t.affected ?? []).includes(actingUser.id),
     reset: () => {
       try {
         localStorage.removeItem(KEY);
