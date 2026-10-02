@@ -1,0 +1,26 @@
+{
+  "name": "موتوشاب",
+  "short_name": "موتوشاب",
+  "description": "شبکه‌ی اجتماعی و فضای کاری سازمانی",
+  "lang": "fa",
+  "dir": "rtl",
+  "id": "./",
+  "start_url": "./#/dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1828",
+  "theme_color": "#1f4f99",
+  "categories": ["business", "productivity", "social"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "کارهای من", "url": "./#/dashboard/my-work", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "گفتگو", "url": "./#/dashboard/chat", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "جستجو", "url": "./#/dashboard/search", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

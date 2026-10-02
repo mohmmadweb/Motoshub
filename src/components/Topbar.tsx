@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
 import Avatar from "./Avatar";
@@ -7,6 +7,7 @@ import { personalFor } from "../data/personal";
 import { NavTree } from "./Sidebar";
 import { useTheme } from "../context/ThemeContext";
 import ScopeSwitcher from "./ScopeSwitcher";
+import InstallAppButton from "./InstallAppButton";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useInbox } from "../context/InboxContext";
@@ -21,9 +22,15 @@ const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
 export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  // نوار ناوبری پایینِ موبایل منو را با این رویداد باز می‌کند
+  useEffect(() => {
+    const open = () => setNavOpen(true);
+    window.addEventListener("motoshub:open-menu", open);
+    return () => window.removeEventListener("motoshub:open-menu", open);
+  }, []);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
-  const { actingUser, session, identity, canAccessAdmin, role } = useTenancy();
+  const { actingUser, session, identity, role } = useTenancy();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
   const inbox = useInbox();
@@ -151,17 +158,16 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
                 <Link to={`/dashboard/profile/${displayUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <UserCircle size={15} className="text-ink-400" /> پروفایل من
                 </Link>
-                <Link to="/dashboard/profile/u1?tab=security" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                <Link to={`/dashboard/profile/${displayUser.id}?tab=security`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <ShieldCheck size={15} className="text-ink-400" /> امنیت و نشست‌ها
                 </Link>
-                <Link to="/dashboard/appearance" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                <Link to="/dashboard/settings?section=appearance" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
                   <Palette size={15} className="text-ink-400" /> ظاهر و برندسازی
                 </Link>
-                {canAccessAdmin && (
-                  <Link to="/dashboard/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                    <Settings size={15} className="text-ink-400" /> پنل راهبری
-                  </Link>
-                )}
+                <Link to="/dashboard/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
+                  <Settings size={15} className="text-ink-400" /> تنظیمات سامانه
+                </Link>
+                <InstallAppButton compact className="w-full px-3.5 py-2" />
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-rose-600 hover:bg-rose-50">
                   <LogOut size={15} /> خروج از حساب

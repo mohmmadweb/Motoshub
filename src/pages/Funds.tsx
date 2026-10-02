@@ -1,5 +1,7 @@
 import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import RelatedProjects from "./innovation/RelatedProjects";
 import { useTabParam } from "../lib/useTabParam";
 import {
   PiggyBank,
@@ -101,9 +103,15 @@ const paymentTone: Record<string, BadgeTone> = {
 };
 
 export default function Funds() {
-  const [tab, setTab] = useTabParam<"nf" | "allFunds" | "employment" | "allocation" | "decisions">("nf", ["nf", "allFunds", "employment", "allocation", "decisions"]);
+  const [tabParam, setTab] = useTabParam<"nf" | "allFunds" | "employment" | "allocation" | "decisions">("nf", ["nf", "allFunds", "employment", "allocation", "decisions"]);
   const { filterScoped } = useTenancy();
   const inn = useInnovation();
+  // ?focus=<id> (از پیوند پروژه یا جستجو): تب درست را باز می‌کند و پرونده را نمایش می‌دهد
+  const [params] = useSearchParams();
+  const focus = params.get("focus");
+  const focusTab = focus ? (inn.employment.some((f) => f.id === focus) ? "employment" : inn.nfProjects.some((p) => p.id === focus) ? "nf" : null) : null;
+  const [tabTouched, setTabTouched] = useState(false);
+  const tab = !tabTouched && !params.get("tab") && focusTab ? focusTab : tabParam;
   const nfCount = filterScoped(inn.nfProjects).length;
   const employmentCount = filterScoped(inn.employment).length;
   return (
@@ -128,7 +136,10 @@ export default function Funds() {
           { id: "decisions", label: "دفتر تصمیمات", count: inn.decisions.length },
         ]}
         active={tab}
-        onChange={setTab}
+        onChange={(x) => {
+          setTabTouched(true);
+          setTab(x);
+        }}
       />
       {tab === "nf" && <InnovationFundTab />}
       {tab === "allFunds" && <AllFundsTab />}
@@ -240,7 +251,11 @@ function InnovationFundTab() {
   const projects = inn.nfProjects;
   const setProjects = (fn: (prev: NfProject[]) => NfProject[], action = "پرونده‌ی طرح را به‌روز کرد", subject?: { id: string; title: string }) =>
     inn.commit("funds", action, subject, (s) => ({ ...s, nfProjects: fn(s.nfProjects) }));
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const f = focusParams.get("focus");
+    return f && projects.some((p) => p.id === f) ? f : null;
+  });
   const selected = selectedId ? projects.find((p) => p.id === selectedId) ?? null : null;
   const setSelected = (p: NfProject | null | ((prev: NfProject | null) => NfProject | null)) => {
     const v = typeof p === "function" ? p(selected) : p;
@@ -877,7 +892,11 @@ function EmploymentFundTab() {
   const [region, setRegion] = useState("");
   const [field, setField] = useState("");
   const [stageFilter, setStageFilter] = useState<"همه" | FundRecord["stage"]>("همه");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    const f = focusParams.get("focus");
+    return f && funds.some((x) => x.id === f) ? f : null;
+  });
   const [deciding, setDeciding] = useState(false);
   const [closing, setClosing] = useState(false);
   const { notify } = useToast();
@@ -1032,6 +1051,7 @@ function EmploymentFundTab() {
             {selected.stage === "در حال پایش" && hasPermission("funds.monitor") && (
               <Button variant="primary" className="w-full justify-center" icon={<ClipboardCheck size={14} />} onClick={() => setClosing(true)}>اختتام طرح و ثبت نتیجه‌ی واقعی</Button>
             )}
+            <RelatedProjects field="fundId" id={selected.id} />
           </div>
         )}
       </Drawer>

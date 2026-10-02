@@ -15,6 +15,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useSocial } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
+import { useProjectsPM } from "../../context/ProjectsContext";
 import { endpoints } from "../../social/endpoints";
 import type { Category, Chat, EntityName, Tag } from "../../social/types";
 import { contentKindLabel, entityLabel } from "../../social/types";
@@ -113,6 +114,11 @@ function TagsSection({ manage }: { manage: boolean }) {
   const [newName, setNewName] = useState("");
   const [renaming, setRenaming] = useState<Tag | null>(null);
   const v = useVisibleItems();
+  // پروژه‌هایی که این هشتگ را در برچسب‌هایشان دارند (?tag= از پیوند برچسب پروژه)
+  const pm = useProjectsPM();
+  const { filterScoped, hasPermission: canT } = useTenancy();
+  const visibleProjects = canT("projects.list") ? filterScoped(pm.projects.map((p) => ({ ...p.meta, _p: p }))).map((x) => x._p).filter((p) => !p.meta.archived) : [];
+  const normTag = (x: string) => x.trim().replace(/^#/, "");
 
   const allTagged: { tags: string[] }[] = [...v.content, ...v.media, ...v.events, ...v.topics, ...v.groups, ...v.channels];
   const usage = (name: string) => allTagged.filter((x) => x.tags.includes(name)).length;
@@ -147,6 +153,11 @@ function TagsSection({ manage }: { manage: boolean }) {
         key: "chats",
         label: "گروه‌ها و کانال‌ها",
         items: [...v.groups.filter(has).map((c) => ({ id: c.id, title: c.title, to: `/dashboard/groups/${c.id}`, sub: "گروه" })), ...v.channels.filter(has).map((c) => ({ id: c.id, title: c.title, to: `/dashboard/channels/${c.id}`, sub: "کانال" }))],
+      },
+      {
+        key: "projects",
+        label: "پروژه‌ها",
+        items: visibleProjects.filter((p) => p.meta.tags.some((x) => normTag(x) === normTag(tag))).map((p) => ({ id: p.meta.id, title: p.meta.name, to: `/dashboard/projects/${p.meta.id}`, sub: p.meta.phase })),
       },
     ].filter((g) => g.items.length > 0);
   };
@@ -222,7 +233,7 @@ function TagsSection({ manage }: { manage: boolean }) {
                 </button>
               </span>
             </div>
-            {!selTag && <p className="text-xs text-amber-700 mb-2">این هشتگ در فهرست هشتگ‌ها نیست.</p>}
+            {!selTag && !groups.some((g) => g.key === "projects") && <p className="text-xs text-amber-700 mb-2">این هشتگ در فهرست هشتگ‌ها نیست.</p>}
             {groups.length === 0 ? (
               <p className="text-xs text-ink-400">مطلبی با این هشتگ که اجازه‌ی دیدنش را داشته باشید پیدا نشد.</p>
             ) : (

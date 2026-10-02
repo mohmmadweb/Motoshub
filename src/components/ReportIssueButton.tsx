@@ -35,7 +35,7 @@ export function ReportIssueButton({ className = "" }: { className?: string }) {
           setSnap({ route: `${location.pathname}${location.search}`, title: document.title });
           setOpen(true);
         }}
-        className={`fixed bottom-4 left-4 z-30 flex items-center gap-1.5 rounded-full bg-white border border-ink-200 shadow-lg text-ink-700 hover:text-brand-700 hover:border-brand-300 h-10 px-3 text-[12.5px] font-medium print:hidden ${className}`}
+        className={`fixed bottom-20 lg:bottom-4 left-4 z-30 flex items-center gap-1.5 rounded-full bg-white border border-ink-200 shadow-lg text-ink-700 hover:text-brand-700 hover:border-brand-300 h-10 px-3 text-[12.5px] font-medium print:hidden ${className}`}
         aria-label="گزارش مشکل به تیم سازنده"
         title="گزارش مشکل یا درخواست به تیم سازنده"
       >

@@ -24,7 +24,9 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     const userItems: Item[] = users.map((u) => ({ id: u.id, label: u.name, hint: "کاربر", icon: User, to: `/dashboard/profile/${u.id}` }));
     const all = [...pages, ...channelItems, ...userItems];
     if (!q) return all.slice(0, 8);
-    return all.filter((i) => i.label.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+    // اولین گزینه همیشه «جستجوی سراسری» روی داده‌ی زنده است
+    const searchAll: Item = { id: "search-all", label: `جستجوی «${q}» در کل سامانه`, hint: "جستجوی سراسری", icon: Search, to: `/dashboard/search?q=${encodeURIComponent(q)}` };
+    return [searchAll, ...all.filter((i) => i.label.toLowerCase().includes(q.toLowerCase())).slice(0, 7)];
   }, [q]);
 
   if (!open) return null;
@@ -39,7 +41,13 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="رفتن به صفحه، کانال یا فرد…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && items[0]) {
+                navigate(items[0].to);
+                onClose();
+              }
+            }}
+            placeholder="رفتن به صفحه، کانال، فرد — یا جستجو در کل سامانه…"
             className="flex-1 outline-none text-sm"
           />
           <kbd className="text-[10px] bg-ink-100 border border-ink-200 rounded px-1.5 py-0.5 text-ink-400">Esc</kbd>

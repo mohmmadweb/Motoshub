@@ -1,4 +1,5 @@
 import ModuleReportsButton from "../reports/ModuleReportsButton";
+import RelatedProjects from "./innovation/RelatedProjects";
 import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { FlaskConical, Plus, Users, GraduationCap, Wallet, Clock3, FileCheck2, Megaphone, Trophy, BookMarked, Lock, Unlock, Gavel, Send, ChevronLeft, ClipboardCheck, Link2, FileSignature, Building2 } from "lucide-react";
@@ -97,12 +98,14 @@ function OpportunitiesTab() {
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [errors, setErrors] = useState(false);
 
-  const openId = params.get("open");
+  // ?focus=<id> از پیوند پروژه همان پرونده را باز می‌کند
+  const openId = params.get("open") ?? params.get("focus");
   const selected = openId ? inn.calls.find((c) => c.id === openId) ?? null : null;
   const setOpen = (id: string | null) => {
     const n = new URLSearchParams(params);
     if (id) n.set("open", id);
     else n.delete("open");
+    n.delete("focus");
     setParams(n, { replace: true });
   };
 
@@ -210,7 +213,12 @@ function OpportunitiesTab() {
       )}
 
       <Drawer open={!!selected} onClose={() => setOpen(null)} title="پرونده فرصت پژوهشی" width="max-w-xl">
-        {selected && <CallFile c={selected} />}
+        {selected && (
+          <>
+            <CallFile c={selected} />
+            <RelatedProjects field="opportunityId" id={selected.id} />
+          </>
+        )}
       </Drawer>
     </div>
   );

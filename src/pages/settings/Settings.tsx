@@ -1,7 +1,7 @@
 // «تنظیمات سامانه» — جایگزین پنل راهبری. همه‌ی تنظیمات در یک جا، گروه‌بندی‌شده و هرکدام با
 // مجوز جداگانه؛ هر مدیر فقط بخش‌هایی را می‌بیند که در کانتکست فعلی اختیارش را دارد.
 import { useSearchParams } from "react-router-dom";
-import { Settings as SettingsIcon, Network, Users, KeyRound, UserCheck, ClipboardCheck, History, Palette, Brush, MessagesSquare, LogIn, ShieldCheck, Plug, LayoutTemplate, Webhook, Globe2, Gauge, Activity, SlidersHorizontal, HardDrive, UserPlus } from "lucide-react";
+import { Settings as SettingsIcon, Network, Users, KeyRound, UserCheck, ClipboardCheck, History, Palette, Brush, MessagesSquare, LogIn, ShieldCheck, Plug, LayoutTemplate, Webhook, Globe2, Gauge, Activity, SlidersHorizontal, HardDrive, UserPlus, Layers, ShieldAlert, BellRing } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import { useTenancy } from "../../context/TenancyContext";
 import Admin, { type SectionId } from "../Admin";
@@ -13,6 +13,9 @@ import { RolesSection } from "./iam/RolesSection";
 import { BindingsSection } from "./iam/BindingsSection";
 import { AccessReviewSection } from "./iam/AccessReviewSection";
 import { AuditSection } from "./iam/AuditSection";
+import UnifiedAuditSection from "./UnifiedAuditSection";
+import ChannelsSection from "./ChannelsSection";
+import ClassificationSection from "./ClassificationSection";
 
 type Sec = { id: string; label: string; icon: typeof Network; perms: string[]; legacy?: SectionId };
 const groups: { title: string; items: Sec[] }[] = [
@@ -43,6 +46,7 @@ const groups: { title: string; items: Sec[] }[] = [
       { id: "pages", label: "صفحات و منوها", icon: LayoutTemplate, perms: ["settings.pages"], legacy: "pages" },
       { id: "workflow", label: "پارامترهای گردش کار", icon: Gauge, perms: ["settings.system"], legacy: "workflow" },
       { id: "integrations", label: "یکپارچه‌سازی و اتوماسیون", icon: Webhook, perms: ["settings.system"], legacy: "integrations" },
+      { id: "channels", label: "کانال‌های اطلاع‌رسانی (پیامک/ایمیل)", icon: BellRing, perms: ["settings.system"] },
     ],
   },
   {
@@ -50,6 +54,8 @@ const groups: { title: string; items: Sec[] }[] = [
     items: [
       { id: "identity", label: "ورود یکپارچه (SSO)", icon: LogIn, perms: ["settings.security"], legacy: "system-identity" },
       { id: "security", label: "امنیت و انطباق", icon: ShieldCheck, perms: ["settings.security"], legacy: "security" },
+      { id: "classification", label: "طبقه‌بندی اطلاعات", icon: ShieldAlert, perms: ["settings.security"] },
+      { id: "audit-all", label: "لاگ ممیزی یکپارچه", icon: Layers, perms: ["iam.audit.view"] },
       { id: "network", label: "تعامل بین‌سازمانی", icon: Globe2, perms: ["settings.system"], legacy: "network" },
       { id: "monitor", label: "پایش زنده‌ی سامانه", icon: Activity, perms: ["settings.system"], legacy: "monitor" },
       { id: "system", label: "تنظیمات کلی سیستم", icon: SlidersHorizontal, perms: ["settings.system"], legacy: "system" },
@@ -111,6 +117,9 @@ export default function Settings() {
           {current?.id === "bindings" && <BindingsSection />}
           {current?.id === "review" && <AccessReviewSection />}
           {current?.id === "audit" && <AuditSection />}
+          {current?.id === "audit-all" && <UnifiedAuditSection />}
+          {current?.id === "channels" && <ChannelsSection />}
+          {current?.id === "classification" && <ClassificationSection />}
           {current?.id === "appearance" && <Appearance embedded />}
           {current?.id === "social" && <SocialAdmin embedded />}
           {current?.legacy && <Admin key={current.legacy} section={current.legacy} />}

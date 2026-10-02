@@ -1,4 +1,5 @@
 import ModuleReportsButton from "../reports/ModuleReportsButton";
+import RelatedProjects from "./innovation/RelatedProjects";
 import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { FileSignature, Plus, CircleDollarSign, Hourglass, ShieldCheck, CheckCircle2, Circle, History, Landmark, PenLine, ArrowLeftRight, Clock3, BellRing, ChevronLeft, ChevronRight, CalendarClock, Gavel, Send, Megaphone, KeyRound, XCircle } from "lucide-react";
@@ -95,12 +96,14 @@ function TechContractsTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [itemScope, setItemScope] = useState<Scoped>({ scope: "سراسری" });
   const [err, setErr] = useState(false);
-  const openId = params.get("open");
+  // ?focus=<id> از پیوند پروژه همان پرونده را باز می‌کند
+  const openId = params.get("open") ?? params.get("focus");
   const selected = openId ? inn.contracts.find((c) => c.id === openId) : undefined;
   const setOpen = (id: string | null) => {
     const n = new URLSearchParams(params);
     if (id) n.set("open", id);
     else n.delete("open");
+    n.delete("focus");
     setParams(n, { replace: true });
   };
 
@@ -209,7 +212,12 @@ function TechContractsTab() {
       )}
 
       <Drawer open={!!selected} onClose={() => setOpen(null)} title="پرونده قرارداد" width="max-w-xl">
-        {selected && <ContractFile c={selected} />}
+        {selected && (
+          <>
+            <ContractFile c={selected} />
+            <RelatedProjects field="contractId" id={selected.id} />
+          </>
+        )}
       </Drawer>
     </div>
   );
