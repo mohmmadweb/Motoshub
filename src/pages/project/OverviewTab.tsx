@@ -12,7 +12,7 @@ import { dayNum, fa, fmtRial, fmtShort } from "../../pm/jalali";
 import { useTenancy } from "../../context/TenancyContext";
 import { eventByCode, categoryLabel } from "../../pm/events";
 import type { LifecyclePhase } from "../../pm/types";
-import { Progress, SectionTitle, useProjectPage } from "./shared";
+import { CollapsibleCard, Progress, ProjectPageContext, SectionTitle, useProjectPage } from "./shared";
 
 export const phases: { id: LifecyclePhase; hint: string }[] = [
   { id: "برنامه‌ریزی", hint: "تعریف هدف، زمان، بودجه و تیم" },
@@ -24,8 +24,11 @@ export const phases: { id: LifecyclePhase; hint: string }[] = [
 ];
 
 export default function OverviewTab() {
-  const { p, pid, canEdit, canManage, refDate, openTask, goTab } = useProjectPage();
+  const ctx = useProjectPage();
+  const { p, pid, canEdit, canManage, refDate, openTask, goTab, access, editable } = ctx;
   const [closing, setClosing] = useState(false);
+  const [moreLogs, setMoreLogs] = useState(false);
+  const [moreInfo, setMoreInfo] = useState(false);
   const [report, setReport] = useState(false);
   const pm = useProjectsPM();
   const ts = activeTasks(p);
@@ -40,7 +43,7 @@ export default function OverviewTab() {
   const soon = ts.filter((t) => !isDone(p, t) && (dayNum(t.due) ?? 0) >= ref && (dayNum(t.due) ?? 0) - ref <= 7).sort((a, b) => (dayNum(a.due) ?? 0) - (dayNum(b.due) ?? 0));
   const nextMs = p.milestones.filter((m) => m.status !== "انجام‌شده").sort((a, b) => (dayNum(a.due) ?? 0) - (dayNum(b.due) ?? 0))[0];
   const findings = analyzeRisks(p, refDate).slice(0, 4);
-  const recent = [...p.logs].sort((a, b) => b.seq - a.seq).slice(0, 8);
+  const recent = [...p.logs].sort((a, b) => b.seq - a.seq).slice(0, moreLogs ? 8 : 4);
   const phaseIdx = phases.findIndex((x) => x.id === p.meta.phase);
   const group = pm.store.groups.find((g) => g.id === p.meta.groupId);
   const activeSprint = (p.sprints ?? []).find((x) => x.status === "فعال");
@@ -79,13 +82,17 @@ export default function OverviewTab() {
           </Button>
         </div>
       )}
-      {p.closure && <ClosureSummary onOpen={() => setReport(true)} />}
+      {p.closure && (
+        <div id="closure-summary">
+          <ClosureSummary onOpen={() => setReport(true)} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="تسک‌ها (انجام‌شده از کل)" value={`${fa(done)} از ${fa(ts.length)}`} hint={`${fa(doing)} در حال انجام`} icon={<ListChecks size={16} />} tone="brand" />
         <StatCard label="تسک‌های عقب‌افتاده" value={fa(late.length)} hint={`${fa(waiting.length)} منتظر پیش‌نیاز · ${fa(blocked.length)} متوقف`} icon={<AlertTriangle size={16} />} tone={late.length ? "danger" : "success"} />
-        <StatCard label="بودجه‌ی باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint={`از ${fmtShort(p.budget.total)} ریال`} icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />
-        <StatCard label="جلسه‌ی بعدی" value={upcomingMeetings[0] ? upcomingMeetings[0].date : "—"} hint={upcomingMeetings[0]?.title} icon={<Video size={16} />} />
+        {access.can("budget") && <StatCard label="بودجه‌ی باقی‌مانده" value={fmtShort(p.budget.total - paid)} hint={`از ${fmtShort(p.budget.total)} ریال`} icon={<PiggyBank size={16} />} tone={p.budget.total - paid < 0 ? "danger" : "success"} />}
+        {access.can("meetings") && <StatCard label="جلسه‌ی بعدی" value={upcomingMeetings[0] ? upcomingMeetings[0].date : "—"} hint={upcomingMeetings[0]?.title} icon={<Video size={16} />} />}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -94,9 +101,11 @@ export default function OverviewTab() {
             icon={<History size={15} className="text-brand-600" />}
             title="آخرین فعالیت‌ها"
             action={
-              <button onClick={() => goTab("history")} className="text-xs text-brand-700 hover:underline">
-                تاریخچه‌ی کامل ({fa(p.logs.length)})
-              </button>
+              access.can("history") && (
+                <button onClick={() => goTab("history")} className="text-xs text-brand-700 hover:underline">
+                  تاریخچه‌ی کامل ({fa(p.logs.length)})
+                </button>
+              )
             }
           />
           <div className="space-y-2.5">
@@ -112,6 +121,11 @@ export default function OverviewTab() {
               </div>
             ))}
           </div>
+          {p.logs.length > 4 && (
+            <button onClick={() => setMoreLogs((v) => !v)} className="text-[11px] text-brand-700 hover:underline mt-2">
+              {moreLogs ? "نمایش کمتر" : "نمایش بیشتر"}
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -145,25 +159,27 @@ export default function OverviewTab() {
                   ...(activeSprint ? ([["اسپرینت فعال", `${activeSprint.name} (تا ${activeSprint.end})`]] as [string, string][]) : []),
                   ["ایجاد", p.meta.createdAt],
                 ] as [string, string][]
-              ).map(([k, v]) => (
+              )
+                .filter((_, i) => moreInfo || i < 6)
+                .map(([k, v]) => (
                 <div key={k} className="contents">
                   <dt className="text-ink-400 whitespace-nowrap">{k}</dt>
                   <dd className="text-ink-700 min-w-0 break-words">{v || "—"}</dd>
                 </div>
               ))}
             </dl>
+            <button onClick={() => setMoreInfo((v) => !v)} className="text-[11px] text-brand-700 hover:underline mt-2">
+              {moreInfo ? "نمایش کمتر" : "نمایش بیشتر"}
+            </button>
           </div>
 
           {(p.meta.fundId || p.meta.contractId || p.meta.opportunityId || p.meta.companyName) && (
-            <div className="card p-4">
-              <p className="text-xs font-bold text-ink-900 flex items-center gap-1 mb-2">
-                <Link2 size={13} className="text-brand-600" /> پیوند به دانش و نوآوری
-              </p>
+            <CollapsibleCard icon={<Link2 size={13} className="text-brand-600" />} title="پیوند به دانش و نوآوری">
               <ProjectLinks meta={p.meta} />
-            </div>
+            </CollapsibleCard>
           )}
 
-          {nextMs && (
+          {nextMs && access.can("milestones") && (
             <button onClick={() => goTab("milestones")} className="card p-4 w-full text-right hover:border-brand-300">
               <p className="text-xs font-bold text-ink-900 flex items-center gap-1">
                 <Flag size={13} className="text-brand-600" /> مایل‌ستون بعدی
@@ -190,19 +206,24 @@ export default function OverviewTab() {
         </div>
       </div>
 
-      <StageGateCard />
+      {access.can("gates") && (
+        <ProjectPageContext.Provider value={{ ...ctx, canEdit: editable && access.can("gates", "write"), can: (perm: string) => editable && access.can("gates", "write") && ctx.hasPerm(perm) }}>
+          <StageGateCard />
+        </ProjectPageContext.Provider>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-4">
-          <SectionTitle
-            icon={<ShieldAlert size={15} className="text-rose-600" />}
-            title="هشدارهای تحلیل خودکار ریسک"
-            action={
-              <button onClick={() => goTab("risks")} className="text-xs text-brand-700 hover:underline">
-                همه
-              </button>
-            }
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {access.can("risks") && (
+        <CollapsibleCard
+          icon={<ShieldAlert size={15} className="text-rose-600" />}
+          title="هشدارهای تحلیل خودکار ریسک"
+          summary={findings.length ? `${fa(findings.length)} هشدار` : "بدون هشدار"}
+          action={
+            <button onClick={() => goTab("risks")} className="text-xs text-brand-700 hover:underline">
+              همه
+            </button>
+          }
+        >
           {findings.map((f) => (
             <div key={f.id} className="flex items-start gap-2 py-1.5 border-b border-ink-100 last:border-0">
               <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 ${f.level === "critical" ? "bg-rose-600 text-white" : f.level === "high" ? "bg-rose-50 text-rose-700" : f.level === "medium" ? "bg-amber-50 text-amber-700" : "bg-ink-100 text-ink-600"}`}>{fa(f.score)}</span>
@@ -217,9 +238,10 @@ export default function OverviewTab() {
             </div>
           ))}
           {findings.length === 0 && <p className="text-[11px] text-ink-400">هشداری نیست.</p>}
-        </div>
-        <div className="card p-4">
-          <SectionTitle icon={<Lock size={15} className="text-amber-600" />} title="کارهای گیرکرده" hint="تسک‌های متوقف یا منتظر پیش‌نیاز" />
+        </CollapsibleCard>
+        )}
+        <CollapsibleCard icon={<Lock size={15} className="text-amber-600" />} title="کارهای گیرکرده" summary={`${fa(blocked.length)} متوقف · ${fa(waiting.length)} منتظر`}>
+          <p className="text-[11px] text-ink-400 mb-2">تسک‌های متوقف یا منتظر پیش‌نیاز</p>
           {[...blocked, ...waiting.filter((w) => !blocked.includes(w))].slice(0, 6).map((t) => (
             <button key={t.id} onClick={() => openTask(t.id)} className="flex items-center justify-between w-full py-1.5 text-xs border-b border-ink-100 last:border-0 hover:text-brand-700">
               <span className="text-ink-800 truncate">{t.title}</span>
@@ -239,7 +261,7 @@ export default function OverviewTab() {
             <Progress value={budgetUsage(p)} tone="bg-amber-500" />
             <Progress value={projectProgress(p)} className="mt-1" />
           </div>
-        </div>
+        </CollapsibleCard>
       </div>
       {closing && <ClosureWizard onClose={() => setClosing(false)} />}
       {report && <FinalReportModal onClose={() => setReport(false)} />}

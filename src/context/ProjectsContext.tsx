@@ -108,7 +108,8 @@ const tabOfCategory: Record<string, string> = {
   document: "documents",
   communication: "communication",
   time: "time",
-  playbook: "playbooks",
+  // تب Playbook از صفحه‌ی پروژه حذف شد؛ رویدادهای آن در تاریخچه دیده می‌شوند
+  playbook: "history",
   automation: "notifications",
 };
 
@@ -417,17 +418,29 @@ function withRecurringDemo(s: StoreState): StoreState {
   return { ...s, seq, projects };
 }
 
+/** لینک نمایشی جلسه‌ی آنلاین: https://meet.shub.ir/<کلید پروژه>-<شناسه‌ی جلسه> */
+export const meetingLinkFor = (p: ProjectState, meetingId: string) => `https://meet.shub.ir/${p.meta.key ?? p.meta.id}-${meetingId}`;
+
+/** وصله‌ی تحمل‌پذیر (بدون تغییر STORE_VERSION): جلسات ویدیویی/صوتی قدیمی که لینک ندارند لینک نمایشی می‌گیرند */
+function withMeetingLinks(s: StoreState): StoreState {
+  if (!s.projects.some((p) => p.meetings.some((m) => m.mode !== "حضوری" && !m.link))) return s;
+  return {
+    ...s,
+    projects: s.projects.map((p) => (p.meetings.some((m) => m.mode !== "حضوری" && !m.link) ? { ...p, meetings: p.meetings.map((m) => (m.mode !== "حضوری" && !m.link ? { ...m, link: meetingLinkFor(p, m.id) } : m)) } : p)),
+  };
+}
+
 function loadStore(): StoreState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as StoreState;
-      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withRecurringDemo(parsed);
+      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withMeetingLinks(withRecurringDemo(parsed));
     }
   } catch {
     /* ذخیره‌سازی مرورگر در دسترس نیست — از داده‌ی نمونه شروع می‌کنیم */
   }
-  return withRecurringDemo(initialStore());
+  return withMeetingLinks(withRecurringDemo(initialStore()));
 }
 
 // --------------------------------------------------------------------------
@@ -482,6 +495,8 @@ type Ctx = {
   addMember: (pid: string, m: Omit<PMMember, "id">) => void;
   updateMember: (pid: string, id: string, patch: Partial<PMMember>) => void;
   removeMember: (pid: string, id: string) => void;
+  /** دسترسی‌های ریز یک عضو (فقط اختلاف با پیش‌فرض نقش؛ undefined = بازگشت به پیش‌فرض) — summary متن تغییرات برای تاریخچه */
+  setMemberAccess: (pid: string, id: string, access: PMMember["access"], summary: string) => void;
   // --- بورد ---
   addColumn: (pid: string, label: string, kind: ColumnKind) => void;
   updateColumn: (pid: string, id: string, patch: Partial<BoardColumn>) => void;
@@ -529,8 +544,6 @@ type Ctx = {
   completeSprint: (pid: string, id: string, moveOpenTo: string) => void;
   saveCustomField: (pid: string, f: Omit<CustomFieldDef, "id"> & { id?: string }) => void;
   removeCustomField: (pid: string, id: string) => void;
-  saveBaseline: (pid: string) => void;
-  clearBaseline: (pid: string) => void;
   saveCustomRule: (pid: string, r: Omit<CustomRule, "id" | "runs"> & { id?: string }) => void;
   removeCustomRule: (pid: string, id: string) => void;
   // --- وابستگی ---
@@ -954,7 +967,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         s = apply(s, id, actor, (p, emit, st) => {
           emit("PROJECT_CREATED", `پروژه «${p.meta.name}» ایجاد شد${tpl ? ` (از قالب «${tpl.name}»)` : ""}.`, { entity: { type: "project", id }, meta: { template: tpl?.name ?? "" } });
           input.members.forEach((m) => {
-            const mem: PMMember = { id: nid(st, "tm"), name: m.name, title: m.title, role: m.role, allocation: 50, userId: m.userId };
+            const mem: PMMember = { id: nid(st, "tm"), name: m.name, title: m.title, role: m.role, userId: m.userId };
             p.members.push(mem);
             emit("PROJECT_MEMBER_ADDED", `«${m.name}» با نقش «${m.role}» به تیم پروژه اضافه شد.`, { entity: { type: "member", id: mem.id }, ctx: { subjectMember: m.name }, meta: { role: m.role } });
           });
@@ -1103,6 +1116,13 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           }
         }
         Object.assign(mem, patch);
+      }),
+    setMemberAccess: (pid, id, access, summary) =>
+      on(pid, (p, emit) => {
+        const mem = p.members.find((x) => x.id === id);
+        if (!mem || mem.role === "مالک") return;
+        mem.access = access && Object.keys(access).length ? access : undefined;
+        emit("MEMBER_PERMISSIONS_CHANGED", access ? `دسترسی‌های «${mem.name}» تغییر کرد: ${summary || "بازنویسی دسترسی‌ها"}.` : `دسترسی‌های «${mem.name}» به پیش‌فرض نقش «${mem.role}» بازگشت${summary ? ` (${summary})` : ""}.`, { entity: { type: "member", id }, ctx: { subjectMember: mem.name }, meta: { role: mem.role, overrides: Object.keys(access ?? {}).length } });
       }),
     removeMember: (pid, id) =>
       on(pid, (p, emit) => {
@@ -1616,18 +1636,6 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         emit("PROJECT_SETTINGS_UPDATED", `فیلد سفارشی «${f.name}» حذف شد.`, { entity: { type: "project", id: pid } });
       }),
 
-    // ============================================================ خط مبنا
-    saveBaseline: (pid) =>
-      on(pid, (p, emit, s) => {
-        const ts = p.tasks.filter((t) => !t.archived);
-        p.baseline = { savedAt: s.refDate, savedBy: actor, tasks: Object.fromEntries(ts.map((t) => [t.id, { start: t.start, due: t.due }])) };
-        emit("BASELINE_SAVED", `خط مبنای زمان‌بندی با ${fa(ts.length)} تسک ذخیره شد؛ از این پس انحراف برنامه نسبت به آن سنجیده می‌شود.`, { entity: { type: "project", id: pid }, meta: { tasks: ts.length } });
-      }),
-    clearBaseline: (pid) =>
-      on(pid, (p) => {
-        p.baseline = undefined;
-      }),
-
     // ============================================================ قاعده‌ی سفارشی
     saveCustomRule: (pid, r) =>
       on(pid, (p, emit, s) => {
@@ -1848,6 +1856,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         if (input.participants.join() !== m.participants.join()) changes.push("شرکت‌کنندگان");
         if (input.title !== m.title) changes.push("عنوان");
         if (input.description !== m.description || input.taskIds.join() !== m.taskIds.join() || input.mode !== m.mode || input.duration !== m.duration) changes.push("جزئیات");
+        if ((input.link ?? "") !== (m.link ?? "")) changes.push("لینک جلسه");
         if (changes.length) emit("MEETING_UPDATED", `جلسه‌ی «${input.title}» تغییر کرد: ${changes.join("، ")}.`, { entity: { type: "meeting", id: m.id }, ctx: { participants: everyone } });
         Object.assign(m, input);
         p.firedReminders = p.firedReminders.filter((k) => !k.startsWith(`meeting-rem:${m.id}:`));
@@ -1900,15 +1909,23 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         const a = mn?.actions?.find((x) => x.id === action.id);
         if (!mn || !a || a.taskId) return;
         const meeting = p.meetings.find((m) => m.id === mn.meetingId);
+        const src = { ...a, ...action, taskId: undefined };
+        const start = src.start || s.refDate;
+        const due = src.due && (dayNum(src.due) ?? 0) >= (dayNum(start) ?? 0) ? src.due : addDays(start, 7);
         const t = insertTask(p, emit, s, {
-          title: a.text,
-          description: `ایجادشده از مصوبه‌ی صورت‌جلسه‌ی «${mn.title}» (${mn.date}).`,
-          assignee: a.owner,
-          priority: "زیاد",
-          start: s.refDate,
-          due: a.due || addDays(s.refDate, 7),
+          title: src.text,
+          description: `ایجادشده از اقدام صورت‌جلسه‌ی «${mn.title}» (${mn.date})${meeting ? ` — جلسه‌ی «${meeting.title}»` : ""}.${src.note ? `\n${src.note}` : ""}\n[صورت‌جلسه: ${mn.id}]`,
+          assignee: src.owner,
+          priority: src.priority ?? "زیاد",
+          start,
+          due,
+          estHours: src.estHours,
+          type: src.type,
+          milestoneId: src.milestoneId,
+          sprintId: src.sprintId,
           status: p.columns.find((c) => c.kind === "todo")?.id,
         });
+        Object.assign(a, { start: src.start, priority: src.priority, estHours: src.estHours, type: src.type, milestoneId: src.milestoneId, sprintId: src.sprintId, owner: src.owner, due: src.due || due });
         a.taskId = t.id;
         if (meeting && !meeting.taskIds.includes(t.id)) meeting.taskIds.push(t.id);
         emit("ACTION_ITEM_CONVERTED", `مصوبه‌ی «${a.text}» از صورت‌جلسه‌ی «${mn.title}» به تسک تبدیل شد (مسئول: «${a.owner}»، سررسید ${t.due}).`, { entity: { type: "task", id: t.id }, meta: { minute_id: minuteId, action_id: a.id } });
@@ -2099,7 +2116,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       } catch {
         /* نادیده */
       }
-      setStore(withRecurringDemo(initialStore()));
+      setStore(withMeetingLinks(withRecurringDemo(initialStore())));
     },
   };
 

@@ -14,7 +14,7 @@ const norm = (s: string) => s.toLowerCase().replace(/ي/g, "ی").replace(/ك/g, 
 
 /** جستجوی یکپارچه‌ی درون‌پروژه (بند ۴۰ سند): تسک، عضو، پیام، فایل، جلسه، صورت‌جلسه، ریسک، مشکل، تصمیم */
 export default function ProjectSearch() {
-  const { p, goTab, openTask } = useProjectPage();
+  const { p, goTab, openTask, access } = useProjectPage();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -57,8 +57,9 @@ export default function ProjectSearch() {
       { id: "issues", label: "مشکلات", icon: <Bug size={13} />, hits: p.issues.filter((i) => has(i.title, i.description)).map((i) => ({ id: i.id, title: i.title, sub: `${i.status} · ${i.assignee}`, tab: "issues", entity: i.id })) },
       { id: "milestones", label: "مایل‌ستون‌ها", icon: <Flag size={13} />, hits: p.milestones.filter((m) => has(m.title, m.owner)).map((m) => ({ id: m.id, title: m.title, sub: `${m.due} · ${m.status}`, tab: "milestones", entity: m.id })) },
     ];
-    return out.filter((g) => g.hits.length);
-  }, [q, p]);
+    // بخش‌هایی که کاربر به آن‌ها دسترسی مشاهده ندارد در نتایج نمی‌آیند
+    return out.filter((g) => g.hits.length && access.canSeeTab(g.hits[0].tab));
+  }, [q, p, access]);
 
   const flat = groups.flatMap((g) => g.hits.slice(0, 6));
   const total = groups.reduce((s, g) => s + g.hits.length, 0);

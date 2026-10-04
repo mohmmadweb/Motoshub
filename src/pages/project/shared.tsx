@@ -1,5 +1,6 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { Lock, AlertTriangle } from "lucide-react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { Lock, AlertTriangle, ChevronDown } from "lucide-react";
+import type { ProjectAccess } from "../../pm/useProjectAccess";
 import type { BadgeTone } from "../../components/ui/Badge";
 import type { ProjectState, PMPriority, PMTask } from "../../pm/types";
 import { isOverdue, isWaiting, kindOf } from "../../pm/selectors";
@@ -25,8 +26,6 @@ export type TabId =
   | "reports"
   | "history"
   | "notifications"
-  | "playbooks"
-  | "knowledge"
   | "settings"
   | "flow"
   | "decisions"
@@ -48,7 +47,7 @@ export const tabForCategory: Record<string, TabId> = {
   document: "documents",
   communication: "communication",
   time: "time",
-  playbook: "playbooks",
+  playbook: "history",
   automation: "notifications",
 };
 
@@ -66,6 +65,10 @@ type PageCtx = {
   openTask: (taskId: string) => void;
   goTab: (tab: TabId, entityId?: string) => void;
   focusId?: string;
+  /** دسترسی ریز کاربر جاری به بخش‌های پروژه (پیش‌فرض نقش + بازنویسی‌ها) */
+  access: ProjectAccess;
+  /** دروازه‌ی بیرونی ویرایش (مجوز سراسری projects.tasks، نقش غیرمشاهده‌گر، پروژه‌ی بایگانی‌نشده) — مستقل از تب جاری */
+  editable: boolean;
 };
 
 export const ProjectPageContext = createContext<PageCtx | null>(null);
@@ -196,6 +199,25 @@ export function SectionTitle({ icon, title, hint, action }: { icon?: ReactNode; 
         {hint && <p className="text-xs text-ink-400 mt-0.5 leading-5">{hint}</p>}
       </div>
       {action}
+    </div>
+  );
+}
+
+/** کارت تاشو برای اطلاعات ثانویه — جمع‌وجور بودن صفحه بدون حذف چیزی */
+export function CollapsibleCard({ title, icon, summary, defaultOpen = false, action, children, className = "" }: { title: string; icon?: ReactNode; summary?: ReactNode; defaultOpen?: boolean; action?: ReactNode; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`card ${className}`}>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex items-center gap-1.5 text-sm font-bold text-ink-900 min-w-0 text-right">
+          {icon}
+          <span className="truncate">{title}</span>
+          {summary !== undefined && <span className="text-[11px] font-normal text-ink-400 truncate">{summary}</span>}
+          <ChevronDown size={14} className={`shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && action}
+      </div>
+      {open && <div className="px-4 pb-4">{children}</div>}
     </div>
   );
 }

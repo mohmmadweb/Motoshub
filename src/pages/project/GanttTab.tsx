@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Diamond, Save, Trash2, MousePointer2 } from "lucide-react";
-import Button from "../../components/ui/Button";
+import { Diamond, MousePointer2, SlidersHorizontal, Info } from "lucide-react";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
@@ -19,7 +18,7 @@ type BarDrag = { id: string; mode: "move" | "start" | "end"; x0: number; dd: num
 type LinkDrag = { from: string; sx: number; sy: number; x: number; y: number; over?: string };
 
 export default function GanttTab() {
-  const { p, pid, canEdit, can, refDate, openTask } = useProjectPage();
+  const { p, pid, can, refDate, openTask } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -29,9 +28,8 @@ export default function GanttTab() {
   const [link, setLink] = useState<LinkDrag | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const suppress = useRef(false);
-  const [showBase, setShowBase] = useState(true);
   const [showCrit, setShowCrit] = useState(false);
-  const base = p.baseline;
+  const [pop, setPop] = useState<"view" | "legend" | null>(null);
   // مقیاس پیش‌فرض طوری انتخاب می‌شود که کل بازه‌ی پروژه بدون اسکرول دیده شود
   const [scale, setScale] = useState<Scale>(() => {
     const ds = p.tasks.flatMap((t) => [dayNum(t.start), dayNum(t.due)]).filter((x): x is number => x !== null);
@@ -56,11 +54,6 @@ export default function GanttTab() {
   const xr = (d: number) => (d - min) * dw; // فاصله از راست
   const conflicts = new Set(dependencyConflicts(p).map((c) => c.dep.id));
   const crit = useMemo(() => (showCrit ? criticalPath(p, tasks) : null), [showCrit, p, tasks]);
-  /** انحراف سررسید نسبت به خط مبنا (روز؛ مثبت = عقب‌افتادگی) */
-  const slip = (id: string, due: string) => {
-    const b = base?.tasks[id];
-    return b ? (dayNum(due) ?? 0) - (dayNum(b.due) ?? 0) : null;
-  };
 
 
   // ---------------------------------------------------------------- تعامل: کشیدن نوار، تغییر مدت، ساخت وابستگی
@@ -185,60 +178,63 @@ export default function GanttTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex rounded-lg border border-ink-200 overflow-hidden">
+      {/* یک ردیف ابزار: مقیاس + «نمایش» (ترتیب، وابستگی‌ها، مسیر بحرانی) + راهنمای رنگ‌ها */}
+      <div className="flex items-center gap-2">
+        <div className="flex rounded-lg border border-ink-200 overflow-hidden shrink-0">
           {(Object.keys(scales) as Scale[]).map((s) => (
             <button key={s} onClick={() => setScale(s)} className={`px-3 py-1.5 text-xs ${scale === s ? "bg-navy-900 text-white" : "bg-white text-ink-600"}`}>
               {s}
             </button>
           ))}
         </div>
-        <select value={order} onChange={(e) => setOrder(e.target.value as "start" | "board")} className="input-field !py-1.5 !text-xs !w-auto">
-          <option value="start">مرتب بر اساس تاریخ شروع</option>
-          <option value="board">ترتیب بورد</option>
-        </select>
-        <label className="flex items-center gap-1.5 text-xs text-ink-600">
-          <input type="checkbox" checked={showDeps} onChange={(e) => setShowDeps(e.target.checked)} className="accent-[var(--color-brand-600)]" /> نمایش پیکان وابستگی‌ها
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-ink-600" title="طولانی‌ترین زنجیره‌ی وابستگی؛ هر تأخیر در آن، پایان پروژه را عقب می‌اندازد">
-          <input type="checkbox" checked={showCrit} onChange={(e) => setShowCrit(e.target.checked)} className="accent-[var(--color-brand-600)]" /> مسیر بحرانی
-        </label>
-        {base ? (
-          <span className="flex items-center gap-1.5 text-xs text-ink-600">
-            <label className="flex items-center gap-1.5" title={`ذخیره‌شده در ${base.savedAt} توسط ${base.savedBy}`}>
-              <input type="checkbox" checked={showBase} onChange={(e) => setShowBase(e.target.checked)} className="accent-[var(--color-brand-600)]" /> خط مبنا ({base.savedAt})
-            </label>
-            {canEdit && (
-              <>
-                <button onClick={() => { pm.saveBaseline(pid); notify("خط مبنا با زمان‌بندی فعلی جایگزین شد."); }} className="p-1 text-ink-400 hover:text-brand-700" title="به‌روزرسانی خط مبنا با برنامه‌ی فعلی" aria-label="به‌روزرسانی خط مبنا">
-                  <Save size={13} />
-                </button>
-                <button onClick={() => pm.clearBaseline(pid)} className="p-1 text-ink-400 hover:text-rose-600" title="حذف خط مبنا" aria-label="حذف خط مبنا">
-                  <Trash2 size={13} />
-                </button>
-              </>
-            )}
-          </span>
-        ) : (
-          canEdit && (
-            <Button variant="secondary" size="sm" icon={<Save size={13} />} onClick={() => { pm.saveBaseline(pid); notify("خط مبنا ذخیره شد؛ از این پس انحراف هر تسک از برنامه‌ی اولیه نمایش داده می‌شود."); }}>
-              ذخیره‌ی خط مبنا
-            </Button>
-          )
-        )}
-        <div className="flex items-center gap-3 text-[11px] text-ink-500 mr-auto flex-wrap">
-          {(["backlog", "doing", "review", "blocked", "done"] as const).map((k) => (
-            <span key={k} className="flex items-center gap-1">
-              <span className="w-3 h-2 rounded-sm" style={{ background: kindColor[k] }} />
-              {{ backlog: "برنامه‌ریزی/برای انجام", doing: "در حال انجام", review: "بازبینی", blocked: "متوقف", done: "انجام‌شده" }[k]}
-            </span>
-          ))}
-          <span className="flex items-center gap-1">
-            <span className="w-0.5 h-3 bg-rose-500" /> امروز ({refDate})
-          </span>
-          <span className="font-mono text-[10px]" dir="ltr" title="پیکان بدون برچسب = پایان‌به‌شروع (FS) بدون تأخیر">
-            FS · SS · FF · SF ±lag
-          </span>
+        <div className="relative">
+          <button onClick={() => setPop(pop === "view" ? null : "view")} aria-expanded={pop === "view"} className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1 ${showCrit || order !== "start" || !showDeps ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-white border-ink-200 text-ink-600"}`}>
+            <SlidersHorizontal size={13} /> نمایش
+          </button>
+          {pop === "view" && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setPop(null)} />
+              <div className="absolute z-30 top-full mt-1 right-0 w-60 bg-white border border-ink-200 rounded-xl shadow-lg p-3 space-y-2.5">
+                <select value={order} onChange={(e) => setOrder(e.target.value as "start" | "board")} className="input-field !py-1.5 !text-xs" aria-label="ترتیب ردیف‌ها">
+                  <option value="start">مرتب بر اساس تاریخ شروع</option>
+                  <option value="board">ترتیب بورد</option>
+                </select>
+                <label className="flex items-center gap-1.5 text-xs text-ink-600">
+                  <input type="checkbox" checked={showDeps} onChange={(e) => setShowDeps(e.target.checked)} className="accent-[var(--color-brand-600)]" /> نمایش پیکان وابستگی‌ها
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-ink-600" title="طولانی‌ترین زنجیره‌ی وابستگی؛ هر تأخیر در آن، پایان پروژه را عقب می‌اندازد">
+                  <input type="checkbox" checked={showCrit} onChange={(e) => setShowCrit(e.target.checked)} className="accent-[var(--color-brand-600)]" /> مسیر بحرانی
+                </label>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="relative mr-auto">
+          <button onClick={() => setPop(pop === "legend" ? null : "legend")} aria-expanded={pop === "legend"} className="text-xs px-2.5 py-1.5 rounded-lg border bg-white border-ink-200 text-ink-600 flex items-center gap-1" title="راهنمای رنگ‌ها">
+            <Info size={13} /> راهنما
+          </button>
+          {pop === "legend" && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setPop(null)} />
+              <div className="absolute z-30 top-full mt-1 left-0 w-60 bg-white border border-ink-200 rounded-xl shadow-lg p-3 space-y-1.5 text-[11px] text-ink-600">
+                {(["backlog", "doing", "review", "blocked", "done"] as const).map((k) => (
+                  <span key={k} className="flex items-center gap-1.5">
+                    <span className="w-3 h-2 rounded-sm" style={{ background: kindColor[k] }} />
+                    {{ backlog: "برنامه‌ریزی/برای انجام", doing: "در حال انجام", review: "بازبینی", blocked: "متوقف", done: "انجام‌شده" }[k]}
+                  </span>
+                ))}
+                <span className="flex items-center gap-1.5">
+                  <span className="w-0.5 h-3 bg-rose-500" /> امروز ({refDate})
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0 border-t-2 border-dashed border-navy-400" /> مهلت پروژه
+                </span>
+                <span className="font-mono text-[10px] block pt-1 border-t border-ink-100" dir="ltr" title="پیکان بدون برچسب = پایان‌به‌شروع (FS) بدون تأخیر">
+                  FS · SS · FF · SF ±lag
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -256,13 +252,7 @@ export default function GanttTab() {
                   <TypeIcon type={t.type} size={11} />
                   {t.title}
                 </span>
-                <span className="text-[10.5px] text-ink-400 truncate">
-                  {t.assignee}
-                  {(() => {
-                    const d = base && showBase ? slip(t.id, t.due) : null;
-                    return d ? <span className={d > 0 ? "text-rose-600" : "text-emerald-600"}> · {d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}</span> : null;
-                  })()}
-                </span>
+                <span className="text-[10.5px] text-ink-400 truncate">{t.assignee}</span>
               </button>
             ))}
           </div>
@@ -368,28 +358,17 @@ export default function GanttTab() {
                 const prog = isDone(p, t) ? 100 : t.progress;
                 const logged = taskLoggedHours(p, t.id);
                 const late = isOverdue(p, t, refDate);
-                const b = base && showBase ? base.tasks[t.id] : undefined;
-                const bs = b ? dayNum(b.start) : null;
-                const be = b ? dayNum(b.due) : null;
-                const d = slip(t.id, t.due);
                 const barW = Math.max(dw, (e - s + 1) * dw);
                 const top = (i + msTop) * ROW + 7;
                 const dragging = drag?.id === t.id && drag.moved;
                 const isTarget = link?.over === t.id;
                 return (
                   <span key={t.id}>
-                  {bs !== null && be !== null && (
-                    <span
-                      className="absolute rounded-sm bg-ink-400/60 z-[3]"
-                      title={`خط مبنا: ${b!.start} ← ${b!.due}`}
-                      style={{ right: xr(bs), width: Math.max(dw, (be - bs + 1) * dw), top: (i + msTop) * ROW + ROW - 9, height: 4 }}
-                    />
-                  )}
                   <button
                     data-gantt-task={t.id}
                     onClick={() => !suppress.current && openTask(t.id)}
                     onPointerDown={canMove ? (ev) => beginBar(ev, t.id, "move") : undefined}
-                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}${d ? `\nانحراف از خط مبنا: ${d > 0 ? `${fa(d)} روز تأخیر` : `${fa(-d)} روز جلوتر`}` : ""}${crit?.path.includes(t.id) ? "\nروی مسیر بحرانی" : ""}${canMove ? "\nبکشید: جابه‌جایی · لبه‌ها: تغییر مدت · دایره: ساخت وابستگی" : ""}`}
+                    title={`${t.title}\n${t.start} ← ${t.due}\nپیشرفت ${fa(prog)}٪${t.estHours ? ` · زمان صرف‌شده ${fa(logged)}/${fa(t.estHours)} ساعت (${fa(Math.round((logged / t.estHours) * 100))}٪)` : ""}${crit?.path.includes(t.id) ? "\nروی مسیر بحرانی" : ""}${canMove ? "\nبکشید: جابه‌جایی · لبه‌ها: تغییر مدت · دایره: ساخت وابستگی" : ""}`}
                     className={`group absolute rounded-md z-[4] shadow-sm ${late ? "ring-2 ring-rose-400" : crit?.path.includes(t.id) ? "ring-2 ring-navy-700" : ""} ${isTarget ? "ring-2 ring-brand-500" : ""} ${canMove ? "cursor-grab active:cursor-grabbing select-none" : ""} ${dragging ? "opacity-80 shadow-lg" : ""}`}
                     style={{ right: xr(s), width: barW, top, height: ROW - 18, background: `color-mix(in srgb, ${kindColor[k]} 30%, transparent)` }}
                   >

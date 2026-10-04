@@ -748,7 +748,7 @@ export default function Projects() {
         </div>
       </Modal>
 
-      <Modal open={!!runPb} onClose={() => setRunPb(null)} title={`اجرای «${runPb?.name ?? ""}»`} description="اجرا روی یک پروژه ثبت می‌شود و مراحل آن در تب Playbook همان پروژه قابل پیگیری است (رویداد PLAYBOOK_STARTED).">
+      <Modal open={!!runPb} onClose={() => setRunPb(null)} title={`اجرای «${runPb?.name ?? ""}»`} description="اجرا روی یک پروژه ثبت می‌شود و در تاریخچه‌ی رویدادهای همان پروژه دیده می‌شود (رویداد PLAYBOOK_STARTED).">
         {runPb && (
           <div className="space-y-3">
             <Field label="پروژه">
@@ -774,7 +774,7 @@ export default function Projects() {
                 pm.startPlaybook(runPb.id, runTarget);
                 notify(`اجرای قالب «${runPb.name}» آغاز شد — یک چک‌لیست ${fa(runPb.steps.length)} مرحله‌ای برای تیم ایجاد شد.`, "info");
                 setRunPb(null);
-                navigate(`/dashboard/projects/${runTarget}?tab=playbooks`);
+                navigate(`/dashboard/projects/${runTarget}?tab=history`);
               }}
             >
               شروع اجرا

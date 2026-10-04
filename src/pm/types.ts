@@ -92,9 +92,6 @@ export type CustomFieldType = "متن" | "عدد" | "انتخابی" | "تاری
  */
 export type CustomFieldDef = { id: string; name: string; type: CustomFieldType; options?: string[]; formula?: string };
 
-/** خط مبنا (Baseline) — عکس لحظه‌ای از زمان‌بندی برای مقایسه با برنامه‌ی فعلی */
-export type Baseline = { savedAt: string; savedBy: string; tasks: Record<string, { start: string; due: string }> };
-
 /** قاعده‌ی خودکارسازی سفارشی «وقتی … اگر … آنگاه …» (مشابه Jira Automation / Trello Butler) */
 export type CustomRuleTrigger =
   | { type: "moved"; columnId: string }
@@ -135,8 +132,11 @@ export type DepType = "FS" | "SS" | "FF" | "SF";
 /** وابستگی بین دو تسک — نبودِ type یعنی FS؛ lag فاصله‌ی روز (منفی = هم‌پوشانی مجاز) */
 export type Dependency = { id: string; predecessor: string; successor: string; createdAt: string; type?: DepType; lag?: number };
 
+/** سطح دسترسی ریز به یک بخش پروژه (مدل توکن ریزدانه‌ی GitLab) */
+export type AccessLevel = "none" | "read" | "write" | "manage";
+
 export type ProjectRole = "مالک" | "مدیر پروژه" | "مدیر سیستم" | "عضو" | "مشاهده‌گر";
-export type PMMember = { id: string; name: string; title: string; role: ProjectRole; allocation: number; userId?: string };
+export type PMMember = { id: string; name: string; title: string; role: ProjectRole; /** منسوخ — درصد تخصیص از UI حذف شد؛ فقط برای داده‌ی قدیمی */ allocation?: number; userId?: string; /** بازنویسی دسترسی‌های ریز این عضو نسبت به پیش‌فرض نقش (resource → level) */ access?: Partial<Record<string, AccessLevel>> };
 
 export type MilestoneStatus = "انجام‌شده" | "در حال انجام" | "پیش‌رو" | "در خطر";
 export type PMMilestone = { id: string; title: string; due: string; status: MilestoneStatus; owner: string; taskIds: string[] };
@@ -216,10 +216,27 @@ export type PMMeeting = {
   agenda?: AgendaItem[];
   /** اگر این جلسه از سری جدا شده (ویرایش «فقط این») */
   seriesOf?: string;
+  /** لینک جلسه‌ی آنلاین (ویدیویی/صوتی) — مثل https://meet.shub.ir/QGJ-mt3 */
+  link?: string;
 };
 export type AgendaItem = { id: string; title: string; owner: string; minutes: number };
 
-export type ActionItem = { id: string; text: string; owner: string; due: string; taskId?: string };
+/** اقدام صورت‌جلسه — با تبدیل به تسک همه‌ی فیلدها به تسک منتقل می‌شوند (فیلدهای جدید اختیاری‌اند تا داده‌ی قدیمی معتبر بماند) */
+export type ActionItem = {
+  id: string;
+  text: string;
+  owner: string;
+  /** سررسید */
+  due: string;
+  taskId?: string;
+  start?: string;
+  priority?: PMPriority;
+  estHours?: number;
+  type?: TaskType;
+  milestoneId?: string;
+  sprintId?: string;
+  note?: string;
+};
 export type PMMinute = {
   id: string;
   title: string;
@@ -542,7 +559,6 @@ export type ProjectState = {
   firedReminders: string[];
   sprints?: Sprint[];
   customFields?: CustomFieldDef[];
-  baseline?: Baseline;
   customRules?: CustomRule[];
   // ---- نسخه‌ی ۷ ----
   savedViews?: SavedView[];

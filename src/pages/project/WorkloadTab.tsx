@@ -12,7 +12,7 @@ const WEEKS = 8;
 /**
  * بار کاری تیم (Workload) — مشابه Asana / Monday / ClickUp:
  * ساعت برآوردی هر تسک باز به‌طور یکنواخت روی «روزهای کاری» آن پخش می‌شود و
- * با ظرفیت هفتگی هر عضو مقایسه می‌شود: روزهای کاری هفته (شنبه تا چهارشنبه، منهای تعطیلات رسمی) × ۸ ساعت × درصد تخصیص.
+ * با ظرفیت هفتگی هر عضو مقایسه می‌شود: روزهای کاری هفته (شنبه تا چهارشنبه، منهای تعطیلات رسمی) × ۸ ساعت (همه‌ی اعضا با ظرفیت کامل ساعت کاری).
  * (مرخصی‌های تأییدشده پس از اتصال ماژول گزارش فعالیت/مرخصی از ظرفیت کم می‌شوند.)
  */
 export default function WorkloadTab() {
@@ -46,14 +46,15 @@ export default function WorkloadTab() {
   const names = [...new Set([...people.map((m) => m.name), ...open.map((t) => t.assignee).filter((a) => a && a !== "بدون مسئول")])];
   const rows = names.map((name) => {
     const m = people.find((x) => x.name === name);
-    const alloc = m && m.allocation > 0 ? m.allocation : 0;
-    const capacity = alloc ? (5 * DAILY_HOURS * alloc) / 100 : 0;
+    // درصد تخصیص حذف شد: هر عضو (غیر مشاهده‌گر) با ظرفیت کامل ساعت کاری حساب می‌شود
+    const alloc = m ? 100 : 0;
+    const capacity = alloc ? 5 * DAILY_HOURS : 0;
     const mine = open.filter((t) => t.assignee === name);
     const weeks = Array.from({ length: WEEKS }, (_, w) => {
       const ts = mine.filter((t) => share(t, w) > 0 || (!t.estHours && (dayNum(t.start) ?? 0) <= weekStart(w) + 6 && (dayNum(t.due) ?? 0) >= weekStart(w)));
       return { hours: ts.reduce((a, t) => a + share(t, w), 0), tasks: ts, cap: alloc ? capacityHours(alloc, weekStart(w), weekStart(w) + 6) : 0 };
     });
-    return { name, title: m?.title ?? "—", allocation: m?.allocation ?? 0, capacity, mine, weeks, late: mine.filter((t) => isOverdue(p, t, refDate)).length, noEstimate: mine.filter((t) => !t.estHours).length };
+    return { name, title: m?.title ?? "—", capacity, mine, weeks, late: mine.filter((t) => isOverdue(p, t, refDate)).length, noEstimate: mine.filter((t) => !t.estHours).length };
   });
   const unassigned = open.filter((t) => !t.assignee || t.assignee === "بدون مسئول");
 
@@ -72,7 +73,7 @@ export default function WorkloadTab() {
       <div className="flex items-start gap-2 text-xs text-ink-500 leading-6">
         <Info size={14} className="mt-1 shrink-0" />
         <p>
-          ساعت برآوردی هر تسک باز روی روزهای کاری آن پخش شده و با ظرفیت هفتگی عضو (روزهای کاری × ۸ ساعت × درصد تخصیص در تب تیم) مقایسه می‌شود؛ پنجشنبه، جمعه و تعطیلات رسمی از ظرفیت کم شده‌اند.
+          ساعت برآوردی هر تسک باز روی روزهای کاری آن پخش شده و با ظرفیت هفتگی عضو (روزهای کاری × ۸ ساعت؛ همه با ظرفیت کامل) مقایسه می‌شود؛ پنجشنبه، جمعه و تعطیلات رسمی از ظرفیت کم شده‌اند.
           <span className="text-emerald-700"> سبز</span> یعنی ظرفیت آزاد، <span className="text-amber-700">زرد</span> نزدیک سقف و <span className="text-rose-700">قرمز</span> بیش از ظرفیت. روی هر خانه بزنید تا تسک‌های آن هفته را ببینید.
         </p>
       </div>
@@ -121,7 +122,7 @@ export default function WorkloadTab() {
                   <p className="font-medium text-ink-900">{r.name}</p>
                   <p className="text-[10.5px] text-ink-400">{r.title}</p>
                 </td>
-                <td className="p-3 text-ink-500 whitespace-nowrap">{r.capacity ? `${fa(r.capacity)} ساعت (${fa(r.allocation)}٪)` : "—"}</td>
+                <td className="p-3 text-ink-500 whitespace-nowrap">{r.capacity ? `${fa(r.capacity)} ساعت` : "—"}</td>
                 {r.weeks.map((w, i) => (
                   <td key={i} className="p-1">
                     <button

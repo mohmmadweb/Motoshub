@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { GanttChartSquare, LayoutGrid, Wallet, Plus, Archive, Eye, History, Bell, Settings, ChevronDown } from "lucide-react";
+import { GanttChartSquare, LayoutGrid, Wallet, Plus, Archive, Eye, History, Bell, Settings, ChevronDown, MoreHorizontal, Info, X, KanbanSquare, CalendarRange, Share2, Timer } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import StatCard from "../components/ui/StatCard";
 import Button from "../components/ui/Button";
@@ -28,43 +28,66 @@ import DocumentsTab from "./project/DocumentsTab";
 import ReportsTab from "./project/ReportsTab";
 import HistoryTab from "./project/HistoryTab";
 import NotificationsTab from "./project/NotificationsTab";
-import PlaybooksTab from "./project/PlaybooksTab";
 import SettingsTab from "./project/SettingsTab";
 import SprintsTab from "./project/SprintsTab";
 import WorkloadTab from "./project/WorkloadTab";
 import TaskDrawer from "./project/TaskDrawer";
 import TaskCreateModal from "./project/TaskCreateModal";
-import { ProjectKnowledgeFile } from "./knowledge/ProjectKnowledge";
 import FlowTab from "./project/FlowTab";
 import DecisionsTab from "./project/DecisionsTab";
 import IntakeTab from "./project/IntakeTab";
 import ProjectSearch from "./project/ProjectSearch";
+import { useProjectAccess } from "../pm/useProjectAccess";
+import { TAB_RESOURCE, groupLabel, type ResourceId } from "../pm/access";
 
-const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "playbooks", "knowledge", "settings", "flow", "decisions", "intake"];
+const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "settings", "flow", "decisions", "intake"];
+/** تب‌هایی که برداشته شده‌اند — لینک‌های قدیمی به نمای کلی می‌روند */
+const removedTabs: Record<string, string> = {
+  playbooks: "بخش «Playbook» از صفحه‌ی پروژه برداشته شد؛ رویدادهای اجرای آن در «تاریخچه» ثبت است و قالب‌ها در فهرست پروژه‌ها مانده‌اند.",
+  knowledge: "«دانش و درس‌آموخته‌ها» از صفحه‌ی پروژه برداشته شد؛ درس‌آموخته‌ها در خلاصه‌ی اختتام همین صفحه و در مدیریت دانش (پرونده‌ی دانش پروژه‌ها) هستند.",
+};
+/** نماهای داخل «وظایف» (سوییچر نما) */
+const taskViews: TabId[] = ["board", "sprints", "gantt", "graph"];
 
 export default function ProjectBoard() {
   const { id } = useParams();
   const { hasPermission, actingUser } = useTenancy();
   const pm = useProjectsPM();
   const p = pm.getProject(id);
+  const access = useProjectAccess(id);
   const [params, setParams] = useSearchParams();
-  const tabParam = params.get("tab") as TabId | null;
-  const view: TabId = tabParam && validTabs.includes(tabParam) ? tabParam : "board";
+  const tabParam = params.get("tab");
   const focusId = params.get("focus") ?? undefined;
   const [taskId, setTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<string | undefined>();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [headOpen, setHeadOpen] = useState(false);
 
   const myRole = p?.members.find((m) => m.name === actingUser.name || m.userId === actingUser.id)?.role;
-  const canManage = !!p && hasPermission("projects.tasks") && myRole !== "مشاهده‌گر";
-  const canEdit = canManage && !p.meta.archived;
+  // دروازه‌ی بیرونی: مجوز سراسری projects.tasks و نقش غیرمشاهده‌گر؛ سپس دسترسی ریز هر بخش
+  const outer = !!p && hasPermission("projects.tasks") && myRole !== "مشاهده‌گر";
+  const editable = outer && !p.meta.archived;
+
+  const requested = tabParam && validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : null;
+  const defaultTab: TabId = access.canSeeTab("board") ? "board" : "overview";
+  const view: TabId = !tabParam ? defaultTab : requested && access.canSeeTab(requested) ? requested : "overview";
+  const resLabel = (t: string) => {
+    const r = TAB_RESOURCE[t];
+    return r ? labelOf[t] ?? t : t;
+  };
+  const notice = !tabParam || view === requested ? null : removedTabs[tabParam] ?? (requested ? `به بخش «${resLabel(requested)}» این پروژه دسترسی ندارید؛ نمای کلی نمایش داده شد.` : null);
+
   // لینک مستقیم به یک تسک (مثلاً از اعلان): ?tab=board&focus=t2 یا با کلید ?focus=QGJ-12 ← جزئیات تسک باز می‌شود
   useEffect(() => {
     const hit = p ? findTask(p, focusId) : undefined;
-    if (hit && (view === "board" || view === "overview")) setTaskId(hit.id);
+    if (hit && (view === "board" || view === "overview") && access.can("tasks")) setTaskId(hit.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId, view]);
+  // لینک قدیمی «دانش و درس‌آموخته‌ها» ← خلاصه‌ی اختتام در نمای کلی
+  useEffect(() => {
+    if (tabParam === "knowledge") setTimeout(() => document.getElementById("closure-summary")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }, [tabParam]);
   const unreadHere = useMemo(() => pm.store.notifications.filter((n) => n.projectId === id && !n.read).length, [pm.store.notifications, id]);
 
   if (!p || !id) {
@@ -86,70 +109,106 @@ export default function ProjectBoard() {
   const openIssues = p.issues.filter((i) => i.status === "باز" || i.status === "در حال بررسی").length;
   const newRequests = (p.intake ?? []).filter((r) => r.status === "جدید").length;
 
-  // تب‌های اصلی همیشه دیده می‌شوند؛ بقیه در منوی «بیشتر» — تا نوار شلوغ نشود
+  // ---- ساختار تب‌ها: ۶ تب اصلی + «بیشتر» گروه‌بندی‌شده هم‌نام با گروه‌های دسترسی؛ هیچ نمایی حذف نشده
   type TabDef = { id: TabId; label: string; count?: number };
-  const primary: TabDef[] = [
-    { id: "overview", label: "نمای کلی" },
-    { id: "board", label: "بورد وظایف", count: ts.length },
+  const vis = (t: TabDef) => access.canSeeTab(t.id);
+  const viewsInTasks: TabDef[] = [
+    { id: "board", label: "بورد", count: ts.length },
     { id: "sprints", label: "اسپرینت‌ها" },
-    { id: "gantt", label: "گانت چارت" },
-    { id: "graph", label: "گراف وابستگی وظایف" },
+    { id: "gantt", label: "گانت" },
+    { id: "graph", label: "گراف وابستگی" },
+  ].filter((t) => vis(t as TabDef)) as TabDef[];
+  type PrimaryDef = TabDef & { match?: TabId[] };
+  const primaryAll: PrimaryDef[] = [
+    { id: "overview", label: "نمای کلی" },
+    ...(viewsInTasks.length ? [{ id: viewsInTasks[0].id, label: "وظایف", count: ts.length, match: taskViews }] : []),
     { id: "milestones", label: "مایل‌ستون‌ها" },
-    { id: "budget", label: "مالی و بودجه" },
-    { id: "risks", label: "ریسک‌ها", count: openRisks || undefined },
-    { id: "team", label: "تیم پروژه" },
+    { id: "budget", label: "مالی" },
     { id: "minutes", label: "جلسات" },
+    { id: "team", label: "تیم" },
   ];
-  const more: TabDef[] = [
-    { id: "calendar", label: "تقویم" },
-    { id: "time", label: "ثبت زمان" },
-    { id: "workload", label: "بار کاری تیم" },
-    { id: "issues", label: "مشکلات", count: openIssues || undefined },
-    { id: "intake", label: "درخواست‌ها", count: newRequests || undefined },
-    { id: "decisions", label: "دفتر تصمیمات" },
-    { id: "reports", label: "گزارش‌ها" },
-    { id: "flow", label: "تحلیل جریان" },
-    { id: "communication", label: "کانال‌ها و گفتگو" },
-    { id: "documents", label: "اسناد" },
-    { id: "playbooks", label: "Playbook" },
-    { id: "knowledge", label: "دانش و درس‌آموخته‌ها" },
-    { id: "history", label: "تاریخچه رویدادها" },
-    { id: "notifications", label: "اعلان‌ها و خودکارسازی", count: unreadHere || undefined },
-    { id: "settings", label: "تنظیمات پروژه" },
-  ];
-  const activeMore = more.find((t) => t.id === view);
+  const primary = primaryAll.filter((t) => t.match || vis(t));
+  const moreGroups: { label: string; items: TabDef[] }[] = [
+    {
+      label: groupLabel.control,
+      items: [
+        { id: "risks", label: "ریسک‌ها", count: openRisks || undefined },
+        { id: "issues", label: "مشکلات", count: openIssues || undefined },
+        { id: "intake", label: "درخواست‌ها", count: newRequests || undefined },
+        { id: "decisions", label: "دفتر تصمیمات" },
+      ],
+    },
+    {
+      label: groupLabel.collab,
+      items: [
+        { id: "communication", label: "کانال‌ها و گفتگو" },
+        { id: "documents", label: "اسناد" },
+        { id: "calendar", label: "تقویم" },
+      ],
+    },
+    {
+      label: groupLabel.time,
+      items: [
+        { id: "time", label: "ثبت زمان" },
+        { id: "workload", label: "بار کاری تیم" },
+        { id: "reports", label: "گزارش‌ها" },
+        { id: "flow", label: "تحلیل جریان" },
+        { id: "history", label: "تاریخچه رویدادها" },
+      ],
+    },
+    {
+      label: groupLabel.admin,
+      items: [
+        { id: "notifications", label: "اعلان‌ها و خودکارسازی", count: unreadHere || undefined },
+        { id: "settings", label: "تنظیمات پروژه" },
+      ],
+    },
+  ]
+    .map((g) => ({ ...g, items: (g.items as TabDef[]).filter(vis) }))
+    .filter((g) => g.items.length);
+  const moreFlat = moreGroups.flatMap((g) => g.items);
+  const activeMore = moreFlat.find((t) => t.id === view);
+  const isActive = (t: TabDef & { match?: TabId[] }) => (t.match ? t.match.includes(view) : view === t.id);
+
+  // ---- ویرایش در تب جاری = دروازه‌ی بیرونی + «ویرایش» در بخش همان تب (نمای کلی ← تنظیمات)
+  const writeRes: ResourceId | null = view === "overview" ? "settings" : TAB_RESOURCE[view] ?? null;
+  const canEdit = editable && (!writeRes || access.can(writeRes, "write"));
+  const canManage = outer && access.can("settings", "manage");
+  const canTaskWrite = editable && access.can("tasks", "write");
 
   const openCreate = (status?: string) => {
     setCreateStatus(status);
     setCreateOpen(true);
   };
 
-  const tabBtn = (t: TabDef) => (
+  const tabBtn = (t: TabDef & { match?: TabId[] }) => (
     <button
-      key={t.id}
+      key={t.label}
       role="tab"
-      aria-selected={view === t.id}
+      aria-selected={isActive(t)}
       onClick={() => goTab(t.id)}
-      className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${view === t.id ? "border-brand-600 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-800"}`}
+      className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${isActive(t) ? "border-brand-600 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-800"}`}
     >
       {t.label}
-      {t.count !== undefined && <span className={`text-[10px] rounded-full px-1.5 ${view === t.id ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>{fa(t.count)}</span>}
+      {t.count !== undefined && <span className={`text-[10px] rounded-full px-1.5 ${isActive(t) ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}>{fa(t.count)}</span>}
     </button>
   );
 
-  const iconAction = (tab: TabId, label: string, Icon: typeof Bell, badge?: number) => (
-    <button onClick={() => goTab(tab)} title={label} aria-label={label} className={`relative w-9 h-9 rounded-lg border flex items-center justify-center ${view === tab ? "border-brand-300 bg-brand-50 text-brand-700" : "border-ink-200 bg-white text-ink-500 hover:text-ink-800"}`}>
-      <Icon size={16} />
-      {badge ? <span className="absolute -top-1 -left-1 bg-rose-600 text-white text-[10px] rounded-full min-w-4 h-4 px-0.5 flex items-center justify-center">{fa(badge)}</span> : null}
-    </button>
-  );
+  const headItems = [
+    access.canSeeTab("history") && { tab: "history" as TabId, label: "تاریخچه رویدادها", Icon: History },
+    access.canSeeTab("notifications") && { tab: "notifications" as TabId, label: "اعلان‌ها و خودکارسازی", Icon: Bell, badge: unreadHere },
+    access.canSeeTab("settings") && { tab: "settings" as TabId, label: "تنظیمات پروژه", Icon: Settings },
+  ].filter(Boolean) as { tab: TabId; label: string; Icon: typeof Bell; badge?: number }[];
 
   const progress = projectProgress(p);
   const usage = Math.round(budgetUsage(p));
   const healthDot = p.meta.health === "سبز" ? "bg-emerald-500" : p.meta.health === "زرد" ? "bg-amber-500" : "bg-rose-500";
+  const viewIcon: Partial<Record<TabId, typeof Bell>> = { board: KanbanSquare, sprints: Timer, gantt: CalendarRange, graph: Share2 };
+
+  const ctxBase = { p, pid: id, canManage, hasPerm: hasPermission, refDate: pm.refDate, openTask: setTaskId, goTab, focusId, access, editable };
 
   return (
-    <ProjectPageContext.Provider value={{ p, pid: id, canEdit, canManage, can: (perm: string) => canEdit && hasPermission(perm), hasPerm: hasPermission, refDate: pm.refDate, openTask: setTaskId, goTab, focusId }}>
+    <ProjectPageContext.Provider value={{ ...ctxBase, canEdit, can: (perm: string) => canEdit && hasPermission(perm) }}>
       <div>
         <PageHeader
           title={p.meta.name}
@@ -163,10 +222,29 @@ export default function ProjectBoard() {
           actions={
             <div className="flex items-center gap-2">
               <ProjectSearch />
-              {iconAction("history", "تاریخچه رویدادها", History)}
-              {iconAction("notifications", "اعلان‌ها و خودکارسازی", Bell, unreadHere)}
-              {canManage && iconAction("settings", "تنظیمات پروژه", Settings)}
-              {canEdit && (
+              {headItems.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setHeadOpen((v) => !v)} aria-expanded={headOpen} title="ابزارهای پروژه" aria-label="ابزارهای پروژه" className={`relative w-9 h-9 rounded-lg border flex items-center justify-center ${headItems.some((h) => h.tab === view) ? "border-brand-300 bg-brand-50 text-brand-700" : "border-ink-200 bg-white text-ink-500 hover:text-ink-800"}`}>
+                    <MoreHorizontal size={16} />
+                    {unreadHere && access.canSeeTab("notifications") ? <span className="absolute -top-1 -left-1 bg-rose-600 text-white text-[10px] rounded-full min-w-4 h-4 px-0.5 flex items-center justify-center">{fa(unreadHere)}</span> : null}
+                  </button>
+                  {headOpen && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setHeadOpen(false)} />
+                      <div className="absolute left-0 top-full mt-1 z-30 w-56 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5">
+                        {headItems.map(({ tab, label, Icon, badge }) => (
+                          <button key={tab} onClick={() => { setHeadOpen(false); goTab(tab); }} className={`w-full text-right px-3 py-2 text-[13px] flex items-center gap-2 hover:bg-ink-50 ${view === tab ? "text-brand-700 font-medium" : "text-ink-700"}`}>
+                            <Icon size={14} className="text-ink-400" />
+                            <span className="flex-1">{label}</span>
+                            {badge ? <span className="text-[10px] rounded-full px-1.5 bg-rose-600 text-white">{fa(badge)}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {canTaskWrite && (
                 <Button variant="primary" icon={<Plus size={15} />} onClick={() => openCreate()}>
                   تسک جدید
                 </Button>
@@ -175,13 +253,37 @@ export default function ProjectBoard() {
           }
         />
 
-        {p.meta.archived && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs p-3 flex items-center gap-2">
-            <Archive size={14} /> این پروژه بایگانی شده و فقط‌خواندنی است. برای ویرایش از
-            <button onClick={() => goTab("settings")} className="underline">
-              تنظیمات
+        {notice && (
+          <div className="mb-4 rounded-lg border border-brand-200 bg-brand-50 text-brand-800 text-xs p-3 flex items-start gap-2">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <span className="flex-1 leading-5">
+              {notice}
+              {tabParam === "knowledge" && (
+                <>
+                  {" "}
+                  <Link to="/dashboard/knowledge?tab=projects" className="underline">
+                    پرونده‌ی دانش پروژه‌ها
+                  </Link>
+                </>
+              )}
+            </span>
+            <button onClick={() => goTab("overview")} aria-label="بستن" className="text-brand-600 hover:text-brand-800">
+              <X size={14} />
             </button>
-            بازیابی کنید.
+          </div>
+        )}
+        {p.meta.archived && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs p-3 flex items-center gap-2 flex-wrap">
+            <Archive size={14} /> این پروژه بایگانی شده و فقط‌خواندنی است.
+            {access.canSeeTab("settings") && (
+              <>
+                برای ویرایش از
+                <button onClick={() => goTab("settings")} className="underline">
+                  تنظیمات
+                </button>
+                بازیابی کنید.
+              </>
+            )}
           </div>
         )}
         {myRole === "مشاهده‌گر" && (
@@ -193,7 +295,7 @@ export default function ProjectBoard() {
         {view === "overview" ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <StatCard label="پیشرفت کلی" value={`${fa(progress)}٪`} tone="brand" icon={<GanttChartSquare size={16} />} />
-            <StatCard label="مصرف بودجه" value={`${fa(usage)}٪`} hint={`${fmtRial(paidTotal(p))} از ${fmtRial(p.budget.total)}`} tone="warning" icon={<Wallet size={16} />} />
+            {access.can("budget") && <StatCard label="مصرف بودجه" value={`${fa(usage)}٪`} hint={`${fmtRial(paidTotal(p))} از ${fmtRial(p.budget.total)}`} tone="warning" icon={<Wallet size={16} />} />}
             <StatCard label="تعداد تسک" value={fa(ts.length)} icon={<LayoutGrid size={16} />} />
             <StatCard label="وضعیت سلامت" value={p.meta.health} hint={`مرحله: ${p.meta.phase}`} tone={p.meta.health === "سبز" ? "success" : p.meta.health === "زرد" ? "warning" : "danger"} />
           </div>
@@ -206,9 +308,11 @@ export default function ProjectBoard() {
               </span>
               <b className="text-ink-900">{fa(progress)}٪</b>
             </span>
-            <span>
-              بودجه: <b className="text-ink-900">{fa(usage)}٪</b> مصرف‌شده
-            </span>
+            {access.can("budget") && (
+              <span>
+                بودجه: <b className="text-ink-900">{fa(usage)}٪</b> مصرف‌شده
+              </span>
+            )}
             <span>
               <b className="text-ink-900">{fa(ts.length)}</b> تسک
             </span>
@@ -221,47 +325,93 @@ export default function ProjectBoard() {
           </div>
         )}
 
-        {/* موبایل: فهرست کشویی */}
+        {/* موبایل: فهرست کشویی گروه‌بندی‌شده */}
         <div className="sm:hidden mb-4">
           <select value={view} onChange={(e) => goTab(e.target.value as TabId)} className="input-field" aria-label="بخش پروژه">
-            {[...primary, ...more].map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-                {t.count !== undefined ? ` (${fa(t.count)})` : ""}
-              </option>
+            <optgroup label="اصلی">
+              {primary
+                .filter((t) => !t.match)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+            </optgroup>
+            {viewsInTasks.length > 0 && (
+              <optgroup label="وظایف">
+                {viewsInTasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                    {t.count !== undefined ? ` (${fa(t.count)})` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {moreGroups.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                    {t.count !== undefined ? ` (${fa(t.count)})` : ""}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>
-        {/* دسکتاپ: یک ردیف تب اصلی + «بیشتر» */}
+        {/* دسکتاپ: ۶ تب اصلی + «بیشتر» گروه‌بندی‌شده */}
         <div className="hidden sm:flex items-stretch border-b border-ink-200 mb-5" role="tablist">
           <div className="flex items-stretch overflow-x-auto">{primary.map(tabBtn)}</div>
           {activeMore && tabBtn(activeMore)}
-          <div className="relative">
-            <button onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} className="flex items-center gap-1 px-3 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-800 whitespace-nowrap h-full">
-              بیشتر <ChevronDown size={14} className={moreOpen ? "rotate-180" : ""} />
-            </button>
-            {moreOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-30 w-56 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5">
-                  {more.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setMoreOpen(false);
-                        goTab(t.id);
-                      }}
-                      className={`w-full text-right px-3 py-2 text-[13px] flex items-center justify-between hover:bg-ink-50 ${view === t.id ? "text-brand-700 font-medium" : "text-ink-700"}`}
-                    >
-                      {t.label}
-                      {t.count !== undefined && <span className="text-[10px] rounded-full px-1.5 bg-ink-100 text-ink-500">{fa(t.count)}</span>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {moreGroups.length > 0 && (
+            <div className="relative">
+              <button onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} className="flex items-center gap-1 px-3 py-2.5 text-[13px] font-medium text-ink-500 hover:text-ink-800 whitespace-nowrap h-full">
+                بیشتر <ChevronDown size={14} className={moreOpen ? "rotate-180" : ""} />
+              </button>
+              {moreOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-30 w-60 max-h-[70vh] overflow-y-auto bg-white border border-ink-200 rounded-xl shadow-xl py-1.5">
+                    {moreGroups.map((g, gi) => (
+                      <div key={g.label} className={gi ? "border-t border-ink-100 mt-1 pt-1" : ""}>
+                        <p className="px-3 pt-1.5 pb-1 text-[10.5px] font-bold text-ink-400">{g.label}</p>
+                        {g.items.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              setMoreOpen(false);
+                              goTab(t.id);
+                            }}
+                            className={`w-full text-right px-3 py-1.5 text-[13px] flex items-center justify-between hover:bg-ink-50 ${view === t.id ? "text-brand-700 font-medium" : "text-ink-700"}`}
+                          >
+                            {t.label}
+                            {t.count !== undefined && <span className="text-[10px] rounded-full px-1.5 bg-ink-100 text-ink-500">{fa(t.count)}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* سوییچر نما در «وظایف»: بورد / اسپرینت‌ها / گانت / گراف وابستگی */}
+        {taskViews.includes(view) && viewsInTasks.length > 1 && (
+          <div className="hidden sm:flex mb-3">
+            <div className="inline-flex rounded-lg border border-ink-200 bg-white overflow-hidden" role="tablist" aria-label="نمای وظایف">
+              {viewsInTasks.map((t) => {
+                const I = viewIcon[t.id] ?? LayoutGrid;
+                return (
+                  <button key={t.id} role="tab" aria-selected={view === t.id} onClick={() => goTab(t.id)} className={`px-3 py-1.5 text-xs flex items-center gap-1.5 border-l last:border-l-0 border-ink-200 ${view === t.id ? "bg-navy-900 text-white" : "text-ink-600 hover:bg-ink-50"}`}>
+                    <I size={13} /> {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {view === "overview" && <OverviewTab />}
         {view === "board" && <BoardTab onNewTask={openCreate} />}
@@ -282,15 +432,16 @@ export default function ProjectBoard() {
         {view === "reports" && <ReportsTab />}
         {view === "history" && <HistoryTab />}
         {view === "notifications" && <NotificationsTab />}
-        {view === "playbooks" && <PlaybooksTab />}
         {view === "settings" && <SettingsTab />}
-        {view === "knowledge" && <ProjectKnowledgeFile projectId={id} inProjectPage />}
         {view === "flow" && <FlowTab />}
         {view === "decisions" && <DecisionsTab />}
         {view === "intake" && <IntakeTab />}
 
-        {canEdit && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
-        <TaskDrawer taskId={taskId} onClose={() => setTaskId(null)} />
+        {/* جزئیات و ایجاد تسک همیشه با دسترسی بخش «وظایف» سنجیده می‌شوند، از هر تبی که باز شوند */}
+        <ProjectPageContext.Provider value={{ ...ctxBase, canEdit: canTaskWrite, can: (perm: string) => canTaskWrite && hasPermission(perm) }}>
+          {canTaskWrite && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
+          {access.can("tasks") && <TaskDrawer taskId={taskId} onClose={() => setTaskId(null)} />}
+        </ProjectPageContext.Provider>
         <p className="sr-only">
           <Link to="/dashboard/projects">بازگشت به فهرست پروژه‌ها</Link>
         </p>
@@ -298,3 +449,29 @@ export default function ProjectBoard() {
     </ProjectPageContext.Provider>
   );
 }
+
+/** نام فارسی تب‌ها (برای پیام نبودِ دسترسی) */
+const labelOf: Record<string, string> = {
+  board: "بورد وظایف",
+  sprints: "اسپرینت‌ها",
+  gantt: "گانت چارت",
+  graph: "گراف وابستگی وظایف",
+  milestones: "مایل‌ستون‌ها",
+  budget: "مالی و بودجه",
+  risks: "ریسک‌ها",
+  issues: "مشکلات",
+  intake: "درخواست‌ها",
+  decisions: "دفتر تصمیمات",
+  minutes: "جلسات",
+  communication: "کانال‌ها و گفتگو",
+  documents: "اسناد",
+  calendar: "تقویم",
+  time: "ثبت زمان",
+  workload: "بار کاری تیم",
+  reports: "گزارش‌ها",
+  flow: "تحلیل جریان",
+  history: "تاریخچه رویدادها",
+  team: "تیم پروژه",
+  settings: "تنظیمات پروژه",
+  notifications: "اعلان‌ها و خودکارسازی",
+};
