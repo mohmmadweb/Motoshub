@@ -12,6 +12,10 @@ import { useToast } from "../../../components/ui/ToastProvider";
 import type { Chat, Message } from "../../../social/types";
 import { AttachmentList, fa } from "../kit";
 import { RichText, tagsIn, timeOf } from "./shared";
+import MentionTextarea, { extractMentions } from "../composer/MentionTextarea";
+import { TextLinkPreview } from "../composer/LinkPreview";
+import PollCard from "../polls/PollCard";
+import { useComposerGuard } from "../composer/WriteGate";
 
 /** متن کوتاه یک پیام برای پیش‌نمایش */
 export const msgPreview = (m: Message | undefined) => (!m ? "این پیام حذف شده است." : m.type === "sticker" ? `برچسب ${m.content}` : m.content || (m.attachments.length ? "📎 پیوست" : ""));
@@ -145,6 +149,7 @@ export function ThreadDrawer({ chat, rootId, canPost, onClose }: { chat: Chat; r
   const s = useSocial();
   const { notify } = useToast();
   const [text, setText] = useState("");
+  const guard = useComposerGuard();
   const endRef = useRef<HTMLDivElement>(null);
   const root = rootId ? s.messages.find((m) => m.id === rootId) : undefined;
   const replies = rootId ? s.messages.filter((m) => m.in_thread && m.parent_message_id === rootId).sort((a, b) => a.seq - b.seq) : [];
@@ -154,7 +159,8 @@ export function ThreadDrawer({ chat, rootId, canPost, onClose }: { chat: Chat; r
   const send = () => {
     const content = text.trim();
     if (!content || !rootId) return;
-    const r = s.sendMessage(chat.id, { content, type: "text", parent_message_id: rootId, in_thread: true, tags: tagsIn(content) });
+    if (!guard.gate("message")) return;
+    const r = s.sendMessage(chat.id, { content, type: "text", parent_message_id: rootId, in_thread: true, tags: tagsIn(content), mentions: extractMentions(content) });
     if (!r.ok) return notify(r.error, "warning");
     setText("");
     s.markRead(chat.id);
@@ -170,11 +176,16 @@ export function ThreadDrawer({ chat, rootId, canPost, onClose }: { chat: Chat; r
           </p>
           {m.type === "sticker" ? (
             <p className="text-4xl leading-none py-1">{m.content}</p>
+          ) : m.poll_id ? (
+            <PollCard pollId={m.poll_id} />
           ) : (
             m.content && (
-              <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
-                <RichText text={m.content} />
-              </p>
+              <>
+                <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
+                  <RichText text={m.content} />
+                </p>
+                <TextLinkPreview text={m.content} hidden={m.preview_hidden} />
+              </>
             )
           )}
           {m.attachments.length > 0 && (
@@ -212,9 +223,11 @@ export function ThreadDrawer({ chat, rootId, canPost, onClose }: { chat: Chat; r
           </div>
           {canPost ? (
             <div className="sticky bottom-0 -mx-5 -mb-5 mt-4 p-3 bg-white border-t border-ink-100 flex items-end gap-1.5">
-              <textarea
+              <MentionTextarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                priorityIds={chat.members.map((x) => x.user_id)}
+                placement="top"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
@@ -223,10 +236,10 @@ export function ThreadDrawer({ chat, rootId, canPost, onClose }: { chat: Chat; r
                 }}
                 rows={Math.min(4, Math.max(1, text.split("\n").length))}
                 placeholder="پاسخ در رشته…"
-                className="flex-1 min-w-0 resize-none bg-ink-50 border border-transparent focus:border-brand-300 focus:bg-white rounded-xl px-3 py-2 text-[13px] leading-6 outline-none"
+                className="block resize-none bg-ink-50 border border-transparent focus:border-brand-300 focus:bg-white rounded-xl px-3 py-2 text-[13px] leading-6 outline-none"
                 autoFocus
               />
-              <button onClick={send} disabled={!text.trim()} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label="ارسال پاسخ در رشته">
+              <button onClick={send} disabled={!text.trim() || guard.blocked} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label="ارسال پاسخ در رشته">
                 <SendHorizontal size={17} className="-scale-x-100" />
               </button>
             </div>

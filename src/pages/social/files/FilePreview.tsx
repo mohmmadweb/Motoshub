@@ -15,6 +15,7 @@ import { endpoints, fmtEndpoint } from "../../../social/endpoints";
 import type { FileEventAction, FileItem } from "../../../social/types";
 import { fileEventLabel } from "../../../social/types";
 import { UserLine, UserPicker, fa, stamp, toAttachments } from "../kit";
+import { ScanStatusList, useScannedUpload } from "../composer/AvScan";
 
 type Tab = "preview" | "versions" | "share" | "activity";
 const eventTone: Record<FileEventAction, "brand" | "success" | "warning" | "danger" | "neutral" | "navy"> = {
@@ -56,6 +57,7 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState("");
   const verInput = useRef<HTMLInputElement>(null);
+  const verScan = useScannedUpload("file_version");
   const f = fileId ? s.files.find((x) => x.id === fileId) : undefined;
   if (!f) return null;
   const k = kindOf(f);
@@ -257,13 +259,18 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
                     const a = e.target.files ? toAttachments(e.target.files)[0] : undefined;
                     e.target.value = "";
                     if (!a) return;
-                    s.uploadVersion(f.id, a);
-                    notify(`نسخه‌ی ${fa((f.version ?? 1) + 1)} بارگذاری شد.`, "success");
+                    // «پیشنهادی» — F13: نسخه‌ی تازه هم پیش از ذخیره اسکن می‌شود
+                    verScan.scan([a], ([ok]) => {
+                      if (!ok) return;
+                      s.uploadVersion(f.id, ok);
+                      notify(`نسخه‌ی ${fa((f.version ?? 1) + 1)} بارگذاری شد.`, "success");
+                    });
                   }}
                 />
                 <Button size="sm" icon={<Upload size={13} />} onClick={() => verInput.current?.click()}>
                   بارگذاری نسخه‌ی جدید
                 </Button>
+                <ScanStatusList jobs={verScan.jobs} onDismiss={verScan.dismiss} className="mt-2" />
               </>
             )}
           </div>

@@ -8,9 +8,12 @@ import ReportIssueButton from "../components/ReportIssueButton";
 import ClassificationBanner from "../components/ClassificationBanner";
 import { ImpersonationBar } from "../components/ImpersonationBar";
 import MobileBottomNav from "../components/MobileBottomNav";
+import { GuidedTourHost } from "../components/GuidedTour";
+import { I18nSync, useI18n } from "../i18n";
 
 export default function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { dir } = useI18n();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -25,7 +28,8 @@ export default function AppLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-ink-50" dir="rtl">
+    <div className="flex min-h-screen bg-ink-50" dir={dir}>
+      <I18nSync />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:right-2 focus:z-[100] focus:bg-brand-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg text-sm"
@@ -45,6 +49,7 @@ export default function AppLayout() {
         <MobileBottomNav />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <GuidedTourHost />
     </div>
   );
 }

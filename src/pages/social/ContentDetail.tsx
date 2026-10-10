@@ -44,7 +44,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, !!item]);
 
-  const listTitle = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ" : "مجلات";
+  const listTitle = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات";
   const listPath = section === "news" ? "/dashboard/news" : section === "blogs" ? "/dashboard/blog" : "/dashboard/magazines";
   const crumbs = [{ label: "شبکه اجتماعی" }, { label: listTitle, to: listPath }];
 

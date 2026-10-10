@@ -3,6 +3,7 @@ import { ChevronLeft, HelpCircle, BookOpen, LifeBuoy } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useSettings } from "../../context/SettingsContext";
 import { helpForPath } from "../../pages/knowledge/helpArticles";
+import { useT } from "../../i18n";
 
 type Crumb = { label: string; to?: string };
 
@@ -19,6 +20,8 @@ export default function PageHeader({
   breadcrumb?: Crumb[];
   actions?: ReactNode;
 }) {
+  // عنوان صفحه = برچسب منو؛ با زبان انتخابی کاربر ترجمه می‌شود (F14)
+  title = useT()(title);
   // عنوان تب مرورگر با صفحه هماهنگ می‌شود (بدون نام برند سازنده)
   useEffect(() => {
     const prev = document.title;

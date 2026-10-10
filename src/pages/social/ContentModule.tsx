@@ -369,7 +369,7 @@ export default function ContentModule({ section }: { section: "magazines" | "new
             { title: "بازدید", value: stat("views") },
           ];
 
-  const title = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ" : "مجلات";
+  const title = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات";
   const label = contentKindLabel[kind];
   const ks: ContentKind[] = [section];
 

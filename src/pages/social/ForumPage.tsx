@@ -2,9 +2,9 @@
 // «پرسش و پاسخ» — فهرست پرسش‌ها (Topic) مطابق /forums/forums/topics/
 // ---------------------------------------------------------------------------
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { MessagesSquare, Pin, Lock, Plus, Search, Eye, MessageCircle, Clock, Hash, CheckCircle2, ThumbsUp } from "lucide-react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { MessagesSquare, Pin, Lock, Plus, Search, Eye, MessageCircle, Clock, Hash, CheckCircle2, ThumbsUp, MoreHorizontal, Bell, BellOff, BellRing, Users } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -15,10 +15,14 @@ import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
 import type { Attachment, Topic } from "../../social/types";
 import { DuplicateBadge, SimilarQuestions, SolvedBadge } from "./qa/QaKit";
-import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, Field, PublishBadge, PublishOptions, UserLine, defaultPublish, fa, stamp, type PublishState } from "./kit";
+import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, Field, PublishBadge, PublishOptions, UserLine, defaultPublish, fa, stamp, type PublishState, MentionInput } from "./kit";
+import { autoFollowTopic, useFollows } from "../../social/follow/store";
+import { useCanFollow } from "../../social/follow/FollowButton";
+import { followEndpoints } from "../../social/follow/endpoints";
+import { useWriteGuard, WriteBlockNotice } from "../../iam/useWriteGuard";
 
 type Sort = "activity" | "votes" | "views";
-type Scope = "all" | "mine" | "unanswered" | "unsolved";
+type Scope = "all" | "mine" | "unanswered" | "unsolved" | "followed";
 
 /** ویرایشگر پرسش — هم‌شکل TopicStoreRequest (title, content, uploaded_files, privacy, category_ids, tags, is_draft, published_date/time, send_notification) */
 export function TopicEditor({ open, onClose, topic, onSaved }: { open: boolean; onClose: () => void; topic?: Topic | null; onSaved?: (id: string) => void }) {
@@ -29,6 +33,7 @@ export function TopicEditor({ open, onClose, topic, onSaved }: { open: boolean; 
 function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: Topic | null; onSaved?: (id: string) => void }) {
   const { saveTopic, topics, canView, me } = useSocial();
   const { notify } = useToast();
+  const guard = useWriteGuard();
   const [title, setTitle] = useState(topic?.title ?? "");
   const [content, setContent] = useState(topic?.content ?? "");
   const [files, setFiles] = useState<Attachment[]>([]);
@@ -40,6 +45,15 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
   const submit = () => {
     if (!title.trim()) return setError("عنوان پرسش الزامی است.");
     if (!content.trim()) return setError("متن پرسش الزامی است.");
+    // مسدودی حساب و سقف تولید محتوا (F10/F12) — فقط برای پرسش تازه
+    if (!topic) {
+      const g = guard.check("post");
+      if (!g.ok) return setError(g.error);
+      if (files.length) {
+        const u = guard.check("upload", files.length);
+        if (!u.ok) return setError(u.error);
+      }
+    }
     const id = saveTopic({
       id: topic?.id,
       title: title.trim(),
@@ -53,6 +67,8 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
       uploaded_files: files,
       send_notification: pub.send_notification,
     });
+    // سازنده خودکار دنبال‌کننده‌ی پرسش خودش است (قابل لغو)
+    if (!topic) autoFollowTopic(me, id);
     notify(topic ? "پرسش ویرایش شد." : pub.is_draft ? "پرسش به‌صورت پیش‌نویس ذخیره شد." : "پرسش منتشر شد.", "success");
     onSaved?.(id);
     onClose();
@@ -66,7 +82,7 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
         </Field>
         {!topic && <SimilarQuestions title={title} pool={topics.filter((t) => canView(t) || t.user_id === me)} onOpen={onClose} />}
         <Field label="متن پرسش (content)" hint="برای منشن: ‎@نام_خانوادگی">
-          <textarea className="input-field min-h-[140px]" value={content} onChange={(e) => setContent(e.target.value)} placeholder="جزئیات، آنچه امتحان کرده‌اید و انتظارتان از پاسخ…" />
+          <MentionInput className="input-field min-h-[140px]" value={content} onChange={(e) => setContent(e.target.value)} placeholder="جزئیات، آنچه امتحان کرده‌اید و انتظارتان از پاسخ…" />
         </Field>
         {topic && topic.attachments.length > 0 && (
           <Field label="پیوست‌های فعلی">
@@ -75,7 +91,7 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
         )}
         <AttachmentPicker value={files} onChange={setFiles} label={topic ? "افزودن پیوست (uploaded_files)" : undefined} />
         <PublishOptions entity="topic" value={pub} onChange={setPub} comments={false} notifyOption={!topic} />
-        {error && <p className="text-xs text-rose-600">{error}</p>}
+        {!topic && guard.block ? <WriteBlockNotice block={guard.block} /> : error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex items-center gap-2 justify-end">
           <Button variant="secondary" onClick={onClose}>
             انصراف
@@ -89,14 +105,60 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
   );
 }
 
+/** «…» ردیف فهرست: دنبال/لغو دنبال و اعلان موضوع (داخل لینک ردیف؛ کلیک به ردیف نمی‌رسد) */
+function FollowRowMenu({ topicId }: { topicId: string }) {
+  const f = useFollows();
+  const { notify } = useToast();
+  const [open, setOpen] = useState(false);
+  const tf = f.topicFollow(topicId);
+  const stop = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const item = (label: string, icon: ReactNode, run: () => void) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        stop(e);
+        setOpen(false);
+        run();
+      }}
+      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-right text-ink-700 hover:bg-ink-50"
+    >
+      {icon} {label}
+    </button>
+  );
+  return (
+    <span className="relative" onClick={stop}>
+      <button type="button" onClick={(e) => (stop(e), setOpen((v) => !v))} aria-label="گزینه‌های پرسش" className={`w-7 h-7 rounded-md flex items-center justify-center hover:bg-ink-100 ${tf ? "text-brand-600" : "text-ink-400"}`}>
+        {tf ? <BellRing size={14} /> : <MoreHorizontal size={15} />}
+      </button>
+      {open && (
+        <>
+          <span className="fixed inset-0 z-30" onClick={(e) => (stop(e), setOpen(false))} />
+          <span className="absolute z-40 top-full mt-1 left-0 w-48 bg-white border border-ink-200 rounded-xl shadow-lg py-1 block">
+            {tf
+              ? item("لغو دنبال‌کردن", <BellOff size={13} />, () => (f.followTopic(topicId, false), notify("دنبال‌کردن این موضوع لغو شد.", "info")))
+              : item("دنبال کردن", <Bell size={13} />, () => (f.followTopic(topicId, true), notify("موضوع دنبال شد؛ از پاسخ‌ها و تغییرات آن باخبر می‌شوید.", "success")))}
+            {tf && item(tf.notify ? "خاموش‌کردن اعلان" : "روشن‌کردن اعلان", tf.notify ? <BellOff size={13} /> : <Bell size={13} />, () => f.setTopicNotify(topicId, !tf.notify))}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function ForumPage() {
   const s = useSocial();
   const { hasPermission } = useTenancy();
   const moderator = hasPermission("forum.moderate");
+  const fol = useFollows();
+  const canFollow = useCanFollow("topic");
+  const [params] = useSearchParams();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
   const [sort, setSort] = useState<Sort>("activity");
-  const [scope, setScope] = useState<Scope>("all");
+  const [scope, setScope] = useState<Scope>(params.get("scope") === "followed" ? "followed" : "all");
   const [editorOpen, setEditorOpen] = useState(false);
 
   const cats = s.categoriesOf("topic");
@@ -121,7 +183,8 @@ export default function ForumPage() {
         (!catIds.length || t.category_ids.some((c) => catIds.includes(c))) &&
         (scope !== "mine" || t.user_id === s.me) &&
         (scope !== "unanswered" || !answers[t.id]) &&
-        (scope !== "unsolved" || (!t.accepted_post_id && !t.duplicate_of))
+        (scope !== "unsolved" || (!t.accepted_post_id && !t.duplicate_of)) &&
+        (scope !== "followed" || fol.isFollowingTopic(t.id))
     );
     const cmp = (a: Topic, b: Topic) =>
       sort === "views" ? b.view_count - a.view_count : sort === "votes" ? voteScore(b.votes) - voteScore(a.votes) || b.updated_at.localeCompare(a.updated_at) : b.updated_at.localeCompare(a.updated_at);
@@ -133,6 +196,7 @@ export default function ForumPage() {
     { id: "mine", label: "پرسش‌های من" },
     { id: "unanswered", label: "بی‌پاسخ" },
     { id: "unsolved", label: "حل‌نشده" },
+    ...(canFollow ? [{ id: "followed" as Scope, label: "دنبال‌شده‌ها" }] : []),
   ];
 
   return (
@@ -152,6 +216,8 @@ export default function ForumPage() {
                 { label: "ویرایش پرسش", ep: endpoints.topicUpdate("{id}") },
                 { label: "پرسش‌های مشابه هنگام نوشتن", ep: endpoints.topicSimilar() },
                 { label: "رأی به پرسش", ep: endpoints.topicVote("{id}") },
+                { label: "دنبال‌کردن / لغو دنبال", ep: followEndpoints.topicFollow("{id}") },
+                { label: "موضوعات دنبال‌شده", ep: followEndpoints.topicsFollowed() },
               ]}
             />
             {hasPermission("forum.create") && (
@@ -227,7 +293,7 @@ export default function ForumPage() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-[11.5px] text-ink-500 shrink-0">
+                <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-ink-500 shrink-0">
                   <span className={`flex items-center gap-1 tabular-nums ${voteScore(t.votes) > 0 ? "text-ink-800" : voteScore(t.votes) < 0 ? "text-rose-600" : "text-ink-400"}`} title="امتیاز (رأی‌ها)">
                     <ThumbsUp size={12} /> {fa(voteScore(t.votes))}
                   </span>
@@ -240,6 +306,12 @@ export default function ForumPage() {
                   <span className="flex items-center gap-1" title="آخرین فعالیت">
                     <Clock size={12} /> {stamp(t.updated_at)}
                   </span>
+                  {fol.topicFollowers(t.id).length > 0 && (
+                    <span className={`flex items-center gap-1 ${fol.isFollowingTopic(t.id) ? "text-brand-700" : ""}`} title="دنبال‌کنندگان">
+                      <Users size={12} /> {fa(fol.topicFollowers(t.id).length)}
+                    </span>
+                  )}
+                  {canFollow && <FollowRowMenu topicId={t.id} />}
                 </div>
               </Link>
             );

@@ -17,7 +17,6 @@ import {
   EyeOff,
   AlertTriangle,
   CheckCircle2,
-  Ban,
   Webhook,
   Bot,
   Slash,
@@ -71,6 +70,9 @@ import Toggle from "../components/ui/Toggle";
 import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
+import { captchaModeLabel, captchaStore, useCaptchaPolicy } from "../iam/captcha";
+import { rateStore, useRateLimit } from "../iam/rateLimit";
+import { BlockedUsersList } from "./settings/AutoBlockSection";
 
 export type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage" | "file-types";
 
@@ -1437,6 +1439,9 @@ function SecuritySection({
   setGuestAccounts: (fn: (prev: GuestAccount[]) => GuestAccount[]) => void;
   notify: Notify;
 }) {
+  // منبع واحد: کپچا و محدودیت درخواست از انبارهای امنیت (F10/F11)
+  const captcha = useCaptchaPolicy();
+  const rate = useRateLimit();
   const { settings } = useSettings();
   const { config: classification, setConfig: setClassification } = useClassification();
   const [open, setOpen] = useState(false);
@@ -1489,9 +1494,29 @@ function SecuritySection({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <SecurityToggleCard title="نمایش کپچا در فرم ورود" description="جلوگیری از ورود ربات‌ها به فرم احراز هویت" defaultOn notify={notify} />
+        <SecurityToggleCard
+          title="نمایش کپچا در فرم ورود"
+          description={`جلوگیری از ورود ربات‌ها — ${captchaModeLabel[captcha.login]}${captcha.login === "after_failures" ? ` (${captcha.login_after.toLocaleString("fa-IR")})` : ""}؛ جزئیات در «ورود و احراز هویت ← کپچا»`}
+          defaultOn
+          value={captcha.login !== "never"}
+          onToggle={(v) => {
+            emitSettingsChange({ area: "کپچا", summary: v ? "کپچای فرم ورود روشن شد" : "کپچای فرم ورود خاموش شد", before: { login: captcha.login }, after: { login: v ? "after_failures" : "never" } });
+            captchaStore.set((p) => ({ ...p, login: v ? "after_failures" : "never" }));
+          }}
+          notify={notify}
+        />
         <SecurityToggleCard title="اسکن ضدویروس پیوست‌ها (ClamAV)" description="عدم ذخیره‌ی فایل‌های آلوده و اطلاع‌رسانی به کاربر" defaultOn notify={notify} />
-        <SecurityToggleCard title="محدودسازی نرخ درخواست" description={`حداکثر ${settings.rateLimitPerMinute.toLocaleString("fa-IR")} درخواست در دقیقه به ازای هر کاربر (عدد در «زیرساخت ← تنظیمات کلی»)`} defaultOn notify={notify} />
+        <SecurityToggleCard
+          title="محدودسازی نرخ درخواست"
+          description={`حداکثر ${settings.rateLimitPerMinute.toLocaleString("fa-IR")} درخواست در دقیقه به ازای هر کاربر؛ سقف‌های محتوا در «محدودیت درخواست‌ها»`}
+          defaultOn
+          value={rate.policy.enabled}
+          onToggle={(v) => {
+            emitSettingsChange({ area: "محدودیت درخواست‌ها", summary: v ? "محدودسازی نرخ درخواست روشن شد" : "محدودسازی نرخ درخواست خاموش شد", before: { enabled: rate.policy.enabled }, after: { enabled: v } });
+            rateStore.set((st) => ({ ...st, policy: { ...st.policy, enabled: v } }));
+          }}
+          notify={notify}
+        />
         <SecurityToggleCard title="ثبت کامل رخدادها (Audit Log)" description="آماده برای ارائه به نهادهای نظارتی مانند افتا" defaultOn notify={notify} />
         <SecurityToggleCard
           title="برچسب طبقه‌بندی پیام (Classification Banner)"
@@ -1533,12 +1558,8 @@ function SecuritySection({
         )}
       </div>
 
-      <div className="card p-4">
-        <h3 className="text-sm font-bold text-ink-900 mb-3 flex items-center gap-1.5">
-          <Ban size={15} className="text-rose-600" /> کاربران مسدودشده
-        </h3>
-        <p className="text-xs text-ink-400">در حال حاضر کاربر مسدودشده‌ای وجود ندارد.</p>
-      </div>
+      {/* کاربران مسدودشده — همان فهرست «مسدودسازی خودکار» (F12) */}
+      <BlockedUsersList />
 
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3">

@@ -7,6 +7,7 @@ import { Bookmark, Bot, Megaphone, Users } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 import { users } from "../../../data/mock";
 import type { Chat, ChatType, EntityName, OwnerType } from "../../../social/types";
+import { trimUrl } from "../../../social/linkPreview";
 
 export type MessengerMode = "chat" | "groups" | "channels";
 
@@ -14,7 +15,7 @@ export const modeConf: Record<
   MessengerMode,
   { base: string; title: string; types: ChatType[]; listPerm: string; createPerm: string; managePerm: string; entity: EntityName | null; owner: OwnerType | null; noun: string; subNoun: string; rootChip: string }
 > = {
-  chat: { base: "/dashboard/chat", title: "گفتگو", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
+  chat: { base: "/dashboard/chat", title: "گفتگوها", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
   groups: { base: "/dashboard/groups", title: "گروه‌ها", types: ["group"], listPerm: "groups.list", createPerm: "groups.create", managePerm: "groups.manage", entity: "group", owner: "group", noun: "گروه", subNoun: "تاپیک", rootChip: "عمومی" },
   channels: { base: "/dashboard/channels", title: "کانال‌ها", types: ["channel"], listPerm: "channels.list", createPerm: "channels.create", managePerm: "channels.manage", entity: "channel", owner: "channel", noun: "کانال", subNoun: "زیرکانال", rootChip: "کانال اصلی" },
 };
@@ -69,8 +70,8 @@ export const shortWhen = (s: string, today: string) => {
   return d === today ? timeOf(s) : d.slice(5);
 };
 
-/** منشن‌ها (@نام_خانوادگی) و هشتگ‌ها (#برچسب) درون متن */
-const TOKEN = /(@[^\s،.,!؟?]+|#[^\s،.,!؟?#]+)/g;
+/** لینک‌ها (http/https)، منشن‌ها (@نام_خانوادگی) و هشتگ‌ها (#برچسب) درون متن */
+const TOKEN = /(https?:\/\/[^\s<>«»"']+|@[^\s،.,!؟?]+|#[^\s،.,!؟?#]+)/g;
 export const tagsIn = (text: string) => [...new Set((text.match(/#[^\s،.,!؟?#]+/g) ?? []).map((t) => t.slice(1)))];
 
 /** هایلایت عبارت جستجو در متن ساده */
@@ -99,6 +100,24 @@ export function RichText({ text, highlight }: { text: string; highlight?: string
   return (
     <>
       {parts.map((p, i) => {
+        if (/^https?:\/\//i.test(p)) {
+          // «پیشنهادی» — F02: لینک قابل کلیک در تب جدید؛ نشانه‌گذاری انتهایی جزو لینک نیست
+          const url = trimUrl(p);
+          return (
+            <Fragment key={i}>
+              <a href={url} target="_blank" rel="noopener noreferrer" dir="ltr" className="text-brand-700 underline underline-offset-2 break-all hover:text-brand-600">
+                {url.replace(/^https?:\/\/(www\.)?/i, "")}
+              </a>
+              {p.slice(url.length)}
+            </Fragment>
+          );
+        }
+        if (p === "@همه")
+          return (
+            <span key={i} className="text-brand-700 font-medium bg-brand-50 rounded px-0.5">
+              @همه
+            </span>
+          );
         if (p.startsWith("@") && p.length > 1) {
           const name = p.slice(1).replace(/_/g, " ");
           const u = users.find((x) => x.name === name);

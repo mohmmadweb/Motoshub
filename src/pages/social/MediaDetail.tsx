@@ -19,6 +19,7 @@ import { ApiChip, CategoryBadges, CommentsPanel, Poster, PrivacyBadge, PublishBa
 import { MediaEditor, mediaTypeIcon } from "./MediaPage";
 import { HiddenBanner, ReportButton } from "./moderation";
 import { AnalyticsButton } from "./ItemAnalytics";
+import { AparatPlayer } from "./composer/LinkPreview";
 
 export default function MediaDetail() {
   const { id = "" } = useParams();
@@ -101,6 +102,7 @@ export default function MediaDetail() {
                 { label: "ثبت نظر", ep: endpoints.commentCreate("media") },
                 { label: "آمار پست", ep: endpoints.mediaAnalytics(m.id) },
                 { label: "گزارش تخلف", ep: endpoints.reportCreate() },
+                ...(m.source === "aparat" ? [{ label: "افزودن از آپارات", ep: endpoints.aparatImport() }] : []),
               ]}
             />
             {canEdit && <AnalyticsButton entity="media" item={m} />}
@@ -125,6 +127,10 @@ export default function MediaDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-3">
           <HiddenBanner m={m.moderation} onUnhide={() => (s.unhide("media", m.id), notify("پست دوباره برای مخاطبان نمایش داده می‌شود.", "success"))} />
+          {m.source === "aparat" && m.aparat ? (
+            // «پیشنهادی» — F05: پخش با iframe رسمی آپارات (۱۶:۹)
+            <AparatPlayer video={m.aparat} />
+          ) : (
           <div className="card overflow-hidden">
             <Poster color={m.poster} className="h-64 sm:h-96 !rounded-none !p-0 !items-stretch">
               <div className="relative w-full flex flex-col justify-between p-3">
@@ -163,6 +169,7 @@ export default function MediaDetail() {
               </div>
             </Poster>
           </div>
+          )}
 
           {isAlbum && (
             <div className="flex gap-2 overflow-x-auto pb-1">

@@ -13,17 +13,25 @@ import { useSocial, voteScore } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
 import type { Attachment, ForumPost, Vote } from "../../social/types";
-import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp } from "./kit";
+import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp, MentionInput } from "./kit";
 import { TopicEditor } from "./ForumPage";
 import { DuplicateBadge, DuplicatePicker, MoreMenu, SolvedBadge, VoteBox } from "./qa/QaKit";
+import { useInbox } from "../../context/InboxContext";
+import { FollowButton, TopicNotifyToggle } from "../../social/follow/FollowButton";
+import { autoFollowTopic, logTopicActivity, markTopicSeen, topicFollowerNames } from "../../social/follow/store";
+import { followEndpoints } from "../../social/follow/endpoints";
+import { useCooldown, useWriteGuard, WriteBlockNotice } from "../../iam/useWriteGuard";
 
 const MAX_DEPTH = 2; // ۳ سطح: ۰، ۱، ۲
 
 export default function TopicDetail() {
   const { id = "" } = useParams();
   const s = useSocial();
-  const { hasPermission } = useTenancy();
+  const { hasPermission, actingUser } = useTenancy();
   const { notify } = useToast();
+  const inbox = useInbox();
+  const guard = useWriteGuard();
+  const [cooldown, startCooldown] = useCooldown();
   const confirm = useConfirm();
   const navigate = useNavigate();
   const moderator = hasPermission("forum.moderate");
@@ -38,6 +46,17 @@ export default function TopicDetail() {
     // فقط یک بار برای هر پرسش
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, !!topic]);
+  // دنبال‌کننده با دیدن صفحه، فعالیت‌های موضوع را «خوانده» می‌کند (کارت داشبورد)
+  const postCount = s.posts.filter((p) => p.topic_id === id).length;
+  useEffect(() => {
+    if (topic) markTopicSeen(s.me, id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, !!topic, postCount, topic?.accepted_post_id, topic?.is_locked]);
+  /** اعلان «موضوع دنبال‌شده» به دنبال‌کنندگانی که اعلانشان روشن است (به‌جز exclude) */
+  const notifyFollowers = (text: string, exclude: string[] = []) => {
+    const names = topicFollowerNames(id, [s.me, ...exclude]);
+    if (names.length) inbox.send(names, "topic_follow", text, `/dashboard/forum/${id}`);
+  };
 
   const [text, setText] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
@@ -67,6 +86,10 @@ export default function TopicDetail() {
   const accept = (postId: string | null) => {
     const r = s.acceptAnswer(id, postId);
     if (!r.ok) return notify(r.error, "warning");
+    if (postId && topic) {
+      logTopicActivity(id, "accepted", s.me);
+      notifyFollowers(`در موضوع دنبال‌شده‌ی «${topic.title}» پاسخ پذیرفته شد.`);
+    }
     notify(postId ? "پاسخ پذیرفته شد و بالای فهرست سنجاق شد." : "پذیرش پاسخ لغو شد.", postId ? "success" : "info");
   };
 
@@ -96,8 +119,16 @@ export default function TopicDetail() {
               { label: "رأی به پاسخ", ep: endpoints.postVote("{id}") },
               { label: "پذیرفتن پاسخ", ep: endpoints.topicAccept(id) },
               { label: "علامت‌گذاری تکراری", ep: endpoints.topicDuplicate(id) },
+              { label: "دنبال‌کردن موضوع", ep: followEndpoints.topicFollow(id) },
+              { label: "لغو دنبال‌کردن", ep: followEndpoints.topicUnfollow(id) },
             ]}
           />
+          {topic && !hidden && (
+            <>
+              <FollowButton kind="topic" id={id} showCount />
+              <TopicNotifyToggle topicId={id} />
+            </>
+          )}
           {topic && !hidden && (isOwner || moderator) && (
             <>
               <Button size="sm" icon={<Pencil size={13} />} onClick={() => setEditorOpen(true)}>
@@ -106,7 +137,16 @@ export default function TopicDetail() {
               <MoreMenu
                 items={[
                   moderator && { label: topic.is_pinned ? "برداشتن سنجاق" : "سنجاق", icon: topic.is_pinned ? <PinOff size={13} /> : <Pin size={13} />, onClick: () => (s.pinTopic(id), notify(topic.is_pinned ? "سنجاق برداشته شد." : "پرسش سنجاق شد.", "success")) },
-                  moderator && { label: topic.is_locked ? "بازکردن" : "قفل", icon: topic.is_locked ? <Unlock size={13} /> : <Lock size={13} />, onClick: () => (s.lockTopic(id), notify(topic.is_locked ? "پرسش باز شد." : "پرسش قفل شد.", "success")) },
+                  moderator && {
+                    label: topic.is_locked ? "بازکردن" : "قفل",
+                    icon: topic.is_locked ? <Unlock size={13} /> : <Lock size={13} />,
+                    onClick: () => {
+                      s.lockTopic(id);
+                      logTopicActivity(id, topic.is_locked ? "unlocked" : "locked", s.me);
+                      notifyFollowers(`موضوع دنبال‌شده‌ی «${topic.title}» ${topic.is_locked ? "باز" : "قفل"} شد.`);
+                      notify(topic.is_locked ? "پرسش باز شد." : "پرسش قفل شد.", "success");
+                    },
+                  },
                   topic.duplicate_of
                     ? { label: "لغو علامت تکراری", icon: <Undo2 size={13} />, onClick: () => markDup(null) }
                     : { label: "علامت‌گذاری تکراری", icon: <Copy size={13} />, onClick: () => setDupOpen(true) },
@@ -154,8 +194,23 @@ export default function TopicDetail() {
 
   const submit = () => {
     if (!text.trim()) return setError("متن پاسخ خالی است.");
+    // مسدودی حساب و سقف «پست/نظر/پاسخ» و بارگذاری (F10/F12) — شمارنده‌ی واقعی سمت مرورگر
+    const g = guard.check("post");
+    if (!g.ok) {
+      if (g.retryAfter) startCooldown(g.retryAfter);
+      return setError(g.retryAfter ? "" : g.error);
+    }
+    if (files.length) {
+      const u = guard.check("upload", files.length);
+      if (!u.ok) return setError(u.error);
+    }
+    const parentAuthor = replyTo ? posts.find((p) => p.id === replyTo)?.user_id : undefined;
     const r = s.createPost(id, text.trim(), replyTo, files);
     if (!r.ok) return setError(r.error);
+    // دنبال‌کنندگانی که اعلان «پاسخ» نگرفته‌اند (صاحب پرسش و پاسخ‌دهندگان قبلی را SocialContext مطلع می‌کند)
+    notifyFollowers(`«${actingUser.name}» در موضوع دنبال‌شده‌ی «${topic.title}» پاسخ تازه داد.`, [topic.user_id, ...(parentAuthor ? [parentAuthor] : []), ...posts.map((p) => p.user_id)]);
+    // پاسخ‌دهنده خودکار دنبال‌کننده می‌شود (قابل لغو)
+    if (autoFollowTopic(s.me, id)) notify("این موضوع را دنبال می‌کنید؛ از دکمه‌ی بالای صفحه می‌توانید لغو کنید.", "info");
     setText("");
     setFiles([]);
     setShowFiles(false);
@@ -399,12 +454,13 @@ export default function TopicDetail() {
                   </button>
                 </p>
               )}
-              <textarea ref={boxRef} className="input-field min-h-[90px]" value={text} onChange={(e) => setText(e.target.value)} placeholder="پاسخ خود را بنویسید… (برای منشن: ‎@نام_خانوادگی)" />
+              <MentionInput ref={boxRef} className="input-field min-h-[90px]" value={text} onChange={(e) => setText(e.target.value)} placeholder="پاسخ خود را بنویسید… (برای منشن: ‎@نام_خانوادگی)" />
               {showFiles && <AttachmentPicker value={files} onChange={setFiles} />}
               {error && <p className="text-xs text-rose-600">{error}</p>}
+              <WriteBlockNotice block={guard.block} cooldown={cooldown} />
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={submit}>
-                  ثبت پاسخ
+                <Button variant="primary" size="sm" icon={<Send size={13} />} onClick={submit} disabled={cooldown > 0 || !!guard.block}>
+                  {cooldown > 0 ? `${fa(cooldown)} ثانیه…` : "ثبت پاسخ"}
                 </Button>
                 {!showFiles && (
                   <Button variant="ghost" size="sm" icon={<Paperclip size={13} />} onClick={() => setShowFiles(true)}>

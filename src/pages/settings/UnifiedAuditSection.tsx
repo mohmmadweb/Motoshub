@@ -30,6 +30,7 @@ import { users } from "../../data/mock";
 import { contentKindLabel, moderationActionLabel } from "../../social/types";
 import { ownerScopeOf } from "../search/liveData";
 import { Callout, ScopeSelect, SearchBox, SectionHead, downloadCsv, useSubtree } from "./iam/shared";
+import { useComposerAuditEntries } from "../../social/featureAudit";
 
 type ModuleId = "iam" | "settings" | "knowledge" | "projects" | "innovation" | "tickets" | "social";
 const MODULES: { id: ModuleId; label: string; tone: BadgeTone }[] = [
@@ -75,6 +76,7 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
   const inn = useInnovation();
   const tk = useTicketsMaybe();
   const s = useSocial();
+  const fx = useComposerAuditEntries();
   const { notify } = useToast();
 
   const [q, setQ] = useState("");
@@ -141,10 +143,11 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
 
     // نظارت محتوا: گزارش تخلف، پنهان‌سازی، بازبینی پیش از انتشار
     // (پیش‌تر بعد از return بود و هرگز اجرا نمی‌شد)
+    fx.forEach((e) => push({ id: e.id, module: "social", at: e.at, actor: userName(e.actor_id), action: e.action, target: e.target, scopeId: ROOT_ID, detail: e.note }));
     s.moderationLog.forEach((e) => push({ id: `so-m-${e.id}`, module: "social", at: e.at, actor: userName(e.actor_id), action: moderationActionLabel[e.action], target: e.target_title, scopeId: ROOT_ID, detail: e.note }));
 
     return out;
-  }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events, s.moderationLog]);
+  }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events, s.moderationLog, fx]);
 
   // دامنه‌ی بیننده: فقط واحد فعلی و زیرمجموعه‌ها
   const inScope = useMemo(() => all.filter((e) => sub.ids.has(e.scopeId)), [all, sub]);

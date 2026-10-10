@@ -3,6 +3,7 @@ import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Tabs from "../components/ui/Tabs";
 import BrandingPanel from "../components/BrandingPanel";
+import { PrayerCityCard } from "../components/PrayerTimes";
 import { useTheme, accentPresets, type ThemeMode, type FontScale } from "../context/ThemeContext";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTabParam } from "../lib/useTabParam";
@@ -146,6 +147,9 @@ export function MyAppearanceTab() {
               ))}
             </div>
           </div>
+
+          {/* F17 — شهر اوقات شرعی */}
+          <PrayerCityCard />
         </div>
 
         {/* پیش‌نمایش زنده */}

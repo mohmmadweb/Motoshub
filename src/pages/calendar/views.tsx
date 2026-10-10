@@ -10,6 +10,8 @@ import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
 import { dayNum, fromDayNum, parseJalali, formatJalali, monthNames, weekDayNames, monthLength, weekdayOf, fa } from "../../pm/jalali";
 import { GRID_END, GRID_START, HOUR_PX, fmtMin, fmtRange, holidayOn, isOffDay, layerMeta, layoutBlocks, workHours, type CalItem } from "./model";
+import { usePrayerTimes } from "../../components/PrayerTimes";
+import { fmtClock, prayerLabel, prayerOrder } from "../../lib/prayer";
 
 export const tint = (c: string, pct = 16) => ({ background: `color-mix(in srgb, ${c} ${pct}%, transparent)`, borderInlineStart: `3px solid ${c}` });
 
@@ -143,7 +145,7 @@ export function TimeGrid({ columns, onSlot, nowMin, minColWidth = 92 }: { column
             ))}
           </div>
           {columns.map((c) => (
-            <DayColumn key={c.key} col={c} onSlot={onSlot} nowMin={nowMin} drag={drag} onBegin={begin} suppress={suppress} />
+            <DayColumn key={c.key} col={c} onSlot={onSlot} nowMin={nowMin} drag={drag} onBegin={begin} suppress={suppress} prayerLabels={columns.length === 1} />
           ))}
         </div>
       </div>
@@ -158,7 +160,9 @@ function DayColumn({
   drag,
   onBegin,
   suppress,
+  prayerLabels,
 }: {
+  prayerLabels?: boolean;
   col: Column;
   onSlot?: (col: Column, min: number) => void;
   nowMin: number;
@@ -193,6 +197,7 @@ function DayColumn({
       {HOURS.map((h, i) => (
         <div key={h} className="absolute inset-x-0 border-t border-ink-100 pointer-events-none" style={{ top: i * HOUR_PX }} />
       ))}
+      <PrayerLines day={col.day} labels={!!prayerLabels} />
       {col.blocks.map((b) => {
         const l = lay.get(b.key) ?? { col: 0, cols: 1 };
         const s = Math.min(Math.max(b.start, GRID_START), GRID_END - 15);
@@ -253,6 +258,25 @@ function DayColumn({
         </div>
       )}
     </div>
+  );
+}
+
+/** F17 — خط اوقات شرعی (به افق شهر کاربر) در نمای روز/هفته */
+function PrayerLines({ day, labels }: { day: number; labels: boolean }) {
+  const p = usePrayerTimes();
+  if (!p.enabled) return null;
+  const t = p.timesFor(fromDayNum(day));
+  if (!t) return null;
+  return (
+    <>
+      {prayerOrder
+        .filter((k) => t[k] > GRID_START && t[k] < GRID_END)
+        .map((k) => (
+          <div key={k} className="absolute inset-x-0 z-[1] pointer-events-none border-t border-dashed border-emerald-500/60" style={{ top: ((t[k] - GRID_START) / 60) * HOUR_PX }} title={`${prayerLabel[k]} ${fmtClock(t[k])} — ${p.city.name}`}>
+            {labels && <span className="absolute end-1 -top-2 text-[9.5px] leading-4 px-1 rounded bg-emerald-50 text-emerald-700">{prayerLabel[k]} {fmtClock(t[k])}</span>}
+          </div>
+        ))}
+    </>
   );
 }
 

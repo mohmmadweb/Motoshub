@@ -166,7 +166,7 @@ function EntityProfile({ e, canEdit, onEdit, onDeleted }: { e: EcoEntity; canEdi
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-base font-bold text-ink-900">{e.name}</p>
-          <p className="text-xs text-ink-500 mt-1">{e.field} · {e.city}{e.companyId ? ` · شرکت بنیادی: ${companies.find((x) => x.id === e.companyId)?.name}` : ""}</p>
+          <p className="text-xs text-ink-500 mt-1">{e.field} · {e.city}{e.companyId && <> · شرکت بنیادی: <Link to={`/dashboard/org/${e.companyId}`} className="text-brand-700 hover:underline">{companies.find((x) => x.id === e.companyId)?.name}</Link></>}</p>
         </div>
         {canEdit && (
           <div className="flex items-center gap-1.5 shrink-0">

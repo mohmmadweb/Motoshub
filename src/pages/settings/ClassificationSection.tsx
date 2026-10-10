@@ -19,8 +19,8 @@ const ROUTE_HINTS = [
   { route: "/dashboard/contracts", label: "قراردادها" },
   { route: "/dashboard/funds", label: "صندوق نوآوری" },
   { route: "/dashboard/research", label: "فرصت‌های پژوهشی" },
-  { route: "/dashboard/settings", label: "تنظیمات سامانه" },
-  { route: "/dashboard/files", label: "اسناد و فایل‌ها" },
+  { route: "/dashboard/settings", label: "مدیریت سامانه" },
+  { route: "/dashboard/files", label: "مدیریت فایل‌های من" },
   { route: "/dashboard/chat", label: "گفتگوها" },
 ];
 

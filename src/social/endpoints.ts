@@ -8,7 +8,7 @@ import type { ContentKind, EntityName, OwnerType } from "./types";
 export const API_BASE = "https://social.shub.ir/api/v1";
 
 /** proposed = در API فعلی نیست؛ «پیشنهادی» برای تیم بک‌اند */
-export type Ep = { method: "GET" | "POST" | "PATCH" | "DELETE"; path: string; proposed?: boolean };
+export type Ep = { method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"; path: string; proposed?: boolean };
 const e = (method: Ep["method"], path: string): Ep => ({ method, path });
 /** endpoint «پیشنهادی» — رابط کاربری آن را شبیه‌سازی می‌کند ولی هنوز در Motoshub Social API وجود ندارد */
 const p = (method: Ep["method"], path: string): Ep => ({ method, path, proposed: true });
@@ -181,6 +181,43 @@ export const endpoints = {
   friendUnfriend: (id: string) => e("DELETE", `/relations/relations/friendships/${id}/unfriend/`),
   friendBlock: (id: string) => e("POST", `/relations/relations/friendships/${id}/block/`),
   friendUnblock: (id: string) => e("POST", `/relations/relations/friendships/${id}/unblock/`),
+
+  // ---------------- «پیشنهادی» — F01 نظرسنجی (۱.۳.۱–۱.۳.۶، ۱.۹.۶)
+  pollCreate: () => p("POST", "/core/polls/"),
+  pollGet: (id: string) => p("GET", `/core/polls/${id}/`),
+  pollVote: (id: string) => p("POST", `/core/polls/${id}/vote/`),
+  pollClose: (id: string) => p("POST", `/core/polls/${id}/close/`),
+  pollReopen: (id: string) => p("POST", `/core/polls/${id}/reopen/`),
+  pollDelete: (id: string) => p("DELETE", `/core/polls/${id}/`),
+  pollVoters: (id: string) => p("GET", `/core/polls/${id}/voters/?option={id}`),
+  pollExport: (id: string) => p("GET", `/core/polls/${id}/export/`),
+  pollMine: () => p("GET", "/core/polls/my/?filter=created|participated"),
+  // ---------------- «پیشنهادی» — F02 پیش‌نمایش لینک (۱.۲.۶)
+  linkPreview: () => p("GET", "/core/link-preview/?url=…"),
+  // ---------------- «پیشنهادی» — F03 خبرخوان RSS/Atom (۱.۴.۵)
+  feeds: (t: "groups" | "channels", id: string) => p("GET", `/messaging/${t}/${id}/feeds/`),
+  feedCreate: (t: "groups" | "channels", id: string) => p("POST", `/messaging/${t}/${id}/feeds/`),
+  feedUpdate: (t: "groups" | "channels", id: string, f: string) => p("PATCH", `/messaging/${t}/${id}/feeds/${f}/`),
+  feedDelete: (t: "groups" | "channels", id: string, f: string) => p("DELETE", `/messaging/${t}/${id}/feeds/${f}/`),
+  feedTest: (t: "groups" | "channels", id: string) => p("POST", `/messaging/${t}/${id}/feeds/test/`),
+  feedFetchNow: (t: "groups" | "channels", id: string, f: string) => p("POST", `/messaging/${t}/${id}/feeds/${f}/fetch/`),
+  // ---------------- «پیشنهادی» — F04 پیشنهاد لحظه‌ای افراد (۱.۶.۳)
+  memberDirectory: (chat = "{id}") => p("GET", `/identity/iam/tenants/{t}/member-directory/?q=…&chat=${chat}&limit=8`),
+  // ---------------- «پیشنهادی» — F05 آپارات (۱.۱۱.۲)
+  aparatImport: () => p("POST", "/media/media/posts/import-aparat/"),
+  aparatChannels: () => p("GET", "/media/media/aparat-channels/"),
+  aparatChannelCreate: () => p("POST", "/media/media/aparat-channels/"),
+  aparatChannelSync: (id: string) => p("POST", `/media/media/aparat-channels/${id}/sync/`),
+  // ---------------- «پیشنهادی» — F13 ضدویروس ClamAV (۱.۱۹.۷–۱.۱۹.۹) — بارگذاری آلوده: پاسخ 422 با کد virus_detected
+  avSettings: () => p("GET", "/core/setting/antivirus/"),
+  avSettingsUpdate: () => p("PUT", "/core/setting/antivirus/"),
+  avScanNow: () => p("POST", "/core/antivirus/scan-now/"),
+  avRuns: () => p("GET", "/core/antivirus/runs/"),
+  avQuarantine: () => p("GET", "/core/antivirus/quarantine/"),
+  avRelease: (id: string) => p("POST", `/core/antivirus/quarantine/${id}/release/`),
+  avRescan: (id: string) => p("POST", `/core/antivirus/quarantine/${id}/rescan/`),
+  avPurge: (id: string) => p("DELETE", `/core/antivirus/quarantine/${id}/`),
+  avUpdateSignatures: () => p("POST", "/core/antivirus/update-signatures/"),
 
   // ---------------- dashboards (هر ماژول: admin و user)
   dashboard: (m: "content/content" | "events/events" | "forums/forums" | "media/media" | "messaging/messaging" | "relations/relations", who: "admin" | "user") => e("GET", `/${m}/dashboards/${who}/`),

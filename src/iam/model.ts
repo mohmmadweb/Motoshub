@@ -91,7 +91,16 @@ export type AuditEvent =
   | "impersonation.started"
   | "impersonation.ended"
   | "sod.updated"
-  | "settings.changed";
+  | "settings.changed"
+  // --- امنیت حساب (ورود، نشست، مسدودسازی، محدودسازی نرخ) — از گذرگاه securityAudit
+  | "security.login"
+  | "security.not_me"
+  | "security.session_ended"
+  | "security.password_changed"
+  | "security.blocked"
+  | "security.unblocked"
+  | "security.locked"
+  | "security.rate_limited";
 
 export const auditLabel: Record<AuditEvent, string> = {
   "scope.created": "ایجاد واحد",
@@ -116,6 +125,14 @@ export const auditLabel: Record<AuditEvent, string> = {
   "impersonation.ended": "پایان مشاهده به‌عنوان کاربر",
   "sod.updated": "تغییر قواعد تفکیک وظایف",
   "settings.changed": "تغییر تنظیمات",
+  "security.login": "ورود موفق",
+  "security.not_me": "گزارش «این من نبودم»",
+  "security.session_ended": "پایان نشست",
+  "security.password_changed": "تغییر گذرواژه",
+  "security.blocked": "مسدودسازی کاربر",
+  "security.unblocked": "رفع مسدودی کاربر",
+  "security.locked": "قفل خودکار حساب",
+  "security.rate_limited": "محدودسازی نرخ درخواست",
 };
 
 export type Audit = {
@@ -128,7 +145,7 @@ export type Audit = {
   scopeId: string;
   /** رویدادهای حاکمیتی (درخواست، مشاهده به‌عنوان، تفکیک وظایف، تنظیمات) نوع «review» دارند و جزئیات در `kind` می‌آید */
   targetType: "scope" | "role" | "binding" | "membership" | "review";
-  kind?: "request" | "impersonation" | "sod" | "settings";
+  kind?: "request" | "impersonation" | "sod" | "settings" | "security";
   targetId: string;
   affectedUserId?: string;
   summary: string;

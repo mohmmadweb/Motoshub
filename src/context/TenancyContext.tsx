@@ -43,6 +43,9 @@ import {
 import { migrateIam, seedIam } from "../iam/seed";
 import { loginPolicyStore, otpRequiredFor } from "../iam/loginPolicy";
 import { onSettingsChange } from "../iam/settingsAudit";
+import { onSecurityAudit } from "../iam/securityAudit";
+import { recordLogin, type LoginMethod } from "../iam/loginHistory";
+import { applyFeaturedOnJoin } from "../social/follow/core";
 import { OtpForm } from "../iam/OtpChallenge";
 import Modal from "../components/ui/Modal";
 
@@ -78,7 +81,7 @@ type TenancyValue = {
   // --- نشست ---
   actingUser: UserProfile;
   /** جابه‌جایی پرسونای دمو؛ اگر سیاست ورود برای این کاربر OTP بخواهد، اول مرحله‌ی کد نمایش داده می‌شود */
-  setActingUser: (userId: string, opts?: { otpVerified?: boolean }) => void;
+  setActingUser: (userId: string, opts?: { otpVerified?: boolean; /** روش ورود برای «آخرین ورودهای موفق» (پیش‌فرض: گذرواژه) */ method?: LoginMethod }) => void;
   session: SessionScope;
   /** نقش اصلیِ کاربر در کانتکست فعلی (برای نمایش) */
   role: RoleDef;
@@ -304,6 +307,16 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       onSettingsChange((c) =>
         setIam((prev) =>
           withAudit(prev, { event: "settings.changed", scopeId: c.scopeId ?? ctxRef.current, targetType: "review", kind: "settings", targetId: c.area, summary: `${c.area}: ${c.summary}`, before: c.before, after: c.after }, realRef.current, today)
+        )
+      ),
+    [today]
+  );
+  // رویدادهای امنیت حساب (ورود، «این من نبودم»، مسدودسازی، محدودسازی نرخ) → تاریخچه با نوع security.*
+  useEffect(
+    () =>
+      onSecurityAudit((c) =>
+        setIam((prev) =>
+          withAudit(prev, { event: c.event, scopeId: c.scopeId ?? ROOT_ID, targetType: "review", kind: "security", targetId: c.affectedUserId ?? "", affectedUserId: c.affectedUserId, summary: c.summary, before: c.before, after: c.after }, c.actorId ?? realRef.current, today)
         )
       ),
     [today]
@@ -541,6 +554,8 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         affectedUserId: userId,
         summary: `«${uname(userId)}» عضو «${node(scopeId)?.name}» شد.`,
       });
+      // ارتباط خودکار عضو تازه با کاربران برجسته‌ی همین لایه و لایه‌های بالاتر (F09)
+      applyFeaturedOnJoin(userId, ancestorsOrSelf(iam, scopeId).map((x) => x.id));
       return ok;
     };
     const setMembershipStatus: TenancyValue["setMembershipStatus"] = (id, status) => {
@@ -843,6 +858,8 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         }
         setPendingOtp(null);
         setActingUserId(userId);
+        // هر ورود/تغییر کاربر نمایشی یک «ورود موفق» و نشست فعلی می‌سازد
+        recordLogin(userId, opts?.otpVerified ? "otp" : opts?.method ?? "password");
         try {
           localStorage.setItem(ACTING_USER_KEY, userId);
         } catch {

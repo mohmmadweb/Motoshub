@@ -82,7 +82,7 @@ export default function Assistant() {
 
   return (
     <div>
-      <PageHeader title="دستیار هوشمند" description="پرسش‌وپاسخ فارسی روی داده‌های زنده‌ی سامانه — پروژه‌ها، جلسات، دانش، کارکرد و تیکت‌ها" icon={<Bot size={18} />} />
+      <PageHeader title="دستیار هوشمند من" description="پرسش‌وپاسخ فارسی روی داده‌های زنده‌ی سامانه — پروژه‌ها، جلسات، دانش، کارکرد و تیکت‌ها" icon={<Bot size={18} />} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
         <div className="card flex flex-col h-[560px] min-w-0">

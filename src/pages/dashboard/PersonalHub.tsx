@@ -4,6 +4,8 @@
 // پروژه‌های فعال من، محتوای پیشنهادی، افراد و گروه‌های پیشنهادی + صندوق ورودی
 // (اعلان‌ها، پیام‌ها و منشن‌ها، منتظر تصمیم من).
 // کارت نقش: مدیر سامانه / مدیر محتوا / مدیر پروژه / مدیر گروه هر کدام میز کار خودشان را دارند.
+// + اسلایدشو (بالا)، موضوعات دنبال‌شده (F06)، فید «دنبال‌شده‌ها» در کارت پیشنهاد (F08)، برجسته‌ها در
+//   «همکاری پیشنهادی» (F09)، اوقات شرعی و «نظرسنجی‌های من» (جمع‌شده) — همه در سامانه‌ی چیدمان ویجت‌ها.
 // ---------------------------------------------------------------------------
 import { PinnedCard, usePinnedReports } from "../../reports/PinnedReports";
 import { occurrenceDates } from "../../pm/recurrence";
@@ -48,6 +50,10 @@ import {
   RotateCcw,
   Filter as FilterIcon,
   KeyRound,
+  BellRing,
+  BarChart3,
+  ChevronDown,
+  Star,
 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Avatar from "../../components/Avatar";
@@ -72,6 +78,15 @@ import { GlobalFilterBar } from "./GlobalFilterBar";
 import { ManagementAlertsCard, useIsManager } from "./ManagementAlerts";
 import { usePendingAccessRequests } from "../../iam/hooks";
 import { isOwner, effectiveMatrix } from "../../pm/access";
+import { ancestorsOrSelf } from "../../iam/model";
+import { useWriteGuard, WriteBlockNotice } from "../../iam/useWriteGuard";
+import { useFollows } from "../../social/follow/store";
+import { FollowButton } from "../../social/follow/FollowButton";
+import { FeedRows, FollowedTopicRows, feedTypeLabel, useFollowedTopics, useFollowingFeed, type FeedType } from "./FollowCards";
+// ویجت‌های ماژول‌های دیگر (قرارداد مشترک)
+import DashboardSlideshow from "../../components/Slideshow";
+import PrayerTimesWidget, { usePrayerTimes } from "../../components/PrayerTimes";
+import MyPollsPanel from "../social/polls/MyPollsPanel";
 
 type FeedItem = { key: string; icon: typeof Bell; tone: string; text: string; meta: string; to: string; unread: boolean; seq: number };
 
@@ -126,6 +141,17 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const w = myWork(pm.projects, me);
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const ref = dayNum(pm.refDate)!;
+  // دنبال‌شده‌ها (F06/F08)، برجسته‌ها (F09)، مسدودی حساب (F12) و ویجت‌های مشترک
+  const fol = useFollows();
+  const followedTopics = useFollowedTopics();
+  const topicUnread = followedTopics.reduce((a, r) => a + r.unread, 0);
+  const [contentSrc, setContentSrc] = useState<"suggest" | "following">("suggest");
+  const [feedType, setFeedType] = useState<FeedType>("all");
+  const followingFeed = useFollowingFeed(feedType);
+  const followingCount = fol.following().length;
+  const prayer = usePrayerTimes();
+  const guard = useWriteGuard();
+  const [pollsOpen, setPollsOpen] = useState(false);
 
   // ---------------------------------------------------------------- چیدمان و فیلتر سراسری (برای هر کاربر)
   const { layout, update } = useUserLayout(meId);
@@ -221,12 +247,16 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
 
   // افراد و گروه‌های پیشنهادی
   const myFriends = s.friendIds();
+  // کاربران برجسته‌ی لایه‌های من (و بالاتر) که هنوز دنبالشان نمی‌کنم، اول می‌آیند
+  const myChain = [...new Set(tn.membershipsOf(meId).filter((m) => m.status === "active").flatMap((m) => ancestorsOrSelf(tn.iam, m.scopeId).map((x) => x.id)))];
+  const featuredNote = new Map(fol.featuredIn(myChain).map((x) => [x.user_id, x.note] as const));
   const people = users
-    .filter((u) => u.id !== meId && s.relationWith(u.id).state === "none")
+    .filter((u) => u.id !== meId && s.relationWith(u.id).state === "none" && !fol.isAutoFriend(u.id) && !(featuredNote.has(u.id) && fol.isFollowing(u.id)))
     .map((u) => {
       const mutual = s.friendIds(u.id).filter((x) => myFriends.includes(x)).length;
       const skills = u.skills.filter((k) => actingUser.skills.includes(k)).length;
-      return { u, mutual, why: mutual ? `${fa(mutual)} ارتباط مشترک` : u.org === actingUser.org ? "هم‌سازمانی" : skills ? "مهارت مشترک" : u.role, sc: mutual * 3 + (u.org === actingUser.org ? 2 : 0) + skills * 2 };
+      const featured = featuredNote.has(u.id);
+      return { u, mutual, featured, why: featured ? featuredNote.get(u.id) || "کاربر برجسته" : mutual ? `${fa(mutual)} ارتباط مشترک` : u.org === actingUser.org ? "هم‌سازمانی" : skills ? "مهارت مشترک" : u.role, sc: (featured ? 100 : 0) + mutual * 3 + (u.org === actingUser.org ? 2 : 0) + skills * 2 };
     })
     .sort((a, b) => b.sc - a.sc)
     .slice(0, 3);
@@ -259,6 +289,7 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   // ---------------------------------------------------------------- ویجت‌ها
   const roleKind = roleKindOf(tn);
   const widgetList: Widget[] = [
+    { id: "slideshow", title: "اسلایدشو", span: 4, node: <DashboardSlideshow className="" /> },
     {
       id: "summary",
       title: "خلاصه‌ی امروز",
@@ -276,6 +307,7 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
             </Link>
           ))}
         </div>
+        {guard.block && <WriteBlockNotice block={guard.block} className="mt-3" />}
         {w.timers.length > 0 && (
           <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 text-rose-800 text-xs p-2.5 flex items-center gap-2 flex-wrap">
             <Timer size={13} /> تایمر شما روشن است:
@@ -385,13 +417,51 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
       title: "پیشنهاد برای شما",
       span: 1,
       node: (
-        <Panel title="پیشنهاد برای شما" icon={<Sparkles size={14} className="text-amber-500" />} to="/dashboard/topics" linkLabel="موضوعات">
-          {suggested.map((x) => (
-            <Row key={x.id} to={x.to} icon={<x.icon size={12} className="text-brand-500" />} extra={<Badge tone="neutral">{x.type}</Badge>}>
-              <Two a={x.title} b={x.tags.length ? x.tags.slice(0, 3).map((t) => `#${t}`).join(" ") : undefined} />
-            </Row>
-          ))}
-          {suggested.length === 0 && <Empty>فعلاً پیشنهادی نداریم.</Empty>}
+        <Panel
+          title={contentSrc === "following" ? "از افرادی که دنبال می‌کنید" : "پیشنهاد برای شما"}
+          icon={contentSrc === "following" ? <UsersRound size={14} className="text-brand-600" /> : <Sparkles size={14} className="text-amber-500" />}
+          to={contentSrc === "following" ? "/dashboard/connections?tab=following" : "/dashboard/topics"}
+          linkLabel={contentSrc === "following" ? "دنبال‌شده‌ها" : "موضوعات"}
+        >
+          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+            <div className="flex rounded-md border border-ink-200 p-0.5 bg-ink-50" role="tablist" aria-label="منبع محتوا">
+              {(
+                [
+                  ["suggest", "پیشنهادی"],
+                  ["following", "دنبال‌شده‌ها"],
+                ] as const
+              ).map(([id, label]) => (
+                <button key={id} type="button" role="tab" aria-selected={contentSrc === id} onClick={() => setContentSrc(id)} className={`text-[11px] px-2 py-0.5 rounded ${contentSrc === id ? "bg-white shadow-sm text-brand-700 font-medium" : "text-ink-500"}`}>
+                  {label}
+                  {id === "following" && followingCount > 0 && <span className="text-ink-400"> {fa(followingCount)}</span>}
+                </button>
+              ))}
+            </div>
+            {contentSrc === "following" && (
+              <select className="text-[11px] rounded-md border border-ink-200 bg-transparent text-ink-600 px-1 py-0.5 max-w-[110px]" value={feedType} onChange={(e) => setFeedType(e.target.value as FeedType)} aria-label="نوع محتوا">
+                {(Object.keys(feedTypeLabel) as FeedType[]).map((k) => (
+                  <option key={k} value={k}>
+                    {feedTypeLabel[k]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          {contentSrc === "following" ? (
+            <>
+              <FeedRows rows={followingFeed} />
+              {followingFeed.length === 0 && <Empty>{followingCount ? "از افرادی که دنبال می‌کنید محتوای تازه‌ای نیست." : "هنوز کسی را دنبال نمی‌کنید؛ از «اعضای سازمان» دکمه‌ی دنبال‌کردن را بزنید."}</Empty>}
+            </>
+          ) : (
+            <>
+              {suggested.map((x) => (
+                <Row key={x.id} to={x.to} icon={<x.icon size={12} className="text-brand-500" />} extra={<Badge tone="neutral">{x.type}</Badge>}>
+                  <Two a={x.title} b={x.tags.length ? x.tags.slice(0, 3).map((t) => `#${t}`).join(" ") : undefined} />
+                </Row>
+              ))}
+              {suggested.length === 0 && <Empty>فعلاً پیشنهادی نداریم.</Empty>}
+            </>
+          )}
         </Panel>
       ),
     },
@@ -401,13 +471,15 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
       span: 1,
       node: (
         <Panel title="همکاری پیشنهادی" icon={<UsersRound size={14} className="text-emerald-600" />} to="/dashboard/members" linkLabel="اعضا">
-          {people.map(({ u, why }) => (
-            <div key={u.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
+          {people.map(({ u, why, featured }) => (
+            <div key={u.id} className={`flex items-center gap-2 text-[12px] rounded-lg border px-2.5 py-1.5 ${featured ? "border-amber-200 bg-amber-50/40" : "border-ink-100"}`}>
               <Avatar name={u.name} color={u.avatarColor} size={24} />
               <Link to={`/dashboard/profile/${u.id}`} className="flex-1 min-w-0">
-                <Two a={<span className="text-ink-800">{u.name}</span>} b={why} />
+                <Two a={<span className="text-ink-800 flex items-center gap-1 min-w-0"><span className="truncate">{u.name}</span>{featured && <Star size={11} className="text-amber-500 fill-current shrink-0" aria-label="کاربر برجسته" />}</span>} b={why} />
               </Link>
-              {hasPermission("relations.use") && (
+              {featured ? (
+                <FollowButton kind="user" id={u.id} variant="link" />
+              ) : hasPermission("relations.use") && (
                 <button
                   onClick={() => {
                     const r = s.sendFriendRequest(u.id);
@@ -543,8 +615,44 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
         </Panel>
       ),
     },
+    ...(hasPermission("forum.list")
+      ? [
+          {
+            id: "topics",
+            title: "موضوعات دنبال‌شده",
+            span: 1 as Span,
+            node: (
+              <Panel title="موضوعات دنبال‌شده" icon={<BellRing size={14} className="text-brand-600" />} to="/dashboard/forum?scope=followed" count={topicUnread}>
+                <FollowedTopicRows rows={followedTopics} />
+                {followedTopics.length === 0 && <Empty>موضوعی را دنبال نمی‌کنید؛ در صفحه‌ی هر پرسش «دنبال کردن» را بزنید.</Empty>}
+              </Panel>
+            ),
+          },
+        ]
+      : []),
+    ...(prayer.enabled ? [{ id: "prayer", title: "اوقات شرعی", span: 1 as Span, node: <PrayerTimesWidget className="h-full" /> }] : []),
+    {
+      id: "polls",
+      title: "نظرسنجی‌های من",
+      span: 4,
+      node: (
+        <div className="card p-3.5">
+          <button type="button" onClick={() => setPollsOpen((v) => !v)} aria-expanded={pollsOpen} className="w-full flex items-center justify-between gap-2 text-xs font-bold text-ink-800">
+            <span className="flex items-center gap-1.5">
+              <BarChart3 size={14} className="text-violet-600" /> نظرسنجی‌های من
+            </span>
+            <ChevronDown size={14} className={`text-ink-400 transition-transform ${pollsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {pollsOpen && (
+            <div className="mt-2.5">
+              <MyPollsPanel />
+            </div>
+          )}
+        </div>
+      ),
+    },
   ];
-  const DEFAULT_ORDER = ["summary", "role", "alerts", ...pinnedReports.map((r) => `report:${r.id}`), "tasks", "agenda", "decisions", "announce", "projects", "feed", "messages", "suggest", "people"];
+  const DEFAULT_ORDER = ["slideshow", "summary", "role", "alerts", ...pinnedReports.map((r) => `report:${r.id}`), "tasks", "agenda", "decisions", "announce", "projects", "feed", "messages", "suggest", "people", "topics", "prayer", "polls"];
   const byId = new Map(widgetList.map((x) => [x.id, x]));
   const order = mergeOrder(layout?.order, widgetList.map((x) => x.id), DEFAULT_ORDER);
   const hidden = new Set(layout?.hidden ?? []);

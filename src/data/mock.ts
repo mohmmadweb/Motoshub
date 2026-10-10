@@ -1319,6 +1319,7 @@ export const permissionCatalog: PermissionGroup[] = [
     actions: [
       { id: "iam.structure.view", label: "مشاهده‌ی ساختار سازمانی" },
       { id: "iam.structure.manage", label: "ایجاد، ویرایش و غیرفعال‌سازی واحدهای زیرمجموعه" },
+      { id: "org.profile.edit", label: "ویرایش پروفایل سازمانی" },
       { id: "iam.members.manage", label: "افزودن، تعلیق و فعال‌سازی عضویت‌ها" },
       { id: "iam.audit.view", label: "مشاهده‌ی تاریخچه‌ی تغییرات دسترسی" },
       { id: "iam.review.manage", label: "بازبینی دوره‌ای دسترسی‌ها" },
@@ -1354,6 +1355,8 @@ export const permissionCatalog: PermissionGroup[] = [
     actions: [
       { id: "members.view", label: "مشاهده‌ی اعضای سازمان" },
       { id: "relations.use", label: "ارتباطات من (درخواست، پذیرش، مسدودسازی)" },
+      { id: "relations.follow", label: "دنبال‌کردن افراد" },
+      { id: "relations.featured.manage", label: "مدیریت کاربران برجسته" },
     ],
   },
   {
@@ -1388,6 +1391,7 @@ export const permissionCatalog: PermissionGroup[] = [
     label: "پرسش و پاسخ",
     actions: [
       { id: "forum.list", label: "مشاهده‌ی پرسش‌ها" },
+      { id: "forum.follow", label: "دنبال‌کردن موضوعات پرسش و پاسخ" },
       { id: "forum.create", label: "طرح پرسش" },
       { id: "forum.reply", label: "پاسخ‌دادن" },
       { id: "forum.moderate", label: "سنجاق، قفل و حذف پرسش‌ها" },
@@ -1859,7 +1863,7 @@ export const integrations: Integration[] = [
   { id: "ig2", name: "ارسال گزارش روزانه به دفتر ریاست", type: "وب‌هوک خروجی", channel: "همگانی", status: "فعال", createdBy: "تیم سامانه" },
   { id: "ig3", name: "ربات یادآور جلسات و وظایف", type: "بات", channel: "ستاد-محرومیت‌زدایی", status: "فعال", createdBy: "تیم سامانه" },
   { id: "ig4", name: "/task — ایجاد سریع تسک از چت", type: "دستور اسلش", channel: "همه‌ی کانال‌ها", status: "فعال", createdBy: "تیم سامانه" },
-  { id: "ig5", name: "/poll — نظرسنجی سریع", type: "دستور اسلش", channel: "همه‌ی کانال‌ها", status: "غیرفعال", createdBy: "تیم سامانه" },
+  { id: "ig5", name: "/poll — نظرسنجی سریع", type: "دستور اسلش", channel: "همه‌ی کانال‌ها", status: "فعال", createdBy: "تیم سامانه" },
 ];
 
 export type GuestAccount = { id: string; name: string; org: string; channels: string[]; expires: string };

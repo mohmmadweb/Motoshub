@@ -9,7 +9,7 @@
 export type Privacy = "ME" | "FRIENDS" | "EVERYONE";
 
 /** entity_name در /core/categories/{entity_name}/ ، /core/comments/{entity_name}/ و /core/reactions/{entity_name}/ */
-export type EntityName = "blog" | "news" | "magazine" | "media" | "event" | "topic" | "post" | "channel" | "group";
+export type EntityName = "blog" | "news" | "magazine" | "media" | "event" | "topic" | "post" | "channel" | "group" | "poll";
 
 /** کلید ماژول‌های محتوایی: /content/blogs ، /content/news ، /content/magazines */
 export type ContentKind = "blogs" | "news" | "magazines";
@@ -171,6 +171,10 @@ export type MediaPost = Publishable & {
   poster: string | null;
   add_comment: boolean;
   show_comment: boolean;
+  /** «پیشنهادی» — منبع پست: بارگذاری مستقیم (پیش‌فرض) یا ویدیوی آپارات */
+  source?: "upload" | "aparat";
+  /** «پیشنهادی» — فراداده‌ی ویدیوی آپارات (وقتی source = aparat) */
+  aparat?: AparatVideo | null;
 };
 
 /** EventMemberStatusEnum / MemberTypeEnum */
@@ -294,9 +298,18 @@ export type Message = {
   in_thread?: boolean;
   /** «پیشنهادی» — پنهان‌شده توسط ناظر */
   moderation?: Moderation | null;
+  /** «پیشنهادی» — نظرسنجیِ پیوست این پیام (/core/polls/{id}/) */
+  poll_id?: string | null;
+  /** «پیشنهادی» — منشن‌ها با شناسه‌ی کاربر (به‌جای تطبیق نام) */
+  mentions?: Mention[];
+  /** «پیشنهادی» — فرستنده پیش‌نمایش لینک را حذف کرده است */
+  preview_hidden?: boolean;
+  /** «پیشنهادی» — پیامی که بات «خبرخوان» از یک خوراک RSS/Atom منتشر کرده */
+  feed_item?: { feed_id: string; guid: string; title: string; link: string } | null;
 };
 
-/** دوستی (relations/friendships) */
+/** «پیشنهادی» — منشن در بدنه‌ی پیام/محتوا */
+export type Mention = { user_id: string; offset: number; length: number };
 export type FriendshipStatus = "pending" | "accepted" | "declined" | "blocked";
 export type Friendship = { id: string; sender_id: string; receiver_id: string; status: FriendshipStatus; blocked_by: string | null; created_at: string; updated_at: string };
 
@@ -364,4 +377,70 @@ export const chatTypeLabel: Record<ChatType, string> = { saved_messages: "پیا
 export const eventStatusLabel: Record<EventMemberStatus, string> = { invited: "دعوت‌شده", accepted: "می‌آیم", declined: "نمی‌آیم", joined: "عضو شده" };
 export const memberTypeLabel: Record<MemberType, string> = { owner: "برگزارکننده‌ی اصلی", organizer: "هماهنگ‌کننده", member: "شرکت‌کننده" };
 export const mediaTypeLabel: Record<MediaPostType, string> = { image: "تصویر", video: "ویدیو", album: "آلبوم" };
-export const entityLabel: Record<EntityName, string> = { blog: "بلاگ", news: "اخبار", magazine: "مجلات", media: "رسانه", event: "رویدادها", topic: "پرسش و پاسخ", post: "پاسخ‌ها", channel: "کانال‌ها", group: "گروه‌ها" };
+export const entityLabel: Record<EntityName, string> = { blog: "بلاگ", news: "اخبار", magazine: "مجلات", media: "رسانه", event: "رویدادها", topic: "پرسش و پاسخ", post: "پاسخ‌ها", channel: "کانال‌ها", group: "گروه‌ها", poll: "نظرسنجی‌ها" };
+
+
+// ===================================================================== «پیشنهادی» — اقلام باقی‌مانده (F01–F05)
+/** F01 — گزینه‌ی نظرسنجی؛ image در پروتوتایپ یک رنگ است */
+export type PollOption = { id: string; text: string; image: string | null; votes_count: number };
+/** F01 — نظرسنجی (POST /core/polls/) — روی پیام گروه/کانال یا پست عمومی */
+export type Poll = {
+  id: string;
+  question: string;
+  /** تصویر یا ویدیوی خود پرسش (۱.۳.۱) */
+  media: Attachment[];
+  options: PollOption[];
+  multiple: boolean;
+  max_choices: number;
+  anonymous: boolean;
+  allow_change: boolean;
+  show_results: "always" | "after_close";
+  /** «تاریخ ساعت» شمسی پایان — null یعنی بی‌پایان */
+  closes_at: string | null;
+  is_closed: boolean;
+  closed_at?: string | null;
+  total_votes: number;
+  /** فقط در پاسخ API برای کاربر جاری */
+  my_votes?: string[];
+  entity_name: "group" | "channel" | "post";
+  entity_id: string;
+  /** پیامی که نظرسنجی در آن منتشر شده */
+  message_id: string | null;
+  owner: string;
+  tags: string[];
+  created_at: string;
+};
+export type PollVote = { poll_id: string; user_id: string; option_ids: string[]; voted_at: string };
+
+/** F02 — پیش‌نمایش لینک (GET /core/link-preview/?url=) — image در پروتوتایپ رنگ است */
+export type LinkPreview = { url: string; final_url: string; title: string; description: string; image: string | null; site_name: string; favicon: string | null; fetched_at: string };
+
+/** F03 — خوراک RSS/Atom متصل به گروه/کانال */
+export type RssFeed = {
+  id: string;
+  chat_type: "group" | "channel";
+  chat_id: string;
+  url: string;
+  title: string;
+  interval_minutes: number;
+  keywords: string[];
+  max_items: number;
+  is_active: boolean;
+  last_fetched_at: string | null;
+  last_error: string | null;
+  items_published: number;
+  /** فقط پروتوتایپ — شناسه‌ی مطالب منتشرشده و زمان واقعی آخرین واکشی برای زمان‌بندی */
+  published_guids: string[];
+  last_fetched_ms: number;
+  created_by: string;
+};
+/** مطلب یک خوراک */
+export type FeedItem = { guid: string; title: string; summary: string; link: string; published: string };
+
+/** F05 — ویدیوی آپارات */
+export type AparatVideo = { hash: string; title: string; thumbnail: string | null; duration: string; channel: string };
+/** F05 — اتصال کانال آپارات سازمان */
+export type AparatChannelLink = { id: string; username: string; title: string; album_id: string | null; auto_publish: boolean; last_synced_at: string | null; imported: string[]; created_by: string };
+
+/** رویدادهای ممیزی اقلام F01–F05 (رأی، بستن نظرسنجی، خوراک، آپارات) برای لاگ ممیزی یکپارچه */
+export type FeatureEvent = { id: string; at: string; actor_id: string; area: "poll" | "feed" | "aparat" | "link_preview" | "category" | "friendship"; action: string; target: string; note?: string };

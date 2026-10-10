@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «اسناد و فایل‌ها» — مدیر فایل Motoshub Social API (core/file-manager).
+// «مدیریت فایل‌های من» — مدیر فایل Motoshub Social API (core/file-manager).
 // هر «درایو» یک مالک دارد: کاربر (user)، گروه (group) یا کانال (channel).
 // درایو شخصی: /core/file-manager/user/folders|files
 // درایو گروه/کانال: /core/file-manager/{owner_type}/{owner_id}/folders|files
@@ -21,6 +21,7 @@ import { useTenancy } from "../../context/TenancyContext";
 import { endpoints, fmtEndpoint } from "../../social/endpoints";
 import type { Chat, FileFolder, FileItem, OwnerType } from "../../social/types";
 import { ApiChip, Field, UserLine, fa, fileIcon, stamp, toAttachments } from "./kit";
+import { ScanStatusList, useScannedUpload } from "./composer/AvScan";
 
 type Drive = { type: OwnerType; id: string; title: string; chat?: Chat };
 const driveKey = (d: { type: OwnerType; id: string }) => `${d.type}:${d.id}`;
@@ -76,6 +77,8 @@ export default function FilesPage() {
   const files = s.files.filter((f) => f.owner_type === drive.type && f.owner_id === drive.id);
   const current = folderId ? folders.find((f) => f.id === folderId) ?? null : null;
   const cwd = current?.id ?? null;
+  // «پیشنهادی» — F13 اسکن ضدویروس هنگام بارگذاری (مقصد برای آزادسازی از قرنطینه ثبت می‌شود)
+  const avScan = useScannedUpload("file_manager", { owner_type: drive.type, owner_id: drive.id, folder_id: cwd });
 
   // ------------------------------------------------------------ دسترسی
   const isChatAdmin = drive.chat ? s.chatRole(drive.chat) === "admin" : false;
@@ -217,8 +220,12 @@ export default function FilesPage() {
     if (!canWrite) return notify("در این درایو فقط مدیران گروه/کانال می‌توانند فایل بارگذاری کنند.", "warning");
     const at = toAttachments(list);
     if (!at.length) return;
-    s.uploadFiles(drive.type, drive.id, cwd, at);
-    notify(`${fa(at.length)} فایل بارگذاری شد.`, "success");
+    // «پیشنهادی» — F13: اسکن ClamAV پیش از ذخیره؛ فایل آلوده در هیچ فهرستی ذخیره نمی‌شود
+    const target = { type: drive.type, id: drive.id, folder: cwd };
+    avScan.scan(at, (clean) => {
+      s.uploadFiles(target.type, target.id, target.folder, clean);
+      notify(`${fa(clean.length)} فایل سالم بارگذاری شد.`, "success");
+    });
   };
   const download = (f: FileItem) => {
     if (f.owner_type === "user" && f.owner_id !== s.me && f.share && !f.share.allow_download) return notify("این فایل فقط برای مشاهده به اشتراک گذاشته شده است.", "warning");
@@ -293,7 +300,7 @@ export default function FilesPage() {
   return (
     <div>
       <PageHeader
-        title="مدیریت اسناد و فایل‌ها"
+        title="مدیریت فایل‌های من"
         description="فایل‌های شخصی و فایل‌های مشترک گروه‌ها و کانال‌هایی که عضوشان هستید."
         icon={<FolderOpen size={20} />}
         actions={
@@ -587,6 +594,8 @@ export default function FilesPage() {
             )}
           </div>
 
+          {avScan.notice("mx-4 mt-3")}
+          <ScanStatusList jobs={avScan.jobs} onDismiss={avScan.dismiss} className="px-4 pt-3" />
           {/* فهرست — با کشیدن و رها کردن */}
           <div
             onDragOver={(e) => {

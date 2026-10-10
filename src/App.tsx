@@ -74,6 +74,10 @@ const Messenger = lazy(() => import("./pages/social/Messenger"));
 const EventsCalendar = lazy(() => import("./pages/social/EventsCalendar"));
 const EventDetail = lazy(() => import("./pages/social/EventDetail"));
 const FilesPage = lazy(() => import("./pages/social/FilesPage"));
+// منوی ۱۴۰۵/۰۷ و امکانات سکو
+const CategoriesPage = lazy(() => import("./pages/categories/CategoriesPage"));
+const ProjectSettingsPage = lazy(() => import("./pages/ProjectSettingsPage"));
+const OrgProfile = lazy(() => import("./pages/org/OrgProfile"));
 
 function PageFallback() {
   return (
@@ -119,7 +123,7 @@ export default function App() {
         <Route path="/dashboard" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/dashboard" replace />} />
-          <Route path="my-work" element={<RequirePerm perm="projects.list" module="کارهای من"><MyWork /></RequirePerm>} />
+          <Route path="my-work" element={<RequirePerm perm="projects.list" module="فعالیت و وظایف من"><MyWork /></RequirePerm>} />
           {/* همکاران */}
           <Route path="members" element={<RequirePerm perm="members.view" module="اعضای سازمان"><Members /></RequirePerm>} />
           <Route path="connections" element={<RequirePerm perm="relations.use" module="ارتباطات من"><Connections /></RequirePerm>} />
@@ -133,7 +137,8 @@ export default function App() {
           <Route path="forum" element={<RequirePerm perm="forum.list" module="پرسش و پاسخ"><ForumPage /></RequirePerm>} />
           <Route path="forum/:id" element={<LegacyId prefix="tp-" legacy={/^f\d+$/}><RequirePerm perm="forum.list" module="پرسش و پاسخ"><TopicDetail /></RequirePerm></LegacyId>} />
           <Route path="topics" element={<TopicsHub />} />
-          {/* تعامل و همکاری */}
+          <Route path="categories" element={<CategoriesPage />} />
+          {/* شبکه اجتماعی */}
           <Route path="chat" element={<RequirePerm perm="chat.view" module="گفتگوها"><Messenger mode="chat" /></RequirePerm>} />
           <Route path="chat/:id" element={<RequirePerm perm="chat.view" module="گفتگوها"><Messenger mode="chat" /></RequirePerm>} />
           <Route path="groups" element={<RequirePerm perm="groups.list" module="گروه‌ها"><Messenger mode="groups" /></RequirePerm>} />
@@ -141,34 +146,36 @@ export default function App() {
           <Route path="channels" element={<RequirePerm perm="channels.list" module="کانال‌ها"><Messenger mode="channels" /></RequirePerm>} />
           <Route path="channels/:id" element={<RequirePerm perm="channels.list" module="کانال‌ها"><Messenger mode="channels" /></RequirePerm>} />
           {/* رویدادها */}
-          <Route path="calendar" element={<RequirePerm perm="calendar.view" module="تقویم"><UnifiedCalendar /></RequirePerm>} />
-          <Route path="events" element={<RequirePerm perm="events.list" module="رویداد و جلسات"><EventsCalendar /></RequirePerm>} />
-          <Route path="events/:id" element={<LegacyId prefix="ev-" legacy={/^e\d+$/}><RequirePerm perm="events.list" module="رویداد و جلسات"><EventDetail /></RequirePerm></LegacyId>} />
+          <Route path="calendar" element={<RequirePerm perm="calendar.view" module="تقویم کاری من"><UnifiedCalendar /></RequirePerm>} />
+          <Route path="events" element={<RequirePerm perm="events.list" module="رویدادها و جلسات"><EventsCalendar /></RequirePerm>} />
+          <Route path="events/:id" element={<LegacyId prefix="ev-" legacy={/^e\d+$/}><RequirePerm perm="events.list" module="رویدادها و جلسات"><EventDetail /></RequirePerm></LegacyId>} />
           {/* پروژه‌ها و اسناد */}
           <Route path="project-teams" element={<Navigate to="/dashboard/projects" replace />} />
-          <Route path="files" element={<RequirePerm perm="files.use" module="اسناد و فایل‌ها"><FilesPage /></RequirePerm>} />
+          <Route path="files" element={<RequirePerm perm="files.use" module="مدیریت فایل‌های من"><FilesPage /></RequirePerm>} />
           <Route path="social-admin" element={<Navigate to="/dashboard/settings?section=social" replace />} />
           {/* نشانی‌های قدیمی */}
-          <Route path="blog" element={<RequirePerm perm="blog.list" module="وبلاگ"><ContentModule section="blogs" /></RequirePerm>} />
-          <Route path="blog/:id" element={<LegacyId prefix="blog-" legacy={/^b\d+$/}><RequirePerm perm="blog.list" module="وبلاگ"><ContentDetail section="blogs" /></RequirePerm></LegacyId>} />
+          <Route path="blog" element={<RequirePerm perm="blog.list" module="وبلاگ‌ها"><ContentModule section="blogs" /></RequirePerm>} />
+          <Route path="blog/:id" element={<LegacyId prefix="blog-" legacy={/^b\d+$/}><RequirePerm perm="blog.list" module="وبلاگ‌ها"><ContentDetail section="blogs" /></RequirePerm></LegacyId>} />
           <Route path="friends" element={<Navigate to="/dashboard/connections" replace />} />
           <Route path="polls" element={<Navigate to="/dashboard" replace />} />
           <Route path="competitions" element={<Navigate to="/dashboard" replace />} />
           <Route path="tickets" element={<RequirePerm perm="tickets.create" module="تیکت پشتیبانی"><Tickets /></RequirePerm>} />
           <Route path="activity" element={<RequirePerm perm="timesheet.log" module="گزارش فعالیت‌های من"><ActivityReport /></RequirePerm>} />
           <Route path="settings" element={<Settings />} />
+          <Route path="project-settings" element={<ProjectSettingsPage />} />
+          <Route path="org/:id" element={<OrgProfile />} />
           <Route path="access" element={<MyAccess />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="profile/:id" element={<Profile />} />
           <Route path="knowledge" element={<RequirePerm perm="knowledge.list" module="مدیریت دانش"><Knowledge /></RequirePerm>} />
-          <Route path="projects" element={<RequirePerm perm="projects.list" module="مدیریت پروژه"><Projects /></RequirePerm>} />
+          <Route path="projects" element={<RequirePerm perm="projects.list" module="پروژه‌های من"><Projects /></RequirePerm>} />
           <Route path="projects/:id" element={<ProjectBoard />} />
           <Route path="contracts" element={<RequirePerm perm="contracts.list" module="قراردادهای فناورانه"><Contracts /></RequirePerm>} />
           <Route path="funds" element={<RequirePerm perm="funds.list" module="صندوق نوآوری و شتاب‌دهی"><Funds /></RequirePerm>} />
           <Route path="research" element={<RequirePerm perm="research.list" module="فرصت‌های پژوهشی"><Research /></RequirePerm>} />
           <Route path="award" element={<RequirePerm perm="award.list" module="جایزه نوآوری و فناوری"><Award /></RequirePerm>} />
           <Route path="training" element={<RequirePerm perm="training.list" module="آموزش و توانمندسازی"><Training /></RequirePerm>} />
-          <Route path="assistant" element={<RequirePerm perm="assistant.chat" module="دستیار هوشمند"><Assistant /></RequirePerm>} />
+          <Route path="assistant" element={<RequirePerm perm="assistant.chat" module="دستیار هوشمند من"><Assistant /></RequirePerm>} />
           <Route path="reports" element={<Navigate to="/dashboard" replace />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="appearance" element={<Navigate to="/dashboard/settings?section=appearance" replace />} />

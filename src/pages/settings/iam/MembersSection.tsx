@@ -30,6 +30,7 @@ import {
   useRun,
   useSubtree,
 } from "./shared";
+import { UserSecurityPanel } from "../../profile/SecurityTab";
 
 type StatusFilter = "" | "active" | "suspended";
 
@@ -247,6 +248,8 @@ export function UserDrawer({ userId, onClose }: { userId: string | null; onClose
           </GuardButton>
         )}
       </div>
+      {/* امنیت حساب: وضعیت مسدودی، مسدودسازی دستی و آخرین ورودهای موفق (F07/F12) */}
+      <UserSecurityPanel userId={userId} />
       {imp && (
         <ImpersonateModal
           userId={userId}

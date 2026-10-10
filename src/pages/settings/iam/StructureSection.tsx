@@ -1,6 +1,7 @@
 // «ساختار سازمانی» — درخت پیازیِ سیستم ← هلدینگ ← شرکت ← واحد.
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft, Eye, KeyRound, Link2, Lock, Network, Pencil, Plus, Power, ShieldCheck, Users, X } from "lucide-react";
+import { Building2, ChevronDown, ChevronLeft, Eye, KeyRound, Link2, Lock, Network, Pencil, Plus, Power, ShieldCheck, Users, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
 import Modal from "../../../components/ui/Modal";
@@ -292,6 +293,10 @@ function DetailPanel({ node, onPick, onEdit, onCreate, onToggle, onClose }: { no
         <GuardButton size="sm" variant={node.active ? "ghost" : "secondary"} icon={<Power size={13} />} check={cEdit} onClick={onToggle}>
           {node.active ? "غیرفعال‌سازی" : "فعال‌سازی"}
         </GuardButton>
+        {/* F18 — صفحه‌ی اختصاصی سازمان */}
+        <Link to={`/dashboard/org/${node.id}`} className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1 text-[12px] text-ink-700 hover:border-brand-300 hover:text-brand-700">
+          <Building2 size={13} /> صفحه‌ی سازمان
+        </Link>
       </div>
 
       <Block title="مدیران این واحد" count={admins.length}>

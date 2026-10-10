@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, UserCircle, Settings, ShieldCheck, Command, Menu, X, Sun, Moon, Palette, Compass, Languages } from "lucide-react";
 import Avatar from "./Avatar";
 import { userPresence, type PresenceStatus } from "../data/mock";
 import { personalFor } from "../data/personal";
@@ -11,6 +11,8 @@ import InstallAppButton from "./InstallAppButton";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useInbox } from "../context/InboxContext";
+import { useI18n } from "../i18n";
+import { startTour } from "./GuidedTour";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -30,6 +32,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   }, []);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
+  const { t, dir, lang, active: langs, setLang } = useI18n();
   const { actingUser, session, identity, role } = useTenancy();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
@@ -45,6 +48,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       {/* ناوبری موبایل */}
       <button
         onClick={() => setNavOpen(true)}
+        data-tour="nav-mobile"
         aria-label="باز کردن منوی ناوبری"
         className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600 shrink-0"
       >
@@ -54,7 +58,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       {navOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-label="منوی ناوبری">
           <div className="absolute inset-0 bg-black/50" onClick={() => setNavOpen(false)} />
-          <div className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-navy-900 shadow-2xl flex flex-col animate-[slideIn_0.2s_ease-out]">
+          <div className="absolute inset-y-0 start-0 w-72 max-w-[85vw] bg-navy-900 shadow-2xl flex flex-col animate-[slideIn_0.2s_ease-out]">
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
               <p className="font-bold text-sm text-white truncate">{identity.name}</p>
               <button onClick={() => setNavOpen(false)} aria-label="بستن منو" className="w-9 h-9 rounded-lg hover:bg-white/10 text-navy-200 flex items-center justify-center">
@@ -68,6 +72,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
 
       <div className="flex-1 max-w-md flex items-center gap-2">
         <form
+          data-tour="search"
           className="flex-1 relative"
           onSubmit={(e) => {
             e.preventDefault();
@@ -78,7 +83,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
           <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
           <input
             name="q"
-            placeholder="جستجو در کل سامانه… (Enter)"
+            placeholder={t("جستجو در کل سامانه… (Enter)")}
             aria-label="جستجوی سراسری"
             className="w-full bg-ink-50 border border-ink-200 rounded-lg pr-9 pl-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:bg-white transition-colors"
           />
@@ -94,7 +99,18 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
-        <ScopeSwitcher />
+        <span data-tour="scope" className="inline-flex">
+          <ScopeSwitcher />
+        </span>
+        <button
+          onClick={() => startTour("intro")}
+          data-tour="tour-button"
+          title={t("راهنمای تعاملی")}
+          aria-label={t("راهنمای تعاملی")}
+          className="hidden sm:flex w-10 h-10 items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600"
+        >
+          <Compass size={18} />
+        </button>
         <button
           onClick={toggleDark}
           title={resolved === "dark" ? "حالت روشن" : "حالت تیره"}
@@ -105,7 +121,8 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
         </button>
         <Link
           to="/dashboard/notifications"
-          aria-label={unread ? `اعلان‌ها — ${unread.toLocaleString("fa-IR")} خوانده‌نشده` : "اعلان‌ها"}
+          data-tour="notifications"
+          aria-label={unread ? `${t("اعلان‌ها")} — ${unread.toLocaleString("fa-IR")} خوانده‌نشده` : t("اعلان‌ها")}
           className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-ink-100 text-ink-600"
         >
           <Bell size={18} />
@@ -117,7 +134,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
         </Link>
 
         <div className="relative">
-          <button onClick={() => setMenuOpen((v) => !v)} className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-lg hover:bg-ink-100">
+          <button onClick={() => setMenuOpen((v) => !v)} data-tour="avatar" aria-expanded={menuOpen} className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-lg hover:bg-ink-100">
             <Avatar name={displayUser.name} color={displayUser.avatarColor} size={34} status={status} />
             <span className="hidden md:block text-[13px] font-medium max-w-36 truncate">{displayUser.name}</span>
             <ChevronDown size={14} className="text-ink-400" />
@@ -126,51 +143,81 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute left-0 mt-2 w-60 bg-white border border-ink-200 rounded-lg shadow-lg z-20 py-1.5" dir="rtl">
+              <div className="absolute end-0 mt-2 w-60 bg-white border border-ink-200 rounded-lg shadow-lg z-20 py-1.5 max-h-[calc(100vh-5rem)] overflow-y-auto" dir={dir}>
                 <div className="px-3.5 pt-1 pb-2">
                   <p className="text-[13px] font-bold text-ink-900 truncate">{displayUser.name}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span className="text-[10.5px] font-bold bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2 py-px">{role.title}</span>
-                    <span className="text-[10px] text-ink-400">سطح {session.level}</span>
+                    <span className="text-[10px] text-ink-400">{t("سطح")} {session.level}</span>
                   </div>
                 </div>
                 <Link to="/dashboard/access" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <ShieldCheck size={15} className="text-ink-400" /> نقش و دسترسی من
+                  <ShieldCheck size={15} className="text-ink-400" /> {t("نقش و دسترسی من")}
                 </Link>
                 <div className="h-px bg-ink-100 my-1" />
-                <p className="px-3.5 py-1 text-[11px] text-ink-400">وضعیت حضور</p>
+                <p className="px-3.5 py-1 text-[11px] text-ink-400">{t("وضعیت حضور")}</p>
                 <div className="px-2 pb-1.5 flex items-center gap-1">
                   {statusOptions.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setStatus(s.id)}
-                      title={s.label}
+                      title={t(s.label)}
                       className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] ${
                         status === s.id ? "bg-ink-100 font-medium text-ink-800" : "text-ink-500 hover:bg-ink-50"
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                      {s.label}
+                      {t(s.label)}
                     </button>
                   ))}
                 </div>
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to={`/dashboard/profile/${displayUser.id}`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <UserCircle size={15} className="text-ink-400" /> پروفایل من
+                  <UserCircle size={15} className="text-ink-400" /> {t("پروفایل من")}
                 </Link>
                 <Link to={`/dashboard/profile/${displayUser.id}?tab=security`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <ShieldCheck size={15} className="text-ink-400" /> امنیت و نشست‌ها
+                  <ShieldCheck size={15} className="text-ink-400" /> {t("امنیت و نشست‌ها")}
                 </Link>
                 <Link to="/dashboard/settings?section=appearance" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <Palette size={15} className="text-ink-400" /> ظاهر و برندسازی
+                  <Palette size={15} className="text-ink-400" /> {t("ظاهر و برندسازی")}
                 </Link>
                 <Link to="/dashboard/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50">
-                  <Settings size={15} className="text-ink-400" /> تنظیمات سامانه
+                  <Settings size={15} className="text-ink-400" /> {t("مدیریت سامانه")}
                 </Link>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    startTour("intro");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] hover:bg-ink-50 text-start"
+                >
+                  <Compass size={15} className="text-ink-400" /> {t("راهنمای تعاملی")}
+                </button>
+                {langs.length > 1 && (
+                  <>
+                    <div className="h-px bg-ink-100 my-1" />
+                    <p className="px-3.5 py-1 text-[11px] text-ink-400 flex items-center gap-1.5">
+                      <Languages size={12} /> {t("زبان")}
+                    </p>
+                    <div className="px-2 pb-1.5 flex items-center gap-1" role="radiogroup" aria-label={t("زبان")}>
+                      {langs.map((l) => (
+                        <button
+                          key={l.code}
+                          role="radio"
+                          aria-checked={lang.code === l.code}
+                          onClick={() => setLang(l.code)}
+                          className={`flex-1 py-1.5 rounded-md text-[11.5px] ${lang.code === l.code ? "bg-brand-50 text-brand-700 font-bold" : "text-ink-500 hover:bg-ink-50"}`}
+                        >
+                          {l.native}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <InstallAppButton compact className="w-full px-3.5 py-2" />
                 <div className="h-px bg-ink-100 my-1" />
                 <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-rose-600 hover:bg-rose-50">
-                  <LogOut size={15} /> خروج از حساب
+                  <LogOut size={15} /> {t("خروج از حساب")}
                 </Link>
               </div>
             </>

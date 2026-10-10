@@ -5,7 +5,7 @@
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Users, Search, UserPlus, Check, X, MessageSquare, ShieldOff, MoreHorizontal, User, Ban, Clock, Sparkles, BadgeCheck, BookOpen, Lightbulb, Wrench } from "lucide-react";
+import { Users, Search, UserPlus, Check, X, MessageSquare, ShieldOff, MoreHorizontal, User, Ban, Clock, Sparkles, BadgeCheck, BookOpen, Lightbulb, Wrench, Star, ShieldAlert } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
@@ -20,6 +20,15 @@ import { endpoints } from "../../social/endpoints";
 import { ApiChip, fa } from "./kit";
 import { Segmented } from "./ContentModule";
 import { useKnowledge } from "../../context/KnowledgeContext";
+import { useFollows } from "../../social/follow/store";
+import { FollowButton } from "../../social/follow/FollowButton";
+import { FeaturedBadge } from "../../social/follow/FeaturedBadge";
+import { followEndpoints } from "../../social/follow/endpoints";
+import { ancestorsOrSelf } from "../../iam/model";
+import { BlockUserModal, useCanBlock } from "../../iam/BlockUserModal";
+import { activeBlockOf, blockKindShort, blocksStore, liftBlock } from "../../iam/blocks";
+import { useLocalStore } from "../../iam/store";
+import { securityEndpoints } from "../../iam/securityEndpoints";
 
 // ---------------------------------------------------------------- یافتن متخصص
 /** یکسان‌سازی برای تطبیق فارسی (ی/ک عربی، نیم‌فاصله، #) */
@@ -133,7 +142,12 @@ function MoreMenu({ items }: { items: { label: string; icon: ReactNode; onClick?
 
 export default function Members() {
   const s = useSocial();
-  const { hasPermission, visibleUserIds, contextNode, membershipsOf, primaryRoleOf } = useTenancy();
+  const tn = useTenancy();
+  const { hasPermission, visibleUserIds, contextNode, membershipsOf, primaryRoleOf } = tn;
+  const fol = useFollows();
+  useLocalStore(blocksStore);
+  const canBlockAccount = useCanBlock();
+  const [blockFor, setBlockFor] = useState<string | null>(null);
   const inScope = visibleUserIds();
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -161,6 +175,8 @@ export default function Members() {
       .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name, "fa") : a.org.localeCompare(b.org, "fa") || a.name.localeCompare(b.name, "fa")));
   }, [others, q, org, onlineOnly, sort]);
 
+  // «افراد برجسته»ی لایه‌ای که کاربر در آن ایستاده و لایه‌های بالاتر (F09)
+  const featuredHere = fol.featuredIn(ancestorsOrSelf(tn.iam, contextNode.id).map((x) => x.id)).filter((f) => f.user_id !== s.me);
   const expertPool = useMemo(() => others.filter((u) => !org || u.org === org), [others, org]);
   const experts = useExpertFinder(expertPool, mode === "experts" ? q : "");
   const cloud = useExpertiseCloud(expertPool);
@@ -190,7 +206,9 @@ export default function Members() {
   const primary = (u: UserProfile) => {
     const rel = s.relationWith(u.id);
     const fid = rel.f?.id;
-    switch (rel.state) {
+    // دوستی خودکار با کاربر برجسته (F09) = در ارتباط
+    const state = rel.state === "none" && fol.isAutoFriend(u.id) ? "friends" : rel.state;
+    switch (state) {
       case "friends":
         return canChat ? (
           <Button size="sm" variant="primary" className="w-full justify-center" icon={<MessageSquare size={14} />} onClick={() => dm(u.id)}>
@@ -285,6 +303,15 @@ export default function Members() {
     const items: Parameters<typeof MoreMenu>[0]["items"] = [{ label: "مشاهده‌ی پروفایل", icon: <User size={14} />, to: `/dashboard/profile/${u.id}` }];
     if (canDm) items.push({ label: "پیام", icon: <MessageSquare size={14} />, onClick: () => dm(u.id) });
     if (canRelate && state !== "blocked") items.push({ label: "مسدود کردن", icon: <Ban size={14} />, onClick: () => block(u), danger: true });
+    // مسدودسازی حساب در سطح سامانه (راهبر، F12) — جدا از مسدودکردن شخصی
+    if (canBlockAccount && u.id !== tn.realActingUser.id) {
+      const b = activeBlockOf(u.id);
+      items.push(
+        b
+          ? { label: `رفع مسدودی حساب (${blockKindShort[b.kind]})`, icon: <ShieldOff size={14} />, onClick: () => (liftBlock(b.id, tn.realActingUser.id), notify(`مسدودی حساب «${u.name}» برداشته شد.`, "success")) }
+          : { label: "مسدودسازی حساب…", icon: <ShieldAlert size={14} />, onClick: () => setBlockFor(u.id), danger: true },
+      );
+    }
     return items;
   };
 
@@ -305,6 +332,10 @@ export default function Members() {
               { label: "مسدود کردن", ep: endpoints.friendBlock("{id}") },
               { label: "رفع مسدودی", ep: endpoints.friendUnblock("{id}") },
               { label: "شروع پیام مستقیم", ep: endpoints.chatCreate("direct-messages") },
+              { label: "دنبال‌کردن", ep: followEndpoints.follow("{user_id}") },
+              { label: "لغو دنبال‌کردن", ep: followEndpoints.unfollow("{user_id}") },
+              { label: "کاربران برجسته", ep: followEndpoints.featured() },
+              ...(canBlockAccount ? [{ label: "مسدودسازی حساب", ep: securityEndpoints.userBlockCreate("{id}") }] : []),
             ]}
           />
           </>
@@ -359,6 +390,22 @@ export default function Members() {
         <EmptyState icon={<Users size={22} />} title="عضوی پیدا نشد" description="عبارت جستجو یا فیلترها را تغییر دهید." />
       ) : (
         <>
+          {featuredHere.length > 0 && (
+            <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+              <span className="text-[11.5px] text-amber-700 flex items-center gap-1 shrink-0">
+                <Star size={12} className="fill-current" /> افراد برجسته:
+              </span>
+              {featuredHere.map((f) => {
+                const u = users.find((x) => x.id === f.user_id);
+                return u ? (
+                  <Link key={f.user_id} to={`/dashboard/profile/${u.id}`} title={f.note} className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/50 pl-2.5 pr-1 py-0.5 text-[11.5px] text-ink-700 hover:border-amber-300 shrink-0">
+                    <Avatar name={u.name} color={u.avatarColor} size={20} />
+                    {u.name}
+                  </Link>
+                ) : null;
+              })}
+            </div>
+          )}
           <p className="text-[11.5px] text-ink-400 mb-3">{fa(list.length)} نتیجه</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {list.map((u) => (
@@ -368,11 +415,26 @@ export default function Members() {
                     <Avatar name={u.name} color={u.avatarColor} size={44} status={userPresence[u.id] ?? (u.online ? "online" : "offline")} />
                   </Link>
                   <div className="min-w-0 flex-1">
-                    <Link to={`/dashboard/profile/${u.id}`} className="block text-[13.5px] font-semibold text-ink-900 truncate hover:text-brand-700">
-                      {u.name}
+                    <Link to={`/dashboard/profile/${u.id}`} className="flex items-center gap-1 text-[13.5px] font-semibold text-ink-900 hover:text-brand-700 min-w-0">
+                      <span className="truncate">{u.name}</span>
+                      <FeaturedBadge userId={u.id} withLabel={false} />
                     </Link>
                     <p className="text-[11.5px] text-ink-500 truncate">{u.role}</p>
-                    <p className="text-[11px] text-ink-400 truncate">{membershipsOf(u.id).filter((m) => m.status === "active").map((m) => m.scope.name).join("، ") || u.org}</p>
+                    {canBlockAccount && activeBlockOf(u.id) && <p className="text-[10.5px] text-rose-600 truncate">حساب {blockKindShort[activeBlockOf(u.id)!.kind]}</p>}
+                    <p className="text-[11px] text-ink-400 truncate">
+                      {membershipsOf(u.id).filter((m) => m.status === "active").length
+                        ? membershipsOf(u.id)
+                            .filter((m) => m.status === "active")
+                            .map((m, i) => (
+                              <span key={m.id}>
+                                {i > 0 && "، "}
+                                <Link to={`/dashboard/org/${m.scopeId}`} className="hover:text-brand-700 hover:underline">
+                                  {m.scope.name}
+                                </Link>
+                              </span>
+                            ))
+                        : u.org}
+                    </p>
                     {primaryRoleOf(u.id) && <p className="text-[10.5px] text-brand-700 truncate">{primaryRoleOf(u.id)!.name}</p>}
                   </div>
                   <MoreMenu items={menuFor(u)} />
@@ -386,12 +448,16 @@ export default function Members() {
                     ))}
                   </div>
                 )}
-                <div className="mt-auto">{primary(u)}</div>
+                <div className="mt-auto flex items-start gap-2">
+                  <div className="flex-1 min-w-0">{primary(u)}</div>
+                  <FollowButton kind="user" id={u.id} variant="icon" />
+                </div>
               </div>
             ))}
           </div>
         </>
       )}
+      {blockFor && <BlockUserModal userId={blockFor} onClose={() => setBlockFor(null)} />}
     </div>
   );
 }

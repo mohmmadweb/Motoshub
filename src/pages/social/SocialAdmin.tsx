@@ -25,6 +25,8 @@ import Modal from "../../components/ui/Modal";
 import { contentPath } from "./ContentModule";
 import { MarkdownView } from "../knowledge/Markdown";
 import { ApiChip, Field, UserLine, fa, stamp } from "./kit";
+import { BlockUserButton } from "../../iam/BlockUserModal";
+import { useAbuseRules } from "../../iam/useAbuseRules";
 
 type Tab = "dash" | "review" | "reports" | "comments" | "reactions" | "settings";
 
@@ -121,6 +123,12 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
       case "channel": {
         const x = s.chats.find((i) => i.id === id);
         return { title: x?.title ?? "گفتگوی حذف‌شده", to: x ? `/dashboard/${e === "group" ? "groups" : "channels"}/${id}` : null };
+      }
+      // «پیشنهادی» — F01: نظر روی نظرسنجی ← گروه/کانالِ همان نظرسنجی
+      case "poll": {
+        const p = s.polls.find((i) => i.id === id);
+        const ch = p ? s.chats.find((i) => i.id === p.entity_id) : undefined;
+        return { title: p ? `نظرسنجی «${p.question}»` : "نظرسنجی حذف‌شده", to: ch ? `/dashboard/${ch.chat_type === "channel" ? "channels" : "groups"}/${ch.parent ?? ch.id}` : null };
       }
     }
   };
@@ -650,6 +658,8 @@ function ReviewQueueTab() {
 function ReportsTab() {
   const s = useSocial();
   const { notify } = useToast();
+  // قواعد «گزارش تخلف/هرزنامه‌ی تأییدشده» مسدودسازی خودکار (F12)
+  useAbuseRules(s.reports);
   const [filter, setFilter] = useState<"open" | "done">("open");
   const [act, setAct] = useState<{ r: AbuseReport; decision: "dismiss" | "hide" | "remove_warn" } | null>(null);
   const [note, setNote] = useState("");
@@ -750,6 +760,8 @@ function ReportsTab() {
                     <Button size="sm" variant="danger" icon={<Ban size={13} />} onClick={() => (setAct({ r, decision: "remove_warn" }), setNote(reportReasonLabel[r.reason]))} disabled={!to} title={fmtEndpoint(endpoints.reportRemoveWarn(r.id))}>
                       حذف و اخطار
                     </Button>
+                    {/* مسدودسازی زمان‌دار صاحب مورد (F12) */}
+                    <BlockUserButton userId={r.target_owner_id} defaultReason={`${reportReasonLabel[r.reason]} — «${r.target_excerpt.slice(0, 60)}»`} extraPerm="comments.moderate" />
                   </div>
                 ) : (
                   <p className="text-[11px] text-ink-500">

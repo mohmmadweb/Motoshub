@@ -4,6 +4,7 @@
 // همه‌ی محتوای صفحه‌ی راهنمای قبلی (Help.tsx) در این‌جا به‌صورت مقاله آمده است.
 // پارامتر اختیاری ?article=<id> یک مقاله را مستقیم باز می‌کند.
 // ---------------------------------------------------------------------------
+import { TourLauncherCard } from "../../components/GuidedTour";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -46,7 +47,7 @@ const cats: Cat[] = [
   { id: "roles", label: "نقش‌ها و دسترسی", icon: KeyRound, hint: "ساختار پیازی سیستم ← هلدینگ ← شرکت و نقش‌های چندگانه" },
   { id: "projects", label: "پروژه و فعالیت‌ها", icon: KanbanSquare, hint: "پروژه‌ها، بُرد، وظایف من و زمان کاری" },
   { id: "knowledge", label: "دانش، محتوا و دستیار", icon: BookOpen, hint: "مخزن دانش، درس‌آموخته‌ها، انتشار محتوا و دستیار هوشمند" },
-  { id: "collab", label: "تعامل و همکاری", icon: Users, hint: "تقویم، رویدادها، گفتگو، گروه‌ها و فایل‌ها" },
+  { id: "collab", label: "شبکه اجتماعی", icon: Users, hint: "تقویم، رویدادها، گفتگو، گروه‌ها و فایل‌ها" },
   { id: "innovation", label: "صندوق‌ها و نوآوری", icon: PiggyBank, hint: "صندوق نوآور، شبکه‌ی صندوق‌ها و جایزه" },
   { id: "contracts", label: "قراردادها و فراخوان‌ها", icon: FileSignature, hint: "تبادل فناوری، امضای الکترونیک و RFP" },
   { id: "research", label: "پژوهش و آموزش", icon: GraduationCap, hint: "فرصت مطالعاتی و دوره‌های آموزشی" },
@@ -268,6 +269,9 @@ export function HelpSection() {
             </span>
             <ChevronLeft size={16} className="text-ink-400 shrink-0" />
           </button>
+
+          {/* F16 — تورهای تعاملی (اجرای دوباره/ادامه) */}
+          <TourLauncherCard />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {cats

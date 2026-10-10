@@ -25,7 +25,11 @@ export type InboxKind =
   | "announcement"
   | "timesheet"
   | "report"
-  | "access";
+  | "access"
+  // F06/F08/F12 — دنبال‌کردن موضوع و افراد، امنیت حساب
+  | "topic_follow"
+  | "follow"
+  | "security";
 
 export const inboxKindLabel: Record<InboxKind, string> = {
   friend_request: "درخواست دوستی",
@@ -44,6 +48,9 @@ export const inboxKindLabel: Record<InboxKind, string> = {
   timesheet: "یادآوری کارکرد",
   report: "گزارش زمان‌بندی‌شده",
   access: "درخواست دسترسی",
+  topic_follow: "موضوع دنبال‌شده",
+  follow: "دنبال‌کننده‌ی جدید",
+  security: "امنیت حساب",
 };
 
 /** نوع‌هایی که همیشه تحویل می‌شوند (بی‌صدا، ساعات سکوت و خلاصه‌ی روزانه رویشان اثر ندارد) */

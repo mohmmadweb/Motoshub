@@ -145,6 +145,23 @@ export default function Messenger({ mode }: { mode: MessengerMode }) {
     { label: "سنجاق پیام (حداکثر ۵)", ep: endpoints.messagePin("{id}") },
     { label: "پیام‌های سنجاق‌شده", ep: endpoints.chatPinned(seg, pid) },
     { label: "جستجو داخل گفتگو", ep: endpoints.chatSearch(seg, pid) },
+    // «پیشنهادی» — اقلام F01 تا F04
+    { label: "پیشنهاد افراد هنگام منشن", ep: endpoints.memberDirectory(pid) },
+    { label: "پیش‌نمایش لینک", ep: endpoints.linkPreview() },
+    ...(mode === "chat"
+      ? []
+      : [
+          { label: "ساخت نظرسنجی", ep: endpoints.pollCreate() },
+          { label: "رأی در نظرسنجی", ep: endpoints.pollVote("{id}") },
+          { label: "بستن نظرسنجی", ep: endpoints.pollClose("{id}") },
+          { label: "بازگشایی نظرسنجی", ep: endpoints.pollReopen("{id}") },
+          { label: "رأی‌دهندگان", ep: endpoints.pollVoters("{id}") },
+          { label: "خروجی اکسل نظرسنجی", ep: endpoints.pollExport("{id}") },
+          { label: "خوراک‌های RSS", ep: endpoints.feeds(mode, pid) },
+          { label: "افزودن خوراک", ep: endpoints.feedCreate(mode, pid) },
+          { label: "ویرایش/حذف خوراک", ep: endpoints.feedUpdate(mode, pid, "{feed_id}") },
+          { label: "آزمایش خوراک", ep: endpoints.feedTest(mode, pid) },
+        ]),
   ];
 
   const Icon = modeIcon[mode];

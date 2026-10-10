@@ -70,13 +70,6 @@ export default function TopicsHub() {
         ]
       : []),
     { label: "موضوع‌های یک بخش", ep: endpoints.categories(entity) },
-    ...(manage
-      ? [
-          { label: "ساخت موضوع", ep: endpoints.categoryCreate(entity) },
-          { label: "ویرایش موضوع", ep: endpoints.categoryUpdate(entity, "{id}") },
-          { label: "حذف موضوع", ep: endpoints.categoryDelete(entity, "{id}") },
-        ]
-      : []),
     { label: "محتوا (مجله/بلاگ/خبر)", ep: endpoints.contentList("magazines") },
     { label: "رسانه", ep: endpoints.mediaList() },
     { label: "رویدادها", ep: endpoints.eventList() },
@@ -98,7 +91,21 @@ export default function TopicsHub() {
           if (t === "categories" && params.get("tag")) setParams({}, { replace: true });
         }}
       />
-      {tab === "tags" ? <TagsSection manage={manage} /> : <CategoriesSection manage={manage} entity={entity} setEntity={setEntity} />}
+      {tab === "tags" ? (
+        <TagsSection manage={manage} />
+      ) : (
+        <>
+          {/* مدیریت دسته‌بندی‌ها به صفحه‌ی «دسته‌بندی‌ها» منتقل شده؛ اینجا فقط مرور */}
+          <Link to="/dashboard/categories" className="card p-3 mb-4 flex items-center gap-2 text-[12.5px] text-ink-700 hover:border-brand-300">
+            <FolderTree size={15} className="text-brand-600 shrink-0" />
+            <span className="flex-1 min-w-0">ساخت، ویرایش و مرتب‌سازی دسته‌بندی‌ها در صفحه‌ی «دسته‌بندی‌ها» انجام می‌شود؛ اینجا فقط مرور است.</span>
+            <span className="text-brand-700 flex items-center shrink-0">
+              دسته‌بندی‌ها <ChevronLeft size={13} />
+            </span>
+          </Link>
+          <CategoriesSection manage={false} entity={entity} setEntity={setEntity} />
+        </>
+      )}
     </div>
   );
 }
@@ -153,6 +160,13 @@ function TagsSection({ manage }: { manage: boolean }) {
         key: "chats",
         label: "گروه‌ها و کانال‌ها",
         items: [...v.groups.filter(has).map((c) => ({ id: c.id, title: c.title, to: `/dashboard/groups/${c.id}`, sub: "گروه" })), ...v.channels.filter(has).map((c) => ({ id: c.id, title: c.title, to: `/dashboard/channels/${c.id}`, sub: "کانال" }))],
+      },
+      {
+        key: "polls",
+        label: "نظرسنجی‌ها",
+        items: s.polls
+          .filter((p) => has(p) && p.entity_name !== "post" && [...v.groups, ...v.channels].some((c) => c.id === p.entity_id))
+          .map((p) => ({ id: p.id, title: p.question, to: `/dashboard/${p.entity_name === "group" ? "groups" : "channels"}/${p.entity_id}`, sub: "نظرسنجی" })),
       },
       {
         key: "projects",

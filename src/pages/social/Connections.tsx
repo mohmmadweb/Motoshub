@@ -3,8 +3,8 @@
 // تب فعال در ?tab= نگه داشته می‌شود تا لینک اعلان‌ها مستقیم به تب درست برسد.
 // ---------------------------------------------------------------------------
 import type { ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Link2, MessageSquare, UserMinus, Ban, Check, X, ShieldOff, UserPlus, Inbox, Send, Users, Sparkles } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link2, MessageSquare, UserMinus, Ban, Check, X, ShieldOff, UserPlus, Inbox, Send, Users, Sparkles, Rss, Star } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Tabs from "../../components/ui/Tabs";
@@ -17,16 +17,31 @@ import { users } from "../../data/mock";
 import { endpoints } from "../../social/endpoints";
 import type { Friendship } from "../../social/types";
 import { ApiChip, UserLine, fa, stamp } from "./kit";
+import { useFollows } from "../../social/follow/store";
+import { FollowButton } from "../../social/follow/FollowButton";
+import { FeaturedBadge } from "../../social/follow/FeaturedBadge";
+import { followEndpoints } from "../../social/follow/endpoints";
 
-type Tab = "friends" | "requests" | "sent" | "blocked" | "suggestions";
-const TABS: Tab[] = ["friends", "requests", "sent", "blocked", "suggestions"];
+type Tab = "friends" | "requests" | "sent" | "blocked" | "suggestions" | "following" | "followers";
+const TABS: Tab[] = ["friends", "requests", "sent", "blocked", "suggestions", "following", "followers"];
 
 /** ردیف یکدست فهرست: کاربر در راست، اقدام‌ها در چپ؛ در موبایل زیر هم */
 function Row({ id, sub, children }: { id: string; sub?: ReactNode; children: ReactNode }) {
+  const { membershipsOf } = useTenancy();
+  const ms = membershipsOf(id).filter((m) => m.status === "active");
+  const home = ms.find((m) => m.primary) ?? ms[0];
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-ink-100 last:border-0">
       <div className="min-w-0 flex-1 basis-48">
         <UserLine id={id} size={38} sub={sub} />
+        {/* سازمان/واحد اصلی → صفحه‌ی سازمان */}
+        {home ? (
+          <Link to={`/dashboard/org/${home.scopeId}`} className="block mr-[46px] text-[10.5px] text-ink-400 hover:text-brand-700 truncate">
+            {home.scope.name}
+          </Link>
+        ) : (
+          <span className="block mr-[46px] text-[10.5px] text-ink-400 truncate">{users.find((u) => u.id === id)?.org}</span>
+        )}
       </div>
       <div className="flex items-center gap-2 flex-wrap">{children}</div>
     </div>
@@ -46,6 +61,11 @@ export default function Connections() {
   const canRelate = hasPermission("relations.use");
   const canChat = hasPermission("chat.view");
   const me = s.me;
+  const fol = useFollows();
+  const following = fol.following();
+  const followers = fol.followers();
+  // دوستی خودکار با کاربران برجسته (F09) که دوستیِ معمولی هم نیست
+  const autoFriends = fol.autoFriendsOf().filter((id) => s.relationWith(id).state === "none");
 
   const other = (f: Friendship) => (f.sender_id === me ? f.receiver_id : f.sender_id);
   const mine = s.friendships.filter((f) => f.sender_id === me || f.receiver_id === me);
@@ -66,7 +86,7 @@ export default function Connections() {
 
   const userSub = (id: string) => {
     const u = s.userById(id);
-    return u ? `${u.role} · ${u.org}` : undefined;
+    return u ? u.role : undefined;
   };
 
   const dm = (id: string) => navigate(`/dashboard/chat/${s.openDirect(id)}`);
@@ -103,10 +123,33 @@ export default function Connections() {
   const list = (children: ReactNode) => <div className="card p-0 overflow-hidden">{children}</div>;
 
   let body: ReactNode;
-  if (tab === "friends") {
-    body = friends.length
+  if (tab === "following" || tab === "followers") {
+    const ids = tab === "following" ? following : followers;
+    body = ids.length
       ? list(
-          friends.map((f) => (
+          ids.map((id) => (
+            <Row key={id} id={id} sub={userSub(id)}>
+              <FeaturedBadge userId={id} />
+              <FollowButton kind="user" id={id} />
+            </Row>
+          )),
+        )
+      : tab === "following"
+        ? empty(<Rss size={22} />, "کسی را دنبال نمی‌کنید", "از «اعضای سازمان» یا پروفایل افراد «دنبال کردن» را بزنید؛ نیازی به تأیید طرف مقابل نیست و محتوای عمومی آن‌ها در داشبوردتان می‌آید.")
+        : empty(<Rss size={22} />, "هنوز دنبال‌کننده‌ای ندارید", "کسانی که شما را دنبال می‌کنند اینجا نمایش داده می‌شوند.");
+  } else if (tab === "friends") {
+    body = friends.length + autoFriends.length
+      ? list([
+          ...autoFriends.map((id) => (
+            <Row key={`auto-${id}`} id={id} sub={<span className="flex items-center gap-1 text-amber-700"><Star size={11} className="fill-current" /> ارتباط خودکار با کاربر برجسته</span>}>
+              {canChat && (
+                <Button size="sm" variant="primary" icon={<MessageSquare size={14} />} onClick={() => dm(id)}>
+                  پیام
+                </Button>
+              )}
+            </Row>
+          )),
+          ...friends.map((f) => (
             <Row key={f.id} id={other(f)} sub={userSub(other(f))}>
               {canChat && (
                 <Button size="sm" variant="primary" icon={<MessageSquare size={14} />} onClick={() => dm(other(f))}>
@@ -125,7 +168,7 @@ export default function Connections() {
               )}
             </Row>
           )),
-        )
+        ])
       : empty(<Users size={22} />, "هنوز با کسی در ارتباط نیستید", "از «اعضای سازمان» یا تب پیشنهادها درخواست ارتباط بفرستید.");
   } else if (tab === "requests") {
     body = requests.length
@@ -217,7 +260,7 @@ export default function Connections() {
     <div>
       <PageHeader
         title="ارتباطات من"
-        description="دوستان، درخواست‌های ارتباط و افراد مسدود"
+        description="دوستان، درخواست‌های ارتباط، دنبال‌شده‌ها و افراد مسدود"
         icon={<Link2 size={20} />}
         actions={
           <ApiChip
@@ -233,6 +276,9 @@ export default function Connections() {
               { label: "مسدود کردن", ep: endpoints.friendBlock("{id}") },
               { label: "رفع مسدودی", ep: endpoints.friendUnblock("{id}") },
               { label: "آمار ارتباطات من", ep: endpoints.dashboard("relations/relations", "user") },
+              { label: "دنبال‌شونده‌ها", ep: followEndpoints.following() },
+              { label: "دنبال‌کنندگان", ep: followEndpoints.followers() },
+              { label: "دنبال / لغو دنبال", ep: followEndpoints.follow("{user_id}") },
             ]}
           />
         }
@@ -249,11 +295,13 @@ export default function Connections() {
 
       <Tabs<Tab>
         tabs={[
-          { id: "friends", label: "دوستان", count: friends.length },
+          { id: "friends", label: "دوستان", count: friends.length + autoFriends.length },
           { id: "requests", label: "درخواست‌ها", count: requests.length },
           { id: "sent", label: "ارسالی", count: sent.length },
           { id: "blocked", label: "مسدود", count: blocked.length },
           { id: "suggestions", label: "پیشنهادها", count: suggestions.length },
+          { id: "following", label: "دنبال‌شونده‌ها", count: following.length },
+          { id: "followers", label: "دنبال‌کنندگان", count: followers.length },
         ]}
         active={tab}
         onChange={setTab}

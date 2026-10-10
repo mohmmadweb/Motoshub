@@ -12,8 +12,9 @@ import {
   Brush,
   ClipboardCheck,
   Clock,
-  FolderKanban,
   Globe2,
+  Languages,
+  LayoutGrid,
   HardDrive,
   KeyRound,
   Layers,
@@ -49,12 +50,20 @@ import SodSection from "./SodSection";
 import { ScopedKeysCard } from "./ScopedSettingsSection";
 import InviteImportSection from "./InviteImportSection";
 import { BrandOrgTab } from "./BrandSection";
-import ProjectGlobalSettings from "./ProjectGlobalSettings";
+import LanguagesSection from "./LanguagesSection";
+import SlideshowSection from "./SlideshowSection";
+import ExperienceSection from "./ExperienceSection";
+import { OrgPublicFieldsCard } from "../org/OrgProfile";
 import { AwardSettingsTab, ContractsSettingsTab, FundSettingsTab } from "./InnovationSettings";
 import WorkflowParamsCard from "./WorkflowParams";
 import { KnowledgeSettingsPanel, NotificationQueuePanel, SocialSettingsPanel, TimesheetSettingsPanel } from "./ModuleSettings";
 import { SystemVarsCard } from "../AdminSections";
 import { useToast } from "../../components/ui/ToastProvider";
+import FeaturedUsersSection from "./FeaturedUsersSection";
+import CaptchaSection from "./CaptchaSection";
+import RateLimitSection from "./RateLimitSection";
+import AutoBlockSection from "./AutoBlockSection";
+import AntivirusSection from "./AntivirusSection";
 
 /** ورودی رندر هر بخش/زبانه */
 export type RenderCtx = { tab: string | null };
@@ -101,6 +110,7 @@ export const settingsGroups: SettingsGroupDef[] = [
         tabs: [
           { id: "list", label: "اعضا و عضویت‌ها", perms: ["iam.members.manage"], keywords: ["عضویت", "تعلیق", "مشاهده به‌عنوان"], render: () => <MembersSection /> },
           { id: "invite", label: "دعوت و واردسازی", perms: ["users.import", "users.create", "iam.members.manage"], keywords: ["دعوت", "واردسازی", "اکسل", "CSV", "فایل نمونه"], render: () => <InviteImportSection /> },
+          { id: "featured", label: "کاربران برجسته", perms: ["relations.featured.manage", "iam.members.manage"], keywords: ["برجسته", "دوستی خودکار", "دنبال‌کردن خودکار", "اعضای جدید"], render: () => <FeaturedUsersSection /> },
         ],
       },
       { id: "roles", label: "نقش‌ها و مجوزها", icon: KeyRound, perms: ["roles.list", "roles.create", "roles.edit"], keywords: ["مجوز", "نقش سفارشی"], render: () => <RolesSection /> },
@@ -137,24 +147,24 @@ export const settingsGroups: SettingsGroupDef[] = [
         icon: Brush,
         perms: [],
         tabs: [
-          { id: "org", label: "برند سازمان", perms: ["settings.branding"], keywords: ["لوگو", "رنگ برند", "نام نمایشی", "زیرعنوان", "دامنه", "ارث‌بری", "قفل"], render: () => <BrandOrgTab /> },
-          { id: "me", label: "ظاهر من", keywords: ["حالت تیره", "روشن", "رنگ تأکید", "اندازه‌ی متن", "فونت"], render: () => <MyAppearanceTab /> },
+          {
+            id: "org",
+            label: "برند سازمان",
+            perms: ["settings.branding"],
+            keywords: ["لوگو", "رنگ برند", "نام نمایشی", "زیرعنوان", "دامنه", "ارث‌بری", "قفل", "پروفایل سازمانی", "فیلدهای عمومی"],
+            render: () => (
+              <div className="space-y-4">
+                <BrandOrgTab />
+                <OrgPublicFieldsCard />
+              </div>
+            ),
+          },
+          { id: "slideshow", label: "اسلایدشو", perms: ["settings.branding"], keywords: ["اسلاید", "اسلایدر", "بنر", "صفحه‌ی عمومی", "بالای داشبورد", "پخش خودکار"], render: () => <SlideshowSection /> },
+          { id: "me", label: "ظاهر من", keywords: ["حالت تیره", "روشن", "رنگ تأکید", "اندازه‌ی متن", "فونت", "اوقات شرعی", "شهر"], render: () => <MyAppearanceTab /> },
         ],
       },
-    ],
-  },
-  {
-    id: "projects",
-    title: "پروژه‌ها",
-    sections: [
-      {
-        id: "projects",
-        label: "تنظیمات پروژه",
-        icon: FolderKanban,
-        perms: ["settings.system", "projects.templates"],
-        keywords: ["پیش‌فرض پروژه", "وضعیت‌های بورد", "انواع کار", "جلسات", "خودکارسازی", "دسترسی عضو تازه", "قالب‌های پروژه", "ساعت کاری", "آستانه‌ی بودجه"],
-        render: () => <ProjectGlobalSettings />,
-      },
+      { id: "languages", label: "زبان‌ها", icon: Languages, perms: ["settings.system"], keywords: ["ترجمه", "انگلیسی", "عربی", "راست‌چین", "چپ‌چین", "زبان پیش‌فرض", "JSON"], render: () => <LanguagesSection /> },
+      { id: "experience", label: "ابزارک‌ها و راهنما", icon: LayoutGrid, perms: ["settings.system"], keywords: ["تور محصول", "راهنمای تعاملی", "اجرای خودکار", "اوقات شرعی", "شهر پیش‌فرض"], render: () => <ExperienceSection /> },
     ],
   },
   {
@@ -226,6 +236,7 @@ export const settingsGroups: SettingsGroupDef[] = [
               </>
             ),
           },
+          { id: "captcha", label: "کپچا", keywords: ["کپچا", "CAPTCHA", "تلاش ناموفق", "بازیابی گذرواژه", "تاریخچه‌ی ورود", "مدت نگهداری"], render: () => <CaptchaSection /> },
           { id: "policy", label: "سیاست ورود و OTP", keywords: ["تأیید دومرحله‌ای", "رمز یک‌بارمصرف", "OTP", "گذرواژه", "IP مورد اعتماد"], render: () => <LoginPolicySection part="policy" /> },
           {
             id: "session",
@@ -258,6 +269,9 @@ export const settingsGroups: SettingsGroupDef[] = [
               </>
             ),
           },
+          { id: "antivirus", label: "ضدویروس", keywords: ["ClamAV", "ویروس", "قرنطینه", "EICAR", "اسکن", "ضدویروس"], render: () => <AntivirusSection /> },
+          { id: "rate-limit", label: "محدودیت درخواست‌ها", keywords: ["Rate Limit", "۴۲۹", "سقف درخواست", "Retry-After", "کاربران محدودشده", "IP سفید"], render: () => <RateLimitSection /> },
+          { id: "auto-block", label: "مسدودسازی خودکار", keywords: ["مسدودسازی", "قفل حساب", "کاربران مسدودشده", "فقط‌خواندنی", "گزارش تخلف"], render: () => <AutoBlockSection /> },
           { id: "classification", label: "طبقه‌بندی اطلاعات", keywords: ["نوار طبقه‌بندی", "محرمانه", "سطح پیش‌فرض"], render: () => <ClassificationSection /> },
         ],
       },
@@ -371,6 +385,11 @@ export const settingsGroups: SettingsGroupDef[] = [
 
 /** شناسه‌های قدیمی ?section= → بخش + زبانه‌ی جدید (پیوندهای قدیمی، اعلان‌ها و نشانک‌ها کار می‌کنند) */
 export const legacySectionMap: Record<string, { section: string; tab?: string }> = {
+  antivirus: { section: "security", tab: "antivirus" },
+  captcha: { section: "login", tab: "captcha" },
+  "rate-limit": { section: "security", tab: "rate-limit" },
+  "auto-block": { section: "security", tab: "auto-block" },
+  featured: { section: "members", tab: "featured" },
   import: { section: "members", tab: "invite" },
   "access-requests": { section: "bindings", tab: "requests" },
   sod: { section: "review", tab: "sod" },
@@ -379,6 +398,10 @@ export const legacySectionMap: Record<string, { section: string; tab?: string }>
   branding: { section: "brand", tab: "org" },
   scoped: { section: "brand", tab: "org" },
   appearance: { section: "brand", tab: "me" },
+  slideshow: { section: "brand", tab: "slideshow" },
+  slides: { section: "brand", tab: "slideshow" },
+  tours: { section: "experience" },
+  prayer: { section: "experience" },
   pages: { section: "modules", tab: "pages" },
   workflow: { section: "innovation", tab: "funds" },
   channels: { section: "notifications", tab: "channels" },

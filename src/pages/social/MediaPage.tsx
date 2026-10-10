@@ -6,7 +6,11 @@
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Image as ImageIcon, Film, Layers, Play, Plus, Search, Upload, SmilePlus, MessageSquare } from "lucide-react";
+import { Image as ImageIcon, Film, Layers, Play, Plus, Search, Upload, SmilePlus, MessageSquare, Link2, RefreshCw, Tv, Trash2 } from "lucide-react";
+import Toggle from "../../components/ui/Toggle";
+import { useConfirm } from "../../components/ui/ConfirmProvider";
+import { aparatHash, aparatMeta } from "../../social/linkPreview";
+import { AparatPlayer } from "./composer/LinkPreview";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -17,7 +21,7 @@ import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
 import type { Attachment, MediaPost, MediaPostType } from "../../social/types";
 import { mediaTypeLabel } from "../../social/types";
-import { ApiChip, AttachmentList, AttachmentPicker, Field, Poster, PosterPicker, PrivacyBadge, PublishBadge, PublishOptions, defaultPublish, fa, type PublishState } from "./kit";
+import { ApiChip, AttachmentList, AttachmentPicker, Field, MentionInput, Poster, PosterPicker, PrivacyBadge, PublishBadge, PublishOptions, defaultPublish, fa, stamp, type PublishState } from "./kit";
 import { HiddenBadge } from "./moderation";
 import { Segmented, StatStrip, matchesStatus, statusTabs, type StatusFilter } from "./ContentModule";
 
@@ -80,7 +84,7 @@ function MediaForm({ item, onDone }: { item?: MediaPost; onDone: (id?: string) =
             />
           </Field>
           <Field label="کپشن (caption)">
-            <textarea className="input-field min-h-[90px]" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="توضیح کوتاه… (برای منشن: ‎@نام_خانوادگی)" autoFocus />
+            <MentionInput className="input-field min-h-[90px]" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="توضیح کوتاه… (برای منشن @ را تایپ کنید)" autoFocus />
           </Field>
           <PosterPicker value={poster} onChange={setPoster} />
           {item && existing > 0 && (
@@ -88,7 +92,7 @@ function MediaForm({ item, onDone }: { item?: MediaPost; onDone: (id?: string) =
               <AttachmentList items={item.attachments} />
             </Field>
           )}
-          <AttachmentPicker value={files} onChange={setFiles} accept="image/*,video/*" label={postType === "album" ? "فایل‌های آلبوم (uploaded_files) — دست‌کم ۲ فایل" : "فایل (uploaded_files)"} />
+          <AttachmentPicker value={files} onChange={setFiles} accept="image/*,video/*" source="media" label={postType === "album" ? "فایل‌های آلبوم (uploaded_files) — دست‌کم ۲ فایل" : "فایل (uploaded_files)"} />
         </div>
         <div className="lg:col-span-2">
           <PublishOptions entity="media" value={pub} onChange={setPub} notifyOption={!item} />
@@ -110,19 +114,164 @@ function MediaForm({ item, onDone }: { item?: MediaPost; onDone: (id?: string) =
   );
 }
 
-/** مودال بارگذاری/ویرایش پست رسانه (MediaPostStoreRequest) */
-export function MediaEditor({ open, onClose, item, onSaved }: { open: boolean; onClose: () => void; item?: MediaPost; onSaved?: (id: string) => void }) {
+// ---------------------------------------------------------------- «پیشنهادی» — F05 افزودن ویدیو از آپارات (۱.۱۱.۲)
+/** زبانه‌ی «از آپارات»: لینک یا شناسه‌ی ویدیو ← فراداده (عنوان، تصویر، مدت، کانال) ← پست رسانه با منبع «آپارات» */
+function AparatForm({ onDone }: { onDone: (id?: string) => void }) {
+  const s = useSocial();
+  const { notify } = useToast();
+  const [url, setUrl] = useState("");
+  const [caption, setCaption] = useState("");
+  const [pub, setPub] = useState<PublishState>(defaultPublish({ tags: ["آپارات"], send_notification: false }));
+  const hash = aparatHash(url);
+  const meta = hash ? aparatMeta(hash) : null;
+  const save = () => {
+    const r = s.importAparat({ url, caption, privacy: pub.privacy, category_ids: pub.category_ids, tags: pub.tags });
+    if (!r.ok) return notify(r.error, "warning");
+    notify("ویدیوی آپارات به رسانه اضافه شد.", "success");
+    onDone(r.id);
+  };
   return (
-    <Modal open={open} onClose={onClose} title={item ? "ویرایش پست رسانه" : "بارگذاری رسانه"} width="max-w-3xl">
-      {open && (
-        <MediaForm
-          key={item?.id ?? "new"}
-          item={item}
-          onDone={(id) => {
-            onClose();
-            if (id) onSaved?.(id);
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3 space-y-3">
+          <Field label="لینک یا شناسه‌ی ویدیوی آپارات *" hint="نمونه: https://www.aparat.com/v/qW3eR">
+            <input className="input-field" dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.aparat.com/v/…" autoFocus />
+          </Field>
+          {url.trim() && !meta && <p className="text-xs text-rose-600">لینک آپارات معتبر نیست.</p>}
+          {meta && <AparatPlayer video={meta} />}
+          <Field label="کپشن (اختیاری)" hint="خالی = عنوان ویدیو در آپارات">
+            <textarea className="input-field min-h-[70px]" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder={meta?.title ?? ""} />
+          </Field>
+        </div>
+        <div className="lg:col-span-2">
+          <PublishOptions entity="media" value={pub} onChange={setPub} comments={false} notifyOption={false} draftOption={false} />
+        </div>
+      </div>
+      <div className="flex items-center gap-2 pt-2 border-t border-ink-100">
+        <Button variant="primary" icon={<Link2 size={14} />} onClick={save} disabled={!meta}>
+          افزودن به رسانه
+        </Button>
+        <Button variant="ghost" onClick={() => onDone()}>
+          انصراف
+        </Button>
+        <code dir="ltr" className="text-[10.5px] text-amber-700 mr-auto hidden sm:block">
+          POST /media/media/posts/import-aparat/
+        </code>
+      </div>
+    </div>
+  );
+}
+
+/** اتصال کانال آپارات سازمان — فقط مدیر رسانه (GET/POST /media/media/aparat-channels/) */
+function AparatChannels() {
+  const s = useSocial();
+  const { notify } = useToast();
+  const confirm = useConfirm();
+  const [username, setUsername] = useState("");
+  const [auto, setAuto] = useState(true);
+  const [album, setAlbum] = useState("");
+  const cats = s.categoriesOf("media");
+  return (
+    <div className="rounded-lg border border-ink-200 p-3 space-y-2.5">
+      <p className="text-xs font-bold text-ink-800 flex items-center gap-1.5">
+        <Tv size={13} className="text-[#ea1d5d]" /> کانال‌های آپارات سازمان
+      </p>
+      {s.aparatChannels.map((c) => (
+        <div key={c.id} className="flex flex-wrap items-center gap-2 text-xs bg-ink-50 rounded-md px-2.5 py-1.5">
+          <span className="font-medium text-ink-800" dir="ltr">
+            @{c.username}
+          </span>
+          <span className="text-[10.5px] text-ink-400">
+            {c.auto_publish ? "انتشار خودکار" : "پیش‌نویس"}
+            {c.album_id ? ` در «${s.categoryTitle(c.album_id)}»` : ""} · {fa(c.imported.length)} ویدیو · همگام‌سازی: {c.last_synced_at ? stamp(c.last_synced_at) : "—"}
+          </span>
+          <span className="mr-auto flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw size={12} />}
+              onClick={() => {
+                const r = s.syncAparatChannel(c.id);
+                if (!r.ok) return notify(r.error, "warning");
+                notify(r.imported ? `${fa(r.imported)} ویدیوی تازه از آپارات وارد شد.` : "ویدیوی تازه‌ای در کانال نبود.", r.imported ? "success" : "info");
+              }}
+            >
+              همگام‌سازی
+            </Button>
+            <button type="button" onClick={() => confirm({ title: `اتصال «${c.username}» قطع شود؟`, confirmLabel: "قطع اتصال", onConfirm: () => s.unlinkAparatChannel(c.id) })} className="p-1 text-ink-400 hover:text-rose-600" aria-label="قطع اتصال">
+              <Trash2 size={12} />
+            </button>
+          </span>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-end gap-2">
+        <input className="input-field !py-1.5 flex-1 min-w-[140px]" dir="ltr" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="نام کاربری کانال (مثلاً bonyad_tv)" />
+        <select className="input-field !py-1.5 !w-auto" value={album} onChange={(e) => setAlbum(e.target.value)} aria-label="آلبوم مقصد">
+          <option value="">بدون آلبوم</option>
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-[11px] text-ink-600">
+          <Toggle on={auto} onChange={() => setAuto((x) => !x)} /> انتشار خودکار
+        </label>
+        <Button
+          size="sm"
+          onClick={() => {
+            const r = s.linkAparatChannel(username, auto, album || null);
+            if (!r.ok) return notify(r.error, "warning");
+            setUsername("");
+            notify("کانال آپارات متصل شد؛ «همگام‌سازی» ویدیوهای تازه را می‌آورد.", "success");
           }}
-        />
+          disabled={!username.trim()}
+        >
+          اتصال
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** مودال بارگذاری/ویرایش پست رسانه (MediaPostStoreRequest) — هنگام ایجاد، زبانه‌ی «از آپارات» هم دارد */
+export function MediaEditor({ open, onClose, item, onSaved }: { open: boolean; onClose: () => void; item?: MediaPost; onSaved?: (id: string) => void }) {
+  const s = useSocial();
+  const { hasPermission } = useTenancy();
+  const [tab, setTab] = useState<"upload" | "aparat">("upload");
+  const aparatOn = !item && s.setting("media.aparat.enabled") !== false;
+  const done = (id?: string) => {
+    onClose();
+    setTab("upload");
+    if (id) onSaved?.(id);
+  };
+  return (
+    <Modal open={open} onClose={onClose} title={item ? "ویرایش پست رسانه" : "افزودن رسانه"} width="max-w-3xl">
+      {open && (
+        <>
+          {aparatOn && (
+            <div className="mb-4">
+              <Segmented
+                value={tab}
+                onChange={setTab}
+                options={[
+                  { id: "upload" as const, label: "بارگذاری فایل" },
+                  { id: "aparat" as const, label: "از آپارات" },
+                ]}
+              />
+            </div>
+          )}
+          {tab === "aparat" && aparatOn ? (
+            <div className="space-y-4">
+              <AparatForm onDone={done} />
+              {hasPermission("media.manage") && <AparatChannels />}
+            </div>
+          ) : item?.source === "aparat" ? (
+            <p className="text-xs text-ink-500">این پست از آپارات آمده است؛ کپشن و تنظیمات انتشار را از دکمه‌های صفحه تغییر دهید.</p>
+          ) : (
+            <MediaForm key={item?.id ?? "new"} item={item} onDone={done} />
+          )}
+        </>
       )}
     </Modal>
   );
@@ -148,6 +297,7 @@ function MediaTile({ m }: { m: MediaPost }) {
                 <HiddenBadge m={m.moderation} />
                 {m.privacy !== "EVERYONE" && <PrivacyBadge value={m.privacy} />}
               </span>
+              {m.source === "aparat" && <span className="text-[10px] bg-[#ea1d5d] rounded px-1.5 py-0.5 font-medium shrink-0">آپارات</span>}
               <span className="flex items-center gap-1 text-[11px] bg-black/35 rounded-md px-1.5 py-0.5 shrink-0" title={mediaTypeLabel[m.post_type]}>
                 <I size={12} />
                 {m.post_type === "album" && fa(m.attachments.length)}
@@ -188,6 +338,7 @@ export default function MediaPage() {
   const [cat, setCat] = useState("");
   const [status, setStatus] = useState<StatusFilter>("published");
   const [creating, setCreating] = useState(false);
+  const [source, setSource] = useState<"" | "upload" | "aparat">("");
 
   const cats = s.categoriesOf("media");
   const list = s.media
@@ -195,6 +346,7 @@ export default function MediaPage() {
     .filter((m) => matchesStatus(m, status, s.me, manager, s.today))
     .filter((m) => type === "all" || m.post_type === type)
     .filter((m) => !cat || m.category_ids.includes(cat))
+    .filter((m) => !source || (m.source ?? "upload") === source)
     .filter((m) => !q || m.caption.includes(q) || m.tags.some((t) => t.includes(q)))
     .sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at));
 
@@ -216,11 +368,15 @@ export default function MediaPage() {
                 { label: "موضوع‌ها", ep: endpoints.categories("media") },
                 { label: "خلاصه‌ی واکنش‌ها", ep: endpoints.reactionSummary("media") },
                 { label: "داشبورد کاربر", ep: endpoints.dashboard("media/media", "user") },
+                { label: "افزودن ویدیو از آپارات", ep: endpoints.aparatImport() },
+                { label: "کانال‌های آپارات", ep: endpoints.aparatChannels() },
+                { label: "اتصال کانال آپارات", ep: endpoints.aparatChannelCreate() },
+                { label: "همگام‌سازی کانال", ep: endpoints.aparatChannelSync("{id}") },
               ]}
             />
             {canUpload && (
               <Button variant="primary" icon={<Plus size={15} />} onClick={() => setCreating(true)}>
-                بارگذاری
+                افزودن رسانه
               </Button>
             )}
           </>
@@ -247,6 +403,13 @@ export default function MediaPage() {
             </option>
           ))}
         </select>
+        {s.media.some((m) => m.source === "aparat") && (
+          <select className="input-field !w-auto min-w-[110px]" value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label="فیلتر منبع">
+            <option value="">همه‌ی منابع</option>
+            <option value="upload">بارگذاری</option>
+            <option value="aparat">آپارات</option>
+          </select>
+        )}
         <Segmented value={status} onChange={setStatus} options={statusTabs} />
       </div>
 

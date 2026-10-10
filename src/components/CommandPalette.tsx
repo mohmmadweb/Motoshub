@@ -1,19 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Hash, User, Compass } from "lucide-react";
+import { Search, Hash, User, Compass, Building2 } from "lucide-react";
 import { channels, users } from "../data/mock";
 import { navSections, navClusters } from "./Sidebar";
+import { useI18n } from "../i18n";
+import { useTenancy } from "../context/TenancyContext";
 
 type Item = { id: string; label: string; hint: string; icon: typeof Hash; to: string };
 
-// همه‌ی صفحات سایدبار به‌صورت خودکار در پالت هستند — صفحه‌ی جدید = خودکار قابل جستجو
-const pages: Item[] = navSections.flatMap((s) =>
-  s.items.map((i) => ({ id: i.to, label: i.label, hint: [navClusters[s.cluster].title, s.title].filter(Boolean).join(" · "), icon: Compass, to: i.to }))
-);
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
+  const { t } = useI18n();
+  const { iam, scopeTypeLabel } = useTenancy();
 
   useEffect(() => {
     if (!open) setQ("");
@@ -22,12 +22,18 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const items: Item[] = useMemo(() => {
     const channelItems: Item[] = channels.map((c) => ({ id: c.id, label: `${c.name}`, hint: "کانال", icon: Hash, to: `/dashboard/channels/${c.id}` }));
     const userItems: Item[] = users.map((u) => ({ id: u.id, label: u.name, hint: "کاربر", icon: User, to: `/dashboard/profile/${u.id}` }));
-    const all = [...pages, ...channelItems, ...userItems];
+    // همه‌ی صفحات منو خودکار در پالت هستند (با برچسب زبان انتخابی) — صفحه‌ی جدید = خودکار قابل جستجو
+    const pages: Item[] = navSections.flatMap((s) =>
+      s.items.map((i) => ({ id: i.to, label: t(i.label), hint: [t(navClusters[s.cluster].title), s.title].filter(Boolean).join(" · "), icon: Compass, to: i.to }))
+    );
+    // پروفایل سازمانی هر هلدینگ/شرکت/واحد (F18)
+    const orgItems: Item[] = iam.scopes.filter((n) => n.active).map((n) => ({ id: n.id, label: n.name, hint: `صفحه‌ی ${scopeTypeLabel[n.type]}`, icon: Building2, to: `/dashboard/org/${n.id}` }));
+    const all = [...pages, ...channelItems, ...userItems, ...orgItems];
     if (!q) return all.slice(0, 8);
     // اولین گزینه همیشه «جستجوی سراسری» روی داده‌ی زنده است
     const searchAll: Item = { id: "search-all", label: `جستجوی «${q}» در کل سامانه`, hint: "جستجوی سراسری", icon: Search, to: `/dashboard/search?q=${encodeURIComponent(q)}` };
     return [searchAll, ...all.filter((i) => i.label.toLowerCase().includes(q.toLowerCase())).slice(0, 7)];
-  }, [q]);
+  }, [q, t, iam.scopes, scopeTypeLabel]);
 
   if (!open) return null;
 

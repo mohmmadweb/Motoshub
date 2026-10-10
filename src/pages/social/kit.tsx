@@ -18,6 +18,17 @@ import { API_BASE, fmtEndpoint, type Ep } from "../../social/endpoints";
 import type { Attachment, EntityName, Privacy, Publishable } from "../../social/types";
 import { privacyLabel } from "../../social/types";
 import { HiddenBadge, ReportButton } from "./moderation";
+import MentionTextarea from "./composer/MentionTextarea";
+import { TextLinkPreview } from "./composer/LinkPreview";
+import { ScanStatusList, useScannedUpload } from "./composer/AvScan";
+import { useComposerGuard } from "./composer/WriteGate";
+import { RichText } from "./messenger/shared";
+import type { AvSource } from "../../social/av";
+
+/** «پیشنهادی» — F04: نگارشگر با پیشنهاد لحظه‌ای افراد (جایگزین textarea) */
+export { default as MentionInput, extractMentions } from "./composer/MentionTextarea";
+/** «پیشنهادی» — F02/F05: کارت پیش‌نمایش لینک و پخش‌کننده‌ی آپارات */
+export { LinkPreviewCard, TextLinkPreview, AparatPlayer } from "./composer/LinkPreview";
 
 export const fa = (n: number) => n.toLocaleString("fa-IR");
 /** «۱۴۰۵/۰۳/۰۸ ۰۹:۳۰:۰۰» → «۱۴۰۵/۰۳/۰۸ ۰۹:۳۰» */
@@ -260,10 +271,14 @@ export function fileIcon(mime: string) {
   return FileText;
 }
 
-/** انتخاب چند فایل (uploaded_files) با کشیدن و رها کردن */
-export function AttachmentPicker({ value, onChange, accept, label = "پیوست‌ها (uploaded_files)" }: { value: Attachment[]; onChange: (a: Attachment[]) => void; accept?: string; label?: string }) {
+/** انتخاب چند فایل (uploaded_files) با کشیدن و رها کردن — هر فایل پیش از افزوده شدن با ضدویروس اسکن می‌شود (F13) */
+export function AttachmentPicker({ value, onChange, accept, label = "پیوست‌ها (uploaded_files)", source = "attachment" }: { value: Attachment[]; onChange: (a: Attachment[]) => void; accept?: string; label?: string; source?: AvSource }) {
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const av = useScannedUpload(source);
+  const latest = useRef(value);
+  latest.current = value;
+  const add = (files: FileList) => av.scan(toAttachments(files), (clean) => onChange([...latest.current, ...clean]));
   return (
     <Field label={label}>
       <div
@@ -275,15 +290,27 @@ export function AttachmentPicker({ value, onChange, accept, label = "پیوست�
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          onChange([...value, ...toAttachments(e.dataTransfer.files)]);
+          add(e.dataTransfer.files);
         }}
         className={`rounded-lg border-2 border-dashed p-3 text-center ${over ? "border-brand-400 bg-brand-50" : "border-ink-200"}`}
       >
-        <input ref={ref} type="file" multiple accept={accept} className="hidden" onChange={(e) => e.target.files && onChange([...value, ...toAttachments(e.target.files)])} />
+        <input
+          ref={ref}
+          type="file"
+          multiple
+          accept={accept}
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) add(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <button type="button" onClick={() => ref.current?.click()} className="text-xs text-brand-700 flex items-center gap-1 mx-auto">
           <Upload size={13} /> انتخاب فایل‌ها یا کشیدن و رها کردن
         </button>
       </div>
+      {av.notice("mt-2")}
+      <ScanStatusList jobs={av.jobs} onDismiss={av.dismiss} className="mt-2" />
       {value.length > 0 && (
         <div className="mt-2 space-y-1">
           {value.map((a) => {
@@ -422,8 +449,10 @@ export function CommentsPanel({ entity, id, ownerId, allowAdd = true, show = tru
   const moderator = hasPermission("comments.moderate") || ownerId === s.me;
   const list = s.commentsFor(entity, id, moderator);
   const roots = list.filter((c) => !c.parent_id);
+  const guard = useComposerGuard();
   const submit = () => {
     if (!text.trim()) return;
+    if (!guard.gate("post")) return;
     const c = s.addComment(entity, id, text.trim(), replyTo);
     setText("");
     setReplyTo(null);
@@ -450,7 +479,10 @@ export function CommentsPanel({ entity, id, ownerId, allowAdd = true, show = tru
             )}
           </span>
         </div>
-        <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap">{c.content}</p>
+        <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
+          <RichText text={c.content} />
+        </p>
+        <TextLinkPreview text={c.content} />
         {allowAdd && depth < 2 && (
           <button onClick={() => setReplyTo(c.id)} className="text-[11px] text-brand-700 mt-1 flex items-center gap-1">
             <CornerDownLeft size={11} /> پاسخ
@@ -480,8 +512,9 @@ export function CommentsPanel({ entity, id, ownerId, allowAdd = true, show = tru
               </button>
             </p>
           )}
-          <textarea className="input-field min-h-[70px]" value={text} onChange={(e) => setText(e.target.value)} placeholder="نظر خود را بنویسید… (برای منشن: ‎@نام_خانوادگی)" />
-          <Button variant="primary" size="sm" onClick={submit}>
+          <MentionTextarea className="input-field min-h-[70px]" value={text} onChange={(e) => setText(e.target.value)} placeholder="نظر خود را بنویسید… (برای منشن @ را تایپ کنید)" />
+          {guard.notice()}
+          <Button variant="primary" size="sm" onClick={submit} disabled={guard.blocked}>
             ثبت نظر
           </Button>
         </div>

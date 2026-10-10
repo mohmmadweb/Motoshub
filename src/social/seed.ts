@@ -45,7 +45,14 @@ import type {
   AbuseReport,
   FileEvent,
   ModerationEvent,
+  Poll,
+  PollVote,
+  RssFeed,
+  AparatChannelLink,
+  FeatureEvent,
 } from "./types";
+import { FEED_CATALOG } from "./feedCatalog";
+import { APARAT_SAMPLES } from "./linkPreview";
 
 export const SOCIAL_TODAY = DEMO_REF_DATE;
 export const at = (date: string, time = "۱۰:۰۰:۰۰") => `${date} ${time.length === 5 ? `${time}:۰۰` : time}`;
@@ -650,6 +657,15 @@ export function seedSettings(): Setting[] {
     s("messaging", "messaging.channels.max_members", 5000, "int", "حداکثر اعضای کانال"),
     s("messaging", "messaging.direct-messages.allow_non_friends", true, "bool", "پیام مستقیم به غیر دوستان"),
     s("relations", "relations.friendships.max_friends", 1000, "int", "حداکثر تعداد دوستان"),
+    // «پیشنهادی» — اقلام F01 تا F05
+    s("core", "core.polls.enabled", true, "bool", "نظرسنجی در گروه، کانال و پست (روشن/خاموش)"),
+    s("core", "core.polls.max_options", 10, "int", "حداکثر تعداد گزینه‌ی نظرسنجی"),
+    s("core", "core.polls.allow_anonymous", true, "bool", "اجازه‌ی نظرسنجی ناشناس"),
+    s("core", "core.link_preview.enabled", true, "bool", "پیش‌نمایش لینک‌ها (Prefetching)"),
+    s("core", "core.link_preview.blocked_domains", "ads.example.ir, tracker.example.com", "str", "دامنه‌های مسدود برای پیش‌نمایش (با ویرگول)"),
+    s("messaging", "messaging.feeds.min_interval_minutes", 15, "int", "حداقل فاصله‌ی بررسی خوراک RSS (دقیقه)"),
+    s("messaging", "messaging.feeds.max_per_chat", 5, "int", "سقف تعداد خوراک برای هر گروه/کانال"),
+    s("media", "media.aparat.enabled", true, "bool", "اتصال به آپارات (افزودن ویدیو از آپارات)"),
   ];
 }
 
@@ -754,5 +770,131 @@ export function seedModerationLog(): ModerationEvent[] {
   return [
     { id: "mv1", at: at(addDays(SOCIAL_TODAY, -3), "۰۹:۳۰:۰۰"), actor_id: "u2", action: "dismiss", target_type: "content", target_id: "blog-b2", target_title: "پست وبلاگ", owner_id: "u1", note: "آمار با گزارش رسمی تطبیق داده شد و درست است.", report_id: "rp3" },
     { id: "mv2", at: at(addDays(SOCIAL_TODAY, -1), "۱۵:۳۰:۰۰"), actor_id: "u2", action: "review_return", target_type: "content", target_id: "blog-rv2", target_title: "راهنمای کوتاه گزارش‌نویسی میدانی", owner_id: "u1", note: "لطفاً یک نمونه‌ی واقعی از گزارش خوب و یک نمونه‌ی ضعیف اضافه کنید." },
+  ];
+}
+
+
+// ------------------------------------------------------------------ «پیشنهادی» — نسخه‌ی ۵: اقلام F01–F05
+export const RSS_BOT_ID = "bot-rss";
+
+/** F01 — نظرسنجی‌های نمونه روی پیام‌های گروه/کانال (+ پیام‌های تازه برای نظرسنجی‌های جدید) */
+export function seedPolls(chats: Chat[], messages: Message[]): { polls: Poll[]; votes: PollVote[]; messages: Message[] } {
+  let seq = Math.max(0, ...messages.map((m) => m.seq)) + 1;
+  const out = messages.map((m) => ({ ...m }));
+  const polls: Poll[] = [];
+  const votes: PollVote[] = [];
+  const membersOf = (cid: string) => chats.find((c) => c.id === cid)?.members.map((m) => m.user_id).filter((u) => u !== "u1") ?? [];
+  const newMsg = (chat_id: string, user_id: string, content: string, date: string, time: string): Message => {
+    const m: Message = { id: `msg-poll${seq}`, chat_id, user_id, content, type: "text", parent_message_id: null, attachments: [], tags: [], forwarded_from: null, seq: seq++, created_at: at(date, time), updated_at: at(date, time), edited: false };
+    out.push(m);
+    return m;
+  };
+  const add = (p: Omit<Poll, "total_votes" | "tags" | "message_id" | "options"> & { options: [string, string | null][] }, msg: Message | undefined, picks: number[][]) => {
+    if (!msg) return;
+    msg.poll_id = p.id;
+    const options = p.options.map(([text, image], i) => ({ id: `${p.id}-o${i + 1}`, text, image, votes_count: 0 }));
+    const voters = membersOf(p.entity_id);
+    picks.forEach((pk, i) => {
+      const u = voters[i % Math.max(1, voters.length)];
+      if (!u || votes.some((v) => v.poll_id === p.id && v.user_id === u)) return;
+      votes.push({ poll_id: p.id, user_id: u, option_ids: pk.map((k) => options[k].id), voted_at: at(p.created_at.split(" ")[0], ["۱۰:۱۲:۰۰", "۱۰:۴۰:۰۰", "۱۱:۰۵:۰۰", "۱۲:۳۰:۰۰", "۱۴:۱۵:۰۰", "۱۵:۵۰:۰۰", "۱۷:۲۰:۰۰"][i % 7]) });
+    });
+    polls.push({ ...p, options, message_id: msg.id, total_votes: 0, tags: (msg.content.match(/#[^\s،.,!؟?#]+/g) ?? []).map((x) => x.slice(1)) });
+  };
+  const d = (n: number) => addDays(SOCIAL_TODAY, n);
+  // ۱) گروه g1 — همان پست «کدام حوزه در اولویت باشد؟» (کادر ثابت قبلی ← نظرسنجی واقعی)
+  add(
+    { id: "poll1", question: "برای فاز بعدی طرح‌های اشتغال‌زایی، کدام حوزه در اولویت باشد؟", media: [], options: [["کشاورزی و دامپروری", "#15803d"], ["صنایع خرد و کارگاهی", "#b45309"], ["گردشگری روستایی", "#0369a1"], ["صنایع‌دستی", "#7c3aed"]], multiple: false, max_choices: 1, anonymous: false, allow_change: true, show_results: "always", closes_at: at(d(3), "۱۸:۰۰:۰۰"), is_closed: false, entity_name: "group", entity_id: "g1", owner: "u5", created_at: at(d(-1), "۱۰:۰۰:۰۰") },
+    out.find((m) => m.chat_id === "g1" && m.content.startsWith("برای فاز بعدی طرح‌های اشتغال‌زایی")) ?? newMsg("g1", "u5", "برای فاز بعدی طرح‌های اشتغال‌زایی، کدام حوزه در اولویت باشد؟ #اشتغال", d(-1), "۱۰:۰۰"),
+    [[0], [1], [0], [1], [0], [2]]
+  );
+  // ۲) گروه g12 — بازیافت حرارت؛ ناشناس، با تصویر گزینه
+  add(
+    { id: "poll2", question: "کدام راهکار برای بازیافت حرارت کوره‌های صبا مناسب‌تر است؟", media: [{ id: "pm2", name: "شمای-کوره‌ی-صبا.jpg", size: "۶۴۰ کیلوبایت", mime: "image/jpeg" }], options: [["چرخه‌ی رانکین آلی (ORC)", "#b45309"], ["مبدل حرارتی صفحه‌ای", "#0d9488"], ["ترکیب هر دو", "#1f4f99"]], multiple: false, max_choices: 1, anonymous: true, allow_change: false, show_results: "always", closes_at: at(d(5), "۲۰:۰۰:۰۰"), is_closed: false, entity_name: "group", entity_id: "g12", owner: "u9", created_at: at(d(-1), "۱۶:۰۰:۰۰") },
+    out.find((m) => m.chat_id === "g12" && m.content.includes("ORC")) ?? newMsg("g12", "u9", "کدام راهکار برای بازیافت حرارت کوره‌های صبا مناسب‌تر است؟ #انرژی", d(-1), "۱۶:۰۰"),
+    [[0], [0], [1], [2], [0]]
+  );
+  // ۳) کانال ch1 (مدیر: کاربر جاری) — چندگزینه‌ای با سقف ۲، نتیجه پس از پایان
+  add(
+    { id: "poll3", question: "زمان مناسب برگزاری همایش سالانه‌ی شبکه‌ی دانشمندان؟ (حداکثر دو گزینه)", media: [], options: [["هفته‌ی اول تیر", null], ["هفته‌ی سوم تیر", null], ["هفته‌ی اول مرداد", null], ["پس از تعطیلات تابستان", null]], multiple: true, max_choices: 2, anonymous: false, allow_change: true, show_results: "after_close", closes_at: at(d(5), "۱۲:۰۰:۰۰"), is_closed: false, entity_name: "channel", entity_id: "ch1", owner: "u1", created_at: at(SOCIAL_TODAY, "۰۸:۱۵:۰۰") },
+    newMsg("ch1", "u1", "زمان مناسب برگزاری همایش سالانه‌ی شبکه‌ی دانشمندان؟ (حداکثر دو گزینه) #همایش_سالانه", SOCIAL_TODAY, "۰۸:۱۵"),
+    [[0, 1], [1], [1, 2], [3], [0, 1]]
+  );
+  // ۴) کانال ch3 — پایان‌یافته
+  add(
+    { id: "poll4", question: "از سامانه‌ی جدید شبکه‌ی اجتماعی چقدر راضی هستید؟", media: [], options: [["خیلی راضی", null], ["راضی", null], ["متوسط", null], ["ناراضی", null]], multiple: false, max_choices: 1, anonymous: true, allow_change: false, show_results: "always", closes_at: at(d(-2), "۱۸:۰۰:۰۰"), is_closed: true, closed_at: at(d(-2), "۱۸:۰۰:۰۰"), entity_name: "channel", entity_id: "ch3", owner: chats.find((c) => c.id === "ch3")?.owner_id ?? "u1", created_at: at(d(-6), "۰۹:۰۰:۰۰") },
+    newMsg("ch3", chats.find((c) => c.id === "ch3")?.owner_id ?? "u1", "از سامانه‌ی جدید شبکه‌ی اجتماعی چقدر راضی هستید؟", d(-6), "۰۹:۰۰"),
+    [[0], [1], [0], [1], [2], [0], [3]]
+  );
+  // شمارنده‌ها از روی آرا
+  polls.forEach((p) => {
+    const vs = votes.filter((v) => v.poll_id === p.id);
+    p.total_votes = vs.length;
+    p.options.forEach((o) => (o.votes_count = vs.filter((v) => v.option_ids.includes(o.id)).length));
+  });
+  return { polls, votes, messages: out };
+}
+
+/** F02/F05 — پیام‌های نمونه با لینک خارجی، لینک داخلی و لینک آپارات */
+export function seedLinkMessages(messages: Message[]): Message[] {
+  let seq = Math.max(0, ...messages.map((m) => m.seq)) + 1;
+  const m = (id: string, chat_id: string, user_id: string, content: string, time: string, date = SOCIAL_TODAY): Message => ({ id, chat_id, user_id, content, type: "text", parent_message_id: null, attachments: [], tags: [], forwarded_from: null, seq: seq++, created_at: at(date, time), updated_at: at(date, time), edited: false });
+  return [
+    ...messages,
+    m("msg-lp1", "g1", "u4", "گزارش ایرنا درباره‌ی طرح‌های محرومیت‌زدایی را ببینید: https://www.irna.ir/news/85123456", "۱۱:۰۵"),
+    m("msg-lp2", "ch3", "u1", "مستند «آبادانی» در آپارات منتشر شد: https://www.aparat.com/v/Zx81k", "۱۱:۲۰"),
+    m("msg-lp3", "g12", "u9", "برای آشنایی با ORC این مدخل خوب است: https://fa.wikipedia.org/wiki/چرخه_رانکین_آلی — جلسه‌اش هم ثبت شده: https://demo.shub.ir/#/dashboard/events/ev-e1", "۱۶:۲۰", addDays(SOCIAL_TODAY, -1)),
+  ];
+}
+
+/** F03 — دو خوراک نمونه با مطالب منتشرشده توسط بات «خبرخوان» */
+export function seedFeeds(messages: Message[]): { feeds: RssFeed[]; messages: Message[] } {
+  let seq = Math.max(0, ...messages.map((m) => m.seq)) + 1;
+  const out = [...messages];
+  const feeds: RssFeed[] = [
+    { id: "feed1", chat_type: "channel", chat_id: "ch3", url: "https://www.irna.ir/rss", title: "ایرنا — اقتصادی", interval_minutes: 30, keywords: [], max_items: 2, is_active: true, last_fetched_at: at(SOCIAL_TODAY, "۰۸:۳۰:۰۰"), last_error: null, items_published: 0, published_guids: [], last_fetched_ms: 0, created_by: "u1" },
+    { id: "feed2", chat_type: "channel", chat_id: "ch1", url: "https://www.isna.ir/rss/tp/5", title: "ایسنا — علم و فناوری", interval_minutes: 15, keywords: ["فناوری", "نوآوری", "هوش مصنوعی"], max_items: 1, is_active: true, last_fetched_at: at(SOCIAL_TODAY, "۰۹:۰۰:۰۰"), last_error: null, items_published: 0, published_guids: [], last_fetched_ms: 0, created_by: "u1" },
+    { id: "feed3", chat_type: "group", chat_id: "g12", url: "https://energy-news.example.ir/feed.xml", title: "خبرنامه‌ی انرژی", interval_minutes: 360, keywords: [], max_items: 3, is_active: false, last_fetched_at: at(addDays(SOCIAL_TODAY, -2), "۱۲:۰۰:۰۰"), last_error: "زمان پاسخ سرور خوراک تمام شد (۱۰ ثانیه).", items_published: 0, published_guids: [], last_fetched_ms: 0, created_by: "u9" },
+  ];
+  const publish = (f: RssFeed, guids: string[]) => {
+    const cat = FEED_CATALOG[f.url];
+    guids.forEach((g) => {
+      const it = cat?.items.find((x) => x.guid === g);
+      if (!it) return;
+      const [date, time] = it.published.split(" ");
+      out.push({ id: `msg-${g}`, chat_id: f.chat_id, user_id: RSS_BOT_ID, content: `${it.title}\n${it.summary}\n${it.link}`, type: "text", parent_message_id: null, attachments: [], tags: [], forwarded_from: null, seq: seq++, created_at: at(date, `${time}:۰۰`), updated_at: at(date, `${time}:۰۰`), edited: false, feed_item: { feed_id: f.id, guid: g, title: it.title, link: it.link } });
+      f.published_guids.push(g);
+      f.items_published++;
+    });
+  };
+  publish(feeds[0], ["irna-1", "irna-2", "irna-3"]);
+  publish(feeds[1], ["isna-1", "isna-4"]);
+  return { feeds, messages: out };
+}
+
+/** F05 — پست‌های رسانه از آپارات و اتصال کانال سازمان */
+export function seedAparat(all: Category[]): { media: MediaPost[]; channels: AparatChannelLink[] } {
+  const cat = all.find((c) => c.entity_name === "media")?.id ?? "cmd1";
+  const post = (id: string, hash: string, user: string, date: string): MediaPost => {
+    const v = APARAT_SAMPLES[hash];
+    return { id, user_id: user, caption: v.title, post_type: "video", poster: v.thumbnail, is_active: true, is_public: true, is_draft: false, add_comment: true, show_comment: true, privacy: "EVERYONE", category_ids: [cat], tags: ["آپارات", "مستند"], attachments: [], published_at: at(date, "۱۳:۰۰:۰۰"), created_at: at(date, "۱۳:۰۰:۰۰"), updated_at: at(date, "۱۳:۰۰:۰۰"), deleted_at: null, source: "aparat", aparat: v };
+  };
+  return {
+    media: [post("media-ap1", "qW3eR", "u1", addDays(SOCIAL_TODAY, -2)), post("media-ap2", "Zx81k", "u1", addDays(SOCIAL_TODAY, -4))],
+    channels: [{ id: "apc1", username: "bonyad_tv", title: "تلویزیون اینترنتی بنیاد", album_id: cat, auto_publish: true, last_synced_at: at(addDays(SOCIAL_TODAY, -2), "۱۳:۰۰:۰۰"), imported: ["qW3eR", "Zx81k"], created_by: "u1" }],
+  };
+}
+
+/** F13 — فایل میزبانی که فقط با امضای تازه (پس از به‌روزرسانی پایگاه) آلوده شناخته می‌شود */
+export function seedV5Files(): FileItem[] {
+  return [{ id: "fl-av1", owner_type: "group", owner_id: "g1", folder_id: "fd4", name: "فرم-ارزیابی-macro.docm", size: "۱۸۰ کیلوبایت", mime: "application/vnd.ms-word.document.macroEnabled.12", created_by_user_id: "u10", created_at: at(addDays(SOCIAL_TODAY, -1), "۱۵:۱۰:۰۰") }];
+}
+
+/** رویدادهای ممیزی نمونه‌ی F01–F05 */
+export function seedFeatureLog(): FeatureEvent[] {
+  return [
+    { id: "fx1", at: at(addDays(SOCIAL_TODAY, -2), "۱۸:۰۰:۰۰"), actor_id: "u1", area: "poll", action: "بستن نظرسنجی (پایان مهلت)", target: "از سامانه‌ی جدید شبکه‌ی اجتماعی چقدر راضی هستید؟" },
+    { id: "fx2", at: at(addDays(SOCIAL_TODAY, -2), "۱۳:۰۰:۰۰"), actor_id: "u1", area: "aparat", action: "همگام‌سازی کانال آپارات", target: "bonyad_tv", note: "۲ ویدیو وارد رسانه شد" },
+    { id: "fx3", at: at(SOCIAL_TODAY, "۰۸:۱۵:۰۰"), actor_id: "u1", area: "poll", action: "ایجاد نظرسنجی", target: "زمان مناسب برگزاری همایش سالانه‌ی شبکه‌ی دانشمندان؟", note: "کانال همگانی" },
   ];
 }

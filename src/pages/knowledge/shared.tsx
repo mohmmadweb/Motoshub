@@ -3,6 +3,7 @@ import { Link2, Paperclip, Upload, X, FileText, Workflow, IdCard, UserRound, Kan
 import { useKnowledge, type EntityKind } from "../../context/KnowledgeContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import type { KFile, KRelation, RelationType } from "../../km/types";
+import { useScannedUpload, ScanStatusList } from "../social/composer/AvScan";
 
 export type KSection =
   | "dashboard"
@@ -62,10 +63,12 @@ export const fmtSize = (b: number) => (b > 1024 * 1024 ? `${(Math.round((b / 102
 export function FilePicker({ files, onChange, multiple = true }: { files: KFile[]; onChange: (f: KFile[]) => void; multiple?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const av = useScannedUpload("knowledge");
   const add = (list: FileList | null) => {
     if (!list) return;
     const fresh = Array.from(list).map((f, i) => ({ id: `f${Date.now()}${i}`, name: f.name, size: fmtSize(f.size), ext: f.name.split(".").pop()?.toLowerCase() ?? "" }));
-    onChange(multiple ? [...files, ...fresh] : fresh.slice(0, 1));
+    // اسکن ضدویروس پیش از ذخیره؛ فایل آلوده هرگز به سند اضافه نمی‌شود
+    av.scan(fresh, (clean) => onChange(multiple ? [...files, ...clean] : clean.slice(0, 1)));
   };
   return (
     <div>
@@ -89,6 +92,8 @@ export function FilePicker({ files, onChange, multiple = true }: { files: KFile[
         <p className="text-[11px] text-ink-400 mt-0.5">PDF، Word، Excel، تصویر و سایر فایل‌های رایج{multiple ? " — چند فایل هم‌زمان" : ""}</p>
       </button>
       <input ref={ref} type="file" multiple={multiple} className="hidden" onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+      {av.notice()}
+      <ScanStatusList jobs={av.jobs} onDismiss={av.dismiss} className="mt-2" />
       {files.length > 0 && (
         <ul className="mt-2 space-y-1">
           {files.map((f) => (

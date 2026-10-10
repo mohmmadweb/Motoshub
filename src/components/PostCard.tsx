@@ -31,16 +31,9 @@ export default function PostCard({ post }: { post: Post }) {
           <p className="mt-3 text-sm leading-7 text-ink-800">{post.content}</p>
 
           {post.attachment?.type === "poll" && (
-            <div className="mt-3 rounded-lg border border-ink-200 p-3 bg-ink-50 text-sm">
-              <p className="font-medium mb-2 flex items-center gap-1.5 text-ink-800">
-                <BarChart3 size={14} className="text-brand-600" /> نظرسنجی: {post.attachment.label}
-              </p>
-              <div className="space-y-1.5">
-                <div className="h-1.5 rounded-full bg-ink-200 overflow-hidden">
-                  <div className="h-full bg-brand-500" style={{ width: "62%" }} />
-                </div>
-                <p className="text-xs text-ink-400">۶۲٪ از ۴۸ رأی</p>
-              </div>
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-ink-200 p-3 bg-ink-50 text-sm">
+              <BarChart3 size={14} className="text-brand-600 shrink-0" />
+              <span className="font-medium text-ink-800">نظرسنجی: {post.attachment.label}</span>
             </div>
           )}
 

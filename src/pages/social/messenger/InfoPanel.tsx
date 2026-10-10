@@ -16,6 +16,7 @@ import { useConfirm } from "../../../components/ui/ConfirmProvider";
 import { CategoryBadges, Field, TagList, UserLine, UserPicker, fa, stamp } from "../kit";
 import type { Chat } from "../../../social/types";
 import { ChatAvatar, modeConf, wallPalette, type MessengerMode } from "./shared";
+import FeedsSection from "./FeedsSection";
 
 export default function InfoPanel({ mode, chat, open, onClose, onGone }: { mode: MessengerMode; chat: Chat; open: boolean; onClose: () => void; onGone: () => void }) {
   const s = useSocial();
@@ -168,6 +169,13 @@ export default function InfoPanel({ mode, chat, open, onClose, onGone }: { mode:
                 ))}
               </div>
             </Field>
+          </div>
+        )}
+
+        {/* «پیشنهادی» — F03 خبرخوان‌ها (فقط مدیر) */}
+        {isAdmin && (chat.chat_type === "group" || chat.chat_type === "channel") && (
+          <div className={section}>
+            <FeedsSection chat={chat} />
           </div>
         )}
 

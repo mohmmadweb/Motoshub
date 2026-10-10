@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { CalendarRange, ChevronLeft, ChevronRight, Download, Plus, Search, Users, Sparkles, Eye, EyeOff } from "lucide-react";
+import PrayerTimesWidget from "../../components/PrayerTimes";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
@@ -397,10 +398,10 @@ export default function UnifiedCalendar() {
   return (
     <div>
       <PageHeader
-        title="تقویم"
+        title="تقویم کاری من"
         description="رویدادها، جلسات، سررسیدها و یادآورهای شما در یک تقویم — به‌همراه زمان آزاد همکاران"
         icon={<CalendarRange size={18} />}
-        breadcrumb={[{ label: "تعامل و همکاری" }, { label: "تقویم" }]}
+        breadcrumb={[{ label: "داشبورد", to: "/dashboard" }, { label: "تقویم کاری من" }]}
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" icon={<Download size={14} />} onClick={exportIcs} title="خروجی ‎.ics‎ از بازه‌ی دیده‌شده">
@@ -483,6 +484,8 @@ export default function UnifiedCalendar() {
               }}
             />
           </div>
+
+          <PrayerTimesWidget />
 
           <div className="card p-4">
             <p className="text-sm font-bold text-ink-900 mb-2">لایه‌ها</p>

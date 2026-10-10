@@ -30,6 +30,9 @@ import {
   Search,
   Flag,
   EyeOff,
+  BarChart3,
+  Rss,
+  LinkIcon,
 } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 import Button from "../../../components/ui/Button";
@@ -44,6 +47,14 @@ import type { Attachment, Chat, Message } from "../../../social/types";
 import { ChatAvatar, RichText, chatTitle, modeConf, otherUserId, stickers, tagsIn, timeOf, type MessengerMode } from "./shared";
 import { ChatSearchBar, PinnedBar, ReactionChips, ReactionPicker, ThreadDrawer } from "./extras";
 import { ReportModal } from "../moderation";
+import MentionTextarea, { extractMentions } from "../composer/MentionTextarea";
+import { ComposerLinkPreview, TextLinkPreview } from "../composer/LinkPreview";
+import { ScanStatusList, useScannedUpload } from "../composer/AvScan";
+import { useComposerGuard } from "../composer/WriteGate";
+import PollCard from "../polls/PollCard";
+import PollComposer from "../polls/PollComposer";
+import { firstUrl } from "../../../social/linkPreview";
+import { RSS_BOT_ID } from "../../../social/seed";
 
 export default function Conversation({ mode, root, initialSub, onBack, onInfo }: { mode: MessengerMode; root: Chat; initialSub: string | null; onBack: () => void; onInfo: () => void }) {
   const s = useSocial();
@@ -73,6 +84,11 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
   const [searchIdx, setSearchIdx] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<number | null>(null);
+  // «پیشنهادی» — نظرسنجی (F01)، حذف پیش‌نمایش لینک پیش از ارسال (F02) و اسکن ضدویروس پیوست‌ها (F13)
+  const [pollOpen, setPollOpen] = useState(false);
+  const [noPreview, setNoPreview] = useState<string | null>(null);
+  const scan = useScannedUpload("chat");
+  const guard = useComposerGuard();
 
   const isRoom = root.chat_type === "group" || root.chat_type === "channel";
   const children = isRoom ? s.chats.filter((c) => c.parent === root.id && !c.deleted_at) : [];
@@ -144,6 +160,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
     setFiles([]);
     setReply(null);
     setEditing(null);
+    setNoPreview(null);
   };
 
   const send = () => {
@@ -154,7 +171,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
       return resetComposer();
     }
     const content = text.trim();
-    const r = s.sendMessage(active.id, { content, type: "text", parent_message_id: reply?.id ?? null, uploaded_files: files, tags: tagsIn(content) });
+    if ((content || files.length) && !guard.gate("message")) return;
+    const url = firstUrl(content);
+    const r = s.sendMessage(active.id, { content, type: "text", parent_message_id: reply?.id ?? null, uploaded_files: files, tags: tagsIn(content), mentions: extractMentions(content), preview_hidden: !!url && noPreview === url });
     if (!r.ok) return notify(r.error, "warning");
     resetComposer();
     s.markRead(active.id);
@@ -162,6 +181,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
 
   const sendSticker = (emoji: string) => {
     setStickerOpen(false);
+    if (!guard.gate("message")) return;
     const r = s.sendMessage(active.id, { content: emoji, type: "sticker", parent_message_id: reply?.id ?? null });
     if (!r.ok) return notify(r.error, "warning");
     setReply(null);
@@ -337,12 +357,15 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
               const canDelete = own || isAdmin;
               const parent = m.parent_message_id ? msgs.find((x) => x.id === m.parent_message_id) : undefined;
               const author = s.userById(m.user_id);
+              const isBot = m.user_id === RSS_BOT_ID;
+              const poll = m.poll_id ? m.poll_id : null;
               const extraTags = m.tags.filter((t) => !m.content.includes(`#${t}`));
               const actions = [
                 canPost && { k: "reply", label: "پاسخ", icon: CornerUpLeft, run: () => (setEditing(null), setReply(m)) },
                 root.chat_type !== "saved_messages" && { k: "thread", label: "پاسخ در رشته", icon: MessagesSquare, run: () => setThreadRoot(m.id) },
                 canPin && { k: "pin", label: pins.includes(m.id) ? "برداشتن سنجاق" : "سنجاق پیام", icon: pins.includes(m.id) ? PinOff : Pin, run: () => togglePin(m) },
-                canEdit && { k: "edit", label: "ویرایش", icon: Pencil, run: () => (setReply(null), setEditing(m), setText(m.content)) },
+                canEdit && !poll && { k: "edit", label: "ویرایش", icon: Pencil, run: () => (setReply(null), setEditing(m), setText(m.content)) },
+                (own || isAdmin) && !m.preview_hidden && !poll && !!firstUrl(m.content) && { k: "nopreview", label: "حذف پیش‌نمایش", icon: LinkIcon, run: () => s.hidePreview(m.id) },
                 { k: "fwd", label: "فوروارد", icon: Forward, run: () => setForwarding(m) },
                 root.chat_type !== "saved_messages" && {
                   k: "save",
@@ -364,7 +387,18 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                     </div>
                   )}
                   <div id={`m-${m.id}`} className={`group flex items-end gap-2 justify-start ${own ? "" : "flex-row-reverse"} ${showAuthor ? "mt-2" : ""}`}>
-                    {isRoom && !own && <span className="w-7 shrink-0">{showAuthor && <Avatar name={author?.name ?? "؟"} color={author?.avatarColor} size={28} />}</span>}
+                    {isRoom && !own && (
+                      <span className="w-7 shrink-0">
+                        {showAuthor &&
+                          (isBot ? (
+                            <span className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center" title="بات خبرخوان">
+                              <Rss size={14} />
+                            </span>
+                          ) : (
+                            <Avatar name={author?.name ?? "؟"} color={author?.avatarColor} size={28} />
+                          ))}
+                      </span>
+                    )}
                     <div
                       className="relative max-w-[82%] sm:max-w-[70%] min-w-0"
                       onContextMenu={(e) => {
@@ -380,11 +414,17 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                       <div
                         className={`${m.type === "sticker" && !parent && !m.forwarded_from ? "rounded-2xl" : `rounded-2xl px-3 py-2 border ${own ? "bg-brand-50 border-brand-100 rounded-br-md" : "bg-white border-ink-100 rounded-bl-md"}`} transition-shadow ${flash === m.id || current?.id === m.id ? "ring-2 ring-amber-400" : ""}`}
                       >
-                        {showAuthor && (
-                          <Link to={`/dashboard/profile/${m.user_id}`} className="block text-[11.5px] font-bold mb-0.5 hover:underline" style={{ color: author?.avatarColor }}>
-                            {author?.name ?? "کاربر"}
-                          </Link>
-                        )}
+                        {showAuthor &&
+                          (isBot ? (
+                            <p className="text-[11.5px] font-bold mb-0.5 text-amber-700 flex items-center gap-1">
+                              خبرخوان <span className="text-[9.5px] font-medium rounded bg-amber-100 px-1">بات</span>
+                              {m.feed_item && <span className="font-normal text-[10px] text-ink-400 truncate">· {s.feeds.find((f) => f.id === m.feed_item!.feed_id)?.title ?? "خوراک"}</span>}
+                            </p>
+                          ) : (
+                            <Link to={`/dashboard/profile/${m.user_id}`} className="block text-[11.5px] font-bold mb-0.5 hover:underline" style={{ color: author?.avatarColor }}>
+                              {author?.name ?? "کاربر"}
+                            </Link>
+                          ))}
                         {m.forwarded_from && (
                           <p className="text-[10.5px] text-ink-500 mb-1 flex items-center gap-1">
                             <Forward size={11} /> فوروارد شده از {s.userName(m.forwarded_from.user_id)}
@@ -405,11 +445,25 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                         )}
                         {m.type === "sticker" ? (
                           <p className="text-5xl leading-none py-1 select-none">{m.content}</p>
+                        ) : poll ? (
+                          <div className="py-0.5">
+                            <PollCard pollId={poll} />
+                          </div>
                         ) : (
                           m.content && (
-                            <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
-                              <RichText text={m.content} highlight={term && current?.id === m.id ? searchQ.trim() : undefined} />
-                            </p>
+                            <>
+                              {m.feed_item ? (
+                                <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
+                                  <span className="block font-bold text-ink-900">{m.feed_item.title}</span>
+                                  <RichText text={m.content.split("\n").slice(1).join("\n")} highlight={term && current?.id === m.id ? searchQ.trim() : undefined} />
+                                </p>
+                              ) : (
+                                <p className="text-[13px] text-ink-800 leading-6 whitespace-pre-wrap break-words">
+                                  <RichText text={m.content} highlight={term && current?.id === m.id ? searchQ.trim() : undefined} />
+                                </p>
+                              )}
+                              <TextLinkPreview text={m.content} hidden={m.preview_hidden} onRemove={own && !m.preview_hidden ? () => s.hidePreview(m.id) : undefined} />
+                            </>
                           )
                         )}
                         {m.attachments.length > 0 && (
@@ -518,6 +572,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                   </button>
                 </div>
               )}
+              {guard.notice("mx-3 mt-2")}
+              <ScanStatusList jobs={scan.jobs} onDismiss={scan.dismiss} className="px-3 pt-2" />
+              {!editing && <ComposerLinkPreview text={text} dismissed={noPreview} onDismiss={setNoPreview} />}
               {files.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 px-3 pt-2">
                   {files.map((f) => (
@@ -538,7 +595,8 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    if (e.target.files) setFiles([...files, ...toAttachments(e.target.files)]);
+                    // «پیشنهادی» — F13: هر پیوست پیش از افزوده شدن با ClamAV اسکن می‌شود
+                    if (e.target.files) scan.scan(toAttachments(e.target.files), (clean) => setFiles((cur) => [...cur, ...clean]));
                     e.target.value = "";
                   }}
                 />
@@ -547,6 +605,11 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                     <button onClick={() => fileRef.current?.click()} className="p-2 rounded-lg text-ink-500 hover:bg-ink-100" title="پیوست فایل (uploaded_files)" aria-label="پیوست فایل">
                       <Paperclip size={18} />
                     </button>
+                    {isRoom && s.setting("core.polls.enabled") !== false && (
+                      <button onClick={() => setPollOpen(true)} className="p-2 rounded-lg text-ink-500 hover:bg-ink-100" title="نظرسنجی" aria-label="نظرسنجی">
+                        <BarChart3 size={18} />
+                      </button>
+                    )}
                     <span className="relative">
                       <button onClick={() => setStickerOpen((v) => !v)} className="p-2 rounded-lg text-ink-500 hover:bg-ink-100" title="برچسب (type: sticker)" aria-label="برچسب">
                         <Smile size={18} />
@@ -566,15 +629,18 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                     </span>
                   </>
                 )}
-                <textarea
+                <MentionTextarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={onKey}
+                  priorityIds={active.members.map((x) => x.user_id)}
+                  allowEveryone={isRoom && isAdmin}
+                  placement="top"
                   rows={Math.min(5, Math.max(1, text.split("\n").length))}
-                  placeholder="پیام… (Enter ارسال، Shift+Enter خط جدید، ‎@نام_خانوادگی برای منشن)"
-                  className="flex-1 min-w-0 resize-none bg-ink-50 border border-transparent focus:border-brand-300 focus:bg-white rounded-xl px-3 py-2 text-[13px] leading-6 outline-none"
+                  placeholder="پیام… (Enter ارسال، Shift+Enter خط جدید، @ برای منشن)"
+                  className="block resize-none bg-ink-50 border border-transparent focus:border-brand-300 focus:bg-white rounded-xl px-3 py-2 text-[13px] leading-6 outline-none"
                 />
-                <button onClick={send} disabled={!text.trim() && !files.length} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label={editing ? "ذخیره ویرایش" : "ارسال"}>
+                <button onClick={send} disabled={(!text.trim() && !files.length) || (guard.blocked && !editing)} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label={editing ? "ذخیره ویرایش" : "ارسال"}>
                   <SendHorizontal size={17} className="-scale-x-100" />
                 </button>
               </div>
@@ -584,6 +650,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
       )}
 
       <ThreadDrawer chat={active} rootId={threadRoot} canPost={canPost} onClose={() => setThreadRoot(null)} />
+      {isRoom && <PollComposer open={pollOpen} onClose={() => setPollOpen(false)} chatId={active.id} />}
       <ReportModal
         target={reporting ? { target_type: "message", target_id: reporting.id, parent_ref: reporting.chat_id, target_owner_id: reporting.user_id, target_excerpt: reporting.type === "sticker" ? `برچسب ${reporting.content}` : reporting.content.slice(0, 90) || "پیوست" } : null}
         onClose={() => setReporting(null)}

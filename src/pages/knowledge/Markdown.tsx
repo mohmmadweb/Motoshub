@@ -6,6 +6,7 @@ import { Fragment, useRef, useState, type ReactNode } from "react";
 import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Table, Code, Quote, Eye, PenLine, Columns2 } from "lucide-react";
 import { diffLines, matchRanges } from "../../km/text";
 import { fa } from "../../pm/jalali";
+import MentionTextarea from "../social/composer/MentionTextarea";
 
 // ------------------------------------------------------------------ برجسته‌سازی
 export function Highlight({ text, terms }: { text: string; terms: string[] }) {
@@ -267,7 +268,8 @@ export function MarkdownEditor({ value, onChange, minHeight = 260 }: { value: st
       </div>
       <div className={mode === "split" ? "grid grid-cols-2 divide-x divide-x-reverse divide-ink-200" : ""}>
         {mode !== "preview" && (
-          <textarea
+          // «پیشنهادی» — F04: با تایپ @ پیشنهاد لحظه‌ای افراد (بلاگ، خبر، مجله و مقاله‌ی دانش)
+          <MentionTextarea
             ref={ref}
             value={value}
             onChange={(e) => onChange(e.target.value)}

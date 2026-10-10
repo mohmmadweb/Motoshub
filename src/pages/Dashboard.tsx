@@ -14,6 +14,7 @@ import PageHeader from "../components/ui/PageHeader";
 import PersonalHub from "./dashboard/PersonalHub";
 import { ReportBuilderModal } from "../reports/ModuleReportsButton";
 import { reportStore } from "../reports/store";
+import { useI18n } from "../i18n";
 
 // «شروع سریع سازمان» — چک‌لیست راه‌اندازی برای راهبر؛ قابل بستن (localStorage)
 const quickStartSteps = [
@@ -93,25 +94,26 @@ function greetingFor(hour: number) {
 function LiveDateTime() {
   const now = useNow();
   const { actingUser } = useTenancy();
+  const { t, lang } = useI18n();
   const time = now.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  // ساخت دستی تاریخ شمسی تا ترتیب اجزا در RTL به‌هم نریزد: «شنبه ۳ مرداد ۱۴۰۵»
+  // ساخت دستی تاریخ شمسی تا ترتیب اجزا در RTL به‌هم نریزد: «شنبه ۳ مرداد ۱۴۰۵»؛ در زبان‌های دیگر تقویم همان زبان (F14)
   const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).formatToParts(now);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const date = `${get("weekday")} ${get("day")} ${get("month")} ${get("year")}`;
+  const get = (k: string) => parts.find((p) => p.type === k)?.value ?? "";
+  const date = lang.code === "fa" ? `${get("weekday")} ${get("day")} ${get("month")} ${get("year")}` : new Intl.DateTimeFormat(`${lang.locale}-u-ca-${lang.calendar}`, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
   const g = greetingFor(now.getHours());
 
   return (
     <div className="flex items-center gap-3 flex-wrap justify-between">
       <span className="flex items-center gap-2 text-sm font-bold text-ink-900">
         <g.icon size={17} className={g.tone} />
-        {g.text}، {actingUser.name.split(" ")[0] === "پایگاه" ? "همکار گرامی" : actingUser.name}
+        {t(g.text)}، {actingUser.name.split(" ")[0] === "پایگاه" ? "همکار گرامی" : actingUser.name}
       </span>
       <span className="flex items-center gap-2.5 text-[12px] text-ink-500">
         <span className="flex items-center gap-1.5 bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5">
           <Clock3 size={13} className="text-brand-500" />
           <span className="font-bold text-ink-800 tabular-nums min-w-[64px] text-center">{time}</span>
         </span>
-        <span dir="rtl" className="bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5 font-medium whitespace-nowrap">{date}</span>
+        <span dir={lang.dir} className="bg-ink-50 border border-ink-100 rounded-lg px-2.5 py-1.5 font-medium whitespace-nowrap">{date}</span>
       </span>
     </div>
   );
@@ -135,7 +137,7 @@ export default function Dashboard() {
   const { actingUser, role, hasPermission } = useTenancy();
   return (
     <div>
-      <PageHeader title={`خوش آمدید، ${actingUser.name}`} description={`میز کار شخصی شما به‌عنوان «${role.title}»: کارها، جلسات، اعلان‌های مهم، پیام‌ها و پیشنهادهای همکاری`} />
+      <PageHeader title="میزکار من" description={`خوش آمدید، ${actingUser.name} — میز کار شخصی شما به‌عنوان «${role.title}»: کارها، جلسات، اعلان‌های مهم، پیام‌ها و پیشنهادهای همکاری`} />
       {hasPermission("settings.system") && <QuickStart />}
       <PersonalHub header={<LiveDateTime />} />
       <ReportFromLink />

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, Users, BookOpen, KanbanSquare, ShieldCheck, ArrowLeft, CheckCircle2, Network, Quote } from "lucide-react";
 import SiteHeader from "../components/SiteHeader";
 import PublicFooter from "../components/PublicFooter";
+import { LandingSlideshow } from "../components/Slideshow";
 import { holdings, companies } from "../data/tenancy";
 
 const modules = [
@@ -68,6 +69,9 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        {/* اسلایدشوی عمومی (F15) — از «تنظیمات سامانه ← برند و ظاهر ← اسلایدشو» */}
+        <LandingSlideshow className="px-4 sm:px-6 lg:px-16 pt-10 max-w-6xl mx-auto" />
 
         {/* امکانات پلتفرم — عنوان بخش دیده می‌شود تا مقصد لینک منو روشن باشد */}
         <section id="modules" className="px-6 lg:px-16 py-14 max-w-6xl mx-auto">

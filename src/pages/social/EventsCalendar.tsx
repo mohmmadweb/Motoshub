@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «تعامل و همکاری › رویداد و جلسات» — مدیریت رویدادها (فهرست / ماه / هفته) روی ماژول events
+// «شبکه اجتماعی › رویدادها و جلسات» — مدیریت رویدادها (فهرست / ماه / هفته) روی ماژول events
 // از Motoshub Social API، به‌همراه «جلسات پروژه» (فقط‌خواندنی از ProjectsContext) و «دعوت‌های من».
 // ویرایشگر رویداد (EventEditor) هم‌شکل EventStoreRequest است و از صفحه‌ی جزئیات هم استفاده می‌شود.
 // تقویم یکپارچه‌ی شخصی/تیمی جداگانه در /dashboard/calendar است.
@@ -151,10 +151,10 @@ export default function EventsCalendar() {
   return (
     <div>
       <PageHeader
-        title="رویداد و جلسات"
+        title="رویدادها و جلسات"
         description="ساخت و مدیریت رویدادها، دعوت‌ها و پاسخ‌ها — به‌همراه جلسات پروژه‌های شما"
         icon={<CalendarDays size={18} />}
-        breadcrumb={[{ label: "تعامل و همکاری" }, { label: "رویداد و جلسات" }]}
+        breadcrumb={[{ label: "شبکه اجتماعی" }, { label: "رویدادها و جلسات" }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <ModuleReportsButton module="events" />

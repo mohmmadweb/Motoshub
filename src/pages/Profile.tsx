@@ -5,9 +5,9 @@
 // پارامتر: ?tab=activity|work|knowledge|certs|organization|security
 // ---------------------------------------------------------------------------
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Briefcase, ShieldCheck, MessageCircle, Laptop, Smartphone, MapPin, LogOut, Lock, Building2 } from "lucide-react";
-import { users, posts, activeSessions } from "../data/mock";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Briefcase, MessageCircle, Lock, Building2 } from "lucide-react";
+import { users, posts } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import { useSocial } from "../context/SocialContext";
 import Avatar from "../components/Avatar";
@@ -19,6 +19,11 @@ import EmptyState from "../components/ui/EmptyState";
 import { useToast } from "../components/ui/ToastProvider";
 import { useVisibleData } from "./search/liveData";
 import { ActivityTab, CertificatesTab, KnowledgeTab, ReportingChain, WorkTab, useProfileData } from "./profile/ProfileTabs";
+import { ActiveSessionsCard, LoginHistoryCard } from "./profile/SecurityTab";
+import Modal from "../components/ui/Modal";
+import { FollowButton } from "../social/follow/FollowButton";
+import { FeaturedBadge } from "../social/follow/FeaturedBadge";
+import { useFollows } from "../social/follow/store";
 
 type TabId = "activity" | "work" | "knowledge" | "certs" | "organization" | "security";
 const TAB_IDS: TabId[] = ["activity", "work", "knowledge", "certs", "organization", "security"];
@@ -36,6 +41,8 @@ export default function Profile() {
   const { notify } = useToast();
   const v = useVisibleData();
   const d = useProfileData(user, v);
+  const fol = useFollows();
+  const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
 
   const isMe = user.id === t.actingUser.id;
   const inView = isMe || t.visibleUserIds().includes(user.id);
@@ -74,15 +81,42 @@ export default function Profile() {
       <aside className="space-y-4 min-w-0">
         <div className="card p-5 text-center">
           <Avatar name={user.name} color={user.avatarColor} size={72} online={user.online} />
-          <h1 className="font-bold mt-3 text-ink-900">{user.name}</h1>
+          <h1 className="font-bold mt-3 text-ink-900 flex items-center justify-center gap-1.5 flex-wrap">
+            {user.name} <FeaturedBadge userId={user.id} />
+          </h1>
           <p className="text-sm text-ink-500">{home?.title ?? user.role}</p>
           <p className="text-xs text-ink-400 mt-1 flex items-center justify-center gap-1">
-            <Building2 size={11} /> {home ? t.scopePath(home.scopeId) : user.org}
+            <Building2 size={11} />{" "}
+            {home ? (
+              <Link to={`/dashboard/org/${home.scopeId}`} className="hover:text-brand-700 hover:underline">
+                {t.scopePath(home.scopeId)}
+              </Link>
+            ) : (
+              user.org
+            )}
           </p>
-          {!isMe && inView && t.hasPermission("chat.view") && (
-            <Button variant="primary" icon={<MessageCircle size={14} />} className="w-full justify-center mt-4" onClick={message}>
-              ارسال پیام
-            </Button>
+          {/* دنبال‌کننده / دنبال‌شونده (F08) */}
+          <div className="flex items-center justify-center gap-4 mt-3 text-[12px]">
+            {(
+              [
+                ["followers", "دنبال‌کننده", fol.followers(user.id).length],
+                ["following", "دنبال‌شونده", fol.following(user.id).length],
+              ] as const
+            ).map(([k, label, n]) => (
+              <button key={k} type="button" onClick={() => setFollowList(k)} className="text-ink-500 hover:text-brand-700">
+                <b className="text-ink-900">{fa(n)}</b> {label}
+              </button>
+            ))}
+          </div>
+          {!isMe && inView && (
+            <div className="flex gap-2 mt-4">
+              {t.hasPermission("chat.view") && (
+                <Button variant="primary" icon={<MessageCircle size={14} />} className="flex-1 justify-center" onClick={message}>
+                  ارسال پیام
+                </Button>
+              )}
+              <FollowButton kind="user" id={user.id} variant={t.hasPermission("chat.view") ? "icon" : "button"} className={t.hasPermission("chat.view") ? "!h-auto" : "flex-1 justify-center"} />
+            </div>
           )}
         </div>
 
@@ -184,7 +218,7 @@ export default function Profile() {
                     <ul className="divide-y divide-ink-100 border border-ink-100 rounded-lg">
                       {memberships.map((m) => (
                         <li key={m.id} className="flex items-center gap-2 px-3 py-2 text-[12.5px]">
-                          <span className="flex-1 min-w-0 truncate text-ink-700">{t.scopePath(m.scopeId)}</span>
+                          <Link to={`/dashboard/org/${m.scopeId}`} className="flex-1 min-w-0 truncate text-ink-700 hover:text-brand-700">{t.scopePath(m.scopeId)}</Link>
                           {m.title && <span className="text-ink-400 shrink-0 hidden sm:inline">{m.title}</span>}
                           {m.primary && <Badge tone="brand">اصلی</Badge>}
                           <Badge tone={m.status === "active" ? "success" : "warning"}>{m.status === "active" ? "فعال" : "معلق"}</Badge>
@@ -199,38 +233,33 @@ export default function Profile() {
 
             {tab === "security" && canSecurity && (
               <div className="space-y-4">
-                <div className="card p-5">
-                  <h3 className="text-sm font-bold mb-4 text-ink-900 flex items-center gap-1.5">
-                    <ShieldCheck size={15} className="text-brand-600" /> نشست‌های فعال
-                  </h3>
-                  <div className="space-y-3">
-                    {activeSessions.map((x) => (
-                      <div key={x.id} className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">
-                          {x.device.includes("Android") || x.device.includes("iPhone") ? <Smartphone size={15} /> : <Laptop size={15} />}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-ink-800">
-                            {x.device} {x.current && <Badge tone="success">نشست فعلی</Badge>}
-                          </p>
-                          <p className="text-xs text-ink-400 flex items-center gap-1 mt-0.5 flex-wrap">
-                            <MapPin size={11} /> {x.location} · {x.ip} · {x.lastActive}
-                          </p>
-                        </div>
-                        {!x.current && (
-                          <Button variant="secondary" size="sm" icon={<LogOut size={12} />} onClick={() => notify("نشست پایان یافت (نمایشی).", "info")}>
-                            پایان نشست
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                {/* آخرین ورودهای موفق — بالای نشست‌های فعال (F07) */}
+                <LoginHistoryCard userId={user.id} />
+                <ActiveSessionsCard userId={user.id} />
               </div>
             )}
           </>
         )}
       </div>
+      <Modal open={!!followList} onClose={() => setFollowList(null)} title={followList === "followers" ? `دنبال‌کنندگان ${user.name}` : `دنبال‌شونده‌های ${user.name}`} width="max-w-md">
+        <ul className="divide-y divide-ink-100 -my-2">
+          {(followList === "followers" ? fol.followers(user.id) : fol.following(user.id)).map((uid) => {
+            const u = users.find((x) => x.id === uid);
+            if (!u) return null;
+            return (
+              <li key={uid} className="flex items-center gap-2.5 py-2">
+                <Avatar name={u.name} color={u.avatarColor} size={30} />
+                <Link to={`/dashboard/profile/${u.id}`} onClick={() => setFollowList(null)} className="flex-1 min-w-0">
+                  <span className="block text-[13px] text-ink-800 truncate hover:text-brand-700">{u.name}</span>
+                  <span className="block text-[11px] text-ink-400 truncate">{u.role}</span>
+                </Link>
+                <FollowButton kind="user" id={u.id} variant="icon" />
+              </li>
+            );
+          })}
+          {(followList === "followers" ? fol.followers(user.id) : fol.following(user.id)).length === 0 && <li className="py-3 text-xs text-ink-400">کسی نیست.</li>}
+        </ul>
+      </Modal>
     </div>
   );
 }

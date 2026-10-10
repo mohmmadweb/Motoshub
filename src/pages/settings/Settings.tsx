@@ -1,8 +1,8 @@
-// «تنظیمات سامانه» — همه‌ی تنظیمات در یک جا، به تفکیک ماژول: گروه ← بخش ← زبانه‌ی داخلی
+// «مدیریت سامانه» (منوی «تنظیمات سامانه») — همه‌ی تنظیمات در یک جا، به تفکیک ماژول: گروه ← بخش ← زبانه‌ی داخلی
 // (ساختار در settingsConfig.tsx). هر بخش و زبانه مجوز جداگانه دارد؛ هر مدیر فقط بخش‌هایی را می‌بیند
 // که در کانتکست فعلی اختیارش را دارد. نشانی: ?section=<بخش>&tab=<زبانه>؛ شناسه‌های قدیمی نگاشت می‌شوند.
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronLeft, Eye, Search, Settings as SettingsIcon, X } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Tabs from "../../components/ui/Tabs";
@@ -152,10 +152,13 @@ export default function Settings() {
     </div>
   );
 
+  // «تنظیمات پروژه» از ۱۴۰۵/۰۷ صفحه‌ی مستقل در منوی «پروژه و فعالیت‌ها» است
+  if (rawSection === "projects") return <Navigate to="/dashboard/project-settings" replace />;
+
   return (
     <div>
       <PageHeader
-        title="تنظیمات سامانه"
+        title="مدیریت سامانه"
         description={`در حال مدیریت: ${scopePath(contextId)} — هر بخش فقط برای کسانی دیده می‌شود که در این واحد اختیارش را دارند.`}
         icon={<SettingsIcon size={18} />}
         actions={
