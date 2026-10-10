@@ -8,13 +8,14 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { taskLoggedHours } from "../../pm/selectors";
 import { fa } from "../../pm/jalali";
+import { isContributor } from "../../pm/access";
 import { Field, MemberSelect, Progress, SectionTitle, TaskSelect, numIn, taskTitle, useProjectPage } from "./shared";
 
 export default function TimeTab() {
   const { p, pid, canEdit, refDate, openTask, focusId } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
-  const [member, setMember] = useState(p.members.find((m) => m.role !== "مشاهده‌گر")?.name ?? "");
+  const [member, setMember] = useState(p.members.find(isContributor)?.name ?? "");
   const [taskId, setTaskId] = useState(focusId && p.tasks.some((t) => t.id === focusId) ? focusId : "");
   const [hours, setHours] = useState("");
   const [date, setDate] = useState(refDate);

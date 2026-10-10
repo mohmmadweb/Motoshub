@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
-import { ROLE_PRESETS, TAB_RESOURCE, atLeast, canManageAccess, effectiveMatrix, type AccessLevel, type AccessMatrix, type Editor, type ResourceId } from "./access";
-import type { PMMember, ProjectRole } from "./types";
+import { TAB_RESOURCE, atLeast, canManageAccess, effectiveMatrix, fullMatrix, isOwner, isViewOnly, templateById, type AccessLevel, type AccessMatrix, type Editor, type ResourceId } from "./access";
+import type { PMMember } from "./types";
 
 export type ProjectAccess = {
   /** آیا کاربر جاری حداقل این سطح را روی بخش دارد؟ */
@@ -12,7 +12,12 @@ export type ProjectAccess = {
   canSeeTab: (tab: string) => boolean;
   matrix: AccessMatrix;
   member?: PMMember;
-  role?: ProjectRole;
+  /** مالک پروژه */
+  isOwner: boolean;
+  /** مدیر پروژه (meta.manager) */
+  isManager: boolean;
+  /** هیچ بخشی با سطح ویرایش ندارد (جایگزین نقش قدیمی «مشاهده‌گر») */
+  viewOnly: boolean;
   /** ویرایشگر جاری (برای کنترل اعطای دسترسی) */
   editor: Editor;
   /** امکان ویرایش دسترسی‌های اعضا */
@@ -21,8 +26,8 @@ export type ProjectAccess = {
 
 /**
  * دسترسی ریز کاربر جاری در یک پروژه.
- * عضو پروژه ← ماتریس مؤثر (پیش‌فرض نقش + بازنویسی‌ها).
- * غیرعضو ← دارنده‌ی مجوز سراسری projects.members مثل مدیر پروژه، دارنده‌ی projects.tasks مثل عضو، بقیه مثل مشاهده‌گر.
+ * عضو پروژه ← نقشه‌ی صریح دسترسی‌های او (مالک همیشه کامل).
+ * مدیر پروژه‌ی غیرعضو و دارنده‌ی مجوز سراسری projects.members ← کامل؛ دارنده‌ی projects.tasks ← قالب «اجرایی»؛ بقیه ← «فقط مشاهده».
  */
 export function useProjectAccess(pid?: string): ProjectAccess {
   const { actingUser, hasPermission } = useTenancy();
@@ -32,8 +37,16 @@ export function useProjectAccess(pid?: string): ProjectAccess {
   const canTasks = hasPermission("projects.tasks");
   return useMemo(() => {
     const member = p?.members.find((m) => m.userId === actingUser.id || m.name === actingUser.name);
-    const matrix: AccessMatrix = member ? effectiveMatrix(member) : globalAdmin ? { ...ROLE_PRESETS["مدیر پروژه"] } : canTasks ? { ...ROLE_PRESETS["عضو"] } : { ...ROLE_PRESETS["مشاهده‌گر"] };
-    const editor: Editor = { role: member?.role, matrix, globalAdmin, name: actingUser.name };
+    const manager = !!p && (p.meta.manager === actingUser.name || (!!member && member.name === p.meta.manager));
+    const owner = !!member && isOwner(member);
+    const matrix: AccessMatrix = member
+      ? effectiveMatrix(member)
+      : manager || globalAdmin
+        ? fullMatrix()
+        : canTasks
+          ? { ...templateById.executive.matrix }
+          : { ...templateById.viewer.matrix };
+    const editor: Editor = { isOwner: owner, isManager: manager, matrix, globalAdmin, name: member?.name ?? actingUser.name };
     const can = (res: ResourceId, level: AccessLevel = "read") => atLeast(matrix[res] ?? "none", level);
     return {
       can,
@@ -44,7 +57,9 @@ export function useProjectAccess(pid?: string): ProjectAccess {
       },
       matrix,
       member,
-      role: member?.role,
+      isOwner: owner,
+      isManager: manager,
+      viewOnly: isViewOnly(matrix),
       editor,
       canManageAccess: canManageAccess(editor),
     };

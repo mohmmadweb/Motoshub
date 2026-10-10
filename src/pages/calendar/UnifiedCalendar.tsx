@@ -28,6 +28,7 @@ import { useCalendarStore, type CalView } from "./store";
 import { buildIcs, downloadIcs, appUrl } from "./ics";
 import { TimeGrid, DayHead, MonthView, AgendaView, MiniMonth, FreeBusyMatrix, ItemPopover, useNowMin, type Column, type PopState, type FbRow } from "./views";
 import QuickCreate, { type QuickInit, type QuickEventInput } from "./QuickCreate";
+import { isContributor } from "../../pm/access";
 
 const views: { id: CalView; label: string }[] = [
   { id: "day", label: "روز" },
@@ -78,7 +79,7 @@ export default function UnifiedCalendar() {
   const range: [number, number] =
     view === "day" ? [cursor, cursor] : view === "week" ? [weekStart, weekStart + 6] : view === "month" ? [monthStart, monthStart + monthLength(jy, jm) - 1] : [cursor, cursor + 29];
 
-  const canEditMeeting = (p: ProjectState) => hasPermission("projects.meetings") && !p.meta.archived && (p.meta.manager === meName || p.members.some((m) => (m.userId === meId || m.name === meName) && m.role !== "مشاهده‌گر"));
+  const canEditMeeting = (p: ProjectState) => hasPermission("projects.meetings") && !p.meta.archived && (p.meta.manager === meName || p.members.some((m) => (m.userId === meId || m.name === meName) && isContributor(m)));
   const base = { meId, meName, events: social.events, eventMembers: social.eventMembers, visibleEvent, projects: pm.projects, personal: cal.items, canEditMeeting };
   const items = useMemo(
     () => collectItems({ ...base, from: range[0], to: range[1], layers }),

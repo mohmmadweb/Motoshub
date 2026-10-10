@@ -13,55 +13,62 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Toggle from "../components/ui/Toggle";
 import StatCard from "../components/ui/StatCard";
+import { saveSystemVars, setMaintenance, systemVarAreaLabel, systemVarMeta, useSystemVars, type SystemVarArea } from "./settings/systemVars";
 
-type Notify = (message: string, tone?: "success" | "info" | "warning") => void;
+export type Notify = (message: string, tone?: "success" | "info" | "warning") => void;
 
-const defaultSystemSettings = [
-  {
-    group: "آپلود و فایل",
-    items: [
-      { key: "upload_max_mb", label: "حداکثر حجم آپلود (مگابایت)", value: "100", hint: "برای هر فایل؛ فایل‌های بزرگ‌تر به صورت چندتکه (chunk) ارسال می‌شوند" },
-      { key: "chunk_size_mb", label: "اندازه هر تکه آپلود (مگابایت)", value: "10", hint: "کوچک‌تر = پایدارتر روی اینترنت ضعیف، بزرگ‌تر = سریع‌تر" },
-      { key: "user_quota_gb", label: "سهمیه دیسک هر کاربر (گیگابایت)", value: "5", hint: "پس از پر شدن، آپلود جدید مسدود می‌شود" },
-      { key: "image_max_px", label: "حداکثر ابعاد تصویر (پیکسل)", value: "1920", hint: "تصاویر بزرگ‌تر به این ابعاد کوچک می‌شوند" },
-    ],
-  },
-  {
-    group: "نشست و امنیت",
-    items: [
-      { key: "session_hours", label: "طول عمر نشست (ساعت)", value: "24", hint: "پس از این مدت کاربر باید دوباره وارد شود" },
-      { key: "login_attempts", label: "حداکثر تلاش ناموفق ورود", value: "5", hint: "پس از آن حساب موقتاً قفل می‌شود" },
-      { key: "lock_minutes", label: "مدت قفل حساب (دقیقه)", value: "15", hint: "" },
-    ],
-  },
-  {
-    group: "محتوا و اعلان",
-    items: [
-      { key: "feed_page_size", label: "تعداد آیتم هر صفحه فید", value: "20", hint: "" },
-      { key: "notif_batch", label: "حداکثر اعلان ارسالی در هر دقیقه", value: "500", hint: "برای کنترل فشار روی صف اعلان‌ها" },
-      { key: "digest_hour", label: "ساعت ارسال خلاصه روزانه", value: "8", hint: "به وقت سرور" },
-    ],
-  },
-];
-
-export function SystemSection({ notify }: { notify: Notify }) {
-  const [settings, setSettings] = useState(defaultSystemSettings);
-  const [maintenance, setMaintenance] = useState(false);
-  const [dirty, setDirty] = useState(false);
-
-  const updateValue = (groupIdx: number, itemIdx: number, value: string) => {
-    setSettings((prev) =>
-      prev.map((g, gi) =>
-        gi === groupIdx ? { ...g, items: g.items.map((it, ii) => (ii === itemIdx ? { ...it, value } : it)) } : g
-      )
-    );
-    setDirty(true);
-  };
-
+/**
+ * کارت متغیرهای سیستم برای یک یا چند حوزه — منبع واحد در systemVars.ts؛ همین کارت در
+ * «تنظیمات کلی»، «ورود و احراز هویت ← نشست» و «اعلان‌ها و کانال‌ها» با حوزه‌ی خودش می‌آید.
+ */
+export function SystemVarsCard({ areas, notify, title, auditArea = "تنظیمات کلی", disabled = false }: { areas: SystemVarArea[]; notify: Notify; title?: string; auditArea?: string; disabled?: boolean }) {
+  const saved = useSystemVars();
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const dirty = Object.keys(draft).some((k) => draft[k] !== saved.values[k]);
   const save = () => {
-    setDirty(false);
-    notify("تنظیمات سیستم ذخیره شد و بدون نیاز به دیپلوی مجدد روی همه سرویس‌ها اعمال می‌شود.");
+    saveSystemVars(draft, auditArea);
+    setDraft({});
+    notify("متغیرها ذخیره شد و بدون نیاز به دیپلوی مجدد روی همه سرویس‌ها اعمال می‌شود.");
   };
+  return (
+    <div className="space-y-4">
+      {areas.map((area, i) => {
+        const items = systemVarMeta.filter((m) => m.area === area);
+        return (
+          <div key={area} className="card p-5">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+              <h4 className="text-sm font-bold text-ink-900">{i === 0 && title ? title : systemVarAreaLabel[area]}</h4>
+              {i === 0 && (
+                <div className="flex items-center gap-2">
+                  {dirty && (
+                    <Button variant="ghost" size="sm" onClick={() => setDraft({})}>
+                      بازگردانی
+                    </Button>
+                  )}
+                  <Button variant="primary" size="sm" onClick={save} disabled={!dirty || disabled}>
+                    ذخیره تغییرات
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {items.map((item) => (
+                <div key={item.key}>
+                  <label className="text-xs font-medium text-ink-600 block mb-1.5">{item.label}</label>
+                  <input value={draft[item.key] ?? saved.values[item.key] ?? ""} onChange={(e) => setDraft((d) => ({ ...d, [item.key]: e.target.value }))} className="input-field" dir="ltr" aria-label={item.label} disabled={disabled} />
+                  {item.hint && <p className="text-[11px] text-ink-400 mt-1">{item.hint}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function SystemSection({ notify, areas = ["upload", "content"] }: { notify: Notify; areas?: SystemVarArea[] }) {
+  const { maintenance } = useSystemVars();
 
   return (
     <div className="space-y-5">
@@ -70,39 +77,14 @@ export function SystemSection({ notify }: { notify: Notify }) {
           <SlidersHorizontal size={18} />
         </span>
         <div className="flex-1">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <h3 className="text-sm font-bold text-ink-900">متغیرهای سیستم</h3>
-              <p className="text-xs text-ink-500 mt-1">
-                همه‌ی مقادیر ثابت سیستم از اینجا مدیریت می‌شوند — بدون تغییر کد و بدون دیپلوی مجدد.
-              </p>
-            </div>
-            <Button variant="primary" size="sm" onClick={save} disabled={!dirty}>
-              ذخیره تغییرات
-            </Button>
-          </div>
+          <h3 className="text-sm font-bold text-ink-900">متغیرهای سیستم</h3>
+          <p className="text-xs text-ink-500 mt-1 leading-6">
+            مقادیر ثابت سیستم از اینجا مدیریت می‌شوند — بدون تغییر کد و بدون دیپلوی مجدد. متغیرهای نشست و قفل حساب در «ورود و احراز هویت» و صف اعلان‌ها در «اعلان‌ها و کانال‌ها» است.
+          </p>
         </div>
       </div>
 
-      {settings.map((group, gi) => (
-        <div key={group.group} className="card p-5">
-          <h4 className="text-sm font-bold text-ink-900 mb-4">{group.group}</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {group.items.map((item, ii) => (
-              <div key={item.key}>
-                <label className="text-xs font-medium text-ink-600 block mb-1.5">{item.label}</label>
-                <input
-                  value={item.value}
-                  onChange={(e) => updateValue(gi, ii, e.target.value)}
-                  className="input-field"
-                  dir="ltr"
-                />
-                {item.hint && <p className="text-[11px] text-ink-400 mt-1">{item.hint}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+      <SystemVarsCard areas={areas} notify={notify} />
 
       <div className="card p-4 flex items-start gap-3">
         <span className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
@@ -113,6 +95,7 @@ export function SystemSection({ notify }: { notify: Notify }) {
             <h3 className="text-sm font-bold text-ink-900">حالت تعمیر و نگهداری</h3>
             <Toggle
               on={maintenance}
+              label="حالت تعمیر و نگهداری"
               onChange={() => {
                 setMaintenance(!maintenance);
                 notify(!maintenance ? "حالت تعمیر فعال شد — فقط راهبران به سامانه دسترسی دارند." : "حالت تعمیر غیرفعال شد.", "info");

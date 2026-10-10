@@ -6,6 +6,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEMO_REF_DATE } from "../pm/seed";
 import { nowClock } from "../pm/jalali";
+import { setWorkCalendar, withOfficialHolidays } from "../pm/holidays";
 import { TS_VERSION, seedTimesheet } from "../timesheet/seed";
 import { dueReminders, type Integration, type IntegrationKind, type PeriodRecord, type PeriodStatus, type Person, type TimeEntry, type TsSettings, type TsState } from "../timesheet/types";
 import { useTenancy } from "./TenancyContext";
@@ -18,12 +19,19 @@ function load(): TsState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as TsState;
-      if (s && s.version === TS_VERSION && Array.isArray(s.entries)) return s;
+      if (s && s.version === TS_VERSION && Array.isArray(s.entries)) {
+        // مهاجرت یک‌باره: تعطیلات رسمی به فهرست تعطیلات کارکرد اضافه می‌شود تا یک تقویم کاری داشته باشیم
+        if (!s.settings.officialHolidaysMerged) s.settings = { ...s.settings, holidays: withOfficialHolidays(s.settings.holidays ?? []), officialHolidaysMerged: true };
+        setWorkCalendar(s.settings);
+        return s;
+      }
     }
   } catch {
     /* داده‌ی خراب → بازسازی از نمونه */
   }
-  return seedTimesheet();
+  const seeded = seedTimesheet();
+  setWorkCalendar(seeded.settings);
+  return seeded;
 }
 
 export type NewEntry = Omit<TimeEntry, "id" | "createdAt"> & { createdAt?: string };
@@ -64,6 +72,10 @@ const stamp = () => `${DEMO_REF_DATE} ${nowClock()}`;
 
 export function TimesheetProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TsState>(load);
+
+  // تقویم کاری سراسری (pm/holidays) همیشه با تنظیمات کارکرد هم‌گام است
+  const { dailyHours, thursdayHours, holidays } = state.settings;
+  useMemo(() => setWorkCalendar({ dailyHours, thursdayHours, holidays }), [dailyHours, thursdayHours, holidays]);
 
   useEffect(() => {
     try {

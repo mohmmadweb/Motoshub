@@ -12,6 +12,8 @@ import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
 import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa, weekdayOf } from "../pm/jalali";
 import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, nextProjectKey, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
+import { accessForLegacyRole, compactMap, fullMatrix, isContributor, isOwner, materializeAccess, newMemberAccess } from "../pm/access";
+import { projectDefaultsStore } from "../pages/settings/projectDefaults";
 import { conditionsMatch, isScheduled, ruleActions, scheduledTargets } from "../pm/automation";
 import { budgetUsage, columnLabel, depShort, depTypeLabel, defaultMeetingSettings, depViolation, isDone, kindOf, openPredecessors, projectProgress, typeLabel, successorsOf, taskActualCost } from "../pm/selectors";
 import type {
@@ -130,7 +132,7 @@ function route(p: ProjectState, ev: Emitted, actor: string, s: StoreState): PMNo
   rule.recipients.forEach((role) => {
     switch (role) {
       case "owner":
-        add(p.members.filter((m) => m.role === "مالک").map((m) => m.name), role);
+        add(p.members.filter(isOwner).map((m) => m.name), role);
         break;
       case "manager":
         add([p.meta.manager], role);
@@ -148,7 +150,7 @@ function route(p: ProjectState, ev: Emitted, actor: string, s: StoreState): PMNo
         add(ev.ctx.predecessorNames ?? [], role);
         break;
       case "team":
-        add(p.members.filter((m) => m.role !== "مشاهده‌گر").map((m) => m.name), role);
+        add(p.members.filter(isContributor).map((m) => m.name), role);
         break;
       case "riskOwner":
         add([ev.ctx.riskOwner], role);
@@ -390,7 +392,7 @@ function withRecurringDemo(s: StoreState): StoreState {
   const p = structuredClone(p0);
   let date = s.refDate;
   while (weekdayOf(date) !== 1) date = addDays(date, 1); // نخستین یکشنبه
-  const names = p.members.filter((m) => m.role !== "مشاهده‌گر").map((m) => m.name);
+  const names = p.members.filter(isContributor).map((m) => m.name);
   const participants = [...new Set([p.meta.manager, ...names])].slice(0, 5);
   const seq = s.seq + 1;
   p.meetings.unshift({
@@ -430,17 +432,34 @@ function withMeetingLinks(s: StoreState): StoreState {
   };
 }
 
+/**
+ * مهاجرت تحمل‌پذیر دسترسی‌ها (بدون تغییر STORE_VERSION و بدون از دست رفتن داده):
+ * عضوی که هنوز نقشه‌ی صریح ندارد، یک بار از روی پیش‌فرض نقش قبلی + بازنویسی‌هایش نقشه‌ی صریح می‌گیرد
+ * تا رفتار فعلی حفظ شود؛ مالک و مدیر پروژه (meta.manager) ← مدیریت کامل.
+ */
+function withExplicitAccess(s: StoreState): StoreState {
+  if (!s.projects.some((p) => p.members.some((m) => !m.accessExplicit))) return s;
+  return {
+    ...s,
+    projects: s.projects.map((p) =>
+      p.members.some((m) => !m.accessExplicit)
+        ? { ...p, members: p.members.map((m) => (m.accessExplicit ? m : { ...m, access: materializeAccess(m, p.meta.manager), accessExplicit: true })) }
+        : p
+    ),
+  };
+}
+
 function loadStore(): StoreState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as StoreState;
-      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withMeetingLinks(withRecurringDemo(parsed));
+      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withExplicitAccess(withMeetingLinks(withRecurringDemo(parsed)));
     }
   } catch {
     /* ذخیره‌سازی مرورگر در دسترس نیست — از داده‌ی نمونه شروع می‌کنیم */
   }
-  return withMeetingLinks(withRecurringDemo(initialStore()));
+  return withExplicitAccess(withMeetingLinks(withRecurringDemo(initialStore())));
 }
 
 // --------------------------------------------------------------------------
@@ -838,7 +857,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     const t: PMTask = {
       id: nid(s, "t"),
       key: nextKey(p),
-      type: input.type ?? (input.parentId ? "subtask" : "task"),
+      type: input.type ?? (input.parentId ? "subtask" : p.defaultTaskType && p.defaultTaskType !== "subtask" ? p.defaultTaskType : "task"),
       epicId: input.epicId,
       title: input.title,
       description: input.description ?? "",
@@ -895,6 +914,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       const id = `pr-${Date.now()}`;
       setStore((prev) => {
         const tpl = input.templateId ? prev.projectTemplates.find((t) => t.id === input.templateId) : undefined;
+        // پیش‌فرض‌های سراسری پروژه‌ی جدید (تنظیمات سامانه ← پروژه‌ها)؛ پروژه‌های موجود دست نمی‌خورند
+        const defs = projectDefaultsStore.get();
+        const defColumns = defs.columns?.length ? structuredClone(defs.columns) : defaultColumns();
         const blank: ProjectState = {
           meta: {
             id,
@@ -931,7 +953,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
             companyId: input.companyId,
             authorId: input.authorId,
           },
-          columns: tpl ? structuredClone(tpl.columns) : defaultColumns(),
+          columns: tpl ? structuredClone(tpl.columns) : defColumns,
           tasks: [],
           deps: [],
           members: [],
@@ -939,7 +961,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           risks: [],
           issues: [],
           expenses: [],
-          budget: { total: 0, lines: tpl?.budgetLines.map((l) => ({ category: l, allocated: 0 })) ?? [], revenue: 0, thresholds: [80, 100], firedThresholds: [] },
+          budget: { total: 0, lines: tpl?.budgetLines.map((l) => ({ category: l, allocated: 0 })) ?? [], revenue: 0, thresholds: defs.project.budgetThresholds?.length ? [...defs.project.budgetThresholds].sort((a, b) => a - b) : [80, 100], firedThresholds: [] },
           timeLogs: [],
           meetings: [],
           minutes: [],
@@ -949,7 +971,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
             { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
           ],
           announcements: [],
-          automation: defaultAutomation(),
+          automation: defaultAutomation().map((r) => ({ ...r, enabled: defs.automation[r.id] ?? r.enabled })),
           notifRules: {},
           logs: [],
           firedReminders: [],
@@ -960,16 +982,20 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           stageGates: [],
           decisions: [],
           intake: [],
-          intakeOpen: true,
-          meetingSettings: { ...defaultMeetingSettings },
+          intakeOpen: defs.project.intakeOpen,
+          meetingSettings: { ...defaultMeetingSettings, ...defs.meeting },
+          taskTypes: defs.taskTypes?.length ? [...defs.taskTypes] : undefined,
+          defaultTaskType: defs.defaultTaskType,
+          defaultTaskPriority: defs.defaultTaskPriority,
         };
         let s: StoreState = { ...prev, projects: [blank, ...prev.projects] };
         s = apply(s, id, actor, (p, emit, st) => {
           emit("PROJECT_CREATED", `پروژه «${p.meta.name}» ایجاد شد${tpl ? ` (از قالب «${tpl.name}»)` : ""}.`, { entity: { type: "project", id }, meta: { template: tpl?.name ?? "" } });
           input.members.forEach((m) => {
-            const mem: PMMember = { id: nid(st, "tm"), name: m.name, title: m.title, role: m.role, userId: m.userId };
+            const access = m.name === input.manager || m.role === "مالک" ? compactMap(fullMatrix()) : m.role === "عضو" ? newMemberAccess(defs.memberAccess) : accessForLegacyRole(m.role);
+            const mem: PMMember = { id: nid(st, "tm"), name: m.name, title: m.title, role: m.role, userId: m.userId, access, accessExplicit: true };
             p.members.push(mem);
-            emit("PROJECT_MEMBER_ADDED", `«${m.name}» با نقش «${m.role}» به تیم پروژه اضافه شد.`, { entity: { type: "member", id: mem.id }, ctx: { subjectMember: m.name }, meta: { role: m.role } });
+            emit("PROJECT_MEMBER_ADDED", `«${m.name}» (${m.title}) به تیم پروژه اضافه شد.`, { entity: { type: "member", id: mem.id }, ctx: { subjectMember: m.name }, meta: { title: m.title } });
           });
           if (input.budget > 0) {
             p.budget.total = input.budget;
@@ -1024,9 +1050,18 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         if (patch.start && patch.start !== m.start) emit("PROJECT_TIMELINE_CHANGED", `تاریخ شروع پروژه از ${m.start} به ${patch.start} تغییر کرد.`, { ...e, meta: { old_start_date: m.start, new_start_date: patch.start } });
         if (patch.manager && patch.manager !== m.manager) {
           emit("PROJECT_MEMBER_ROLE_CHANGED", `مدیر پروژه از «${m.manager}» به «${patch.manager}» تغییر کرد.`, { ...e, ctx: { subjectMember: patch.manager }, meta: { old_manager: m.manager, new_manager: patch.manager } });
+          // نقش فقط برای سازگاری نگه داشته می‌شود؛ دسترسی‌ها از نقشه‌ی صریح می‌آیند
           p.members.forEach((x) => {
-            if (x.name === m.manager && x.role === "مدیر پروژه") x.role = "عضو";
-            if (x.name === patch.manager) x.role = "مدیر پروژه";
+            if (x.name === m.manager && x.role === "مدیر پروژه") {
+              x.role = "عضو";
+              x.access = accessForLegacyRole("عضو");
+              x.accessExplicit = true;
+            }
+            if (x.name === patch.manager && !isOwner(x)) {
+              x.role = "مدیر پروژه";
+              x.access = compactMap(fullMatrix());
+              x.accessExplicit = true;
+            }
           });
         }
         if (patch.archived !== undefined && patch.archived !== m.archived) emit(patch.archived ? "PROJECT_ARCHIVED" : "PROJECT_RESTORED", patch.archived ? "پروژه بایگانی شد؛ اطلاعات آن حذف نشده و قابل بازیابی است." : "پروژه از بایگانی بازیابی شد.", e);
@@ -1097,9 +1132,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     // ============================================================ اعضا
     addMember: (pid, m) =>
       on(pid, (p, emit, s) => {
-        const mem = { ...m, id: nid(s, "tm") };
+        // عضو عادیِ بدون نقشه‌ی صریح ← «دسترسی عضو تازه» از پیش‌فرض‌های پروژه
+        const access = m.accessExplicit ? m.access : m.role === "عضو" && !m.access ? newMemberAccess(projectDefaultsStore.get().memberAccess) : materializeAccess(m, p.meta.manager);
+        const mem: PMMember = { ...m, id: nid(s, "tm"), access, accessExplicit: true };
         p.members.push(mem);
-        emit("PROJECT_MEMBER_ADDED", `«${m.name}» با نقش «${m.role}» به تیم پروژه اضافه شد.`, { entity: { type: "member", id: mem.id }, ctx: { subjectMember: m.name }, meta: { role: m.role, title: m.title } });
+        emit("PROJECT_MEMBER_ADDED", `«${m.name}» (${m.title}) به تیم پروژه اضافه شد.`, { entity: { type: "member", id: mem.id }, ctx: { subjectMember: m.name }, meta: { title: m.title } });
         if (m.role === "مدیر پروژه" && p.meta.manager !== m.name) p.meta.manager = m.name;
       }),
     updateMember: (pid, id, patch) =>
@@ -1113,6 +1150,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
               if (x.id !== id && x.role === "مدیر پروژه") x.role = "عضو";
             });
             p.meta.manager = mem.name;
+            patch = { ...patch, access: compactMap(fullMatrix()), accessExplicit: true };
           }
         }
         Object.assign(mem, patch);
@@ -1120,9 +1158,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     setMemberAccess: (pid, id, access, summary) =>
       on(pid, (p, emit) => {
         const mem = p.members.find((x) => x.id === id);
-        if (!mem || mem.role === "مالک") return;
-        mem.access = access && Object.keys(access).length ? access : undefined;
-        emit("MEMBER_PERMISSIONS_CHANGED", access ? `دسترسی‌های «${mem.name}» تغییر کرد: ${summary || "بازنویسی دسترسی‌ها"}.` : `دسترسی‌های «${mem.name}» به پیش‌فرض نقش «${mem.role}» بازگشت${summary ? ` (${summary})` : ""}.`, { entity: { type: "member", id }, ctx: { subjectMember: mem.name }, meta: { role: mem.role, overrides: Object.keys(access ?? {}).length } });
+        if (!mem || isOwner(mem)) return;
+        mem.access = { ...(access ?? {}) };
+        mem.accessExplicit = true;
+        const n = Object.keys(mem.access).length;
+        emit("MEMBER_PERMISSIONS_CHANGED", n ? `دسترسی‌های «${mem.name}» تغییر کرد: ${summary || "به‌روزرسانی دسترسی‌ها"}.` : `همه‌ی دسترسی‌های «${mem.name}» برداشته شد${summary ? ` (${summary})` : ""}.`, { entity: { type: "member", id }, ctx: { subjectMember: mem.name }, meta: { resources: n } });
       }),
     removeMember: (pid, id) =>
       on(pid, (p, emit) => {

@@ -1,5 +1,7 @@
 // ---------------------------------------------------------------------------
-// «لاگ ممیزی یکپارچه» — همه‌ی رویدادهای ثبت‌شده در ماژول‌ها در یک جدول:
+// «لاگ ممیزی» — همه‌ی رویدادهای ثبت‌شده در ماژول‌ها در یک جدول (ادغام «تاریخچه‌ی تغییرات» IAM
+// و «لاگ ممیزی یکپارچه»): پیش‌تنظیم «سازمان و دسترسی» = همان تاریخچه‌ی قبلی با فیلتر نوع رویداد،
+// کاربر متأثر و نمای قبل/بعد؛ خروجی CSV ستون‌های قبل/بعد را هم دارد.
 // هویت و دسترسی (IAM) · مدیریت دانش · تاریخچه‌ی پروژه‌ها · دانش و نوآوری · تیکت پشتیبانی ·
 // نظارت شبکه‌ی اجتماعی (تأیید نظر و حذف محتوا).
 // فقط رویدادهای واحد فعلی و زیرمجموعه‌هایش دیده می‌شوند و مجوز iam.audit.view لازم است.
@@ -18,7 +20,7 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import { useInnovation } from "../../context/InnovationContext";
 import { useTicketsMaybe } from "../../context/TicketsContext";
 import { useSocial } from "../../context/SocialContext";
-import { auditLabel, descendantsOrSelf, ROOT_ID } from "../../iam/model";
+import { auditLabel, descendantsOrSelf, ROOT_ID, type Audit, type AuditEvent } from "../../iam/model";
 import { logCodeLabel } from "../../km/types";
 import { eventByCode } from "../../pm/events";
 import { dayNum, toEnDigits } from "../../pm/jalali";
@@ -27,7 +29,7 @@ import { fmtTs, statusLabel, type TicketStatus } from "../tickets/model";
 import { users } from "../../data/mock";
 import { contentKindLabel, moderationActionLabel } from "../../social/types";
 import { ownerScopeOf } from "../search/liveData";
-import { ScopeSelect, SearchBox, SectionHead, downloadCsv, useSubtree } from "./iam/shared";
+import { Callout, ScopeSelect, SearchBox, SectionHead, downloadCsv, useSubtree } from "./iam/shared";
 
 type ModuleId = "iam" | "settings" | "knowledge" | "projects" | "innovation" | "tickets" | "social";
 const MODULES: { id: ModuleId; label: string; tone: BadgeTone }[] = [
@@ -41,7 +43,16 @@ const MODULES: { id: ModuleId; label: string; tone: BadgeTone }[] = [
 ];
 const modMeta = Object.fromEntries(MODULES.map((m) => [m.id, m])) as Record<ModuleId, (typeof MODULES)[number]>;
 
-type Entry = { id: string; module: ModuleId; at: string; sort: number; day: number; actor: string; action: string; target: string; scopeId: string; detail?: string };
+/** پیش‌تنظیم‌های فیلتر ماژول — «سازمان و دسترسی» = تاریخچه‌ی هویت و دسترسی + تغییر تنظیمات (همان «تاریخچه‌ی تغییرات» قبلی) */
+const PRESETS: { id: string; label: string; modules: ModuleId[] }[] = [{ id: "org", label: "سازمان و دسترسی (هویت + تنظیمات)", modules: ["iam", "settings"] }];
+type ModFilter = ModuleId | "org" | "";
+const modulesOf = (f: ModFilter): ModuleId[] | null => (!f ? null : PRESETS.find((p) => p.id === f)?.modules ?? [f as ModuleId]);
+export const auditPresetIds = ["org", ...MODULES.map((m) => m.id)];
+
+const eventTone = (e: AuditEvent): BadgeTone =>
+  e.endsWith("deleted") || e.endsWith("revoked") || e.endsWith("removed") || e.endsWith("deactivated") || e.endsWith("suspended") ? "danger" : e.endsWith("created") ? "success" : e === "review.completed" ? "navy" : "brand";
+
+type Entry = { id: string; module: ModuleId; at: string; sort: number; day: number; actor: string; action: string; target: string; scopeId: string; detail?: string; iam?: Audit; affected?: string };
 
 const userName = (id?: string | null) => users.find((u) => u.id === id)?.name ?? id ?? "—";
 /** «۱۴۰۵/۰۳/۰۸ ۱۰:۲۲» → کلید مرتب‌سازی (دقیقه) */
@@ -55,7 +66,8 @@ const PAGE = 50;
 
 const ticketKindLabel: Record<string, string> = { affected: "«من هم» — کاربر آسیب‌دیده", severity: "تغییر شدت", attachment: "پیوست", labels: "برچسب‌ها", link: "پیوند تیکت", release: "نسخه‌ی رفع" };
 
-export default function UnifiedAuditSection() {
+/** preset: فیلتر ماژول اولیه («org» یا شناسه‌ی ماژول) — از ?tab= در «تنظیمات سامانه» */
+export default function UnifiedAuditSection({ preset }: { preset?: string | null } = {}) {
   const t = useTenancy();
   const sub = useSubtree();
   const km = useKnowledge();
@@ -66,7 +78,8 @@ export default function UnifiedAuditSection() {
   const { notify } = useToast();
 
   const [q, setQ] = useState("");
-  const [modF, setModF] = useState<ModuleId | "">("");
+  const [modF, setModF] = useState<ModFilter>(preset && auditPresetIds.includes(preset) ? (preset as ModFilter) : "");
+  const [eventF, setEventF] = useState<AuditEvent | "">("");
   const [actorF, setActorF] = useState("");
   const [scopeF, setScopeF] = useState("");
   const [from, setFrom] = useState("");
@@ -83,7 +96,7 @@ export default function UnifiedAuditSection() {
 
     // ۱) هویت و دسترسی
     // (رویداد settings.changed — از SettingsContext، کانال‌ها، طبقه‌بندی، سیاست ورود و تنظیمات لایه‌ای — ماژول جدا دارد)
-    t.iam.audits.forEach((a) => push({ id: `iam-${a.id}`, module: a.event === "settings.changed" ? "settings" : "iam", at: a.at, actor: userName(a.actorId), action: auditLabel[a.event], target: a.summary, scopeId: a.scopeId, detail: a.before || a.after ? `قبل: ${JSON.stringify(a.before ?? {})}\nبعد: ${JSON.stringify(a.after ?? {})}` : undefined }));
+    t.iam.audits.forEach((a) => push({ id: `iam-${a.id}`, module: a.event === "settings.changed" ? "settings" : "iam", at: a.at, actor: userName(a.actorId), action: auditLabel[a.event], target: a.summary, scopeId: a.scopeId, iam: a, affected: a.affectedUserId ? userName(a.affectedUserId) : undefined }));
 
     // ۲) مدیریت دانش
     const docById = new Map(km.docs.map((d) => [d.id, d]));
@@ -126,9 +139,11 @@ export default function UnifiedAuditSection() {
       .filter(({ x }) => x.deleted_at)
       .forEach(({ x, label }) => push({ id: `so-d-${x.id}`, module: "social", at: x.deleted_at!, actor: userName(x.user_id), action: "حذف محتوا", target: label, scopeId: ownerScopeOf(x) }));
 
-    return out;
     // نظارت محتوا: گزارش تخلف، پنهان‌سازی، بازبینی پیش از انتشار
+    // (پیش‌تر بعد از return بود و هرگز اجرا نمی‌شد)
     s.moderationLog.forEach((e) => push({ id: `so-m-${e.id}`, module: "social", at: e.at, actor: userName(e.actor_id), action: moderationActionLabel[e.action], target: e.target_title, scopeId: ROOT_ID, detail: e.note }));
+
+    return out;
   }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events, s.moderationLog]);
 
   // دامنه‌ی بیننده: فقط واحد فعلی و زیرمجموعه‌ها
@@ -139,23 +154,26 @@ export default function UnifiedAuditSection() {
     const fromN = from ? dayNum(from) ?? 0 : 0;
     const toN = to ? dayNum(to) ?? 9e9 : 9e9;
     const term = q.trim();
+    const mods = modulesOf(modF);
     return inScope
-      .filter((e) => !modF || e.module === modF)
+      .filter((e) => !mods || mods.includes(e.module))
+      .filter((e) => !eventF || e.iam?.event === eventF)
       .filter((e) => !actorF || e.actor === actorF)
       .filter((e) => !scopeSet || scopeSet.has(e.scopeId))
       .filter((e) => e.day >= fromN && e.day <= toN)
-      .filter((e) => !term || e.action.includes(term) || e.target.includes(term) || e.actor.includes(term))
-      .sort((a, b) => b.sort - a.sort);
-  }, [inScope, modF, actorF, scopeF, from, to, q, t.iam]);
+      .filter((e) => !term || e.action.includes(term) || e.target.includes(term) || e.actor.includes(term) || (e.affected ?? "").includes(term) || t.scopeLabel(e.scopeId).includes(term))
+      .sort((a, b) => b.sort - a.sort || (b.iam?.seq ?? 0) - (a.iam?.seq ?? 0));
+  }, [inScope, modF, eventF, actorF, scopeF, from, to, q, t]);
+  const iamMode = !!modF && (modulesOf(modF) ?? []).some((m) => m === "iam" || m === "settings");
 
   const perModule = useMemo(() => Object.fromEntries(MODULES.map((m) => [m.id, inScope.filter((e) => e.module === m.id).length])) as Record<ModuleId, number>, [inScope]);
-  const activeFilters = [modF, actorF, scopeF, from, to].filter(Boolean).length;
+  const activeFilters = [modF, eventF, actorF, scopeF, from, to].filter(Boolean).length;
 
   const exportCsv = () => {
     downloadCsv(
-      `audit-all-${t.today.replace(/\//g, "-")}.csv`,
-      ["زمان", "ماژول", "انجام‌دهنده", "اقدام", "موضوع", "واحد", "جزئیات"],
-      rows.map((e) => [e.at, modMeta[e.module].label, e.actor, e.action, e.target, t.scopePath(e.scopeId), e.detail ?? ""])
+      `${modF === "org" ? "iam-audit" : "audit-all"}-${t.today.replace(/\//g, "-")}.csv`,
+      ["زمان", "ماژول", "انجام‌دهنده", "اقدام", "موضوع", "واحد", "کاربر متأثر", "جزئیات", "قبل", "بعد"],
+      rows.map((e) => [e.at, modMeta[e.module].label, e.actor, e.action, e.target, t.scopePath(e.scopeId), e.affected ?? "", e.detail ?? "", e.iam?.before ? JSON.stringify(e.iam.before) : "", e.iam?.after ? JSON.stringify(e.iam.after) : ""])
     );
     notify(`${rows.length.toLocaleString("fa-IR")} رویداد در فایل CSV ذخیره شد.`, "success");
   };
@@ -163,7 +181,7 @@ export default function UnifiedAuditSection() {
   if (!allowed)
     return (
       <div>
-        <SectionHead icon={<Layers size={18} />} title="لاگ ممیزی یکپارچه" />
+        <SectionHead icon={<Layers size={18} />} title="لاگ ممیزی" />
         <div className="card">
           <EmptyState icon={<Lock size={22} />} title="به لاگ ممیزی دسترسی ندارید" description="مشاهده‌ی لاگ ممیزی نیازمند مجوز «iam.audit.view» در واحد فعلی است." />
         </div>
@@ -174,8 +192,8 @@ export default function UnifiedAuditSection() {
     <div>
       <SectionHead
         icon={<Layers size={18} />}
-        title="لاگ ممیزی یکپارچه"
-        description={`رویدادهای همه‌ی ماژول‌ها در «${sub.root.name}» و زیرمجموعه‌هایش — ثبت‌شده و غیرقابل ویرایش.`}
+        title="لاگ ممیزی"
+        description={`رویدادهای همه‌ی ماژول‌ها — از ساختار، نقش‌ها و عضویت‌ها تا دانش، پروژه و تیکت — در «${sub.root.name}» و زیرمجموعه‌هایش؛ ثبت‌شده و غیرقابل ویرایش.`}
         actions={
           <Button icon={<Download size={14} />} onClick={exportCsv} disabled={!rows.length} className="disabled:opacity-45">
             خروجی CSV
@@ -185,7 +203,7 @@ export default function UnifiedAuditSection() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-3">
         {MODULES.map((m) => (
-          <button key={m.id} onClick={() => setModF(modF === m.id ? "" : m.id)} className={`text-right rounded-xl ${modF === m.id ? "ring-2 ring-brand-500" : ""}`} aria-pressed={modF === m.id}>
+          <button key={m.id} onClick={() => setModF(modF === m.id ? "" : m.id)} className={`text-right rounded-xl ${(modulesOf(modF) ?? []).includes(m.id) ? "ring-2 ring-brand-500" : ""}`} aria-pressed={modF === m.id}>
             <StatCard label={m.label} value={perModule[m.id].toLocaleString("fa-IR")} />
           </button>
         ))}
@@ -193,21 +211,40 @@ export default function UnifiedAuditSection() {
 
       <div className="card p-3 mb-3">
         <div className="flex gap-2">
-          <SearchBox value={q} onChange={setQ} placeholder="جستجو در اقدام، موضوع و افراد…" className="flex-1 min-w-0" />
+          <SearchBox value={q} onChange={setQ} placeholder="جستجو در اقدام، موضوع، افراد و واحدها…" className="flex-1 min-w-0" />
           <Button icon={<Filter size={14} />} onClick={() => setShowFilters((x) => !x)} variant={showFilters || activeFilters ? "primary" : "secondary"}>
             فیلتر{activeFilters ? ` (${activeFilters.toLocaleString("fa-IR")})` : ""}
           </Button>
         </div>
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mt-2 pt-2 border-t border-ink-100">
-            <select className="input-field" value={modF} onChange={(e) => setModF(e.target.value as ModuleId | "")} aria-label="ماژول">
+            <select className="input-field" value={modF} onChange={(e) => setModF(e.target.value as ModFilter)} aria-label="ماژول">
               <option value="">همه‌ی ماژول‌ها</option>
-              {MODULES.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
+              <optgroup label="پیش‌تنظیم">
+                {PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="ماژول">
+                {MODULES.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
+            {iamMode && (
+              <select className="input-field" value={eventF} onChange={(e) => setEventF(e.target.value as AuditEvent | "")} aria-label="نوع رویداد">
+                <option value="">همه‌ی رویدادهای دسترسی</option>
+                {(Object.keys(auditLabel) as AuditEvent[]).map((ev) => (
+                  <option key={ev} value={ev}>
+                    {auditLabel[ev]}
+                  </option>
+                ))}
+              </select>
+            )}
             <select className="input-field" value={actorF} onChange={(e) => setActorF(e.target.value)} aria-label="انجام‌دهنده">
               <option value="">همه‌ی انجام‌دهندگان</option>
               {actors.map((a) => (
@@ -224,6 +261,7 @@ export default function UnifiedAuditSection() {
                 type="button"
                 onClick={() => {
                   setModF("");
+                  setEventF("");
                   setActorF("");
                   setScopeF("");
                   setFrom("");
@@ -259,8 +297,11 @@ export default function UnifiedAuditSection() {
                   <span>
                     <Badge tone={modMeta[e.module].tone}>{modMeta[e.module].label}</Badge>
                   </span>
-                  <span className="text-[12.5px] text-ink-800 truncate">{e.actor}</span>
-                  <span className="text-[12.5px] font-medium text-ink-800 break-words">{e.action}</span>
+                  <span className="text-[12.5px] text-ink-800 truncate">
+                    {e.actor}
+                    {e.affected && <span className="block text-[11px] text-ink-400 truncate">برای: {e.affected}</span>}
+                  </span>
+                  <span className="text-[12.5px] font-medium text-ink-800 break-words">{e.iam ? <Badge tone={eventTone(e.iam.event)}>{e.action}</Badge> : e.action}</span>
                   <span className="text-[12px] text-ink-600 break-words line-clamp-2">{e.target}</span>
                 </button>
                 {isOpen && (
@@ -270,6 +311,7 @@ export default function UnifiedAuditSection() {
                       {t.scopePath(e.scopeId)}
                     </p>
                     {e.detail && <pre className="whitespace-pre-wrap break-words font-sans bg-ink-50 rounded-md p-2 text-[11.5px] text-ink-600">{e.detail}</pre>}
+                    {e.iam && <IamDiff a={e.iam} />}
                   </div>
                 )}
               </li>
@@ -284,6 +326,41 @@ export default function UnifiedAuditSection() {
           </div>
         )}
       </div>
+      <div className="mt-3">
+        <Callout icon={<Lock size={13} />} tone="neutral">
+          لاگ فقط افزودنی است: هیچ‌کس — حتی مدیر سامانه — نمی‌تواند رویدادی را ویرایش یا حذف کند. هر مدیر فقط رویدادهای محدوده‌ی خودش را می‌بیند.
+        </Callout>
+      </div>
+    </div>
+  );
+}
+
+/** نمای قبل/بعد رویدادهای هویت و دسترسی و تغییر تنظیمات (از «تاریخچه‌ی تغییرات» قبلی) */
+function IamDiff({ a }: { a: Audit }) {
+  const hasDiff = !!(a.before || a.after);
+  return (
+    <div>
+      {hasDiff ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {(["before", "after"] as const).map((k) => (
+            <div key={k} className="rounded-lg border border-ink-100 bg-ink-50 p-2.5 min-w-0">
+              <p className="text-[11px] font-bold text-ink-500 mb-1">{k === "before" ? "قبل" : "بعد"}</p>
+              {a[k] ? (
+                <pre dir="ltr" className="text-[11px] text-ink-700 font-mono whitespace-pre-wrap break-all text-left">
+                  {JSON.stringify(a[k], null, 2)}
+                </pre>
+              ) : (
+                <p className="text-[11px] text-ink-400">—</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-ink-400">این رویداد جزئیات قبل/بعد ندارد؛ شرح بالا کامل است.</p>
+      )}
+      <p className="text-[10.5px] text-ink-400 mt-2 font-mono" dir="ltr">
+        #{a.seq} · {a.targetType}:{a.targetId} · {a.event}
+      </p>
     </div>
   );
 }

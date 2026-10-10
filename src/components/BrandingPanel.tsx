@@ -6,7 +6,7 @@ import Button from "./ui/Button";
 import { useToast } from "./ui/ToastProvider";
 
 // برندسازی سطح سازمان (ویژه راهبر): رنگ برند پیش‌فرض، لوگو، دامنه، نام نمایشی
-// — به‌صورت مشترک در «پنل راهبری ← برندسازی» و «شخصی‌سازی ظاهر» استفاده می‌شود
+// — نسخه‌ی قدیمی؛ برند سازمان اکنون در «تنظیمات سامانه ← برند و ظاهر ← برند سازمان» (BrandSection) است
 export default function BrandingPanel() {
   const { accent, setAccent } = useTheme();
   const { notify } = useToast();

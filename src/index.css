@@ -273,6 +273,7 @@ button:disabled {
   outline-offset: 1px;
 }
 
+@layer components {
 .input-field {
   width: 100%;
   border-radius: 0.5rem;
@@ -282,6 +283,7 @@ button:disabled {
   font-size: 0.8125rem;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
 }
 .input-field:focus {
   border-color: var(--color-brand-400);

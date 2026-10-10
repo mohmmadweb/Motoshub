@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Users, Plus, UserMinus, BarChart3, ShieldCheck, KeyRound } from "lucide-react";
-import Badge, { type BadgeTone } from "../../components/ui/Badge";
+import { useEffect, useState } from "react";
+import { Users, Plus, UserMinus, BarChart3, KeyRound, Eye, Crown } from "lucide-react";
+import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
 import Modal from "../../components/ui/Modal";
@@ -10,47 +10,48 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import { users } from "../../data/mock";
 import { isDone, memberStats, columnLabel } from "../../pm/selectors";
 import { fa } from "../../pm/jalali";
-import type { ProjectRole } from "../../pm/types";
-import { ACCESS_GROUPS, RESOURCES, ROLE_PRESETS, LEVEL_RANK, countReadable, effectiveMatrix, overridesOf, presetHint } from "../../pm/access";
-import { CollapsibleCard, Field, Progress, SectionTitle, useProjectPage } from "./shared";
-import MemberAccessDrawer, { LevelChip } from "./MemberAccessDrawer";
-
-export const roleTone: Record<ProjectRole, BadgeTone> = { مالک: "navy", "مدیر پروژه": "brand", "مدیر سیستم": "warning", عضو: "neutral", مشاهده‌گر: "neutral" };
-export const roleDefs: { role: ProjectRole; desc: string }[] = [
-  { role: "مالک", desc: "دسترسی کامل به پروژه، از جمله حذف و انتقال مالکیت." },
-  { role: "مدیر پروژه", desc: "مدیریت پروژه، تسک‌ها، اعضا، زمان‌بندی و گزارش‌ها." },
-  { role: "مدیر سیستم", desc: "دسترسی مدیریتی گسترده (تنظیمات، اعلان‌ها، خودکارسازی)." },
-  { role: "عضو", desc: "انجام و مدیریت تسک‌های مربوط به خود، ثبت زمان و هزینه." },
-  { role: "مشاهده‌گر", desc: "فقط مشاهده‌ی اطلاعات (مثلاً کارفرما یا ناظر بیرونی)." },
-];
+import { checkEditMember, isOwner, newMemberAccess } from "../../pm/access";
+import { projectDefaultsStore } from "../settings/projectDefaults";
+import { Field, Progress, SectionTitle, useProjectPage } from "./shared";
+import MemberAccessDrawer, { accessSummary } from "./MemberAccessDrawer";
 
 export default function TeamTab() {
   const { p, pid, can, openTask, focusId, access } = useProjectPage();
   const canEdit = can("projects.members");
   const [accessFor, setAccessFor] = useState<string | null>(null);
-  // نقش‌هایی که ویرایشگر می‌تواند بدهد: پیش‌فرضشان از سطح خود او بالاتر نباشد (مالک/مدیر سراسری همه را)
   const ed = access.editor;
-  const grantableRoles = roleDefs.filter((r) => r.role !== "مالک" && (ed.globalAdmin || ed.role === "مالک" || RESOURCES.every((x) => LEVEL_RANK[ROLE_PRESETS[r.role][x.id]] <= LEVEL_RANK[ed.matrix[x.id]])));
   const pm = useProjectsPM();
   const confirm = useConfirm();
   const { notify } = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
-  const [role, setRole] = useState<ProjectRole>("عضو");
   const [expanded, setExpanded] = useState<string | null>(focusId ?? null);
   const [crossFor, setCrossFor] = useState<string | null>(null);
+  /** پس از افزودن عضو، ویرایشگر دسترسی او باز می‌شود تا مدیر بخش‌های لازم را تیک بزند */
+  const [openAfterAdd, setOpenAfterAdd] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openAfterAdd) return;
+    const m = p.members.find((x) => x.name === openAfterAdd);
+    if (m) {
+      setOpenAfterAdd(null);
+      if (checkEditMember(ed, m, p.meta.manager).ok) setAccessFor(m.id);
+    }
+  }, [openAfterAdd, p.members, ed, p.meta.manager]);
 
   const add = () => {
-    if (!name.trim()) return notify("نام عضو الزامی است.", "warning");
-    if (p.members.some((m) => m.name === name.trim())) return notify("این فرد قبلاً عضو پروژه است.", "warning");
-    const u = users.find((x) => x.name === name.trim());
-    pm.addMember(pid, { name: name.trim(), title: title.trim() || u?.role || "عضو تیم", role, userId: u?.id });
-    notify(`«${name.trim()}» اضافه شد و اعلان خوش‌آمد دریافت کرد.`);
+    const nm = name.trim();
+    if (!nm) return notify("نام عضو الزامی است.", "warning");
+    if (p.members.some((m) => m.name === nm)) return notify("این فرد قبلاً عضو پروژه است.", "warning");
+    const u = users.find((x) => x.name === nm);
+    // نقش فقط برای سازگاری داده ذخیره می‌شود؛ دسترسی از «دسترسی عضو تازه» در پیش‌فرض‌های پروژه شروع می‌شود
+    pm.addMember(pid, { name: nm, title: title.trim() || u?.role || "عضو تیم", role: "عضو", userId: u?.id, access: newMemberAccess(projectDefaultsStore.get().memberAccess), accessExplicit: true });
+    notify(`«${nm}» اضافه شد و اعلان خوش‌آمد دریافت کرد. حالا بخش‌های لازم را برایش انتخاب کنید.`);
     setAddOpen(false);
     setName("");
     setTitle("");
-    setRole("عضو");
+    setOpenAfterAdd(nm);
   };
 
   return (
@@ -58,7 +59,6 @@ export default function TeamTab() {
       <SectionTitle
         icon={<Users size={15} className="text-brand-600" />}
         title={`اعضای پروژه (${fa(p.members.length)})`}
-        
         action={
           canEdit && (
             <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => setAddOpen(true)}>
@@ -72,6 +72,9 @@ export default function TeamTab() {
           {p.members.map((m) => {
             const st = memberStats(p, m.name);
             const ts = p.tasks.filter((t) => t.assignee === m.name && !t.archived);
+            const owner = isOwner(m);
+            const isMgr = m.name === p.meta.manager;
+            const editable = !p.meta.archived && checkEditMember(ed, m, p.meta.manager).ok;
             return (
               <div key={m.id} className={`card p-4 ${focusId === m.id ? "ring-2 ring-brand-300" : ""}`}>
                 <div className="flex items-center gap-3">
@@ -82,14 +85,12 @@ export default function TeamTab() {
                     <p className="text-sm font-semibold text-ink-900 truncate">{m.name}</p>
                     <p className="text-xs text-ink-400 truncate">{m.title}</p>
                   </div>
-                  {canEdit && m.role !== "مالک" && grantableRoles.some((r) => r.role === m.role) ? (
-                    <select value={m.role} onChange={(e) => pm.updateMember(pid, m.id, { role: e.target.value as ProjectRole })} className="input-field !py-1 !text-[11px] !w-auto">
-                      {grantableRoles.map((r) => (
-                        <option key={r.role}>{r.role}</option>
-                      ))}
-                    </select>
+                  {owner ? (
+                    <Badge tone="navy" icon={<Crown size={11} />}>
+                      مالک
+                    </Badge>
                   ) : (
-                    <Badge tone={roleTone[m.role]}>{m.role}</Badge>
+                    isMgr && <Badge tone="brand">مدیر پروژه</Badge>
                   )}
                 </div>
                 <div className="grid grid-cols-4 gap-1 mt-3 text-center">
@@ -105,23 +106,26 @@ export default function TeamTab() {
                     </div>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setAccessFor(m.id)}
+                  title={editable ? "ویرایش دسترسی‌های این عضو" : "مشاهده‌ی دسترسی‌ها (فقط‌خواندنی)"}
+                  aria-label={`${editable ? "ویرایش" : "مشاهده‌ی"} دسترسی‌های ${m.name}`}
+                  className={`mt-3 w-full flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] border transition-colors ${editable ? "border-brand-200 bg-brand-50/50 text-brand-700 hover:bg-brand-50" : "border-ink-200 bg-ink-50/60 text-ink-600 hover:bg-ink-50"}`}
+                >
+                  {editable ? <KeyRound size={13} /> : <Eye size={13} />}
+                  <span className="truncate">{accessSummary(m)}</span>
+                  <span className="mr-auto text-[10.5px] opacity-70">{editable ? "ویرایش" : "مشاهده"}</span>
+                </button>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100 text-[11px]">
                   <button onClick={() => setExpanded(expanded === m.id ? null : m.id)} className="text-brand-700 hover:underline">
-                    {st.open_task_count} تسک باز · پیشرفت {fa(st.progress_percentage)}٪
+                    {fa(st.open_task_count)} تسک باز · پیشرفت {fa(st.progress_percentage)}٪
                   </button>
                   <span className="flex items-center gap-1">
-                    <button onClick={() => setAccessFor(m.id)} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-ink-500 hover:text-brand-700 hover:bg-brand-50" title="دسترسی‌های ریز این عضو" aria-label={`دسترسی‌های ${m.name}`}>
-                      <KeyRound size={13} />
-                      <span>دسترسی‌ها</span>
-                      <span className="text-ink-400">
-                        {fa(countReadable(effectiveMatrix(m)))}/{fa(RESOURCES.length)}
-                      </span>
-                      {Object.keys(overridesOf(m)).length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="بازنویسی‌شده نسبت به نقش" />}
-                    </button>
                     <button onClick={() => setCrossFor(m.name)} className="p-1 text-ink-400 hover:text-brand-600" title="پیشرفت در همه‌ی پروژه‌ها" aria-label="پیشرفت در همه‌ی پروژه‌ها">
                       <BarChart3 size={14} />
                     </button>
-                    {canEdit && m.role !== "مالک" && (
+                    {canEdit && !owner && (
                       <button
                         onClick={() =>
                           confirm({
@@ -154,64 +158,8 @@ export default function TeamTab() {
           })}
         </div>
       ) : (
-        <EmptyState icon={<Users size={20} />} title="عضوی ثبت نشده" description="اعضای تیم و نقش و دسترسی آن‌ها را تعریف کنید." />
+        <EmptyState icon={<Users size={20} />} title="عضوی ثبت نشده" description="اعضای تیم را اضافه کنید و برای هر نفر بخش‌های لازم پروژه را تعیین کنید." />
       )}
-
-      <CollapsibleCard icon={<ShieldCheck size={15} className="text-brand-600" />} title="نقش‌ها و ماتریس دسترسی" summary={`${fa(roleDefs.length)} نقش پیش‌فرض · ${fa(RESOURCES.length)} بخش`}>
-        <p className="text-[11px] text-ink-500 leading-5 mb-3">هر نقش یک «پیش‌فرض» برای دسترسی به بخش‌های پروژه است؛ مدیر پروژه می‌تواند برای هر عضو از دکمه‌ی «دسترسی‌ها» بخش‌به‌بخش آن را تغییر دهد. خانه‌های با حاشیه‌ی زرد با پیش‌فرض نقش فرق دارند.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
-          {roleDefs.map((r) => (
-            <div key={r.role} className="border border-ink-200 rounded-lg p-3">
-              <Badge tone={roleTone[r.role]}>{r.role}</Badge>
-              <p className="text-[11px] text-ink-500 mt-2 leading-5">{presetHint[r.role] || r.desc}</p>
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                {fa(p.members.filter((m) => m.role === r.role).length)} نفر · {fa(countReadable(ROLE_PRESETS[r.role]))} از {fa(RESOURCES.length)} بخش
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="overflow-x-auto border border-ink-200 rounded-lg">
-          <table className="text-[11px] min-w-max w-full">
-            <thead>
-              <tr className="bg-ink-50/70">
-                <th rowSpan={2} className="sticky right-0 bg-ink-50 text-right font-medium text-ink-600 px-2 py-1.5 border-b border-ink-200 z-[1]">
-                  عضو
-                </th>
-                {ACCESS_GROUPS.map((g) => (
-                  <th key={g.id} colSpan={g.resources.length} className="font-medium text-ink-600 px-1 py-1 border-b border-r border-ink-200">
-                    {g.label}
-                  </th>
-                ))}
-              </tr>
-              <tr className="bg-ink-50/40">
-                {RESOURCES.map((r) => (
-                  <th key={r.id} className="font-normal text-ink-500 px-1 py-1 border-b border-ink-200 whitespace-nowrap" title={r.hint}>
-                    {r.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {p.members.map((m) => {
-                const mx = effectiveMatrix(m);
-                const ov = overridesOf(m);
-                return (
-                  <tr key={m.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/50 cursor-pointer" onClick={() => setAccessFor(m.id)}>
-                    <td className="sticky right-0 bg-white px-2 py-1.5 whitespace-nowrap z-[1]">
-                      <span className="text-ink-800">{m.name}</span> <span className="text-ink-400">· {m.role}</span>
-                    </td>
-                    {RESOURCES.map((r) => (
-                      <td key={r.id} className="px-1 py-1 text-center">
-                        <LevelChip level={mx[r.id]} overridden={!!ov[r.id]} />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </CollapsibleCard>
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="افزودن عضو به پروژه" description="هم کاربر سامانه و هم تیم/واحد قابل افزودن است.">
         <div className="space-y-3">
@@ -225,15 +173,8 @@ export default function TeamTab() {
               ))}
             </datalist>
           </Field>
-          <Field label="عنوان شغلی در پروژه">
+          <Field label="عنوان شغلی در پروژه" hint="عضو تازه فقط وظایف، مایل‌ستون‌ها و جلسات را می‌بیند؛ پس از افزودن، بخش‌های لازم را برایش انتخاب کنید.">
             <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: طراح، برنامه‌نویس، تستر" />
-          </Field>
-          <Field label="نقش (پیش‌فرض دسترسی‌ها)" hint={presetHint[role]}>
-            <select className="input-field" value={role} onChange={(e) => setRole(e.target.value as ProjectRole)}>
-              {grantableRoles.map((r) => (
-                <option key={r.role}>{r.role}</option>
-              ))}
-            </select>
           </Field>
           <div className="flex gap-2 pt-2">
             <Button variant="primary" className="flex-1 justify-center" onClick={add}>
@@ -247,7 +188,7 @@ export default function TeamTab() {
       </Modal>
 
       <CrossProjects name={crossFor} onClose={() => setCrossFor(null)} />
-      <MemberAccessDrawer pid={pid} member={p.members.find((m) => m.id === accessFor) ?? null} editor={access.editor} archived={p.meta.archived} onClose={() => setAccessFor(null)} />
+      <MemberAccessDrawer pid={pid} member={p.members.find((m) => m.id === accessFor) ?? null} editor={ed} archived={p.meta.archived} onClose={() => setAccessFor(null)} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // تشخیص هم‌پوشانی و «پیدا کردن زمان مشترک» — مشترک بین فرم جلسه‌ی پروژه، فرم رویداد و ساخت سریع تقویم.
 // منابع مشغولی هر نفر: جلسات پروژه (با تکرار)، رویدادهایی که پذیرفته، بلوک‌های شخصی «مشغول»،
-// مرخصی‌های ثبت‌شده در کارکرد (تایم‌شیت) و تعطیلات رسمی (src/pm/holidays.ts).
+// مرخصی‌های ثبت‌شده در کارکرد (تایم‌شیت) و تعطیلات تقویم کاری (src/pm/holidays.ts ← تنظیمات کارکرد).
 // توابع خالص‌اند؛ useAvailability داده‌ی زنده‌ی انبارها را به آن‌ها می‌دهد.
 // ---------------------------------------------------------------------------
 import { useMemo } from "react";
@@ -16,7 +16,7 @@ import type { ProjectState } from "../../pm/types";
 import type { EventMember, SocialEvent } from "../../social/types";
 import type { Person as TsPerson, TimeEntry } from "../../timesheet/types";
 import { useEventVisibility } from "../social/EventsCalendar";
-import { busyOf, fmtRange, type PersonalItem } from "./model";
+import { busyOf, fmtRange, workWindow, type PersonalItem } from "./model";
 import { usePersonalItems } from "./store";
 
 // ---------------------------------------------------------------- انواع
@@ -51,8 +51,24 @@ export type ConflictReport = {
 export type Slot = { day: number; date: string; start: number; end: number };
 
 export type WorkPolicy = { start: number; end: number; thursday: boolean; thursdayEnd: number };
-/** ساعات کاری پیش‌فرض: شنبه تا چهارشنبه ۸ تا ۱۶، پنجشنبه تعطیل */
-export const defaultWorkPolicy: WorkPolicy = { start: 8 * 60, end: 16 * 60, thursday: false, thursdayEnd: 13 * 60 };
+/**
+ * ساعات کاری پیش‌فرض — زنده: بازه‌ی روز از «پیش‌فرض‌های پروژه» (workHours)،
+ * پنجشنبه و ساعت موظفش از تقویم کاری «کارکرد و مرخصی». (getterها تا هر بار مقدار تازه خوانده شود)
+ */
+export const defaultWorkPolicy: WorkPolicy = {
+  get start() {
+    return workWindow().start;
+  },
+  get end() {
+    return workWindow().end;
+  },
+  get thursday() {
+    return workWindow().thursday;
+  },
+  get thursdayEnd() {
+    return workWindow().thursdayEnd;
+  },
+};
 
 // ---------------------------------------------------------------- شرکت‌کنندگان
 export function attendeeFromName(name: string, projectMembers?: { name: string; userId?: string }[]): Attendee {

@@ -38,7 +38,7 @@ import DecisionsTab from "./project/DecisionsTab";
 import IntakeTab from "./project/IntakeTab";
 import ProjectSearch from "./project/ProjectSearch";
 import { useProjectAccess } from "../pm/useProjectAccess";
-import { TAB_RESOURCE, groupLabel, type ResourceId } from "../pm/access";
+import { TAB_RESOURCE, groupLabel, scopeLabel, type ResourceId } from "../pm/access";
 
 const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "settings", "flow", "decisions", "intake"];
 /** تب‌هایی که برداشته شده‌اند — لینک‌های قدیمی به نمای کلی می‌روند */
@@ -51,7 +51,7 @@ const taskViews: TabId[] = ["board", "sprints", "gantt", "graph"];
 
 export default function ProjectBoard() {
   const { id } = useParams();
-  const { hasPermission, actingUser } = useTenancy();
+  const { hasPermission } = useTenancy();
   const pm = useProjectsPM();
   const p = pm.getProject(id);
   const access = useProjectAccess(id);
@@ -64,9 +64,9 @@ export default function ProjectBoard() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [headOpen, setHeadOpen] = useState(false);
 
-  const myRole = p?.members.find((m) => m.name === actingUser.name || m.userId === actingUser.id)?.role;
-  // دروازه‌ی بیرونی: مجوز سراسری projects.tasks و نقش غیرمشاهده‌گر؛ سپس دسترسی ریز هر بخش
-  const outer = !!p && hasPermission("projects.tasks") && myRole !== "مشاهده‌گر";
+  // دروازه‌ی بیرونی: مجوز سراسری projects.tasks و دست‌کم یک دسترسی ویرایش در این پروژه؛ سپس دسترسی ریز هر بخش
+  const viewOnlyMember = !!access.member && access.viewOnly;
+  const outer = !!p && hasPermission("projects.tasks") && !viewOnlyMember;
   const editable = outer && !p.meta.archived;
 
   const requested = tabParam && validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : null;
@@ -157,7 +157,7 @@ export default function ProjectBoard() {
       ],
     },
     {
-      label: groupLabel.admin,
+      label: scopeLabel.admin,
       items: [
         { id: "notifications", label: "اعلان‌ها و خودکارسازی", count: unreadHere || undefined },
         { id: "settings", label: "تنظیمات پروژه" },
@@ -286,9 +286,9 @@ export default function ProjectBoard() {
             )}
           </div>
         )}
-        {myRole === "مشاهده‌گر" && (
+        {viewOnlyMember && (
           <div className="mb-4 rounded-lg border border-ink-200 bg-ink-50 text-ink-600 text-xs p-3 flex items-center gap-2">
-            <Eye size={14} /> نقش شما در این پروژه «مشاهده‌گر» است؛ فقط امکان مشاهده دارید.
+            <Eye size={14} /> دسترسی شما در این پروژه فقط مشاهده است؛ برای ویرایش با مدیر پروژه هماهنگ کنید.
           </div>
         )}
 

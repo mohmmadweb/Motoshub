@@ -11,6 +11,7 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
 import { activeTasks, budgetUsage, isDone, memberStats, paidTotal, projectProgress } from "../../pm/selectors";
 import { taskFlows } from "../../pm/flow";
+import { isContributor } from "../../pm/access";
 import { dayNum, fa, fmtRial, fromDayNum } from "../../pm/jalali";
 import type { MemberEvaluation, ProjectClosure, ProjectState } from "../../pm/types";
 import { Field, Progress, useProjectPage } from "./shared";
@@ -67,7 +68,7 @@ export default function ClosureWizard({ onClose }: { onClose: () => void }) {
   const [outcomes, setOutcomes] = useState("");
   const [lessons, setLessons] = useState<string[]>([""]);
   const [transfer, setTransfer] = useState(true);
-  const people = p.members.filter((m) => m.role !== "مشاهده‌گر");
+  const people = p.members.filter(isContributor);
   const [evals, setEvals] = useState<MemberEvaluation[]>(() =>
     people.map((m) => {
       const st = memberStats(p, m.name);

@@ -2,6 +2,8 @@
 // «برند و تنظیمات لایه‌ای» — هر هلدینگ/شرکت می‌تواند برند (نام، رنگ، لوگو) و چند تنظیم را
 // بازنویسی کند. وضعیت هر مورد: ارث‌رسیده / بازنویسی‌شده / قفل‌شده (والد اجازه‌ی بازنویسی نداده).
 // واحدِ موردِ تنظیم = کانتکست فعلی (انتخابگر بالای «تنظیمات سامانه»).
+// گروه «برند» در «برند و ظاهر ← برند سازمان» می‌آید؛ ردیف‌های رفتاری (مهلت نشست، یادآوری گزارش،
+// تأیید محتوا) با ScopedKeysCard در بخش ماژول خودشان نمایش داده می‌شوند.
 // ---------------------------------------------------------------------------
 import { useRef, useState, type ReactNode } from "react";
 import { Lock, LockOpen, Palette, RotateCcw, Upload } from "lucide-react";
@@ -10,14 +12,35 @@ import Toggle from "../../components/ui/Toggle";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useEffectiveBranding, useScopedSettings } from "../../iam/hooks";
-import { scopedMeta, statusLabel, type ScopedMeta, type ScopedStatus, type ScopedValue } from "../../iam/scopedSettings";
+import { scopedMeta, statusLabel, type ScopedKey, type ScopedMeta, type ScopedStatus, type ScopedValue } from "../../iam/scopedSettings";
 import { Callout, SectionHead, fmtN } from "./iam/shared";
 import { BrandMark } from "../../iam/BrandMark";
 
 const tone: Record<ScopedStatus, BadgeTone> = { root: "navy", inherited: "neutral", overridden: "brand", locked: "warning" };
 const SWATCHES = ["#1f4f99", "#0d9488", "#b45309", "#7c3aed", "#be123c", "#0f172a", "#1d4ed8", "#15803d"];
 
-export default function ScopedSettingsSection() {
+/** کارت فشرده‌ی چند تنظیم لایه‌ای (ارث‌بری/بازنویسی/قفل) برای جاسازی در بخش هر ماژول */
+export function ScopedKeysCard({ keys, title = "بازنویسی در این واحد (ارث‌بری لایه‌ای)", hint }: { keys: ScopedKey[]; title?: string; hint?: string }) {
+  const t = useTenancy();
+  const hasChildren = t.iam.scopes.some((s) => s.parentId === t.contextId);
+  const metas = scopedMeta.filter((m) => keys.includes(m.key));
+  if (!metas.length) return null;
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-ink-100 bg-ink-50">
+        <p className="text-[12.5px] font-bold text-ink-800">{title}</p>
+        <p className="text-[11px] text-ink-500 mt-0.5">{hint ?? `مقدار در «${t.contextNode.name}»؛ از لایه‌ی بالاتر ارث می‌رسد مگر اینکه اینجا بازنویسی شود.`}</p>
+      </div>
+      <ul className="divide-y divide-ink-100">
+        {metas.map((m) => (
+          <Row key={m.key} meta={m} hasChildren={hasChildren} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function ScopedSettingsSection({ groups = ["brand", "behavior"] }: { groups?: ScopedMeta["group"][] } = {}) {
   const t = useTenancy();
   const ss = useScopedSettings();
   const brand = useEffectiveBranding();
@@ -38,11 +61,11 @@ export default function ScopedSettingsSection() {
 
   return (
     <div className="space-y-4">
-      <SectionHead icon={<Palette size={18} />} title="برند و تنظیمات لایه‌ای" description={`تنظیمات «${t.contextNode.name}». مقدارها از لایه‌ی بالاتر به ارث می‌رسند مگر اینکه اینجا بازنویسی شوند؛ قفل در هر لایه بازنویسی زیرمجموعه‌ها را می‌بندد.`} />
+      <SectionHead icon={<Palette size={18} />} title={groups.includes("behavior") ? "برند و تنظیمات لایه‌ای" : "برند سازمان"} description={`تنظیمات «${t.contextNode.name}». مقدارها از لایه‌ی بالاتر به ارث می‌رسند مگر اینکه اینجا بازنویسی شوند؛ قفل در هر لایه بازنویسی زیرمجموعه‌ها را می‌بندد.`} />
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
         <div className="space-y-4 min-w-0">
-          {group("brand", "برند")}
-          {group("behavior", "رفتار سامانه")}
+          {groups.includes("brand") && group("brand", "برند")}
+          {groups.includes("behavior") && group("behavior", "رفتار سامانه")}
         </div>
         <div className="card p-3 lg:sticky lg:top-20">
           <p className="text-[11px] text-ink-400 mb-2">پیش‌نمایش سربرگ در این واحد</p>

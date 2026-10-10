@@ -4,7 +4,8 @@ import Badge from "../../components/ui/Badge";
 import { isDone, isOverdue } from "../../pm/selectors";
 import { dayNum, fa, fromDayNum } from "../../pm/jalali";
 import type { PMTask } from "../../pm/types";
-import { DAILY_HOURS, capacityHours, holidaysBetween, workdaysBetween } from "../../pm/holidays";
+import { isContributor } from "../../pm/access";
+import { DAILY_HOURS, capacityHours, getWorkCalendar, holidaysBetween, workdaysBetween } from "../../pm/holidays";
 import { priorityTone, useProjectPage } from "./shared";
 
 const WEEKS = 8;
@@ -12,7 +13,7 @@ const WEEKS = 8;
 /**
  * بار کاری تیم (Workload) — مشابه Asana / Monday / ClickUp:
  * ساعت برآوردی هر تسک باز به‌طور یکنواخت روی «روزهای کاری» آن پخش می‌شود و
- * با ظرفیت هفتگی هر عضو مقایسه می‌شود: روزهای کاری هفته (شنبه تا چهارشنبه، منهای تعطیلات رسمی) × ۸ ساعت (همه‌ی اعضا با ظرفیت کامل ساعت کاری).
+ * با ظرفیت هفتگی هر عضو مقایسه می‌شود: ساعت موظف روزهای کاری هفته طبق تقویم کاری «کارکرد و مرخصی» (منهای تعطیلات؛ پنجشنبه با ساعت خودش).
  * (مرخصی‌های تأییدشده پس از اتصال ماژول گزارش فعالیت/مرخصی از ظرفیت کم می‌شوند.)
  */
 export default function WorkloadTab() {
@@ -23,7 +24,7 @@ export default function WorkloadTab() {
 
   const open = useMemo(() => p.tasks.filter((t) => !t.archived && !isDone(p, t)), [p]);
 
-  /** سهم ساعت یک تسک در یک هفته — بر اساس روزهای کاری (جمعه، پنجشنبه و تعطیلات رسمی کار نمی‌شود) */
+  /** سهم ساعت یک تسک در یک هفته — بر اساس روزهای کاری تقویم کاری (جمعه، تعطیلات و پنجشنبه‌ی بدون ساعت موظف کار نمی‌شود) */
   const share = (t: PMTask, w: number) => {
     const s = dayNum(t.start);
     const e = dayNum(t.due);
@@ -42,13 +43,14 @@ export default function WorkloadTab() {
     return { workdays: workdaysBetween(from, to), holidays: holidaysBetween(from, to) };
   });
 
-  const people = p.members.filter((m) => m.role !== "مشاهده‌گر");
+  const people = p.members.filter(isContributor);
   const names = [...new Set([...people.map((m) => m.name), ...open.map((t) => t.assignee).filter((a) => a && a !== "بدون مسئول")])];
   const rows = names.map((name) => {
     const m = people.find((x) => x.name === name);
-    // درصد تخصیص حذف شد: هر عضو (غیر مشاهده‌گر) با ظرفیت کامل ساعت کاری حساب می‌شود
+    // درصد تخصیص حذف شد: هر عضو مشارکت‌کننده (دارای دست‌کم یک دسترسی ویرایش) با ظرفیت کامل ساعت کاری حساب می‌شود
     const alloc = m ? 100 : 0;
-    const capacity = alloc ? 5 * DAILY_HOURS : 0;
+    // ظرفیت اسمی هفته از تقویم کاری «کارکرد و مرخصی»: ۵ روز × ساعت موظف + ساعت پنجشنبه
+    const capacity = alloc ? 5 * DAILY_HOURS + getWorkCalendar().thursdayHours : 0;
     const mine = open.filter((t) => t.assignee === name);
     const weeks = Array.from({ length: WEEKS }, (_, w) => {
       const ts = mine.filter((t) => share(t, w) > 0 || (!t.estHours && (dayNum(t.start) ?? 0) <= weekStart(w) + 6 && (dayNum(t.due) ?? 0) >= weekStart(w)));
@@ -73,7 +75,7 @@ export default function WorkloadTab() {
       <div className="flex items-start gap-2 text-xs text-ink-500 leading-6">
         <Info size={14} className="mt-1 shrink-0" />
         <p>
-          ساعت برآوردی هر تسک باز روی روزهای کاری آن پخش شده و با ظرفیت هفتگی عضو (روزهای کاری × ۸ ساعت؛ همه با ظرفیت کامل) مقایسه می‌شود؛ پنجشنبه، جمعه و تعطیلات رسمی از ظرفیت کم شده‌اند.
+          ساعت برآوردی هر تسک باز روی روزهای کاری آن پخش شده و با ظرفیت هفتگی عضو (ساعت موظف روزهای کاری؛ همه با ظرفیت کامل) مقایسه می‌شود. ساعت موظف، پنجشنبه و تعطیلات از تقویم کاری «کارکرد و مرخصی» (تنظیمات سامانه) می‌آید.
           <span className="text-emerald-700"> سبز</span> یعنی ظرفیت آزاد، <span className="text-amber-700">زرد</span> نزدیک سقف و <span className="text-rose-700">قرمز</span> بیش از ظرفیت. روی هر خانه بزنید تا تسک‌های آن هفته را ببینید.
         </p>
       </div>

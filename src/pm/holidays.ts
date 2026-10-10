@@ -1,8 +1,11 @@
 // ---------------------------------------------------------------------------
-// تقویم کاری ایران برای محاسبه‌ی ظرفیت (بار کاری تیم):
-// جمعه‌ها و پنجشنبه‌ها کاری نیست (شنبه تا چهارشنبه ۸ ساعت)، به‌علاوه‌ی تعطیلات رسمی سال.
-// تعطیلات قمری بر اساس تقویم رسمی پیش‌بینی شده و ممکن است با رؤیت هلال یک روز جابه‌جا شود.
-// (ماژول timesheet در حال ساخت است؛ وقتی آماده شد، مرخصی‌های تأییدشده هم از آن کم می‌شود.)
+// تقویم کاری سازمان — منبع واحد برای ظرفیت (بار کاری)، تقویم و «زمان مشترک» جلسات.
+// منبع حقیقت: تنظیمات کارکرد (تایم‌شیت، تنظیمات سامانه ← «کارکرد و مرخصی»):
+//   ساعت موظف روزانه، ساعت پنجشنبه (۰ = تعطیل) و فهرست تعطیلات سازمانی/رسمی.
+// TimesheetProvider با هر تغییر setWorkCalendar را صدا می‌زند؛ پیش از آن، مقدار از همان
+// انبار localStorage (motoshub.timesheet.v1) خوانده می‌شود. جمعه همیشه تعطیل است.
+// بازه‌ی ساعت شروع/پایان روز (برای جلسه و دسترس‌پذیری) جداست: پیش‌فرض‌های پروژه (workHours).
+// HOLIDAYS_1405 فقط فهرست اولیه‌ی تعطیلات رسمی است (بذر تنظیمات کارکرد)؛ قمری‌ها با رؤیت هلال ممکن است جابه‌جا شوند.
 // ---------------------------------------------------------------------------
 import { dayNum, weekdayOf, fromDayNum } from "./jalali";
 
@@ -37,16 +40,73 @@ export const HOLIDAYS_1405: Holiday[] = [
   { date: "۱۴۰۵/۱۲/۲۹", title: "ملی‌شدن صنعت نفت" },
 ];
 
-const holidayMap = new Map(HOLIDAYS_1405.map((h) => [dayNum(h.date)!, h]));
+export type WorkCalendar = {
+  /** ساعت موظف روزهای شنبه تا چهارشنبه */
+  dailyHours: number;
+  /** ساعت موظف پنجشنبه؛ ۰ یعنی پنجشنبه تعطیل است */
+  thursdayHours: number;
+  holidays: Holiday[];
+};
 
-/** ساعت کاری روزانه */
-export const DAILY_HOURS = 8;
+/** تعطیلات رسمی را به فهرست اضافه می‌کند (بدون تکرار تاریخ یا مناسبت) — برای مهاجرت یک‌باره‌ی تنظیمات کارکرد */
+export function withOfficialHolidays(list: { date: string; title: string }[]): Holiday[] {
+  const days = new Set(list.map((h) => dayNum(h.date)));
+  const titles = new Set(list.map((h) => h.title));
+  const extra = HOLIDAYS_1405.filter((h) => !days.has(dayNum(h.date)) && !titles.has(h.title));
+  return [...list, ...extra].sort((a, b) => (dayNum(a.date) ?? 0) - (dayNum(b.date) ?? 0));
+}
+
+const FALLBACK: WorkCalendar = { dailyHours: 8, thursdayHours: 0, holidays: HOLIDAYS_1405 };
+
+/** خواندن مستقیم تنظیمات کارکرد از localStorage (قبل از بالا آمدن TimesheetProvider) */
+function readStored(): WorkCalendar {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("motoshub.timesheet.v1") : null;
+    const st = raw ? (JSON.parse(raw) as { settings?: { dailyHours?: number; thursdayHours?: number; holidays?: Holiday[]; officialHolidaysMerged?: boolean } }).settings : undefined;
+    if (st && typeof st.dailyHours === "number") {
+      const hol = Array.isArray(st.holidays) ? st.holidays : [];
+      return { dailyHours: st.dailyHours, thursdayHours: st.thursdayHours ?? 0, holidays: st.officialHolidaysMerged ? hol : withOfficialHolidays(hol) };
+    }
+  } catch {
+    /* داده‌ی خراب — پیش‌فرض */
+  }
+  return FALLBACK;
+}
+
+let calendar: WorkCalendar = FALLBACK;
+let holidayMap = new Map<number, Holiday>();
+
+/** ساعت کاری روزانه (زنده؛ از تنظیمات کارکرد) — با let صادر می‌شود تا وارد‌کننده‌ها مقدار تازه را ببینند */
+export let DAILY_HOURS = FALLBACK.dailyHours;
+
+/** به‌روزرسانی تقویم کاری (TimesheetProvider با هر تغییر تنظیمات صدا می‌زند) */
+export function setWorkCalendar(next: { dailyHours: number; thursdayHours: number; holidays: { date: string; title: string; lunar?: boolean }[] }) {
+  calendar = { dailyHours: next.dailyHours > 0 ? next.dailyHours : 8, thursdayHours: Math.max(0, next.thursdayHours || 0), holidays: next.holidays };
+  DAILY_HOURS = calendar.dailyHours;
+  holidayMap = new Map();
+  calendar.holidays.forEach((h) => {
+    const d = dayNum(h.date);
+    if (d === null) return;
+    const prev = holidayMap.get(d);
+    holidayMap.set(d, prev ? { ...prev, title: `${prev.title} · ${h.title}` } : h);
+  });
+}
+setWorkCalendar(readStored());
+
+/** تقویم کاری فعلی (ساعت روزانه، ساعت پنجشنبه، تعطیلات) */
+export const getWorkCalendar = (): WorkCalendar => calendar;
+/** ساعت موظف یک روز (جمعه و تعطیل ۰، پنجشنبه از تنظیمات کارکرد) */
+export function hoursOn(d: number): number {
+  const w = weekdayOf(fromDayNum(d));
+  if (w === 6 || holidayMap.has(d)) return 0;
+  return w === 5 ? calendar.thursdayHours : calendar.dailyHours;
+}
 
 export const holidayOn = (d: number) => holidayMap.get(d);
-/** پنجشنبه (۵) و جمعه (۶) با شنبه‌مبنا */
+/** جمعه، و پنجشنبه اگر در تنظیمات کارکرد ساعت موظف نداشته باشد (شنبه‌مبنا: ۵ = پنجشنبه، ۶ = جمعه) */
 export const isWeekend = (d: number) => {
   const w = weekdayOf(fromDayNum(d));
-  return w === 5 || w === 6;
+  return w === 6 || (w === 5 && calendar.thursdayHours <= 0);
 };
 export const isWorkday = (d: number) => !isWeekend(d) && !holidayMap.has(d);
 
@@ -57,7 +117,7 @@ export function workdaysBetween(from: number, to: number): number {
   return n;
 }
 
-/** تعطیلات رسمی (غیر آخر هفته) در یک بازه */
+/** تعطیلات (غیر آخر هفته) در یک بازه */
 export function holidaysBetween(from: number, to: number): Holiday[] {
   const out: Holiday[] = [];
   for (let d = from; d <= to; d++) {
@@ -67,5 +127,9 @@ export function holidaysBetween(from: number, to: number): Holiday[] {
   return out;
 }
 
-/** ظرفیت ساعتی یک عضو در بازه با درصد تخصیص */
-export const capacityHours = (allocationPct: number, from: number, to: number) => (workdaysBetween(from, to) * DAILY_HOURS * allocationPct) / 100;
+/** ظرفیت ساعتی یک عضو در بازه با درصد تخصیص (پنجشنبه با ساعت موظف خودش) */
+export function capacityHours(allocationPct: number, from: number, to: number) {
+  let h = 0;
+  for (let d = from; d <= to; d++) h += hoursOn(d);
+  return (h * allocationPct) / 100;
+}

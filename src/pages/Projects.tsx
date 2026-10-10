@@ -1,6 +1,6 @@
 import ModuleReportsButton from "../reports/ModuleReportsButton";
 import { useMemo, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { KanbanSquare, Plus, ListChecks, ClipboardList, PlayCircle, AlertTriangle, GanttChartSquare, ListFilter, Search, Star, Archive, LayoutTemplate, X, LayoutGrid, Table2, CalendarRange } from "lucide-react";
 import Badge, { type BadgeTone } from "../components/ui/Badge";
 import RowActions from "../components/ui/RowActions";
@@ -24,6 +24,7 @@ import TemplateEditorModal from "./project/TemplateEditorModal";
 import PortfolioTimeline from "./project/PortfolioTimeline";
 import { ScopePicker } from "./project/SettingsExtras";
 import type { ProjectTemplate } from "../pm/templates";
+import { useProjectDefaults } from "./settings/projectDefaults";
 
 const healthTone: Record<string, BadgeTone> = {
   سبز: "success",
@@ -48,6 +49,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 export default function Projects() {
   const pm = useProjectsPM();
+  // پیش‌فرض‌های سراسری پروژه‌ی جدید (تنظیمات سامانه ← پروژه‌ها)
+  const projDefaults = useProjectDefaults();
   const [healthFilter, setHealthFilter] = useState<(typeof healthFilters)[number]>("همه");
   const [listFilter, setListFilter] = useState<(typeof listFilters)[number]>("پروژه‌های من");
   const [q, setQ] = useState("");
@@ -64,10 +67,10 @@ export default function Projects() {
   const [deadline, setDeadline] = useState("");
   const [manager, setManager] = useState("");
   const [budget, setBudget] = useState("");
-  const [priority, setPriority] = useState<ProjectMeta["priority"]>("متوسط");
+  const [priority, setPriority] = useState<ProjectMeta["priority"]>(projDefaults.project.priority);
   const [icon, setIcon] = useState("Briefcase");
   const [color, setColor] = useState(projectColors[0]);
-  const [visibility, setVisibility] = useState<ProjectMeta["visibility"]>("فقط اعضا");
+  const [visibility, setVisibility] = useState<ProjectMeta["visibility"]>(projDefaults.project.visibility);
   const [workspace, setWorkspace] = useState("");
   const [scopeId, setScopeId] = useState("");
   const [scopeFilter, setScopeFilter] = useState("");
@@ -76,7 +79,20 @@ export default function Projects() {
   const [groupId, setGroupId] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
   const [tplEdit, setTplEdit] = useState<ProjectTemplate | "new" | null>(null);
-  const [section, setSection] = useState<"projects" | "templates" | "playbooks">("projects");
+  // بخش صفحه در آدرس (?section=templates|playbooks) تا از جاهای دیگر (مثل تنظیمات سامانه) لینک‌پذیر باشد
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const section: "projects" | "templates" | "playbooks" = sectionParam === "templates" || sectionParam === "playbooks" ? sectionParam : "projects";
+  const setSection = (id: "projects" | "templates" | "playbooks") =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id === "projects") next.delete("section");
+        else next.set("section", id);
+        return next;
+      },
+      { replace: true },
+    );
   const [layout, setLayout] = useState<"grid" | "table" | "timeline">("grid");
   const [filterOpen, setFilterOpen] = useState(false);
   const [team, setTeam] = useState<{ name: string; title: string; role: ProjectRole }[]>([]);
@@ -108,10 +124,10 @@ export default function Projects() {
     setDeadline("");
     setManager("");
     setBudget("");
-    setPriority("متوسط");
+    setPriority(projDefaults.project.priority);
     setIcon("Briefcase");
     setColor(projectColors[0]);
-    setVisibility("فقط اعضا");
+    setVisibility(projDefaults.project.visibility);
     setWorkspace(scopeLabel(contextId));
     setScopeId(contextId);
     setCategory("");
@@ -685,7 +701,7 @@ export default function Projects() {
             <Field label="اعضای اولیه‌ی تیم (شما به‌عنوان مالک اضافه می‌شوید)">
               <div className="flex gap-2 flex-wrap">
                 <input className="input-field flex-1 min-w-[140px]" list="pr-users" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="نام عضو یا تیم" />
-                <input className="input-field w-40" value={teamTitle} onChange={(e) => setTeamTitle(e.target.value)} placeholder="نقش: طراح، برنامه‌نویس…" />
+                <input className="input-field w-40" value={teamTitle} onChange={(e) => setTeamTitle(e.target.value)} placeholder="عنوان شغلی: طراح، برنامه‌نویس…" />
                 <Button
                   type="button"
                   variant="secondary"

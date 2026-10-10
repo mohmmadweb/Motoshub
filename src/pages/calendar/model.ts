@@ -8,6 +8,8 @@ import type { ProjectState } from "../../pm/types";
 import type { EventMember, SocialEvent } from "../../social/types";
 import { occursOn } from "../social/EventsCalendar";
 import { recursOn, reminderLabel, ruleLabel, type RecurRule, type Reminder } from "../../pm/recurrence";
+import { getWorkCalendar, holidayOn as officialHolidayOn, hoursOn } from "../../pm/holidays";
+import { projectDefaultsStore } from "../settings/projectDefaults";
 
 // ---------------------------------------------------------------- لایه‌ها
 export type Layer = "events" | "meetings" | "tasks" | "milestones" | "sprints" | "personal" | "holidays";
@@ -112,46 +114,26 @@ export const GRID_START = 7 * 60;
 export const GRID_END = 20 * 60;
 export const HOUR_PX = 48;
 
-// ---------------------------------------------------------------- تعطیلات رسمی ۱۴۰۵
-/** تعطیلات خورشیدی ثابت + پیش‌بینی تعطیلات قمری ۱۴۰۵ (قطعیت با رؤیت هلال) */
-export const holidays1405: { date: string; title: string; lunar?: boolean }[] = [
-  { date: "۱۴۰۵/۰۱/۰۱", title: "جشن نوروز" },
-  { date: "۱۴۰۵/۰۱/۰۲", title: "عید نوروز" },
-  { date: "۱۴۰۵/۰۱/۰۳", title: "عید نوروز" },
-  { date: "۱۴۰۵/۰۱/۰۴", title: "عید نوروز" },
-  { date: "۱۴۰۵/۰۱/۱۲", title: "روز جمهوری اسلامی" },
-  { date: "۱۴۰۵/۰۱/۱۳", title: "روز طبیعت" },
-  { date: "۱۴۰۵/۰۱/۲۵", title: "شهادت امام جعفر صادق (ع)", lunar: true },
-  { date: "۱۴۰۵/۰۳/۰۶", title: "عید سعید قربان", lunar: true },
-  { date: "۱۴۰۵/۰۳/۱۴", title: "رحلت امام خمینی (ره) · عید غدیر خم" },
-  { date: "۱۴۰۵/۰۳/۱۵", title: "قیام ۱۵ خرداد" },
-  { date: "۱۴۰۵/۰۴/۰۳", title: "تاسوعای حسینی", lunar: true },
-  { date: "۱۴۰۵/۰۴/۰۴", title: "عاشورای حسینی", lunar: true },
-  { date: "۱۴۰۵/۰۵/۱۳", title: "اربعین حسینی", lunar: true },
-  { date: "۱۴۰۵/۰۵/۲۱", title: "رحلت رسول اکرم (ص) و شهادت امام حسن مجتبی (ع)", lunar: true },
-  { date: "۱۴۰۵/۰۵/۲۲", title: "شهادت امام رضا (ع)", lunar: true },
-  { date: "۱۴۰۵/۰۵/۳۰", title: "شهادت امام حسن عسکری (ع)", lunar: true },
-  { date: "۱۴۰۵/۰۶/۰۸", title: "میلاد رسول اکرم (ص) و امام جعفر صادق (ع)", lunar: true },
-  { date: "۱۴۰۵/۰۸/۲۲", title: "شهادت حضرت فاطمه زهرا (س)", lunar: true },
-  { date: "۱۴۰۵/۱۰/۰۱", title: "ولادت امام علی (ع) و روز پدر", lunar: true },
-  { date: "۱۴۰۵/۱۰/۱۵", title: "مبعث رسول اکرم (ص)", lunar: true },
-  { date: "۱۴۰۵/۱۱/۰۳", title: "ولادت حضرت قائم (عج)", lunar: true },
-  { date: "۱۴۰۵/۱۱/۲۲", title: "پیروزی انقلاب اسلامی" },
-  { date: "۱۴۰۵/۱۲/۰۸", title: "شهادت امام علی (ع)", lunar: true },
-  { date: "۱۴۰۵/۱۲/۱۸", title: "عید سعید فطر", lunar: true },
-  { date: "۱۴۰۵/۱۲/۱۹", title: "تعطیل به مناسبت عید فطر", lunar: true },
-  { date: "۱۴۰۵/۱۲/۲۹", title: "روز ملی شدن صنعت نفت" },
-];
-const holidayMap = new Map<number, { title: string; lunar?: boolean }>();
-holidays1405.forEach((h) => {
-  const d = dayNum(h.date);
-  if (d === null) return;
-  const prev = holidayMap.get(d);
-  holidayMap.set(d, prev ? { title: `${prev.title} · ${h.title}` } : { title: h.title, lunar: h.lunar });
-});
-export const holidayOn = (day: number) => holidayMap.get(day);
+// ---------------------------------------------------------------- تقویم کاری
+// تعطیلات، پنجشنبه و ساعت موظف از تقویم کاری واحد (src/pm/holidays.ts ← تنظیمات کارکرد)؛
+// بازه‌ی ساعت شروع/پایان روز از «پیش‌فرض‌های پروژه» (workHours).
+export const holidayOn = (day: number) => officialHolidayOn(day);
 export const isFriday = (day: number) => weekdayOf(fromDayNum(day)) === 6;
-export const isOffDay = (day: number) => isFriday(day) || holidayMap.has(day);
+/** جمعه، تعطیل، یا پنجشنبه‌ی بدون ساعت موظف */
+export const isOffDay = (day: number) => hoursOn(day) <= 0;
+
+const hhmmToMin = (v: string | undefined, fb: number) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(toEnDigits(v ?? "").trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : fb;
+};
+/** بازه‌ی ساعت کاری سازمان (دقیقه): شروع/پایان روز + پایان پنجشنبه (شروع + ساعت موظف پنجشنبه) */
+export function workWindow(): { start: number; end: number; thursdayEnd: number; thursday: boolean } {
+  const wh = projectDefaultsStore.get().workHours;
+  const start = hhmmToMin(wh?.start, 8 * 60);
+  const end = Math.max(start + 60, hhmmToMin(wh?.end, 16 * 60));
+  const th = getWorkCalendar().thursdayHours;
+  return { start, end, thursday: th > 0, thursdayEnd: Math.min(end, start + Math.round(th * 60)) };
+}
 
 // ---------------------------------------------------------------- گردآوری اقلام
 export type CollectInput = {
@@ -437,9 +419,10 @@ export function busyOf(
   return out.sort((a, b) => a.start - b.start);
 }
 
-/** ساعات کاری: شنبه تا چهارشنبه ۸ تا ۱۶، پنجشنبه ۸ تا ۱۳ */
+/** ساعات کاری یک روز از تقویم کاری سازمان (پیش‌فرض: شنبه تا چهارشنبه ۸ تا ۱۶، پنجشنبه به اندازه‌ی ساعت موظفش) */
 export function workHours(day: number): [number, number] {
-  return weekdayOf(fromDayNum(day)) === 5 ? [8 * 60, 13 * 60] : [8 * 60, 16 * 60];
+  const w = workWindow();
+  return weekdayOf(fromDayNum(day)) === 5 ? [w.start, w.thursday ? w.thursdayEnd : w.start] : [w.start, w.end];
 }
 
 /** نخستین بازه‌ی آزاد مشترک در ۱۰ روز کاری آینده */

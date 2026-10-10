@@ -7,6 +7,7 @@ import { systemIdentity } from "../data/tenancy";
 import { ancestorsOrSelf, type IamState } from "./model";
 import { createLocalStore } from "./store";
 import { loginPolicyStore } from "./loginPolicy";
+import { getWorkflowSettings } from "../context/SettingsContext";
 
 export type ScopedKey = "brand.name" | "brand.tagline" | "brand.color" | "brand.logo" | "security.sessionTimeoutMin" | "workflow.reportReminderDays" | "content.requireApproval";
 export type ScopedValue = string | number | boolean;
@@ -23,13 +24,21 @@ export const scopedMeta: ScopedMeta[] = [
 ];
 export const scopedMetaOf = (k: ScopedKey) => scopedMeta.find((m) => m.key === k)!;
 
+/**
+ * مقدار ریشه (سطح سامانه) هر کلید. مهلت نشست از «سیاست ورود» و یادآوری گزارش از پارامترهای
+ * گردش کار (SettingsContext ← تنظیمات صندوق نوآوری) زنده خوانده می‌شود تا دو منبع جدا نداشته باشیم.
+ */
 export const scopedDefaults: Record<ScopedKey, ScopedValue> = {
   "brand.name": systemIdentity.name,
   "brand.tagline": "فضای کاری سازمانی",
   "brand.color": systemIdentity.color,
   "brand.logo": "/bonyad-logo.png",
-  "security.sessionTimeoutMin": 60,
-  "workflow.reportReminderDays": 7,
+  get "security.sessionTimeoutMin"() {
+    return loginPolicyStore.get().sessionTimeoutMin;
+  },
+  get "workflow.reportReminderDays"() {
+    return getWorkflowSettings().reportReminderDays;
+  },
   "content.requireApproval": false,
 };
 
@@ -57,8 +66,8 @@ export type Resolved = { value: ScopedValue; source: string | null; status: Scop
 /** مقدار مؤثر یک کلید در یک واحد + وضعیت (ارث‌رسیده / بازنویسی‌شده / قفل‌شده) */
 export function resolveScoped(state: ScopedState, iam: IamState, scopeId: string, key: ScopedKey): Resolved {
   const chain = ancestorsOrSelf(iam, scopeId).reverse(); // ریشه ← خود
-  // مهلت نشستِ سطح سامانه از «سیاست ورود» می‌آید
-  let value: ScopedValue = key === "security.sessionTimeoutMin" ? loginPolicyStore.get().sessionTimeoutMin : scopedDefaults[key];
+  // مقدار سطح سامانه: مهلت نشست از «سیاست ورود»، یادآوری گزارش از پارامترهای گردش کار
+  let value: ScopedValue = scopedDefaults[key];
   let source: string | null = null;
   let lockedBy: string | undefined;
   for (const n of chain) {

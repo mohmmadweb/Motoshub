@@ -136,7 +136,20 @@ export type Dependency = { id: string; predecessor: string; successor: string; c
 export type AccessLevel = "none" | "read" | "write" | "manage";
 
 export type ProjectRole = "مالک" | "مدیر پروژه" | "مدیر سیستم" | "عضو" | "مشاهده‌گر";
-export type PMMember = { id: string; name: string; title: string; role: ProjectRole; /** منسوخ — درصد تخصیص از UI حذف شد؛ فقط برای داده‌ی قدیمی */ allocation?: number; userId?: string; /** بازنویسی دسترسی‌های ریز این عضو نسبت به پیش‌فرض نقش (resource → level) */ access?: Partial<Record<string, AccessLevel>> };
+export type PMMember = {
+  id: string;
+  name: string;
+  title: string;
+  /** منسوخ برای دسترسی — فقط برای سازگاری با داده‌ی قدیمی و تشخیص «مالک»؛ در UI نمایش داده نمی‌شود */
+  role: ProjectRole;
+  /** منسوخ — درصد تخصیص از UI حذف شد؛ فقط برای داده‌ی قدیمی */
+  allocation?: number;
+  userId?: string;
+  /** دسترسی‌های ریز این عضو (resource → level)؛ وقتی accessExplicit=true نقشه‌ی صریح و کامل است (نبود کلید = بدون دسترسی) */
+  access?: Partial<Record<string, AccessLevel>>;
+  /** نشانگر مدل جدید: access صریح است، نه بازنویسی نسبت به نقش (داده‌ی قدیمی یک بار در بارگذاری مهاجرت می‌شود) */
+  accessExplicit?: boolean;
+};
 
 export type MilestoneStatus = "انجام‌شده" | "در حال انجام" | "پیش‌رو" | "در خطر";
 export type PMMilestone = { id: string; title: string; due: string; status: MilestoneStatus; owner: string; taskIds: string[] };
@@ -569,4 +582,8 @@ export type ProjectState = {
   /** فرم درخواست برای اعضا باز است */
   intakeOpen?: boolean;
   meetingSettings?: MeetingSettings;
+  /** انواع کار فعال و پیش‌فرض‌های تسک تازه — هنگام ساخت از «پیش‌فرض‌های پروژه» کپی می‌شود (خالی = همه‌ی انواع، تسک/متوسط) */
+  taskTypes?: TaskType[];
+  defaultTaskType?: TaskType;
+  defaultTaskPriority?: PMPriority;
 };

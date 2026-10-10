@@ -156,7 +156,10 @@ export type TsSettings = {
   thursdayHours: number;
   /** سقف مرخصی سالانه (روز) */
   annualLeaveDays: number;
-  holidays: { date: string; title: string }[];
+  /** تعطیلات سازمانی و رسمی — منبع واحد تقویم کاری (بار کاری، تقویم، زمان مشترک جلسات) */
+  holidays: { date: string; title: string; lunar?: boolean }[];
+  /** تعطیلات رسمی ۱۴۰۵ یک بار به فهرست افزوده شده (مهاجرت؛ حذف‌های بعدی کاربر برنمی‌گردد) */
+  officialHolidaysMerged?: boolean;
   /** اختیاری (داده‌ی قدیمی بدون آن هم بار می‌شود) */
   leavePolicy?: LeavePolicy;
   reminders?: ReminderPolicy;

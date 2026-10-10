@@ -71,6 +71,7 @@ import { EMPTY_FILTER, mergeOrder, spanClass, useUserLayout, type Span } from ".
 import { GlobalFilterBar } from "./GlobalFilterBar";
 import { ManagementAlertsCard, useIsManager } from "./ManagementAlerts";
 import { usePendingAccessRequests } from "../../iam/hooks";
+import { isOwner, effectiveMatrix } from "../../pm/access";
 
 type FeedItem = { key: string; icon: typeof Bell; tone: string; text: string; meta: string; to: string; unread: boolean; seq: number };
 
@@ -819,7 +820,7 @@ function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
   }
 
   if (roleId === "r3") {
-    const managed = pm.projects.filter((p) => !p.meta.archived && (p.meta.manager === me || p.members.some((m) => (m.name === me || m.userId === actingUser.id) && (m.role === "مدیر پروژه" || m.role === "مالک"))));
+    const managed = pm.projects.filter((p) => !p.meta.archived && (p.meta.manager === me || p.members.some((m) => (m.name === me || m.userId === actingUser.id) && (isOwner(m) || effectiveMatrix(m).team === "manage"))));
     return (
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3">

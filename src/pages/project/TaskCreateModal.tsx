@@ -18,7 +18,7 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
-  const [priority, setPriority] = useState<PMPriority>("متوسط");
+  const [priority, setPriority] = useState<PMPriority>(p.defaultTaskPriority ?? "متوسط");
   const [start, setStart] = useState(refDate);
   const [due, setDue] = useState(addDays(refDate, 7));
   const [status, setStatus] = useState(defaultStatus ?? p.columns[0]?.id ?? "");
@@ -30,7 +30,7 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
   const [sprintId, setSprintId] = useState("");
   const [points, setPoints] = useState(0);
   const [recurrence, setRecurrence] = useState<Recurrence | "">("");
-  const [type, setType] = useState<TaskType>("task");
+  const [type, setType] = useState<TaskType>(p.defaultTaskType && p.defaultTaskType !== "subtask" ? p.defaultTaskType : "task");
   const [epicId, setEpicId] = useState("");
   const epics = p.tasks.filter((t) => t.type === "epic" && !t.archived);
   const sprints = (p.sprints ?? []).filter((x) => x.status !== "تکمیل‌شده");
@@ -48,7 +48,7 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
     setTitle("");
     setDescription("");
     setAssignee("");
-    setPriority("متوسط");
+    setPriority(p.defaultTaskPriority ?? "متوسط");
     setLabels([]);
     setPreds([]);
     setEstBudget("");
@@ -57,7 +57,7 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
     setSprintId("");
     setPoints(0);
     setRecurrence("");
-    setType("task");
+    setType(p.defaultTaskType && p.defaultTaskType !== "subtask" ? p.defaultTaskType : "task");
     setEpicId("");
   };
 
@@ -82,7 +82,7 @@ export default function TaskCreateModal({ open, onClose, defaultStatus }: { open
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="نوع کار">
             <select value={type} onChange={(e) => setType(e.target.value as TaskType)} className="input-field">
-              {taskTypes.filter((x) => x !== "subtask").map((x) => (
+              {taskTypes.filter((x) => x !== "subtask" && (!p.taskTypes?.length || p.taskTypes.includes(x) || x === type)).map((x) => (
                 <option key={x} value={x}>
                   {typeLabel[x]}
                 </option>

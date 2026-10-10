@@ -32,10 +32,10 @@ export const personalData: Record<string, PersonalBundle> = {
   // راهبر پلتفرم — کارهای سطح سیستم
   u1: {
     tasks: [
-      { id: "u1-t1", text: "درخواستِ نقشِ سفارشیِ «کارشناس مالی» از هلدینگ سینا در صف تایید است", to: "/dashboard/admin", late: true },
-      { id: "u1-t2", text: "۲ گزارش رخداد امنیتی (افتا) منتظر بازبینی شماست", to: "/dashboard/admin" },
-      { id: "u1-t3", text: "به‌روزرسانی پارامترهای گردش‌کار صندوق نوآور", to: "/dashboard/admin" },
-      { id: "u1-t4", text: "تایید نهاییِ برندسازی سازمانِ هلدینگ صبا", to: "/dashboard/appearance" },
+      { id: "u1-t1", text: "درخواستِ نقشِ سفارشیِ «کارشناس مالی» از هلدینگ سینا در صف تایید است", to: "/dashboard/settings?section=bindings&tab=requests", late: true },
+      { id: "u1-t2", text: "۲ گزارش رخداد امنیتی (افتا) منتظر بازبینی شماست", to: "/dashboard/settings?section=security" },
+      { id: "u1-t3", text: "به‌روزرسانی پارامترهای گردش‌کار صندوق نوآور", to: "/dashboard/settings?section=innovation&tab=funds" },
+      { id: "u1-t4", text: "تایید نهاییِ برندسازی سازمانِ هلدینگ صبا", to: "/dashboard/settings?section=brand&tab=org" },
     ],
     groupIds: ["g4", "g5", "g7", "g1"],
     mentions: 4,
@@ -187,7 +187,7 @@ export const personalData: Record<string, PersonalBundle> = {
     tasks: [
       { id: "u13-t1", text: "بازبینی قرارداد «ارزیابی امنیتی سامانه‌های بانک»", to: "/dashboard/contracts", late: true },
       { id: "u13-t2", text: "تایید یادداشت بلاگِ یکی از کارکنان بانک سینا", to: "/dashboard/blog" },
-      { id: "u13-t3", text: "دعوت و واردسازیِ ۳ کاربر جدیدِ شرکت", to: "/dashboard/admin" },
+      { id: "u13-t3", text: "دعوت و واردسازیِ ۳ کاربر جدیدِ شرکت", to: "/dashboard/settings?section=members&tab=invite" },
     ],
     groupIds: ["g3", "g5", "g2", "g6"],
     mentions: 2,

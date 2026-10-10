@@ -24,7 +24,10 @@ const validCidr = (v: string) => {
   return !!m && m.slice(1, 5).every((x) => Number(x) <= 255) && Number(m[5]) <= 32;
 };
 
-export default function LoginPolicySection() {
+/** part: «policy» = OTP + گذرواژه + IP (زبانه‌ی سیاست ورود)، «session» = مهلت نشست (زبانه‌ی نشست و قفل حساب) */
+export default function LoginPolicySection({ part = "all" }: { part?: "all" | "policy" | "session" } = {}) {
+  const showPolicy = part !== "session";
+  const showSession = part !== "policy";
   const t = useTenancy();
   const { notify } = useToast();
   const saved = useLoginPolicy();
@@ -59,13 +62,17 @@ export default function LoginPolicySection() {
   return (
     <div className="space-y-4">
       <SectionHead
-        icon={<ShieldCheck size={18} />}
-        title="سیاست ورود و تأیید دومرحله‌ای"
-        description="ورود پیش‌فرض فقط نام کاربری و گذرواژه است. تأیید دومرحله‌ای اختیاری است و فقط برای نقش‌هایی که انتخاب کنید اعمال می‌شود."
+        icon={part === "session" ? <Clock size={18} /> : <ShieldCheck size={18} />}
+        title={part === "session" ? "نشست و قفل حساب" : "سیاست ورود و تأیید دومرحله‌ای"}
+        description={part === "session" ? "خروج خودکار پس از عدم فعالیت، طول عمر نشست و قفل حساب پس از تلاش‌های ناموفق." : "ورود پیش‌فرض فقط نام کاربری و گذرواژه است. تأیید دومرحله‌ای اختیاری است و فقط برای نقش‌هایی که انتخاب کنید اعمال می‌شود."}
         actions={
           <>
             {saved.updatedAt && <span className="text-[11px] text-ink-400">آخرین ذخیره: {saved.updatedAt} — {saved.updatedBy}</span>}
-            <Button variant="ghost" size="sm" icon={<RotateCcw size={13} />} disabled={!canEdit} onClick={() => setD({ ...defaultLoginPolicy(), trustedRanges: d.trustedRanges })}>
+            <Button variant="ghost" size="sm" icon={<RotateCcw size={13} />} disabled={!canEdit} onClick={() => {
+                // هر زبانه فقط بخش خودش را به پیش‌فرض برمی‌گرداند
+                const def = defaultLoginPolicy();
+                setD(part === "session" ? { ...d, sessionTimeoutMin: def.sessionTimeoutMin } : { ...def, trustedRanges: d.trustedRanges, sessionTimeoutMin: part === "policy" ? d.sessionTimeoutMin : def.sessionTimeoutMin });
+              }}>
               پیش‌فرض
             </Button>
             <Button variant="primary" size="sm" icon={<Save size={13} />} disabled={!canEdit || !dirty} onClick={save}>
@@ -76,6 +83,7 @@ export default function LoginPolicySection() {
       />
 
       {/* OTP */}
+      {showPolicy && (
       <div className="card p-4 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -144,19 +152,23 @@ export default function LoginPolicySection() {
           </div>
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${part === "all" ? "lg:grid-cols-2" : ""}`}>
         {/* نشست */}
+        {showSession && (
         <div className="card p-4 space-y-3">
           <p className="text-[13px] font-bold text-ink-800 flex items-center gap-1.5">
             <Clock size={15} className="text-brand-600" /> نشست
           </p>
-          <Field label="خروج خودکار پس از عدم فعالیت (دقیقه)" hint="بین ۵ تا ۷۲۰ دقیقه. هلدینگ‌ها/شرکت‌ها اگر قفل نشده باشد می‌توانند در «برند و تنظیمات لایه‌ای» بازنویسی کنند.">
+          <Field label="خروج خودکار پس از عدم فعالیت (دقیقه)" hint="بین ۵ تا ۷۲۰ دقیقه. هلدینگ‌ها/شرکت‌ها اگر قفل نشده باشد می‌توانند در کارت «بازنویسی در این واحد» (همین زبانه) بازنویسی کنند.">
             <input type="number" min={5} max={720} className="input-field" value={d.sessionTimeoutMin} disabled={!canEdit} onChange={(e) => set("sessionTimeoutMin", Math.max(5, Math.min(720, Number(e.target.value) || 5)))} />
           </Field>
         </div>
+        )}
 
         {/* گذرواژه */}
+        {showPolicy && (
         <div className="card p-4 space-y-3">
           <p className="text-[13px] font-bold text-ink-800 flex items-center gap-1.5">
             <KeyRound size={15} className="text-brand-600" /> سیاست گذرواژه
@@ -185,9 +197,11 @@ export default function LoginPolicySection() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* IP */}
+      {showPolicy && (
       <div className="card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-[13px] font-bold text-ink-800 flex items-center gap-1.5">
@@ -217,6 +231,7 @@ export default function LoginPolicySection() {
           </Button>
         </div>
       </div>
+      )}
 
       {!canEdit && <Callout tone="neutral">{t.readOnly ? "در حالت مشاهده به‌عنوان، تنظیمات فقط‌خواندنی است." : "برای تغییر این بخش مجوز «تنظیمات امنیت و انطباق» لازم است."}</Callout>}
     </div>

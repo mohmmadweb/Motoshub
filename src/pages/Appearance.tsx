@@ -39,7 +39,7 @@ export default function Appearance({ embedded = false }: { embedded?: boolean } 
         <div className="space-y-3">
           <div className="card p-3.5 bg-brand-50 border-brand-200 flex items-center gap-2.5 text-xs text-brand-800">
             <Building2 size={15} className="shrink-0" />
-            این تنظیمات برای کل سازمان اعمال می‌شود و فقط راهبران به آن دسترسی دارند. (همین بخش در «پنل راهبری ← برندسازی سازمان» نیز در دسترس است.)
+            این تنظیمات برای کل سازمان اعمال می‌شود و فقط راهبران به آن دسترسی دارند. (همین بخش در «تنظیمات سامانه ← برند و ظاهر ← برند سازمان» نیز در دسترس است.)
           </div>
           <BrandingPanel />
         </div>
@@ -48,7 +48,8 @@ export default function Appearance({ embedded = false }: { embedded?: boolean } 
   );
 }
 
-function MyAppearanceTab() {
+/** ظاهر شخصی (حالت نمایش، رنگ تأکید، اندازه‌ی متن) — در «تنظیمات سامانه ← برند و ظاهر ← ظاهر من» هم استفاده می‌شود */
+export function MyAppearanceTab() {
   const { mode, setMode, accent, setAccent, fontScale, setFontScale, resolved } = useTheme();
   const { notify } = useToast();
 
@@ -92,7 +93,7 @@ function MyAppearanceTab() {
               <Sparkles size={15} className="text-brand-600" /> رنگ برند
             </h3>
             <p className="text-xs text-ink-400 mb-4">
-              رنگ اصلی دکمه‌ها، لینک‌ها و حالت‌های فعال. راهبر سازمان می‌تواند رنگ پیش‌فرض سازمان را از «پنل راهبری ← برندسازی» تعیین کند.
+              رنگ اصلی دکمه‌ها، لینک‌ها و حالت‌های فعال. راهبر سازمان می‌تواند رنگ پیش‌فرض سازمان را از «تنظیمات سامانه ← برند و ظاهر ← برند سازمان» تعیین کند.
             </p>
             <div className="flex items-center gap-3 flex-wrap">
               {accentPresets.map((p) => (

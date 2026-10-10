@@ -17,11 +17,11 @@ import { reportStore } from "../reports/store";
 
 // «شروع سریع سازمان» — چک‌لیست راه‌اندازی برای راهبر؛ قابل بستن (localStorage)
 const quickStartSteps = [
-  { id: "brand", label: "برندسازی سازمان (لوگو و رنگ)", to: "/dashboard/appearance?tab=org" },
-  { id: "structure", label: "تعریف هلدینگ‌ها و شرکت‌های زیرمجموعه", to: "/dashboard/admin" },
-  { id: "roles", label: "ساخت نقش‌های سفارشی و دسترسی‌ها", to: "/dashboard/admin" },
-  { id: "users", label: "دعوت و واردسازی کاربران", to: "/dashboard/admin" },
-  { id: "params", label: "تنظیم پارامترهای گردش کار", to: "/dashboard/admin" },
+  { id: "brand", label: "برندسازی سازمان (لوگو و رنگ)", to: "/dashboard/settings?section=brand&tab=org" },
+  { id: "structure", label: "تعریف هلدینگ‌ها و شرکت‌های زیرمجموعه", to: "/dashboard/settings?section=structure" },
+  { id: "roles", label: "ساخت نقش‌های سفارشی و دسترسی‌ها", to: "/dashboard/settings?section=roles" },
+  { id: "users", label: "دعوت و واردسازی کاربران", to: "/dashboard/settings?section=members&tab=invite" },
+  { id: "params", label: "تنظیم پارامترهای گردش کار", to: "/dashboard/settings?section=innovation&tab=funds" },
 ];
 
 function QuickStart() {

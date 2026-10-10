@@ -2,7 +2,7 @@
 // پایش صندوق: هشدار «پروژه‌ی خوابیده» (بر اساس آخرین رویداد ثبت‌شده‌ی هر طرح
 // تأمین‌مالی‌شده) + تنظیمات صندوق (آستانه‌ی خواب و آستانه‌ی اختلاف داوران).
 // ---------------------------------------------------------------------------
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Moon, Settings2 } from "lucide-react";
 import Button from "../../components/ui/Button";
@@ -16,11 +16,13 @@ import { DEFAULT_FUND_SETTINGS, dormantFunded, parseNum, type DormantItem } from
 import { faN } from "../../innovation/util";
 import { Field } from "./shared";
 
-/** آستانه‌ی مؤثر خواب: تنظیم صندوق، وگرنه پارامتر سراسری گردش کار */
+/**
+ * آستانه‌ی خواب — یک منبع واحد: پارامتر «آستانه پروژه خوابیده» در SettingsContext
+ * (تنظیمات سامانه ← نوآوری ← صندوق). دکمه‌ی «تنظیمات صندوق» هم همین مقدار را ویرایش می‌کند.
+ */
 export function useDormantThreshold() {
-  const inn = useInnovation();
   const { settings } = useSettings();
-  return inn.fundSettings?.dormantDays ?? settings.dormantProjectDays;
+  return settings.dormantProjectDays;
 }
 
 export function useDormantProjects(kind?: DormantItem["kind"]): DormantItem[] {
@@ -70,23 +72,30 @@ export function DormantAlert({ kind, onOpen }: { kind?: DormantItem["kind"]; onO
 
 export function FundSettingsButton() {
   const inn = useInnovation();
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
   const { hasPermission } = useTenancy();
   const { notify } = useToast();
   const cur = inn.fundSettings ?? DEFAULT_FUND_SETTINGS;
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState("");
   const [pct, setPct] = useState("");
+  // مهاجرت یک‌باره: بازنویسیِ قدیمیِ آستانه‌ی خواب در تنظیمات صندوق به پارامتر سراسری منتقل می‌شود
+  useEffect(() => {
+    const legacy = inn.fundSettings?.dormantDays;
+    if (legacy === undefined) return;
+    if (legacy !== settings.dormantProjectDays) update({ dormantProjectDays: legacy });
+    inn.commit("funds", "آستانه‌ی پروژه‌ی خوابیده به پارامتر سراسری منتقل شد", undefined, (s) => ({ ...s, fundSettings: { disagreementPct: s.fundSettings?.disagreementPct ?? DEFAULT_FUND_SETTINGS.disagreementPct } }));
+  }, [inn.fundSettings?.dormantDays]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!(hasPermission("funds.allocate") || hasPermission("funds.monitor") || hasPermission("settings.system"))) return null;
   return (
     <>
-      <Button size="sm" variant="ghost" icon={<Settings2 size={13} />} onClick={() => { setDays(cur.dormantDays !== undefined ? faN(cur.dormantDays) : ""); setPct(faN(cur.disagreementPct)); setOpen(true); }}>
+      <Button size="sm" variant="ghost" icon={<Settings2 size={13} />} onClick={() => { setDays(faN(settings.dormantProjectDays)); setPct(faN(cur.disagreementPct)); setOpen(true); }}>
         تنظیمات صندوق
       </Button>
       {open && (
         <Modal open onClose={() => setOpen(false)} title="تنظیمات صندوق" description="آستانه‌های هشدار مخصوص صندوق نوآوری">
           <div className="space-y-3">
-            <Field label="آستانه‌ی پروژه‌ی خوابیده (روز)" hint={`خالی = پارامتر سراسری گردش کار (${faN(settings.dormantProjectDays)} روز)`}>
+            <Field label="آستانه‌ی پروژه‌ی خوابیده (روز)" hint="همان پارامتر «تنظیمات سامانه ← نوآوری ← صندوق نوآوری»؛ تغییر اینجا همه‌جا اعمال می‌شود.">
               <input value={days} onChange={(e) => setDays(e.target.value)} inputMode="numeric" className="input-field" placeholder={faN(settings.dormantProjectDays)} />
             </Field>
             <Field label="آستانه‌ی اختلاف داوران (٪ سقف معیار)" hint="انحراف معیار نمره‌ها از این درصدِ سقف هر معیار بیشتر شود، خانه قرمز می‌شود">
@@ -97,9 +106,10 @@ export function FundSettingsButton() {
                 variant="primary"
                 className="flex-1 justify-center"
                 onClick={() => {
-                  const d = days.trim() ? Math.max(1, Math.round(parseNum(days))) : undefined;
+                  const d = days.trim() ? Math.max(1, Math.round(parseNum(days))) : settings.dormantProjectDays;
                   const p = Math.min(100, Math.max(1, Math.round(parseNum(pct)) || DEFAULT_FUND_SETTINGS.disagreementPct));
-                  inn.commit("funds", "تنظیمات صندوق را تغییر داد", undefined, (s) => ({ ...s, fundSettings: { dormantDays: d, disagreementPct: p } }));
+                  if (d !== settings.dormantProjectDays) update({ dormantProjectDays: d });
+                  if (p !== cur.disagreementPct) inn.commit("funds", "تنظیمات صندوق را تغییر داد", undefined, (s) => ({ ...s, fundSettings: { disagreementPct: p } }));
                   notify("تنظیمات صندوق ذخیره شد.", "success");
                   setOpen(false);
                 }}

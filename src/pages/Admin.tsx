@@ -38,6 +38,8 @@ import type { SsoProvider } from "../data/tenancy";
 import LiveUsagePanel from "../components/LiveUsagePanel";
 import BrandingPanel from "../components/BrandingPanel";
 import { useSettings, settingsMeta, defaultSettings, type WorkflowSettings } from "../context/SettingsContext";
+import { useClassification } from "../components/ClassificationBanner";
+import { emitSettingsChange } from "../iam/settingsAudit";
 import { useConfirm } from "../components/ui/ConfirmProvider";
 import RowActions from "../components/ui/RowActions";
 import {
@@ -70,7 +72,7 @@ import StatCard from "../components/ui/StatCard";
 import Modal from "../components/ui/Modal";
 import { useToast } from "../components/ui/ToastProvider";
 
-export type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage";
+export type SectionId = "system-identity" | "holdings" | "modules" | "branding" | "roles" | "pages" | "users" | "integrations" | "security" | "network" | "workflow" | "monitor" | "system" | "storage" | "file-types";
 
 const sections: { id: SectionId; label: string; icon: typeof Settings }[] = [
   { id: "system-identity", label: "سیستم و ورود یکپارچه", icon: KeyRound },
@@ -133,7 +135,8 @@ export default function Admin({ section: forced }: { section?: SectionId } = {})
           {section === "modules" && <ModulesSection enabledModules={enabledModules} toggleModule={toggleModule} />}
           {section === "branding" && <BrandingPanel />}
           {section === "roles" && <RolesSection roles={roles} setRoles={setRoles} notify={notify} />}
-          {section === "pages" && <PagesSection pages={pages} setPages={setPages} extensions={extensions} setExtensions={setExtensions} notify={notify} />}
+          {section === "pages" && <PagesSection pages={pages} setPages={setPages} notify={notify} />}
+          {section === "file-types" && <FileTypesSection extensions={extensions} setExtensions={setExtensions} notify={notify} />}
           {section === "users" && <UsersSection tenant={tenant} roles={roles} notify={notify} />}
           {section === "integrations" && <IntegrationsSection integrations={integrations} setIntegrations={setIntegrations} notify={notify} />}
           {section === "security" && <SecuritySection guestAccounts={guestAccounts} setGuestAccounts={setGuestAccounts} notify={notify} />}
@@ -143,7 +146,7 @@ export default function Admin({ section: forced }: { section?: SectionId } = {})
             <div className="space-y-4">
               <LiveUsagePanel />
               <p className="text-[11px] text-ink-400 leading-5">
-                این متریک‌ها مربوط به کل سامانه است و فقط برای راهبران نمایش داده می‌شود. جزئیات دیسک در بخش «فضای ذخیره‌سازی» و محدودیت نرخ درخواست در «پارامترهای گردش کار» قابل مدیریت است.
+                این متریک‌ها مربوط به کل سامانه است و فقط برای راهبران نمایش داده می‌شود. جزئیات دیسک در بخش «فضای ذخیره‌سازی» و محدودیت نرخ درخواست در «زیرساخت ← تنظیمات کلی» قابل مدیریت است.
               </p>
             </div>
           )}
@@ -190,7 +193,9 @@ export default function Admin({ section: forced }: { section?: SectionId } = {})
 
           {section === "roles" && <RolesSection roles={roles} setRoles={setRoles} notify={notify} />}
 
-          {section === "pages" && <PagesSection pages={pages} setPages={setPages} extensions={extensions} setExtensions={setExtensions} notify={notify} />}
+          {section === "pages" && <PagesSection pages={pages} setPages={setPages} notify={notify} />}
+
+          {section === "pages" && <FileTypesSection extensions={extensions} setExtensions={setExtensions} notify={notify} />}
 
           {section === "users" && <UsersSection tenant={tenant} roles={roles} notify={notify} />}
 
@@ -346,17 +351,11 @@ function SystemIdentitySection({ notify }: { notify: Notify }) {
             <label className="text-xs font-medium text-ink-600 block mb-1.5">نام سازمان مشتری <span className="text-rose-500">*</span></label>
             <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} aria-label="نام سازمان مشتری" className="input-field" />
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">نام کوتاه (در رابط کاربری)</label>
-            <input value={draft.shortName} onChange={(e) => setDraft((d) => ({ ...d, shortName: e.target.value }))} aria-label="نام کوتاه" className="input-field" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">دامنه <span className="text-rose-500">*</span></label>
-            <input value={draft.domain} onChange={(e) => setDraft((d) => ({ ...d, domain: e.target.value }))} aria-label="دامنه" className="input-field" dir="ltr" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-ink-600 block mb-1.5">رنگ برند</label>
-            <input type="color" value={draft.color} onChange={(e) => setDraft((d) => ({ ...d, color: e.target.value }))} aria-label="رنگ برند" className="input-field h-[38px] p-1" />
+          {/* نام کوتاه، دامنه و رنگ/لوگوی برند در «برند و ظاهر ← برند سازمان» ویرایش می‌شوند (یک منبع) */}
+          <div className="flex items-end">
+            <p className="text-[11.5px] text-ink-500 leading-5">
+              نام کوتاه، دامنه (<span dir="ltr">{identity.domain}</span>)، رنگ و لوگوی برند در «برند و ظاهر ← برند سازمان» تنظیم می‌شوند.
+            </p>
           </div>
         </div>
       </div>
@@ -1014,23 +1013,54 @@ function RoleEditor({
   );
 }
 
+/** پسوندهای مجاز فایل — از «صفحات و منوها» به «تنظیمات کلی ← آپلود و فایل» منتقل شد */
+function FileTypesSection({ extensions, setExtensions, notify }: { extensions: string[]; setExtensions: (fn: (prev: string[]) => string[]) => void; notify: Notify }) {
+  const [extInput, setExtInput] = useState("");
+  const addExtension = () => {
+    const clean = extInput.trim().replace(/^\./, "").toLowerCase();
+    if (!clean) return;
+    if (extensions.includes(clean)) {
+      notify("این پسوند از قبل در فهرست مجاز است.", "warning");
+      return;
+    }
+    setExtensions((prev) => [...prev, clean]);
+    notify(`پسوند «.${clean}» به فهرست فایل‌های مجاز افزوده شد.`);
+    setExtInput("");
+  };
+  return (
+    <div className="card p-5">
+      <h4 className="text-sm font-bold text-ink-900 mb-1">پسوندهای مجاز فایل</h4>
+      <p className="text-[11px] text-ink-400 mb-3">فقط فایل‌هایی با این پسوندها در سراسر سامانه قابل بارگذاری‌اند.</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        {extensions.map((ext) => (
+          <Badge key={ext} tone="neutral">.{ext}</Badge>
+        ))}
+        <input
+          value={extInput}
+          onChange={(e) => setExtInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addExtension()}
+          placeholder="docx"
+          aria-label="پسوند جدید"
+          className="w-20 text-xs border border-ink-200 rounded-md px-2 py-1 outline-none focus:border-brand-400"
+        />
+        <button onClick={addExtension} className="text-xs text-brand-600 font-medium px-2">+ افزودن پسوند</button>
+      </div>
+    </div>
+  );
+}
+
 function PagesSection({
   pages,
   setPages,
-  extensions,
-  setExtensions,
   notify,
 }: {
   pages: AdminPageDef[];
   setPages: (fn: (prev: AdminPageDef[]) => AdminPageDef[]) => void;
-  extensions: string[];
-  setExtensions: (fn: (prev: string[]) => string[]) => void;
   notify: Notify;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
-  const [extInput, setExtInput] = useState("");
 
   const submitPage = () => {
     if (!title.trim() || !slug.trim()) {
@@ -1046,18 +1076,6 @@ function PagesSection({
 
   const togglePageVisibility = (id: string) =>
     setPages((prev) => prev.map((p) => (p.id === id ? { ...p, visible: !p.visible } : p)));
-
-  const addExtension = () => {
-    const clean = extInput.trim().replace(/^\./, "").toLowerCase();
-    if (!clean) return;
-    if (extensions.includes(clean)) {
-      notify("این پسوند از قبل در فهرست مجاز است.", "warning");
-      return;
-    }
-    setExtensions((prev) => [...prev, clean]);
-    notify(`پسوند «.${clean}» به فهرست فایل‌های مجاز افزوده شد.`);
-    setExtInput("");
-  };
 
   return (
     <div className="space-y-5">
@@ -1088,23 +1106,6 @@ function PagesSection({
               {m.visible ? <Eye size={15} className="text-emerald-600" /> : <EyeOff size={15} className="text-ink-300" />}
             </div>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-bold text-ink-900 mb-2">پسوندهای مجاز فایل</h3>
-        <div className="card p-3 flex items-center gap-2 flex-wrap">
-          {extensions.map((ext) => (
-            <Badge key={ext} tone="neutral">.{ext}</Badge>
-          ))}
-          <input
-            value={extInput}
-            onChange={(e) => setExtInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addExtension()}
-            placeholder="docx"
-            className="w-20 text-xs border border-ink-200 rounded-md px-2 py-1 outline-none focus:border-brand-400"
-          />
-          <button onClick={addExtension} className="text-xs text-brand-600 font-medium px-2">+ افزودن پسوند</button>
         </div>
       </div>
 
@@ -1405,8 +1406,11 @@ function IntegrationsSection({
   );
 }
 
-function SecurityToggleCard({ title, description, icon, defaultOn, notify }: { title: string; description: string; icon?: React.ReactNode; defaultOn: boolean; notify: Notify }) {
-  const [on, setOn] = useState(defaultOn);
+function SecurityToggleCard({ title, description, icon, defaultOn, notify, value, onToggle }: { title: string; description: string; icon?: React.ReactNode; defaultOn: boolean; notify: Notify; value?: boolean; onToggle?: (next: boolean) => void }) {
+  const [local, setLocal] = useState(defaultOn);
+  // کنترل‌شده (value/onToggle) وقتی تنظیم منبع واحد دیگری دارد، مثل نوار طبقه‌بندی
+  const on = value ?? local;
+  const setOn = (fn: (v: boolean) => boolean) => (onToggle ? onToggle(fn(on)) : setLocal(fn));
   return (
     <div className="card p-4 flex items-center justify-between">
       <div>
@@ -1433,6 +1437,8 @@ function SecuritySection({
   setGuestAccounts: (fn: (prev: GuestAccount[]) => GuestAccount[]) => void;
   notify: Notify;
 }) {
+  const { settings } = useSettings();
+  const { config: classification, setConfig: setClassification } = useClassification();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [org, setOrg] = useState("");
@@ -1485,13 +1491,18 @@ function SecuritySection({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SecurityToggleCard title="نمایش کپچا در فرم ورود" description="جلوگیری از ورود ربات‌ها به فرم احراز هویت" defaultOn notify={notify} />
         <SecurityToggleCard title="اسکن ضدویروس پیوست‌ها (ClamAV)" description="عدم ذخیره‌ی فایل‌های آلوده و اطلاع‌رسانی به کاربر" defaultOn notify={notify} />
-        <SecurityToggleCard title="محدودسازی نرخ درخواست" description="حداکثر ۶۰ درخواست در دقیقه به ازای هر کاربر" defaultOn notify={notify} />
+        <SecurityToggleCard title="محدودسازی نرخ درخواست" description={`حداکثر ${settings.rateLimitPerMinute.toLocaleString("fa-IR")} درخواست در دقیقه به ازای هر کاربر (عدد در «زیرساخت ← تنظیمات کلی»)`} defaultOn notify={notify} />
         <SecurityToggleCard title="ثبت کامل رخدادها (Audit Log)" description="آماده برای ارائه به نهادهای نظارتی مانند افتا" defaultOn notify={notify} />
         <SecurityToggleCard
           title="برچسب طبقه‌بندی پیام (Classification Banner)"
-          description="نمایش نوار «محرمانه / عمومی / ویژه» بالای کانال‌های حساس"
+          description="نمایش نوار طبقه‌بندی بالای صفحه‌ها — همان تنظیم زبانه‌ی «طبقه‌بندی اطلاعات»"
           icon={<Tag size={13} className="text-ink-400" />}
           defaultOn={false}
+          value={classification.enabled}
+          onToggle={(v) => {
+            emitSettingsChange({ area: "طبقه‌بندی اطلاعات", summary: v ? "نوار طبقه‌بندی روشن شد" : "نوار طبقه‌بندی خاموش شد", before: { enabled: classification.enabled }, after: { enabled: v } });
+            setClassification({ enabled: v });
+          }}
           notify={notify}
         />
         <SecurityToggleCard title="پیام خودسوز (Burn-on-Read)" description="حذف خودکار پیام‌های بسیار حساس پس از مشاهده" defaultOn={false} notify={notify} />

@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 import { users } from "../data/mock";
 import { DEMO_REF_DATE } from "../pm/seed";
+import { HOLIDAYS_1405 } from "../pm/holidays";
 import { addDays, dayNum, weekdayOf } from "../pm/jalali";
 import {
   daysBetween,
@@ -31,20 +32,9 @@ export const defaultSettings = (): TsSettings => ({
   dailyHours: 8,
   thursdayHours: 4,
   annualLeaveDays: 26,
-  holidays: [
-    { date: "۱۴۰۵/۰۱/۰۱", title: "عید نوروز" },
-    { date: "۱۴۰۵/۰۱/۰۲", title: "عید نوروز" },
-    { date: "۱۴۰۵/۰۱/۰۳", title: "عید نوروز" },
-    { date: "۱۴۰۵/۰۱/۰۴", title: "عید نوروز" },
-    { date: "۱۴۰۵/۰۱/۱۲", title: "روز جمهوری اسلامی" },
-    { date: "۱۴۰۵/۰۱/۱۳", title: "روز طبیعت" },
-    { date: "۱۴۰۵/۰۱/۲۴", title: "شهادت امام جعفر صادق (ع)" },
-    { date: "۱۴۰۵/۰۳/۰۶", title: "عید سعید قربان" },
-    { date: "۱۴۰۵/۰۳/۱۴", title: "رحلت امام خمینی (ره) و عید غدیر" },
-    { date: "۱۴۰۵/۰۳/۱۵", title: "قیام ۱۵ خرداد" },
-    { date: "۱۴۰۵/۰۴/۰۳", title: "تاسوعای حسینی" },
-    { date: "۱۴۰۵/۰۴/۰۴", title: "عاشورای حسینی" },
-  ],
+  // تعطیلات رسمی ۱۴۰۵ — از این پس فقط همین فهرست (قابل ویرایش در «کارکرد و مرخصی») مبنای تقویم کاری است
+  holidays: HOLIDAYS_1405.map((h) => ({ ...h })),
+  officialHolidaysMerged: true,
 });
 
 // ---------------------------------------------------------------- کارکنان
