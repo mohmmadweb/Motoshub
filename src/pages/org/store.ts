@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // F18 «پروفایل سازمانی» — مدل: org_profile { scope_id, logo, cover, tagline, about, website, address,
-// phone, email, domains[], public_fields[] } + دنبال‌کنندگان صفحه (تا FollowButton نوع «org» بگیرد).
+// phone, email, domains[], public_fields[] }.
 // انبار: motoshub.orgProfiles.v1 · endpoint پیشنهادی: GET/PATCH /identity/iam/scopes/{id}/profile/
 // ---------------------------------------------------------------------------
 import { createLocalStore } from "../../iam/store";
@@ -35,7 +35,7 @@ export const emptyProfile = (scope_id: string): OrgProfile => ({ scope_id, logo:
 const P = (o: Partial<OrgProfile> & { scope_id: string }): OrgProfile => ({ ...emptyProfile(o.scope_id), ...o });
 const seed = (): OrgState => ({
   allowed_public: ["website", "address", "phone", "email"],
-  followers: { "h-saba": ["u2", "u5"], "c-behnoush": ["u3"] },
+  followers: {},
   profiles: {
     sys: P({ scope_id: "sys", cover: "/img/meeting.jpg", tagline: "در خدمت محرومان، پیشران توسعه", about: "بنیاد مستضعفان انقلاب اسلامی با هلدینگ‌های تخصصی در کشاورزی، صنایع غذایی، انرژی، حمل‌ونقل و خدمات مالی، یکی از بزرگ‌ترین مجموعه‌های اقتصادی و اجتماعی کشور است.", website: "https://ir-bf.ir", address: "تهران، خیابان شهید بهشتی، برج‌های دوقلوی بنیاد", phone: "۰۲۱-۸۸۵۰۰۰۰۰", email: "info@ir-bf.ir", domains: ["توسعه‌ی اقتصادی", "مسئولیت اجتماعی", "سرمایه‌گذاری", "نوآوری"], public_fields: ["website", "address", "phone", "email"] }),
     "h-ferdows": P({ scope_id: "h-ferdows", cover: "/img/agri-drone.jpg", tagline: "کشاورزی هوشمند و امنیت غذایی", about: "هلدینگ کشاورزی فردوس پارس کشت‌وصنعت‌ها و مؤسسه‌ی تحقیقات کشاورزی بنیاد را راهبری می‌کند؛ از کشاورزی دقیق تا زنجیره‌ی تأمین.", domains: ["کشاورزی دقیق", "بذر و نهاده", "زیست‌فناوری"], website: "https://ferdowspars.ir", email: "info@ferdowspars.ir" }),

@@ -1,19 +1,45 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import CommandPalette from "../components/CommandPalette";
 import CreditFooter from "../components/CreditFooter";
-import ReportIssueButton from "../components/ReportIssueButton";
 import ClassificationBanner from "../components/ClassificationBanner";
 import { ImpersonationBar } from "../components/ImpersonationBar";
 import MobileBottomNav from "../components/MobileBottomNav";
 import { GuidedTourHost } from "../components/GuidedTour";
 import { I18nSync, useI18n } from "../i18n";
+import { useEffectiveBranding } from "../iam/hooks";
+
+/**
+ * عنوان تب مرورگر = «عنوان صفحه | عنوان سامانه». عنوان سامانه از برند مؤثرِ کانتکست فعلی
+ * (مدیریت سامانه ← برند و ظاهر) می‌آید و با تغییر سازمان فوراً عوض می‌شود؛ عنوان صفحه را PageHeader می‌گذارد.
+ */
+function useSiteTitle(siteTitle: string) {
+  const prev = useRef<string[]>([]);
+  useEffect(() => {
+    const known = new Set([...prev.current, siteTitle]);
+    prev.current = [...known];
+    const apply = () => {
+      const cur = document.title;
+      const cut = cur.lastIndexOf(" | ");
+      const base = cut >= 0 && known.has(cur.slice(cut + 3)) ? cur.slice(0, cut) : known.has(cur) ? "" : cur;
+      const next = base ? `${base} | ${siteTitle}` : siteTitle;
+      if (cur !== next) document.title = next;
+    };
+    apply();
+    const el = document.querySelector("title");
+    if (!el) return;
+    const mo = new MutationObserver(apply);
+    mo.observe(el, { childList: true, characterData: true, subtree: true });
+    return () => mo.disconnect();
+  }, [siteTitle]);
+}
 
 export default function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { dir } = useI18n();
+  useSiteTitle(useEffectiveBranding().name);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -45,7 +71,6 @@ export default function AppLayout() {
           <Outlet />
         </main>
         <CreditFooter />
-        <ReportIssueButton />
         <MobileBottomNav />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

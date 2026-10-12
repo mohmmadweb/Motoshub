@@ -45,7 +45,8 @@ export const tabForCategory: Record<string, TabId> = {
   milestone: "milestones",
   meeting: "minutes",
   document: "documents",
-  communication: "communication",
+  // منشن‌ها اکنون فقط از نظرهای تسک می‌آیند (گفتگوی پروژه در پیام‌رسان است)
+  communication: "board",
   time: "time",
   playbook: "history",
   automation: "notifications",

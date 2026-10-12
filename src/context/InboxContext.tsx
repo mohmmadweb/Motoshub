@@ -26,9 +26,8 @@ export type InboxKind =
   | "timesheet"
   | "report"
   | "access"
-  // F06/F08/F12 — دنبال‌کردن موضوع و افراد، امنیت حساب
+  // F06/F12 — دنبال‌کردن موضوع پرسش و پاسخ، امنیت حساب
   | "topic_follow"
-  | "follow"
   | "security";
 
 export const inboxKindLabel: Record<InboxKind, string> = {
@@ -49,7 +48,6 @@ export const inboxKindLabel: Record<InboxKind, string> = {
   report: "گزارش زمان‌بندی‌شده",
   access: "درخواست دسترسی",
   topic_follow: "موضوع دنبال‌شده",
-  follow: "دنبال‌کننده‌ی جدید",
   security: "امنیت حساب",
 };
 
@@ -102,8 +100,10 @@ function load(): Store {
     if (raw) {
       const s = JSON.parse(raw) as Partial<Store>;
       const base = seed();
-      // ذخیره‌ی قدیمی‌تر ممکن است فیلدهای تازه را نداشته باشد
-      return { seq: s.seq ?? base.seq, items: Array.isArray(s.items) ? s.items : base.items, channelSubs: s.channelSubs ?? base.channelSubs, kindOff: s.kindOff ?? {} };
+      // ذخیره‌ی قدیمی‌تر ممکن است فیلدهای تازه را نداشته باشد؛ نوع‌های حذف‌شده (مثل «follow») کنار گذاشته می‌شوند
+      const known = (k: unknown): k is InboxKind => typeof k === "string" && k in inboxKindLabel;
+      const kindOff = Object.fromEntries(Object.entries(s.kindOff ?? {}).map(([n, ks]) => [n, Array.isArray(ks) ? ks.filter(known) : []]));
+      return { seq: s.seq ?? base.seq, items: Array.isArray(s.items) ? s.items.filter((i) => known(i?.kind)) : base.items, channelSubs: s.channelSubs ?? base.channelSubs, kindOff };
     }
   } catch {
     /* ذخیره‌ساز در دسترس نیست */

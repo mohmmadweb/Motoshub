@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BookOpen, Newspaper, Pencil, Trash2, Send, EyeOff, Eye, Lock, Paperclip, Megaphone, BadgeCheck, BellRing, Pin, Users, CheckCircle2, Undo2, Clock } from "lucide-react";
+import { BookOpen, Newspaper, Pencil, Trash2, Send, EyeOff, Eye, Lock, Paperclip, Megaphone, BadgeCheck, BellRing, Pin, Users, CheckCircle2, Undo2, Clock, CalendarDays } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -16,7 +16,7 @@ import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
 import type { Attachment, ContentItem } from "../../social/types";
 import { contentEntity, contentKindLabel } from "../../social/types";
-import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, CommentsPanel, Poster, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp } from "./kit";
+import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, CommentsPanel, CoverImage, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, stamp } from "./kit";
 import { ContentEditor, permPrefix } from "./ContentModule";
 import { MarkdownView } from "../knowledge/Markdown";
 import { HiddenBanner, ReportButton, ReviewBadge } from "./moderation";
@@ -46,7 +46,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
 
   const listTitle = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات";
   const listPath = section === "news" ? "/dashboard/news" : section === "blogs" ? "/dashboard/blog" : "/dashboard/magazines";
-  const crumbs = [{ label: "شبکه اجتماعی" }, { label: listTitle, to: listPath }];
+  const crumbs = [{ label: "دانش و محتوا" }, { label: listTitle, to: listPath }];
 
   const manager = item ? hasPermission(`${permPrefix(item.kind)}.manage`) : false;
   const owner = !!item && item.user_id === s.me;
@@ -101,7 +101,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
   return (
     <div>
       <PageHeader
-        title={item.title}
+        title={listTitle}
         breadcrumb={[...crumbs, { label: label }]}
         actions={
           <>
@@ -171,29 +171,32 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
               )}
             </div>
           )}
-          <Poster color={item.poster} className="h-44 sm:h-56 !rounded-none">
-            <span className="flex flex-wrap gap-1">
+          <div className="p-5 space-y-4">
+            {/* کاور ۱۶:۹ + عنوان + مشخصات (نویسنده، تاریخ، دسته، برچسب‌ها) */}
+            <CoverImage key={item.poster ?? "none"} src={item.poster} alt={item.title} icon={kind === "magazines" ? <Newspaper size={64} strokeWidth={1.25} /> : undefined}>
               <PublishBadge item={item} />
               {item.privacy !== "EVERYONE" && <PrivacyBadge value={item.privacy} />}
-            </span>
-          </Poster>
-          <div className="p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <UserLine id={item.user_id} size={32} sub={item.published_at ? `انتشار ${stamp(item.published_at)}` : `ایجاد ${stamp(item.created_at)}`} />
-              <span className="text-[11px] text-ink-400 flex items-center gap-1">
-                <Eye size={12} /> {fa(item.views)} بازدید
-                {item.updated_at !== item.created_at && <span className="mr-2">· ویرایش {stamp(item.updated_at)}</span>}
+            </CoverImage>
+            <h2 className="text-xl font-bold text-ink-900 leading-9">{item.title}</h2>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-ink-500">
+              <UserLine id={item.user_id} size={26} />
+              <span className="flex items-center gap-1 tabular-nums" title={item.published_at ? "تاریخ انتشار" : "تاریخ ایجاد"}>
+                <CalendarDays size={13} /> {stamp(item.published_at ?? item.created_at)}
               </span>
+              <span className="flex items-center gap-1">
+                <Eye size={13} /> {fa(item.views)} بازدید
+              </span>
+              {item.updated_at !== item.created_at && <span>ویرایش {stamp(item.updated_at)}</span>}
             </div>
-            {item.excerpt && <p className="text-[13px] text-ink-600 leading-7 border-r-2 border-brand-300 pr-3">{item.excerpt}</p>}
-            {item.content_format === "markdown" ? <MarkdownView md={item.content} className="!text-[14px] !leading-8 !text-ink-800" /> : <div className="text-[14px] text-ink-800 leading-8 whitespace-pre-wrap">{item.content}</div>}
-            {item.announcement?.requires_ack && !owner && published && <AckBox item={item} />}
             {(item.category_ids.length > 0 || item.tags.length > 0) && (
-              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-ink-100">
+              <div className="flex flex-wrap items-center gap-3">
                 <CategoryBadges ids={item.category_ids} />
                 <TagList tags={item.tags} />
               </div>
             )}
+            {item.excerpt && <p className="text-[13px] text-ink-600 leading-7 border-r-2 border-brand-300 pr-3">{item.excerpt}</p>}
+            {item.content_format === "markdown" ? <MarkdownView md={item.content} className="!text-[14px] !leading-8 !text-ink-800" /> : <div className="text-[14px] text-ink-800 leading-8 whitespace-pre-wrap">{item.content}</div>}
+            {item.announcement?.requires_ack && !owner && published && <AckBox item={item} />}
             <div className="pt-3 border-t border-ink-100">
               <ReactionBar entity={entity} id={item.id} />
             </div>

@@ -65,6 +65,17 @@ const att = (id: string, name: string, size: string, mime: string): Attachment =
 
 const posterColors = ["#1f4f99", "#0d9488", "#b45309", "#7c3aed", "#be123c", "#15803d", "#0369a1", "#a16207"];
 
+/** تصویرهای نمونه‌ی پوستر (public/samples/dn-XX.webp) برای خبر، وبلاگ، مجله و عکس‌های رسانه؛
+ *  null = بدون تصویر (جای‌نگهدار خاکستری مثل motodev). در هر بخش تصویر تکراری نیست. */
+const dn = (n: number) => `/samples/dn-${String(n).padStart(2, "0")}.webp`;
+export const SAMPLE_POSTERS: Record<string, string | null> = {
+  "news-ann1": dn(1), "news-ann2": dn(18), "news-nw1": dn(16), "news-nw2": dn(19), "news-nw3": null, "news-nw4": dn(17), "news-nw5": dn(20), "news-nw6": dn(11), "news-nw7": dn(7), "news-draft1": dn(13),
+  "blog-b1": dn(9), "blog-b2": dn(16), "blog-b3": null, "blog-b4": dn(19), "blog-b5": dn(4), "blog-b6": dn(8), "blog-b7": dn(10), "blog-rv1": dn(14), "blog-rv2": dn(12),
+  "mag-1": dn(2), "mag-2": dn(6), "mag-3": dn(3), "mag-4": null,
+  "media-m1": dn(16), "media-m2": dn(18), "media-m5": dn(17), "media-m7": dn(7), "media-m8": dn(20), "media-m10": dn(9),
+};
+const samplePoster = (id: string, fallback: string | null) => (id in SAMPLE_POSTERS ? SAMPLE_POSTERS[id] : fallback);
+
 // ------------------------------------------------------------------ دسته‌ها
 function cats(entity: EntityName, titles: string[], prefix: string): Category[] {
   return titles.map((t, i) => ({ id: `${prefix}${i + 1}`, title: t, entity_name: entity, parent_id: null, created_at: at("۱۴۰۵/۰۱/۱۵"), updated_at: at("۱۴۰۵/۰۱/۱۵") }));
@@ -110,7 +121,7 @@ export function seedContent(all: Category[]): ContentItem[] {
       title: n.title,
       excerpt: n.summary,
       content: `${n.summary}\n\nبه گزارش پایگاه اطلاع‌رسانی بنیاد، این خبر در دسته‌ی «${n.topic ?? "سازمانی"}» منتشر شده است. جزئیات تکمیلی، پیوست‌ها و گزارش تصویری در ادامه آمده است.`,
-      poster: posterColors[i % posterColors.length],
+      poster: samplePoster(`news-${n.id}`, posterColors[i % posterColors.length]),
       privacy: priv(n.visibility),
       category_ids: [catId(all, "news", n.topic) ?? "cn5"],
       tags: i % 2 ? ["گزارش"] : ["محرومیت‌زدایی"],
@@ -131,7 +142,7 @@ export function seedContent(all: Category[]): ContentItem[] {
       title: b.title,
       excerpt: b.excerpt,
       content: `${b.excerpt}\n\nدر این یادداشت تجربه‌ی اجرایی، چالش‌ها و راهکارهایی را که در عمل جواب داد مرور می‌کنم تا برای همکاران در واحدهای دیگر قابل استفاده باشد.`,
-      poster: posterColors[(i + 3) % posterColors.length],
+      poster: samplePoster(`blog-${b.id}`, posterColors[(i + 3) % posterColors.length]),
       privacy: priv(b.visibility),
       category_ids: [all.find((c) => c.entity_name === "blog")?.id ?? "cb1"],
       tags: b.tags.map((t) => t.replace(/^#/, "")),
@@ -154,7 +165,7 @@ export function seedContent(all: Category[]): ContentItem[] {
     title: m.title,
     excerpt: m.excerpt,
     content: `${m.excerpt}\n\nمتن کامل این شماره شامل گزارش‌ها، آمار و تصاویر است و نسخه‌ی PDF آن پیوست شده است.`,
-    poster: posterColors[(i + 5) % posterColors.length],
+    poster: samplePoster(`mag-${i + 1}`, posterColors[(i + 5) % posterColors.length]),
     privacy: "EVERYONE" as Privacy,
     category_ids: [catId(all, "magazine", m.cat) ?? "cm1"],
     tags: m.tags,
@@ -167,7 +178,7 @@ export function seedContent(all: Category[]): ContentItem[] {
     attachments: m.draft ? [] : [att(`at-m${i}`, `ماهنامه-شماره-${12 - i}.pdf`, "۸٫۱ مگابایت", "application/pdf")],
   }));
   // یک پیش‌نویس خبر برای نمایش گردش «پیش‌نویس ← انتشار»
-  news.push({ ...news[0], id: "news-draft1", title: "پیش‌نویس: برنامه‌ی بازدید هیئت‌مدیره از چالدران", excerpt: "زمان‌بندی و فهرست بازدیدها در حال نهایی‌شدن است.", is_draft: true, is_public: false, published_at: null, created_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), updated_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), views: 0, attachments: [] });
+  news.push({ ...news[0], id: "news-draft1", poster: samplePoster("news-draft1", news[0].poster), title: "پیش‌نویس: برنامه‌ی بازدید هیئت‌مدیره از چالدران", excerpt: "زمان‌بندی و فهرست بازدیدها در حال نهایی‌شدن است.", is_draft: true, is_public: false, published_at: null, created_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), updated_at: at(SOCIAL_TODAY, "۰۸:۰۰:۰۰"), views: 0, attachments: [] });
   // اطلاعیه‌های رسمی با تأیید خواندن («پیشنهادی» — announcement)
   const ann = (id: string, by: string, title: string, excerpt: string, body: string, daysAgo: number, pinDays: number, acks: string[]): ContentItem => {
     const d = addDays(SOCIAL_TODAY, -daysAgo);
@@ -179,7 +190,7 @@ export function seedContent(all: Category[]): ContentItem[] {
       title,
       excerpt,
       content: body,
-      poster: "#be123c",
+      poster: samplePoster(id, "#be123c"),
       privacy: "EVERYONE",
       scope: "سراسری",
       category_ids: [catId(all, "news", "اطلاعیه") ?? "cn5"],
@@ -226,7 +237,7 @@ export function seedMedia(all: Category[]): MediaPost[] {
       user_id: nameToId(m.uploadedBy),
       caption: m.title,
       post_type: m.kind === "video" ? "video" : "image",
-      poster: m.color,
+      poster: m.kind === "video" ? m.color : samplePoster(`media-${m.id}`, m.color),
       is_active: true,
       is_public: true,
       is_draft: false,
@@ -685,7 +696,7 @@ export function seedReviewContent(all: Category[]): ContentItem[] {
       title: "پنج درسی که از راه‌اندازی کارگاه‌های اشتغال خرد گرفتیم",
       excerpt: "تجربه‌ی شش ماه اجرا در سه استان؛ از انتخاب بهره‌بردار تا پایش درآمد.",
       content: "## چرا این یادداشت؟\nشش ماه از راه‌اندازی نخستین کارگاه‌ها گذشته و وقت مرور است.\n\n## درس‌ها\n1. **انتخاب بهره‌بردار** را به شورای محلی بسپارید.\n2. آموزش پیش از تجهیز، نه بعد از آن.\n3. پایش ماهانه‌ی درآمد را از روز اول طراحی کنید.\n\n> نکته: فرم پایش در مخزن دانش موجود است.",
-      poster: "#0d9488",
+      poster: samplePoster("blog-rv1", "#0d9488"),
       category_ids: [blogCat],
       tags: ["اشتغال", "درس‌آموخته"],
       created_at: at(d1, "۱۰:۱۵:۰۰"),
@@ -700,7 +711,7 @@ export function seedReviewContent(all: Category[]): ContentItem[] {
       title: "راهنمای کوتاه گزارش‌نویسی میدانی",
       excerpt: "چک‌لیستی برای گزارش بازدیدهای میدانی که در کمتر از یک ساعت نوشته شود.",
       content: "## پیش از بازدید\n- هدف بازدید را در یک جمله بنویسید.\n- فرم مشاهده را چاپ کنید.\n\n## پس از بازدید\n- عکس‌ها را با شرح بارگذاری کنید.",
-      poster: "#7c3aed",
+      poster: samplePoster("blog-rv2", "#7c3aed"),
       category_ids: [blogCat],
       tags: ["گزارش"],
       created_at: at(d2, "۰۹:۰۰:۰۰"),

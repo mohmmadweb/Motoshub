@@ -8,7 +8,7 @@ import { DEMO_REF_DATE } from "../pm/seed";
 import { nowClock } from "../pm/jalali";
 import { setWorkCalendar, withOfficialHolidays } from "../pm/holidays";
 import { TS_VERSION, seedTimesheet } from "../timesheet/seed";
-import { dueReminders, type Integration, type IntegrationKind, type PeriodRecord, type PeriodStatus, type Person, type TimeEntry, type TsSettings, type TsState } from "../timesheet/types";
+import { PERSONAL_TASK_PREFIX, dueReminders, type Integration, type PersonalTask, type IntegrationKind, type PeriodRecord, type PeriodStatus, type Person, type TimeEntry, type TsSettings, type TsState } from "../timesheet/types";
 import { useTenancy } from "./TenancyContext";
 import { useInbox } from "./InboxContext";
 
@@ -43,6 +43,7 @@ type Ctx = {
   roster: Person[];
   settings: TsSettings;
   integrations: Integration[];
+  personalTasks: PersonalTask[];
   personById: (id: string) => Person | undefined;
   // --- ورودی‌ها
   addEntry: (e: NewEntry) => string;
@@ -51,6 +52,8 @@ type Ctx = {
   removeEntry: (id: string) => void;
   /** پذیرش یا رد ورودی واردشده از ابزار بیرونی */
   reviewEntries: (ids: string[], accept: boolean) => void;
+  // --- تسک‌های شخصی
+  addPersonalTask: (personId: string, title: string) => string;
   // --- دوره
   periodRecord: (personId: string, key: string) => PeriodRecord;
   submitPeriod: (personId: string, key: string, by: string, comment?: string) => void;
@@ -123,6 +126,7 @@ export function TimesheetProvider({ children }: { children: ReactNode }) {
       roster: state.roster,
       settings: state.settings,
       integrations: state.integrations,
+      personalTasks: state.personalTasks ?? [],
       personById: (id) => state.roster.find((p) => p.id === id),
 
       addEntry: (e) => {
@@ -143,6 +147,16 @@ export function TimesheetProvider({ children }: { children: ReactNode }) {
       reviewEntries: (ids, accept) => {
         const set = new Set(ids);
         setState((s) => ({ ...s, entries: s.entries.map((e) => (set.has(e.id) ? { ...e, review: accept ? "accepted" : "rejected" } : e)) }));
+      },
+
+      addPersonalTask: (personId, title) => {
+        const id = `${PERSONAL_TASK_PREFIX}${state.seq + 1}`;
+        setState((s) => ({
+          ...s,
+          seq: s.seq + 1,
+          personalTasks: [...(s.personalTasks ?? []), { id: `${PERSONAL_TASK_PREFIX}${s.seq + 1}`, personId, title: title.trim(), createdAt: stamp() }],
+        }));
+        return id;
       },
 
       periodRecord: (personId, key) => state.periods.find((p) => p.personId === personId && p.key === key) ?? { personId, key, status: "draft", history: [] },

@@ -184,14 +184,14 @@ export function NavTree({ onNavigate, mobile = false }: { onNavigate?: () => voi
 
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1" data-tour={mobile ? undefined : "nav"} aria-label="منوی اصلی">
-      {order.map((c) => {
+      {order.map((c, idx) => {
         const cl = navClusters[c];
         const groups = sections.filter((s) => s.cluster === c);
         const hasActive = groups.some((g) => g.items.some((i) => isActive(i.to, i.end)));
         // کلاسترِ صفحه‌ی فعلی همیشه باز است
         const open = hasActive || !collapsed.includes(c);
         return (
-          <div key={c} className={c === "home" ? "pb-1" : "pt-2 border-t border-white/10"}>
+          <div key={c} className={idx === 0 ? "" : "pt-2 border-t border-white/10"}>
             <button
               onClick={() => !hasActive && toggle(c)}
               aria-expanded={open}
@@ -238,20 +238,15 @@ export function NavTree({ onNavigate, mobile = false }: { onNavigate?: () => voi
 }
 
 export default function Sidebar() {
-  const { session, activeScopeLabel } = useTenancy();
+  const { session } = useTenancy();
   const { t } = useI18n();
-  // برند مؤثرِ کانتکست فعلی (هر هلدینگ/شرکت می‌تواند نام، رنگ و لوگو را بازنویسی کند)
+  // سربرگ منو = فقط لوگوی برند مؤثرِ کانتکست فعلی (بدون نام و زیرعنوان)؛ با انتخابگر سازمان عوض می‌شود
   const brand = useEffectiveBranding();
   return (
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-e border-ink-200 bg-navy-900 h-screen sticky top-0">
-      <div className="flex items-center gap-2.5 px-4 h-16 border-b border-white/10" style={{ boxShadow: `inset 0 -2px 0 ${brand.color}` }}>
-        <BrandMark logo={brand.logo} initials={brand.initials} color={brand.color} />
-        <div className="min-w-0">
-          <p className="font-bold text-[12.5px] leading-[1.35] text-white line-clamp-2" title={brand.name}>{brand.name}</p>
-          <p className="text-[10.5px] text-navy-300 leading-4 truncate mt-0.5">
-            {session.level === "سیستم" ? brand.tagline : brand.sourceScopeId && brand.sourceScopeId !== "sys" && activeScopeLabel === brand.name ? brand.tagline : activeScopeLabel}
-          </p>
-        </div>
+      <div className="flex items-center justify-center px-4 h-16 border-b border-white/10" title={brand.name}>
+        <BrandMark logo={brand.logo} initials={brand.initials} color={brand.color} size={44} />
+        <span className="sr-only">{brand.name}</span>
       </div>
 
       <NavTree />

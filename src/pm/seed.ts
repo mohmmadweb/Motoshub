@@ -221,22 +221,6 @@ function seedPr1(): Omit<ProjectState, "meta"> & { meta: Omit<ProjectState["meta
       { id: "dc4", name: "صورت‌جلسه‌ی کمیته‌ی راهبری.pdf", type: "صورت‌جلسه", size: "۳۲۰ کیلوبایت", uploadedBy: "محسن مردعلی", date: "۱۴۰۵/۰۲/۲۲", version: 1, meetingId: "mt2" },
       { id: "dc5", name: "برآورد هزینه‌ی فاز دوم.xlsx", type: "فایل مالی", size: "۱۹۰ کیلوبایت", uploadedBy: "واحد مالی", date: "۱۴۰۴/۱۲/۱۲", version: 4 },
     ],
-    channels: [
-      { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [
-        { id: "ms1", author: "محسن مردعلی", text: "سلام به همه؛ گزارش هفتگی را تا پنجشنبه در کانال بگذارید.", at: "۱۴۰۵/۰۳/۰۱ ۰۸:۴۵", pinned: true },
-        { id: "ms2", author: "وحید خاوئی", text: "کارگاه‌های ۱ و ۲ آماده‌ی بهره‌برداری آزمایشی هستند.", at: "۱۴۰۵/۰۳/۰۵ ۱۰:۱۲", reactions: { like: ["محسن مردعلی"] } },
-        { id: "ms3", author: "تیم تدارکات", text: "@محسن_مردعلی محموله‌ی دوم چرخ‌ها فردا می‌رسد.", at: "۱۴۰۵/۰۳/۰۷ ۱۶:۳۰" },
-      ] },
-      { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
-      { id: "ch3", name: "عمرانی", description: "هماهنگی پیمانکار و نظارت", members: ["محسن مردعلی", "تیم عمرانی", "تیم تدارکات"], messages: [
-        { id: "ms4", author: "تیم عمرانی", text: "آزمایش فشار شبکه‌ی روستای ۷ با موفقیت انجام شد.", at: "۱۴۰۵/۰۲/۱۴ ۱۲:۰۰", fileName: "گزارش-آزمایش-فشار.pdf" },
-      ] },
-      { id: "ch4", name: "مالی", description: "هماهنگی پرداخت‌ها و صورت‌وضعیت‌ها", members: ["محسن مردعلی", "واحد مالی", "پایگاه اطلاع‌رسانی بنیاد"], messages: [] },
-    ],
-    announcements: [
-      { id: "an1", title: "جلسه‌ی کمیته‌ی راهبری", body: "جلسه‌ی کمیته‌ی راهبری ۲۲ اردیبهشت ساعت ۱۰ به‌صورت ویدیویی برگزار می‌شود.", author: "محسن مردعلی", at: "۱۴۰۵/۰۲/۲۰ ۰۹:۰۰", pinned: false },
-      { id: "an2", title: "تحویل موقت فاز اول آب‌رسانی", body: "فاز اول شبکه‌ی آب‌رسانی ۱۲ روستا تحویل موقت شد. از همه‌ی همکاران سپاسگزاریم.", author: "محسن مردعلی", at: "۱۴۰۵/۰۲/۱۶ ۱۱:۰۰", pinned: true },
-    ],
     automation: defaultAutomation(),
     notifRules: {},
     logs: [
@@ -257,7 +241,6 @@ function seedPr1(): Omit<ProjectState, "meta"> & { meta: Omit<ProjectState["meta
       L("MEETING_SCHEDULED", "جلسه‌ی «جلسه هماهنگی با فرمانداری قلعه‌گنج» برای ۱۴۰۵/۰۲/۰۸ ساعت ۰۹:۰۰ تنظیم شد.", "محسن مردعلی", "۱۴۰۵/۰۲/۰۳", "۱۳:۰۰", { type: "meeting", id: "mt1" }),
       L("TASK_STATUS_CHANGED", "تسک «تکمیل زیرساخت آب‌رسانی روستاهای هدف» از «بازبینی» به «انجام‌شده» منتقل شد.", "محسن مردعلی", "۱۴۰۵/۰۲/۱۵", "۱۶:۲۰", { type: "task", id: "t1" }, { old_status: "بازبینی", new_status: "انجام‌شده" }),
       L("MILESTONE_ACHIEVED", "مایل‌ستون «تحویل فاز اول زیرساخت آب‌رسانی (۱۲ روستا)» به وضعیت «انجام‌شده» رسید.", "محسن مردعلی", "۱۴۰۵/۰۲/۱۵", "۱۶:۴۰", { type: "milestone", id: "m2" }),
-      L("ANNOUNCEMENT_POSTED", "اطلاعیه‌ی «تحویل موقت فاز اول آب‌رسانی» منتشر شد.", "محسن مردعلی", "۱۴۰۵/۰۲/۱۶", "۱۱:۰۰", { type: "announcement", id: "an2" }),
       L("MINUTES_PUBLISHED", "صورت‌جلسه‌ی «کمیته راهبری — پایش پیشرفت فاز دوم» با ۳ مصوبه منتشر شد.", "محسن مردعلی", "۱۴۰۵/۰۲/۲۲", "۱۲:۳۰", { type: "minute", id: "mn2" }),
       L("ACTION_ITEM_CONVERTED", "مصوبه‌ی «بازدید نظارتی و تحویل موقت مدارس» به تسک تبدیل شد.", "محسن مردعلی", "۱۴۰۵/۰۲/۲۲", "۱۲:۳۵", { type: "task", id: "t13" }),
       L("TASK_STATUS_CHANGED", "تسک «تجهیز کارگاه‌های اشتغال (چرخ خیاطی، ابزار)» از «در حال انجام» به «بازبینی» منتقل شد.", "تیم تدارکات", "۱۴۰۵/۰۳/۰۷", "۱۵:۵۰", { type: "task", id: "t11" }, { old_status: "در حال انجام", new_status: "بازبینی" }),
@@ -370,16 +353,6 @@ function seedPr2(): ReturnType<typeof seedPr1> {
       { id: "dc2", name: "پروپوزال استقرار سامانه.docx", type: "پروپوزال", size: "۶۴۰ کیلوبایت", uploadedBy: "وحید خاوئی", date: "۱۴۰۵/۰۱/۲۵", version: 1 },
       { id: "dc3", name: "طرح رابط جستجو.fig", type: "فایل طراحی", size: "۹ مگابایت", uploadedBy: "تیم سامانه", date: "۱۴۰۵/۰۳/۰۴", version: 5, taskId: "t18" },
     ],
-    channels: [
-      { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [
-        { id: "ms1", author: "وحید خاوئی", text: "@مهندس_بردیا_کوشا مهاجرت داده چه زمانی از حالت توقف خارج می‌شود؟", at: "۱۴۰۵/۰۳/۰۶ ۰۹:۲۰" },
-        { id: "ms2", author: "مهندس بردیا کوشا", text: "اسکریپت تبدیل کدگذاری آماده است؛ تا دوشنبه تست می‌کنم.", at: "۱۴۰۵/۰۳/۰۶ ۱۰:۴۰" },
-      ] },
-      { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
-      { id: "ch3", name: "توسعه", description: "هماهنگی فنی", members: ["تیم سامانه", "مهندس بردیا کوشا", "وحید خاوئی"], messages: [] },
-      { id: "ch4", name: "طراحی", description: "بازخورد رابط کاربری", members: ["تیم سامانه", "دبیرخانه", "وحید خاوئی"], messages: [] },
-    ],
-    announcements: [],
     automation: defaultAutomation(),
     notifRules: {},
     logs: [
@@ -464,11 +437,6 @@ function seedPr3(): ReturnType<typeof seedPr1> {
     meetings: [],
     minutes: [],
     documents: [],
-    channels: [
-      { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [] },
-      { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
-    ],
-    announcements: [],
     automation: defaultAutomation(),
     notifRules: {},
     logs: [
@@ -829,11 +797,6 @@ function seedPr4(): ProjectState {
       { id: "dc1", name: "گزارش نیازسنجی مهارتی.pdf", type: "گزارش", size: "۷۲۰ کیلوبایت", uploadedBy: "وحید خاوئی", date: "۱۴۰۴/۱۱/۱۵", version: 1, taskId: "t1" },
       { id: "dc2", name: "فهرست فارغ‌التحصیلان و نمرات.xlsx", type: "گزارش", size: "۹۰ کیلوبایت", uploadedBy: "تیم آموزش", date: "۱۴۰۵/۰۲/۱۵", version: 1, taskId: "t5" },
     ],
-    channels: [
-      { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [] },
-      { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
-    ],
-    announcements: [],
     automation: defaultAutomation(),
     notifRules: {},
     logs: [

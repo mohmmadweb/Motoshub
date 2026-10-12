@@ -31,7 +31,6 @@ export default function DocumentsTab() {
   const where = (d: PMDocument) => {
     if (d.taskId) return <button onClick={() => openTask(d.taskId!)} className="text-brand-700 hover:underline text-right">تسک: {taskTitle(p, d.taskId)}</button>;
     if (d.meetingId) return <button onClick={() => goTab("minutes", d.meetingId)} className="text-brand-700 hover:underline text-right">جلسه: {p.meetings.find((m) => m.id === d.meetingId)?.title ?? "—"}</button>;
-    if (d.channelId) return <button onClick={() => goTab("communication")} className="text-brand-700 hover:underline text-right">کانال: #{p.channels.find((c) => c.id === d.channelId)?.name ?? "—"}</button>;
     return <span className="text-ink-400">اسناد عمومی پروژه</span>;
   };
 
@@ -40,7 +39,7 @@ export default function DocumentsTab() {
       <SectionTitle
         icon={<FileText size={15} className="text-brand-600" />}
         title="اسناد پروژه"
-        hint="قرارداد، پروپوزال، گزارش، فایل طراحی، مستندات فنی، فایل مالی، صورت‌جلسه و ارائه — قابل اتصال به تسک، جلسه یا کانال"
+        hint="قرارداد، پروپوزال، گزارش، فایل طراحی، مستندات فنی، فایل مالی، صورت‌جلسه و ارائه — قابل اتصال به تسک یا جلسه"
         action={
           canEdit && (
             <>

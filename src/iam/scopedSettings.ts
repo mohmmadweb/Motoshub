@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// تنظیمات لایه‌ای (ارث‌بری سیستم ← هلدینگ ← شرکت ← واحد) + برند هر هلدینگ/شرکت.
+// تنظیمات لایه‌ای (ارث‌بری سیستم ← هلدینگ ← شرکت ← واحد) + برند هر هلدینگ/شرکت (عنوان سامانه، لوگو، رنگ).
 // هر واحد می‌تواند مقدار را «بازنویسی» کند، مگر اینکه یکی از والدها آن را «قفل» کرده باشد.
 // ذخیره: motoshub.scopedSettings.v1
 // ---------------------------------------------------------------------------
@@ -9,15 +9,14 @@ import { createLocalStore } from "./store";
 import { loginPolicyStore } from "./loginPolicy";
 import { getWorkflowSettings } from "../context/SettingsContext";
 
-export type ScopedKey = "brand.name" | "brand.tagline" | "brand.color" | "brand.logo" | "security.sessionTimeoutMin" | "workflow.reportReminderDays" | "content.requireApproval";
+export type ScopedKey = "brand.name" | "brand.color" | "brand.logo" | "security.sessionTimeoutMin" | "workflow.reportReminderDays" | "content.requireApproval";
 export type ScopedValue = string | number | boolean;
 
 export type ScopedMeta = { key: ScopedKey; label: string; group: "brand" | "behavior"; type: "text" | "color" | "logo" | "number" | "bool"; perm: string; unit?: string; hint?: string };
 export const scopedMeta: ScopedMeta[] = [
-  { key: "brand.name", label: "نام نمایشی", group: "brand", type: "text", perm: "settings.branding", hint: "در سربرگ منو و عنوان صفحه‌ها" },
-  { key: "brand.tagline", label: "زیرعنوان", group: "brand", type: "text", perm: "settings.branding" },
+  { key: "brand.name", label: "عنوان سامانه", group: "brand", type: "text", perm: "settings.branding", hint: "عنوان تب مرورگر و صفحه‌ی ورود" },
   { key: "brand.color", label: "رنگ برند", group: "brand", type: "color", perm: "settings.branding" },
-  { key: "brand.logo", label: "لوگو", group: "brand", type: "logo", perm: "settings.branding", hint: "PNG/SVG تا ۲۰۰ کیلوبایت؛ خالی = حروف اول نام" },
+  { key: "brand.logo", label: "لوگو", group: "brand", type: "logo", perm: "settings.branding", hint: "بالای منو؛ PNG/SVG تا ۲۰۰ کیلوبایت" },
   { key: "security.sessionTimeoutMin", label: "مهلت نشست", group: "behavior", type: "number", unit: "دقیقه", perm: "settings.security" },
   { key: "workflow.reportReminderDays", label: "یادآوری سررسید گزارش", group: "behavior", type: "number", unit: "روز قبل", perm: "settings.system" },
   { key: "content.requireApproval", label: "تأیید محتوا پیش از انتشار", group: "behavior", type: "bool", perm: "settings.branding" },
@@ -30,7 +29,6 @@ export const scopedMetaOf = (k: ScopedKey) => scopedMeta.find((m) => m.key === k
  */
 export const scopedDefaults: Record<ScopedKey, ScopedValue> = {
   "brand.name": systemIdentity.name,
-  "brand.tagline": "فضای کاری سازمانی",
   "brand.color": systemIdentity.color,
   "brand.logo": "/bonyad-logo.png",
   get "security.sessionTimeoutMin"() {
@@ -49,7 +47,7 @@ const seed = (): ScopedState => ({
   version: 1,
   byScope: {
     sys: { values: {}, locks: ["security.sessionTimeoutMin"] },
-    "h-sina-food": { values: { "brand.name": "هلدینگ صنایع غذایی سینا", "brand.tagline": "فضای کاری هلدینگ", "brand.color": "#b45309", "brand.logo": "" }, locks: [] },
+    "h-sina-food": { values: { "brand.name": "هلدینگ صنایع غذایی سینا", "brand.color": "#b45309", "brand.logo": "" }, locks: [] },
     "h-ferdows": { values: { "brand.name": "هلدینگ کشاورزی فردوس پارس", "brand.color": "#0d9488", "brand.logo": "" }, locks: ["brand.color"] },
     "c-bank-sina": { values: { "brand.name": "بانک سینا", "brand.color": "#1d4ed8", "brand.logo": "", "content.requireApproval": true }, locks: [] },
   },

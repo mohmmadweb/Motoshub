@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------------------
 // F15 «مدیریت اسلایدشو» (۱.۲۱.۴) — انبار اسلایدها + اسلایدر دسترس‌پذیر.
-//  - DashboardSlideshow (پیش‌فرض): نوار باریک و قابل بستن بالای میز کار.
-//  - LandingSlideshow: اسلایدر صفحه‌ی عمومی (فقط مخاطب «عمومی»).
+//  - LandingSlideshow: اسلایدر صفحه‌ی عمومی (فقط مخاطب «عمومی»). اسلایدشوی میز کار حذف شده است.
 //  - Slider: قبلی/بعدی، نشانگرها، پخش خودکار با توقف روی hover/focus، کلیدهای جهت‌نما.
 // مدل API: slide { id, image_desktop, image_mobile, title, subtitle, cta_text, cta_url,
 //   starts_at, ends_at, audience, scope_id, order, is_active, placement }
@@ -70,7 +69,6 @@ export const slideStore = createLocalStore<SlideState>("motoshub.slides.v1", see
   const x = r as SlideState;
   return x && Array.isArray(x.slides) && x.settings ? x : null;
 });
-const dismissStore = createLocalStore<Record<string, string>>("motoshub.slides.dismissed.v1", () => ({}));
 
 /** وضعیت زمانی یک اسلاید نسبت به امروز */
 export function slideStatus(s: Slide, today: string): "inactive" | "scheduled" | "expired" | "live" {
@@ -177,20 +175,6 @@ export function Slider({ slides, settings, variant, onDismiss, label }: { slides
         </button>
       )}
     </section>
-  );
-}
-
-/** نوار اسلایدشوی باریک و قابل بستن بالای میز کار */
-export default function DashboardSlideshow({ className = "mb-4" }: { className?: string }) {
-  const { slides, settings } = useVisibleSlides("dashboard");
-  const dismissed = useLocalStore(dismissStore);
-  const { actingUser } = useTenancy();
-  const sig = slides.map((s) => `${s.id}@${s.updated_at}`).join("|");
-  if (!settings.enabled || !slides.length || dismissed[actingUser.id] === sig) return null;
-  return (
-    <div className={className}>
-      <Slider slides={slides} settings={settings} variant="slim" label="اسلایدشوی میز کار" onDismiss={() => dismissStore.set((d) => ({ ...d, [actingUser.id]: sig }))} />
-    </div>
   );
 }
 

@@ -3,11 +3,10 @@
 // فهرست منتشرشده‌ها / پیش‌نویس‌ها، جستجو، فیلتر موضوع و فرم ساخت/ویرایش هم‌شکل
 // Blog/News/MagazineStoreRequest. ویرایشگر (ContentEditor) در صفحه‌ی جزئیات هم استفاده می‌شود.
 // ---------------------------------------------------------------------------
-import ModuleReportsButton from "../../reports/ModuleReportsButton";
-import { useState } from "react";
+import { ReportBuilderModal } from "../../reports/ModuleReportsButton";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Newspaper, Plus, Search, MessageSquare, SmilePlus, Eye, Megaphone, BadgeCheck, Send, Save, Undo2 } from "lucide-react";
-import PageHeader from "../../components/ui/PageHeader";
+import { BookOpen, Newspaper, Plus, Search, Eye, Megaphone, Send, Save, Undo2, MoreVertical, Pencil, EyeOff, Trash2, User, CalendarDays, ChevronLeft, Settings, FolderTree, BarChart3 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import EmptyState from "../../components/ui/EmptyState";
@@ -15,6 +14,8 @@ import Toggle from "../../components/ui/Toggle";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import Badge from "../../components/ui/Badge";
 import { useToast } from "../../components/ui/ToastProvider";
+import { useConfirm } from "../../components/ui/ConfirmProvider";
+import { useT } from "../../i18n";
 import { useSocial } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { dayNum } from "../../pm/jalali";
@@ -25,17 +26,14 @@ import {
   ApiChip,
   AttachmentPicker,
   AttachmentList,
+  CoverImage,
   Field,
-  Poster,
   PosterPicker,
-  PrivacyBadge,
   PublishBadge,
   PublishOptions,
-  UserLine,
   dateOf,
   defaultPublish,
   fa,
-  stamp,
   type PublishState,
 } from "./kit";
 import { MarkdownEditor } from "../knowledge/Markdown";
@@ -275,50 +273,183 @@ export function ContentEditor({ open, onClose, kind, item, onSaved }: { open: bo
   );
 }
 
-// ---------------------------------------------------------------- کارت
-function ContentCard({ x }: { x: ContentItem }) {
+// ---------------------------------------------------------------- کارت (هم‌شکل motodev)
+/** کارت محتوا: کاور ۱۶:۹، عنوان، خلاصه، برچسب‌ها (۲ + «N+»)، نویسنده · تاریخ و دکمه‌ی «مشاهده»؛
+ *  منوی «…» (ویرایش/انتشار/حذف) فقط برای صاحب یا مدیر */
+function ContentCard({ x, manager, onEdit }: { x: ContentItem; manager: boolean; onEdit: (x: ContentItem) => void }) {
   const s = useSocial();
-  const entity = contentEntity[x.kind];
-  const reactions = s.reactionSummary(entity, x.id).total;
-  const comments = s.commentsFor(entity, x.id).length;
-  const ann = x.announcement;
-  const needMyAck = !!ann?.requires_ack && x.user_id !== s.me && !ann.acks[s.me] && x.is_public && !x.is_draft;
+  const { notify } = useToast();
+  const confirm = useConfirm();
+  const [menu, setMenu] = useState(false);
+  const label = contentKindLabel[x.kind];
+  const canEdit = x.user_id === s.me || manager;
+  const published = x.is_public && !x.is_draft;
+  const pendingReview = x.review?.status === "pending";
+  const path = contentPath(x);
+  const extraTags = x.tags.length - 2;
+
+  const togglePublish = () => {
+    setMenu(false);
+    if (!published && !manager) {
+      const r = s.submitForReview(x.id);
+      return notify(r.ok ? `${label} برای بازبینی فرستاده شد.` : r.error, r.ok ? "success" : "warning");
+    }
+    s.publishContent(x.id, !published);
+    notify(published ? `انتشار ${label} لغو شد.` : `${label} منتشر شد.`, published ? "info" : "success");
+  };
+  const remove = () => {
+    setMenu(false);
+    confirm({
+      title: `حذف «${x.title}»؟`,
+      message: "مطلب همراه با نظرهایش حذف می‌شود و قابل بازگشت نیست.",
+      onConfirm: () => {
+        s.deleteContent(x.id);
+        notify(`${label} حذف شد.`, "info");
+      },
+    });
+  };
+  const menuItem = "w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-right hover:bg-ink-50";
+
   return (
-    <Link to={contentPath(x)} className="card overflow-hidden flex flex-col hover:border-brand-300 transition-colors">
-      <Poster color={x.poster} className="h-28 !rounded-none">
-        <span className="flex flex-wrap gap-1">
-          {ann && (
-            <Badge tone="danger" icon={<Megaphone size={10} />}>
-              اطلاعیه‌ی رسمی
-            </Badge>
+    <div className="card p-5 flex flex-col min-w-0">
+      <Link to={path} className="block" tabIndex={-1} aria-hidden>
+        <CoverImage key={x.poster ?? "none"} src={x.poster} alt={x.title} icon={x.kind === "magazines" ? <Newspaper size={56} strokeWidth={1.25} /> : undefined}>
+          {(x.announcement || x.is_draft || !x.is_public || x.review || x.moderation?.hidden) && (
+            <>
+              {x.announcement && (
+                <Badge tone="danger" icon={<Megaphone size={10} />}>
+                  اطلاعیه‌ی رسمی
+                </Badge>
+              )}
+              <ReviewBadge review={x.review} />
+              <HiddenBadge m={x.moderation} />
+              {!x.review || x.review.status === "approved" ? <PublishBadge item={x} /> : null}
+            </>
           )}
-          {needMyAck && (
-            <Badge tone="warning" icon={<BadgeCheck size={10} />}>
-              منتظر تأیید شما
-            </Badge>
-          )}
-          <ReviewBadge review={x.review} />
-          <HiddenBadge m={x.moderation} />
-          {!x.review || x.review.status === "approved" ? <PublishBadge item={x} /> : null}
-          {x.privacy !== "EVERYONE" && <PrivacyBadge value={x.privacy} />}
-        </span>
-      </Poster>
-      <div className="p-4 flex-1 flex flex-col gap-2">
-        <h3 className="text-sm font-bold text-ink-900 leading-6 line-clamp-2">{x.title}</h3>
-        {x.excerpt && <p className="text-xs text-ink-500 leading-6 line-clamp-2">{x.excerpt}</p>}
-        <div className="mt-auto pt-2 flex items-center justify-between gap-2 border-t border-ink-100">
-          <UserLine id={x.user_id} size={24} link={false} sub={x.published_at ? stamp(x.published_at) : `ایجاد ${stamp(x.created_at)}`} />
-          <span className="flex items-center gap-2.5 text-[11px] text-ink-400 shrink-0">
-            <span className="flex items-center gap-0.5" title="واکنش‌ها">
-              <SmilePlus size={12} /> {fa(reactions)}
-            </span>
-            <span className="flex items-center gap-0.5" title="نظرها">
-              <MessageSquare size={12} /> {fa(comments)}
-            </span>
+        </CoverImage>
+      </Link>
+      <div className="mt-4 flex items-center gap-2 min-w-0">
+        <Link to={path} className="flex-1 min-w-0 text-[15px] font-bold text-ink-900 truncate hover:text-brand-700" title={x.title}>
+          {x.title}
+        </Link>
+        {canEdit && (
+          <span className="relative shrink-0">
+            <button type="button" onClick={() => setMenu((v) => !v)} className="w-7 h-7 rounded-md flex items-center justify-center text-ink-500 hover:bg-ink-100" aria-label="گزینه‌ها" aria-expanded={menu}>
+              <MoreVertical size={16} />
+            </button>
+            {menu && (
+              <>
+                <span className="fixed inset-0 z-30" onClick={() => setMenu(false)} />
+                <span className="absolute z-40 top-full mt-1 left-0 w-44 bg-white border border-ink-200 rounded-lg shadow-lg py-1 block">
+                  <button type="button" className={`${menuItem} text-ink-700`} onClick={() => (setMenu(false), onEdit(x))}>
+                    <Pencil size={13} /> ویرایش
+                  </button>
+                  {!(pendingReview && !manager) && (
+                    <button type="button" className={`${menuItem} text-ink-700`} onClick={togglePublish}>
+                      {published ? <EyeOff size={13} /> : <Send size={13} />} {published ? "لغو انتشار" : manager ? "انتشار" : "ارسال برای بازبینی"}
+                    </button>
+                  )}
+                  <button type="button" className={`${menuItem} text-rose-600`} onClick={remove}>
+                    <Trash2 size={13} /> حذف
+                  </button>
+                </span>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-[13px] text-ink-600 leading-6 line-clamp-2 min-h-[3rem]">{x.excerpt}</p>
+      <div className="mt-2 flex items-center gap-1 min-h-[22px] min-w-0">
+        {x.tags.slice(0, 2).map((t) => (
+          <span key={t} className="text-[10.5px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-800 truncate max-w-[45%]">
+            {t}
+          </span>
+        ))}
+        {extraTags > 0 && <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-800 shrink-0">{fa(extraTags)}+</span>}
+      </div>
+      <div className="mt-auto pt-4">
+        <div className="border-t border-ink-100 pt-3 flex items-center justify-between gap-2 text-[12px] text-ink-500">
+          <span className="flex items-center gap-1 min-w-0">
+            <User size={13} className="shrink-0" />
+            <span className="truncate">{s.userName(x.user_id)}</span>
+          </span>
+          <span className="flex items-center gap-1 shrink-0 tabular-nums">
+            <CalendarDays size={13} />
+            {dateOf(x.published_at ?? x.created_at)}
           </span>
         </div>
+        <Link to={path} className="mt-4 w-full flex items-center justify-center gap-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-[13px] font-medium py-2.5">
+          مشاهده <ChevronLeft size={15} />
+        </Link>
       </div>
-    </Link>
+    </div>
+  );
+}
+
+/** ردیف دسته‌ها بالای شبکه (اسکرول افقی با پیکان) */
+function CategoryChips({ cats, value, onChange }: { cats: { id: string; title: string }[]; value: string; onChange: (id: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflow(el.scrollWidth > el.clientWidth + 4);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [cats.length]);
+  const chip = (active: boolean) => `shrink-0 whitespace-nowrap text-[12px] px-3 py-1.5 rounded-full transition-colors ${active ? "bg-brand-700 text-white font-medium" : "bg-brand-50 text-brand-800 hover:bg-brand-100"}`;
+  return (
+    <div className="flex items-center gap-2 mb-5 min-w-0">
+      <div ref={ref} className="flex-1 min-w-0 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button type="button" className={chip(!value)} onClick={() => onChange("")}>
+          همه
+        </button>
+        {cats.map((c) => (
+          <button key={c.id} type="button" className={chip(value === c.id)} onClick={() => onChange(value === c.id ? "" : c.id)}>
+            {c.title}
+          </button>
+        ))}
+      </div>
+      {overflow && (
+        <button type="button" onClick={() => ref.current?.scrollBy({ left: -240, behavior: "smooth" })} className="shrink-0 w-7 h-7 rounded-full border border-ink-200 bg-white text-ink-600 flex items-center justify-center hover:bg-ink-50" aria-label="دسته‌های بیشتر">
+          <ChevronLeft size={15} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** چرخ‌دنده‌ی مدیر: دسته‌بندی‌ها، تنظیمات و بازبینی محتوا، گزارش‌ساز */
+function GearMenu({ onReports }: { onReports: () => void }) {
+  const { hasPermission } = useTenancy();
+  const [open, setOpen] = useState(false);
+  const socialSettings = ["social.dashboards", "social.settings", "comments.moderate"].some((p) => hasPermission(p));
+  const item = "w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-ink-700 text-right hover:bg-ink-50";
+  return (
+    <span className="relative shrink-0">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="w-9 h-9 rounded-lg border border-ink-200 bg-white text-ink-600 flex items-center justify-center hover:bg-ink-50" aria-label="تنظیمات" title="تنظیمات" aria-expanded={open}>
+        <Settings size={17} />
+      </button>
+      {open && (
+        <>
+          <span className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <span className="absolute z-40 top-full mt-1 right-0 w-56 bg-white border border-ink-200 rounded-lg shadow-lg py-1 block">
+            <Link to="/dashboard/categories" className={item} onClick={() => setOpen(false)}>
+              <FolderTree size={14} /> دسته‌بندی‌ها
+            </Link>
+            {socialSettings && (
+              <Link to="/dashboard/settings?section=social" className={item} onClick={() => setOpen(false)}>
+                <Settings size={14} /> تنظیمات و بازبینی محتوا
+              </Link>
+            )}
+            <button type="button" className={item} onClick={() => (setOpen(false), onReports())}>
+              <BarChart3 size={14} /> گزارش‌ساز
+            </button>
+          </span>
+        </>
+      )}
+    </span>
   );
 }
 
@@ -334,114 +465,100 @@ export default function ContentModule({ section }: { section: "magazines" | "new
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("published");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [sort, setSort] = useState<"new" | "old">("new");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<ContentItem | null>(null);
+  const [reports, setReports] = useState(false);
+
+  const t = useT();
+  const title = t(section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات");
+  useEffect(() => {
+    const prev = document.title;
+    document.title = title;
+    return () => {
+      document.title = prev;
+    };
+  }, [title]);
 
   const cats = s.categoriesOf(entity);
   // اطلاعیه‌های رسمیِ سنجاق‌شده (تا تاریخشان) بالای فهرست اخبار
   const pinnedNow = (x: ContentItem) => !!x.announcement?.pin_until && (dayNum(x.announcement.pin_until) ?? 0) >= (dayNum(s.today) ?? 0);
-  const pool = s.content.filter((x) => x.kind === kind && s.canView(x, manager));
-  const list = pool
+  const when = (x: ContentItem) => x.published_at ?? x.created_at;
+  const list = s.content
+    .filter((x) => x.kind === kind && s.canView(x, manager))
     .filter((x) => matchesStatus(x, status, s.me, manager, s.today))
     .filter((x) => !cat || x.category_ids.includes(cat))
-    .filter((x) => !q || x.title.includes(q) || x.excerpt.includes(q) || x.tags.some((t) => t.includes(q)))
-    .sort((a, b) => Number(pinnedNow(b)) - Number(pinnedNow(a)) || (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at));
+    .filter((x) => !q || x.title.includes(q) || x.excerpt.includes(q) || x.tags.some((tg) => tg.includes(q)))
+    .sort((a, b) => Number(pinnedNow(b)) - Number(pinnedNow(a)) || (sort === "new" ? when(b).localeCompare(when(a)) : when(a).localeCompare(when(b))));
 
-  const dash = s.dashboard("content", "user");
-  const stat = (key: string) => dash.find((d) => d.key === key)?.value ?? 0;
-  const statItems =
-    section === "news"
-      ? [
-          { title: "خبرهای منتشرشده‌ی من", value: stat("news_published") },
-          { title: "پیش‌نویس", value: stat("drafts") },
-          { title: "بازدید", value: stat("views") },
-          { title: "نظر در انتظار تأیید", value: stat("comments_pending") },
-        ]
-      : section === "blogs"
-        ? [
-            { title: "پست‌های منتشرشده‌ی من", value: stat("blogs_published") },
-            { title: "پیش‌نویس", value: stat("drafts") },
-            { title: "بازدید", value: stat("views") },
-          ]
-        : [
-            { title: "مجله‌های من", value: stat("magazines_published") },
-            { title: "پیش‌نویس", value: stat("drafts") },
-            { title: "بازدید", value: stat("views") },
-          ];
-
-  const title = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات";
   const label = contentKindLabel[kind];
-  const ks: ContentKind[] = [section];
+  const addLabel = section === "news" ? "ایجاد خبر جدید" : section === "blogs" ? "افزودن وبلاگ" : "ایجاد مجله";
+  const searchLabel = section === "news" ? "جستجوی اخبار…" : section === "blogs" ? "جستجوی وبلاگ…" : "جستجو در مجلات…";
 
   return (
-    <div>
-      <PageHeader
-        title={title}
-        description={section === "news" ? "اخبار و اطلاعیه‌های رسمی سازمان" : section === "blogs" ? "یادداشت‌ها، تجربه‌ها و روایت‌های همکاران" : "مجله‌های سازمانی و شماره‌های ویژه"}
-        icon={section === "news" ? <Newspaper size={20} /> : <BookOpen size={20} />}
-        actions={
-          <>
-            <ModuleReportsButton module="content" />
-            <ApiChip
-              items={[
-                ...ks.flatMap((k) => [
-                  { label: `فهرست ${contentKindLabel[k]}‌های منتشرشده`, ep: endpoints.contentList(k) },
-                  { label: `پیش‌نویس‌های ${contentKindLabel[k]}`, ep: endpoints.contentDrafts(k) },
-                  { label: `ساخت ${contentKindLabel[k]}`, ep: endpoints.contentCreate(k) },
-                ]),
-                { label: "موضوع‌ها", ep: endpoints.categories(entity) },
-                { label: "داشبورد کاربر", ep: endpoints.dashboard("content/content", "user") },
-                ...(section === "news"
-                  ? [
-                      { label: "اطلاعیه‌های سنجاق‌شده در میز کار", ep: endpoints.newsPinned() },
-                      { label: "تأیید خواندن", ep: endpoints.newsAcknowledge("{id}") },
-                      { label: "وضعیت خواندن", ep: endpoints.newsReadStatus("{id}") },
-                    ]
-                  : []),
-              ]}
-            />
-            {canCreate && (
-              <Button variant="primary" icon={<Plus size={15} />} onClick={() => setCreating(true)}>
-                جدید
-              </Button>
-            )}
-          </>
-        }
-      />
-
-      <StatStrip items={statItems} />
-
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input className="input-field !pr-8" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`جستجو در ${label}‌ها…`} />
+    <div className="max-w-[1076px] mx-auto">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-xl font-bold text-ink-900 whitespace-nowrap">{title}</h1>
+          {manager && <GearMenu onReports={() => setReports(true)} />}
         </div>
-        <select className="input-field !w-auto min-w-[140px]" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="فیلتر موضوع">
-          <option value="">همه‌ی موضوع‌ها</option>
-          {cats.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.parent_id ? `↳ ${c.title}` : c.title}
-            </option>
-          ))}
-        </select>
-        <Segmented value={status} onChange={setStatus} options={statusTabs} />
+        <div className="relative flex-1 min-w-[200px] sm:max-w-[330px]">
+          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <input className="input-field !pr-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder={searchLabel} aria-label={searchLabel} />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap sm:mr-auto">
+          <ApiChip
+            items={[
+              { label: `فهرست ${label}‌های منتشرشده`, ep: endpoints.contentList(kind) },
+              { label: `پیش‌نویس‌های ${label}`, ep: endpoints.contentDrafts(kind) },
+              { label: `ساخت ${label}`, ep: endpoints.contentCreate(kind) },
+              { label: "موضوع‌ها", ep: endpoints.categories(entity) },
+              ...(section === "news"
+                ? [
+                    { label: "اطلاعیه‌های سنجاق‌شده در میز کار", ep: endpoints.newsPinned() },
+                    { label: "تأیید خواندن", ep: endpoints.newsAcknowledge("{id}") },
+                    { label: "وضعیت خواندن", ep: endpoints.newsReadStatus("{id}") },
+                  ]
+                : []),
+            ]}
+          />
+          <select className="input-field !w-auto" value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} aria-label="فیلتر وضعیت">
+            <option value="all">همه</option>
+            <option value="published">منتشرشده</option>
+            <option value="drafts">پیش‌نویس‌های من</option>
+          </select>
+          <select className="input-field !w-auto" value={sort} onChange={(e) => setSort(e.target.value as "new" | "old")} aria-label="مرتب‌سازی">
+            <option value="new">جدیدترین</option>
+            <option value="old">قدیمی‌ترین</option>
+          </select>
+          {canCreate && (
+            <Button variant="primary" icon={<Plus size={15} />} onClick={() => setCreating(true)} className="!bg-brand-700 hover:!bg-brand-800">
+              {addLabel}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {cats.length > 0 && <CategoryChips cats={cats} value={cat} onChange={setCat} />}
 
       {list.length === 0 ? (
         <EmptyState
           icon={status === "drafts" ? <Eye size={22} /> : section === "news" ? <Newspaper size={22} /> : <BookOpen size={22} />}
           title={status === "drafts" ? "پیش‌نویسی ندارید" : `${label}ی پیدا نشد`}
-          description={q || cat ? "جستجو یا فیلتر موضوع را تغییر دهید." : canCreate ? `با دکمه‌ی «جدید» اولین ${label} را بنویسید.` : undefined}
+          description={q || cat ? "جستجو یا دسته را تغییر دهید." : canCreate ? `با دکمه‌ی «${addLabel}» اولین ${label} را بنویسید.` : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map((x) => (
-            <ContentCard key={x.id} x={x} />
+            <ContentCard key={x.id} x={x} manager={manager} onEdit={setEditing} />
           ))}
         </div>
       )}
 
       <ContentEditor open={creating} onClose={() => setCreating(false)} kind={kind} />
+      <ContentEditor open={!!editing} onClose={() => setEditing(null)} kind={kind} item={editing ?? undefined} />
+      <ReportBuilderModal open={reports} onClose={() => setReports(false)} module="content" />
     </div>
   );
 }

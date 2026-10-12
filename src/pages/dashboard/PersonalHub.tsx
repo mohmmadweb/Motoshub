@@ -1,11 +1,8 @@
 // ---------------------------------------------------------------------------
-// «میز کار من» — داشبورد شخصی و نقش‌محور.
-// کارت‌های ثابت برای همه: کارهای من، جلسات و رویدادهای پیش‌رو، اعلان‌های مهم سازمان،
-// پروژه‌های فعال من، محتوای پیشنهادی، افراد و گروه‌های پیشنهادی + صندوق ورودی
-// (اعلان‌ها، پیام‌ها و منشن‌ها، منتظر تصمیم من).
-// کارت نقش: مدیر سامانه / مدیر محتوا / مدیر پروژه / مدیر گروه هر کدام میز کار خودشان را دارند.
-// + اسلایدشو (بالا)، موضوعات دنبال‌شده (F06)، فید «دنبال‌شده‌ها» در کارت پیشنهاد (F08)، برجسته‌ها در
-//   «همکاری پیشنهادی» (F09)، اوقات شرعی و «نظرسنجی‌های من» (جمع‌شده) — همه در سامانه‌ی چیدمان ویجت‌ها.
+// «میز کار من» — داشبورد شخصی. هر کارت خلاصه‌ی یک صفحه‌ی منوست: عنوان کارت = برچسب همان
+// صفحه در منو، «مشاهده همه» به همان صفحه و هر ردیف به خودِ آیتم لینک دارد.
+// کارت‌ها: کاشی‌های خلاصه، مدیریت سامانه (فقط راهبران)، گزارش‌های سنجاق‌شده، فعالیت و وظایف من،
+// رویدادها و جلسات، اخبار سازمان، پروژه‌های من، گفتگوها، پرسش و پاسخ (موضوعات دنبال‌شده)، اوقات شرعی.
 // ---------------------------------------------------------------------------
 import { PinnedCard, usePinnedReports } from "../../reports/PinnedReports";
 import { occurrenceDates } from "../../pm/recurrence";
@@ -13,7 +10,7 @@ import { ReportBuilderModal } from "../../reports/ModuleReportsButton";
 import { resolveRange } from "../../reports/engine";
 import type { GlobalFilter, ReportSpec } from "../../reports/types";
 import { useMemo, useState, type DragEvent, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Bell,
   MessageCircle,
@@ -25,22 +22,11 @@ import {
   CheckCircle2,
   Circle,
   KanbanSquare,
-  BookOpen,
-  UserPlus,
-  Inbox,
   Timer,
   Video,
   Megaphone,
-  Sparkles,
-  UsersRound,
   Gauge,
-  FileClock,
-  Check,
-  Plus,
   Newspaper,
-  Image as ImageIcon,
-  MessagesSquare,
-  BookMarked,
   GripVertical,
   ArrowUp,
   ArrowDown,
@@ -49,48 +35,31 @@ import {
   LayoutGrid,
   RotateCcw,
   Filter as FilterIcon,
-  KeyRound,
   BellRing,
-  BarChart3,
-  ChevronDown,
-  Star,
 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
-import Avatar from "../../components/Avatar";
 import { useTenancy } from "../../context/TenancyContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { useInbox } from "../../context/InboxContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
 import { useSocial } from "../../context/SocialContext";
-import { useToast } from "../../components/ui/ToastProvider";
 import { personalFor } from "../../data/personal";
 import { users } from "../../data/mock";
 import { myWork, bucketOf } from "../../pm/myWork";
-import { isDone, isOverdue, projectProgress } from "../../pm/selectors";
+import { isDone, projectProgress } from "../../pm/selectors";
 import { dayNum, fa, addDays as addDaysJ } from "../../pm/jalali";
 import { priorityTone } from "../project/shared";
 import { ProjectIcon } from "../project/projectIcons";
 import { dateOf } from "../social/kit";
-import { entityLabel, type SocialModule } from "../../social/types";
 import Button from "../../components/ui/Button";
 import { EMPTY_FILTER, mergeOrder, spanClass, useUserLayout, type Span } from "./layout";
 import { GlobalFilterBar } from "./GlobalFilterBar";
-import { ManagementAlertsCard, useIsManager } from "./ManagementAlerts";
 import { usePendingAccessRequests } from "../../iam/hooks";
-import { isOwner, effectiveMatrix } from "../../pm/access";
-import { ancestorsOrSelf } from "../../iam/model";
 import { useWriteGuard, WriteBlockNotice } from "../../iam/useWriteGuard";
-import { useFollows } from "../../social/follow/store";
-import { FollowButton } from "../../social/follow/FollowButton";
-import { FeedRows, FollowedTopicRows, feedTypeLabel, useFollowedTopics, useFollowingFeed, type FeedType } from "./FollowCards";
-// ویجت‌های ماژول‌های دیگر (قرارداد مشترک)
-import DashboardSlideshow from "../../components/Slideshow";
+import { FollowedTopicRows, useFollowedTopics } from "./FollowCards";
 import PrayerTimesWidget, { usePrayerTimes } from "../../components/PrayerTimes";
-import MyPollsPanel from "../social/polls/MyPollsPanel";
 
-type FeedItem = { key: string; icon: typeof Bell; tone: string; text: string; meta: string; to: string; unread: boolean; seq: number };
-
-function Panel({ title, icon, to, linkLabel = "همه", count, children, className = "", filtered }: { title: string; icon: ReactNode; to?: string; linkLabel?: string; count?: number; children: ReactNode; className?: string; filtered?: boolean }) {
+function Panel({ title, icon, to, linkLabel = "مشاهده همه", count, children, className = "", filtered }: { title: string; icon: ReactNode; to?: string; linkLabel?: string; count?: number; children: ReactNode; className?: string; filtered?: boolean }) {
   return (
     <div className={`card p-3.5 h-full flex flex-col min-w-0 ${className}`}>
       <div className="flex items-center justify-between mb-2.5">
@@ -127,31 +96,23 @@ const Two = ({ a, b }: { a: ReactNode; b?: ReactNode }) => (
 type Widget = { id: string; title: string; span: Span; node: ReactNode };
 
 export default function PersonalHub({ header }: { header: ReactNode }) {
-  const { actingUser, hasPermission, role, filterScoped, visibleUserIds } = useTenancy();
+  const { actingUser, hasPermission, filterScoped, visibleUserIds } = useTenancy();
   const tn = useTenancy();
   const pm = useProjectsPM();
   const inbox = useInbox();
   const km = useKnowledge();
   const s = useSocial();
-  const { notify } = useToast();
-  const navigate = useNavigate();
   const me = actingUser.name;
   const meId = actingUser.id;
   const personal = personalFor(actingUser.id);
   const w = myWork(pm.projects, me);
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const ref = dayNum(pm.refDate)!;
-  // دنبال‌شده‌ها (F06/F08)، برجسته‌ها (F09)، مسدودی حساب (F12) و ویجت‌های مشترک
-  const fol = useFollows();
+  // موضوعات دنبال‌شده (F06)، مسدودی حساب (F12) و ابزارک اوقات شرعی
   const followedTopics = useFollowedTopics();
   const topicUnread = followedTopics.reduce((a, r) => a + r.unread, 0);
-  const [contentSrc, setContentSrc] = useState<"suggest" | "following">("suggest");
-  const [feedType, setFeedType] = useState<FeedType>("all");
-  const followingFeed = useFollowingFeed(feedType);
-  const followingCount = fol.following().length;
   const prayer = usePrayerTimes();
   const guard = useWriteGuard();
-  const [pollsOpen, setPollsOpen] = useState(false);
 
   // ---------------------------------------------------------------- چیدمان و فیلتر سراسری (برای هر کاربر)
   const { layout, update } = useUserLayout(meId);
@@ -161,7 +122,6 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [openReport, setOpenReport] = useState<ReportSpec | null>(null);
   const pinnedReports = usePinnedReports();
-  const isManager = useIsManager();
   const range = useMemo(() => resolveRange(filter.range, pm.refDate), [filter.range, pm.refDate]);
   const inRange = (d: string) => {
     if (range.from === undefined && range.to === undefined) return true;
@@ -217,59 +177,16 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   const myProjects = pm.projects.filter((p) => !p.meta.archived && (p.members.some((m) => m.name === me || m.userId === meId) || p.meta.manager === me));
   const projectsWho = filter.person && filter.person !== me ? pm.projects.filter((p) => !p.meta.archived && (p.members.some((m) => m.name === filter.person) || p.meta.manager === filter.person)) : myProjects;
   const projectsShown = projectsWho.filter((p) => byProject(p.meta.name));
-  const approvalsShown = w.approvals.filter((x) => byProject(x.p.meta.name));
 
-  // اعلان‌های مهم سازمان: آخرین اخبار و مجله‌ی منتشرشده + اطلاعیه‌های سراسری
-  // اطلاعیه‌های رسمیِ سنجاق‌شده همیشه اول می‌آیند
+  // «اخبار سازمان»: آخرین خبرهای منتشرشده؛ اطلاعیه‌های رسمیِ سنجاق‌شده اول می‌آیند
   const pinned = s.pinnedAnnouncements();
   const important = [
     ...pinned,
     ...s.content
-      .filter((c) => c.is_public && !c.is_draft && (c.kind === "news" || c.kind === "magazines") && s.canView(c) && !pinned.includes(c))
+      .filter((c) => c.is_public && !c.is_draft && c.kind === "news" && s.canView(c) && !pinned.includes(c))
       .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? "")),
   ].slice(0, Math.max(4, pinned.length));
   const needsAck = (c: (typeof important)[number]) => !!c.announcement?.requires_ack && !c.announcement.acks[meId] && c.user_id !== meId;
-
-  // محتوای پیشنهادی: هم‌پوشانی برچسب با مهارت‌های کاربر و برچسب‌هایی که با آن‌ها تعامل داشته
-  const interest = new Set<string>([
-    ...actingUser.skills.flatMap((k) => k.split(/[\s‌]+/)),
-    ...s.reactions.filter((r) => r.user_id === meId).flatMap((r) => [...s.content, ...s.media, ...s.topics].find((x) => x.id === r.entity_id)?.tags ?? []),
-  ]);
-  const score = (tags: string[], at: string | null) => tags.reduce((a, t) => a + ([...interest].some((k) => k && (t.includes(k) || k.includes(t))) ? 3 : 0), 0) + (at ? (dayNum(dateOf(at)) ?? 0) / 10000 : 0);
-  const suggested = [
-    ...s.content.filter((c) => c.is_public && !c.is_draft && c.user_id !== meId && s.canView(c)).map((c) => ({ id: c.id, title: c.title, tags: c.tags, at: c.published_at, to: `/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}`, icon: c.kind === "news" ? Newspaper : BookMarked, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله" })),
-    ...s.topics.filter((t) => t.is_public && !t.is_draft && t.user_id !== meId && s.canView(t)).map((t) => ({ id: t.id, title: t.title, tags: t.tags, at: t.published_at, to: `/dashboard/forum/${t.id}`, icon: MessagesSquare, type: "پرسش" })),
-    ...s.media.filter((m) => m.is_public && !m.is_draft && m.user_id !== meId && s.canView(m)).map((m) => ({ id: m.id, title: m.caption, tags: m.tags, at: m.published_at, to: `/dashboard/media/${m.id}`, icon: ImageIcon, type: "رسانه" })),
-  ]
-    .map((x) => ({ ...x, sc: score(x.tags, x.at) }))
-    .sort((a, b) => b.sc - a.sc)
-    .slice(0, 4);
-
-  // افراد و گروه‌های پیشنهادی
-  const myFriends = s.friendIds();
-  // کاربران برجسته‌ی لایه‌های من (و بالاتر) که هنوز دنبالشان نمی‌کنم، اول می‌آیند
-  const myChain = [...new Set(tn.membershipsOf(meId).filter((m) => m.status === "active").flatMap((m) => ancestorsOrSelf(tn.iam, m.scopeId).map((x) => x.id)))];
-  const featuredNote = new Map(fol.featuredIn(myChain).map((x) => [x.user_id, x.note] as const));
-  const people = users
-    .filter((u) => u.id !== meId && s.relationWith(u.id).state === "none" && !fol.isAutoFriend(u.id) && !(featuredNote.has(u.id) && fol.isFollowing(u.id)))
-    .map((u) => {
-      const mutual = s.friendIds(u.id).filter((x) => myFriends.includes(x)).length;
-      const skills = u.skills.filter((k) => actingUser.skills.includes(k)).length;
-      const featured = featuredNote.has(u.id);
-      return { u, mutual, featured, why: featured ? featuredNote.get(u.id) || "کاربر برجسته" : mutual ? `${fa(mutual)} ارتباط مشترک` : u.org === actingUser.org ? "هم‌سازمانی" : skills ? "مهارت مشترک" : u.role, sc: (featured ? 100 : 0) + mutual * 3 + (u.org === actingUser.org ? 2 : 0) + skills * 2 };
-    })
-    .sort((a, b) => b.sc - a.sc)
-    .slice(0, 3);
-  const groupsToJoin = s.chats.filter((c) => c.chat_type === "group" && !c.parent && !c.is_private && c.is_public && !s.isMember(c)).slice(0, 2);
-
-  // صندوق ورودی یکپارچه
-  const feed: FeedItem[] = [
-    ...inbox.mine.map((i) => ({ key: `ib-${i.id}`, icon: Inbox, tone: "text-brand-500", text: i.text, meta: i.time, to: i.link, unread: !inbox.isRead(i), seq: 10_000 + i.seq })),
-    ...pmNotifs.map((n) => ({ key: `pm-${n.id}`, icon: KanbanSquare, tone: "text-navy-500", text: n.text, meta: `${n.projectName} · ${n.time}`, to: `/dashboard/projects/${n.projectId}?tab=${n.link.tab}${n.link.entityId ? `&focus=${n.link.entityId}` : ""}`, unread: !n.read, seq: n.seq })),
-    ...personal.notifications.map((n, i) => ({ key: `ps-${n.id}`, icon: Bell, tone: "text-amber-500", text: n.text, meta: n.time, to: "/dashboard/notifications", unread: !n.read, seq: 500 - i })),
-  ]
-    .sort((a, b) => Number(b.unread) - Number(a.unread) || b.seq - a.seq)
-    .slice(0, 5);
 
   const tiles = [
     { icon: ListTodo, label: overdue ? `تسک باز · ${fa(overdue)} عقب` : "تسک‌های باز من", value: w.open.length, to: "/dashboard/my-work", tone: overdue ? "text-rose-600" : "text-navy-600" },
@@ -287,9 +204,8 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
   };
 
   // ---------------------------------------------------------------- ویجت‌ها
-  const roleKind = roleKindOf(tn);
+  const isSysAdmin = canSeeAdminPanel(tn);
   const widgetList: Widget[] = [
-    { id: "slideshow", title: "اسلایدشو", span: 4, node: <DashboardSlideshow className="" /> },
     {
       id: "summary",
       title: "خلاصه‌ی امروز",
@@ -321,15 +237,14 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
       </div>
       ),
     },
-    ...(roleKind ? [{ id: "role", title: `میز کار ${role.title}`, span: 4 as Span, node: <RolePanel roleId={role.id} roleTitle={role.title} /> }] : []),
-    ...(isManager ? [{ id: "alerts", title: "هشدارهای مدیریتی", span: 2 as Span, node: <ManagementAlertsCard filter={filter} /> }] : []),
+    ...(isSysAdmin ? [{ id: "role", title: "مدیریت سامانه", span: 4 as Span, node: <AdminPanel /> }] : []),
     ...pinnedReports.map((r) => ({ id: `report:${r.id}`, title: `گزارش: ${r.name}`, span: 2 as Span, node: <PinnedCard spec={r} filter={filter} onOpen={() => setOpenReport(r)} /> })),
     {
       id: "tasks",
-      title: "کارهای من",
+      title: "فعالیت و وظایف من",
       span: 2,
       node: (
-        <Panel title={filter.person && filter.person !== me ? `کارهای ${filter.person}` : "کارهای من"} icon={<ListTodo size={14} className="text-navy-600" />} to="/dashboard/my-work" count={taskList.length + (wTasks === w && !filterOn ? personal.tasks.length : 0)} filtered={filterOn}>
+        <Panel title="فعالیت و وظایف من" icon={<ListTodo size={14} className="text-navy-600" />} to="/dashboard/my-work" count={taskList.length + (wTasks === w && !filterOn ? personal.tasks.length : 0)} filtered={filterOn}>
           {taskList.slice(0, 5).map((x) => {
             const late = bucketOf(x.t, pm.refDate) === "overdue";
             return (
@@ -365,10 +280,10 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
     },
     {
       id: "agenda",
-      title: "جلسات و رویدادهای پیش‌رو",
+      title: "رویدادها و جلسات",
       span: 2,
       node: (
-        <Panel title="جلسات و رویدادهای پیش‌رو" icon={<CalendarClock size={14} className="text-sky-600" />} to="/dashboard/events" linkLabel="تقویم" count={agendaShown.length} filtered={filterOn}>
+        <Panel title="رویدادها و جلسات" icon={<CalendarClock size={14} className="text-sky-600" />} to="/dashboard/events" count={agendaShown.length} filtered={filterOn}>
           {agendaShown.slice(0, 5).map((a) => (
             <Row key={a.key} to={a.to} icon={a.kind === "meeting" ? <Video size={12} className="text-sky-500" /> : <CalendarClock size={12} className={a.kind === "invite" ? "text-amber-500" : "text-sky-500"} />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{a.date} · {a.time}</span>}>
               <Two a={a.title} b={a.kind === "invite" ? "دعوت — منتظر پاسخ شما" : a.sub} />
@@ -380,25 +295,25 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
     },
     {
       id: "announce",
-      title: "اعلان‌های مهم سازمان",
+      title: "اخبار سازمان",
       span: 1,
       node: (
-        <Panel title="اعلان‌های مهم سازمان" icon={<Megaphone size={14} className="text-rose-600" />} to="/dashboard/news" linkLabel="اخبار">
+        <Panel title="اخبار سازمان" icon={<Newspaper size={14} className="text-rose-600" />} to="/dashboard/news">
           {important.map((c) => (
-            <Row key={c.id} to={`/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}`} icon={c.kind === "news" ? <Newspaper size={12} className="text-rose-500" /> : <BookMarked size={12} className="text-brand-500" />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{dateOf(c.published_at)}</span>}>
-              <Two a={c.title} b={c.announcement ? (needsAck(c) ? "اطلاعیه‌ی رسمی · منتظر تأیید شما" : "اطلاعیه‌ی رسمی") : c.kind === "news" ? "خبر سازمان" : "مجله"} />
+            <Row key={c.id} to={`/dashboard/news/${c.id}`} icon={c.announcement ? <Megaphone size={12} className="text-rose-500" /> : <Newspaper size={12} className="text-rose-500" />} extra={<span className="text-[10.5px] text-ink-400 shrink-0">{dateOf(c.published_at)}</span>}>
+              <Two a={c.title} b={c.announcement ? (needsAck(c) ? "اطلاعیه‌ی رسمی · منتظر تأیید شما" : "اطلاعیه‌ی رسمی") : undefined} />
             </Row>
           ))}
-          {important.length === 0 && <Empty>اعلان تازه‌ای نیست.</Empty>}
+          {important.length === 0 && <Empty>خبر تازه‌ای نیست.</Empty>}
         </Panel>
       ),
     },
     {
       id: "projects",
-      title: "پروژه‌های فعال من",
+      title: "پروژه‌های من",
       span: 1,
       node: (
-        <Panel title="پروژه‌های فعال من" icon={<KanbanSquare size={14} className="text-brand-600" />} to="/dashboard/projects" count={projectsShown.length} filtered={filterOn}>
+        <Panel title="پروژه‌های من" icon={<KanbanSquare size={14} className="text-brand-600" />} to="/dashboard/projects" count={projectsShown.length} filtered={filterOn}>
           {projectsShown.slice(0, 4).map((p) => {
             const mine = p.tasks.filter((t) => t.assignee === me && !t.archived && !isDone(p, t)).length;
             const r = p.members.find((m) => m.name === me || m.userId === meId)?.role ?? (p.meta.manager === me ? "مدیر پروژه" : "");
@@ -413,137 +328,12 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
       ),
     },
     {
-      id: "suggest",
-      title: "پیشنهاد برای شما",
-      span: 1,
-      node: (
-        <Panel
-          title={contentSrc === "following" ? "از افرادی که دنبال می‌کنید" : "پیشنهاد برای شما"}
-          icon={contentSrc === "following" ? <UsersRound size={14} className="text-brand-600" /> : <Sparkles size={14} className="text-amber-500" />}
-          to={contentSrc === "following" ? "/dashboard/connections?tab=following" : "/dashboard/topics"}
-          linkLabel={contentSrc === "following" ? "دنبال‌شده‌ها" : "موضوعات"}
-        >
-          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-            <div className="flex rounded-md border border-ink-200 p-0.5 bg-ink-50" role="tablist" aria-label="منبع محتوا">
-              {(
-                [
-                  ["suggest", "پیشنهادی"],
-                  ["following", "دنبال‌شده‌ها"],
-                ] as const
-              ).map(([id, label]) => (
-                <button key={id} type="button" role="tab" aria-selected={contentSrc === id} onClick={() => setContentSrc(id)} className={`text-[11px] px-2 py-0.5 rounded ${contentSrc === id ? "bg-white shadow-sm text-brand-700 font-medium" : "text-ink-500"}`}>
-                  {label}
-                  {id === "following" && followingCount > 0 && <span className="text-ink-400"> {fa(followingCount)}</span>}
-                </button>
-              ))}
-            </div>
-            {contentSrc === "following" && (
-              <select className="text-[11px] rounded-md border border-ink-200 bg-transparent text-ink-600 px-1 py-0.5 max-w-[110px]" value={feedType} onChange={(e) => setFeedType(e.target.value as FeedType)} aria-label="نوع محتوا">
-                {(Object.keys(feedTypeLabel) as FeedType[]).map((k) => (
-                  <option key={k} value={k}>
-                    {feedTypeLabel[k]}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-          {contentSrc === "following" ? (
-            <>
-              <FeedRows rows={followingFeed} />
-              {followingFeed.length === 0 && <Empty>{followingCount ? "از افرادی که دنبال می‌کنید محتوای تازه‌ای نیست." : "هنوز کسی را دنبال نمی‌کنید؛ از «اعضای سازمان» دکمه‌ی دنبال‌کردن را بزنید."}</Empty>}
-            </>
-          ) : (
-            <>
-              {suggested.map((x) => (
-                <Row key={x.id} to={x.to} icon={<x.icon size={12} className="text-brand-500" />} extra={<Badge tone="neutral">{x.type}</Badge>}>
-                  <Two a={x.title} b={x.tags.length ? x.tags.slice(0, 3).map((t) => `#${t}`).join(" ") : undefined} />
-                </Row>
-              ))}
-              {suggested.length === 0 && <Empty>فعلاً پیشنهادی نداریم.</Empty>}
-            </>
-          )}
-        </Panel>
-      ),
-    },
-    {
-      id: "people",
-      title: "همکاری پیشنهادی",
-      span: 1,
-      node: (
-        <Panel title="همکاری پیشنهادی" icon={<UsersRound size={14} className="text-emerald-600" />} to="/dashboard/members" linkLabel="اعضا">
-          {people.map(({ u, why, featured }) => (
-            <div key={u.id} className={`flex items-center gap-2 text-[12px] rounded-lg border px-2.5 py-1.5 ${featured ? "border-amber-200 bg-amber-50/40" : "border-ink-100"}`}>
-              <Avatar name={u.name} color={u.avatarColor} size={24} />
-              <Link to={`/dashboard/profile/${u.id}`} className="flex-1 min-w-0">
-                <Two a={<span className="text-ink-800 flex items-center gap-1 min-w-0"><span className="truncate">{u.name}</span>{featured && <Star size={11} className="text-amber-500 fill-current shrink-0" aria-label="کاربر برجسته" />}</span>} b={why} />
-              </Link>
-              {featured ? (
-                <FollowButton kind="user" id={u.id} variant="link" />
-              ) : hasPermission("relations.use") && (
-                <button
-                  onClick={() => {
-                    const r = s.sendFriendRequest(u.id);
-                    notify(r.ok ? `درخواست ارتباط برای «${u.name}» ارسال شد.` : r.error, r.ok ? "success" : "warning");
-                  }}
-                  className="text-[11px] text-brand-700 border border-brand-200 rounded-md px-2 py-0.5 hover:bg-brand-50 flex items-center gap-0.5"
-                >
-                  <UserPlus size={11} /> ارتباط
-                </button>
-              )}
-            </div>
-          ))}
-          {groupsToJoin.map((g) => (
-            <div key={g.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
-              <span className="w-6 h-6 rounded-md shrink-0 flex items-center justify-center text-white text-[10px] font-bold" style={{ background: g.profile_photos[0] ?? "#0d9488" }}>
-                {g.title.slice(0, 1)}
-              </span>
-              <Link to={`/dashboard/groups/${g.id}`} className="flex-1 min-w-0">
-                <Two a={<span className="text-ink-800">{g.title}</span>} b={`گروه · ${fa(g.members.length)} عضو`} />
-              </Link>
-              {hasPermission("groups.list") && (
-                <button
-                  onClick={() => {
-                    const r = s.joinChat(g.id);
-                    if (r.ok) navigate(`/dashboard/groups/${g.id}`);
-                    else notify(r.error, "warning");
-                  }}
-                  className="text-[11px] text-emerald-700 border border-emerald-200 rounded-md px-2 py-0.5 hover:bg-emerald-50"
-                >
-                  عضویت
-                </button>
-              )}
-            </div>
-          ))}
-          {people.length + groupsToJoin.length === 0 && <Empty>پیشنهاد تازه‌ای نیست.</Empty>}
-        </Panel>
-      ),
-    },
-    {
-      id: "feed",
-      title: "تازه‌ترین اعلان‌ها",
-      span: 2,
-      node: (
-        <Panel title="تازه‌ترین اعلان‌ها" icon={<Bell size={14} className="text-brand-600" />} to="/dashboard/notifications" count={unreadNotifs}>
-          {feed.map((f) => (
-            <Link key={f.key} to={f.to} className={`flex items-start gap-2 text-[12px] rounded-lg border px-2.5 py-1.5 hover:border-brand-300 ${f.unread ? "border-brand-100 bg-brand-50/40" : "border-ink-100"}`}>
-              <f.icon size={13} className={`${f.tone} shrink-0 mt-0.5`} />
-              <span className="flex-1 min-w-0">
-                <span className={`block line-clamp-2 leading-5 ${f.unread ? "text-ink-900 font-medium" : "text-ink-600"}`}>{f.text}</span>
-                <span className="block text-[10.5px] text-ink-400 truncate">{f.meta}</span>
-              </span>
-            </Link>
-          ))}
-          {feed.length === 0 && <Empty>اعلانی ندارید.</Empty>}
-        </Panel>
-      ),
-    },
-    {
       id: "messages",
-      title: "پیام‌ها و منشن‌ها",
+      title: "گفتگوها",
       span: 2,
       node: (
-        <Panel title="پیام‌ها و منشن‌ها" icon={<AtSign size={14} className="text-amber-600" />} to="/dashboard/chat" linkLabel="گفتگوها" count={unreadMessages + mentionCount}>
-          {unreadChats.slice(0, 3).map((c) => {
+        <Panel title="گفتگوها" icon={<MessageCircle size={14} className="text-emerald-600" />} to="/dashboard/chat" count={unreadMessages}>
+          {unreadChats.slice(0, 5).map((c) => {
             const last = s.lastMessage(c.id);
             const base = c.chat_type === "group" ? "groups" : c.chat_type === "channel" ? "channels" : "chat";
             const title = c.chat_type === "direct_message" ? s.userName(c.members.find((m) => m.user_id !== meId)?.user_id ?? "") : c.title;
@@ -553,65 +343,7 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
               </Row>
             );
           })}
-          {inboxMentions.slice(0, 2).map((i) => (
-            <Row key={i.id} to={i.link} icon={<AtSign size={12} className="text-amber-500" />}>
-              <Two a={i.text} />
-            </Row>
-          ))}
-          {w.mentions.slice(0, 2).map(({ p, t, c }) => (
-            <Row key={c.id + t.id} to={`/dashboard/projects/${p.meta.id}?tab=board&focus=${t.id}`} icon={<AtSign size={12} className="text-amber-500" />}>
-              <Two a={`«${c.author}» در تسک «${t.title}»`} b={c.text} />
-            </Row>
-          ))}
-          {unreadMessages + mentionCount === 0 && <Empty>پیام یا منشن تازه‌ای ندارید.</Empty>}
-        </Panel>
-      ),
-    },
-    {
-      id: "decisions",
-      title: "منتظر تصمیم من",
-      span: 2,
-      node: (
-        <Panel title="منتظر تصمیم من" icon={<ShieldCheck size={14} className="text-violet-600" />} count={decisions}>
-          {approvalsShown.map((x) => (
-            <Row key={x.t.id} to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.id}`} icon={<ShieldCheck size={12} className="text-amber-600" />} tone="border-amber-200 bg-amber-50/40">
-              <Two a={`تأیید تسک «${x.t.title}»`} b={`درخواست ${x.t.approval!.requestedBy} · ${x.p.meta.name}`} />
-            </Row>
-          ))}
-          {eventInvites.slice(0, 2).map((e) => (
-            <div key={e.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
-              <CalendarClock size={12} className="text-sky-500 shrink-0" />
-              <Link to={`/dashboard/events/${e.id}`} className="flex-1 min-w-0">
-                <Two a={`دعوت: ${e.title}`} b={`${e.start_date} · ${e.start_time}`} />
-              </Link>
-              <button onClick={() => { const r = s.rsvp(e.id, "accepted"); notify(r.ok ? "حضور شما ثبت شد." : r.error, r.ok ? "success" : "warning"); }} className="text-[11px] text-emerald-700 border border-emerald-200 rounded-md px-1.5 py-0.5">
-                می‌آیم
-              </button>
-              <button onClick={() => s.rsvp(e.id, "declined")} className="text-[11px] text-ink-500 border border-ink-200 rounded-md px-1.5 py-0.5">
-                نه
-              </button>
-            </div>
-          ))}
-          {friendReqs.slice(0, 2).map((f) => (
-            <div key={f.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
-              <UserPlus size={12} className="text-sky-500 shrink-0" />
-              <span className="flex-1 truncate">درخواست ارتباط از «{s.userName(f.sender_id)}»</span>
-              <button onClick={() => s.respondFriend(f.id, true)} className="p-0.5 text-emerald-600" aria-label="پذیرش">
-                <Check size={14} />
-              </button>
-            </div>
-          ))}
-          {accessReqs.items.slice(0, 2).map((r) => (
-            <Row key={r.id} to={accessReqs.link} icon={<KeyRound size={12} className="text-violet-500" />}>
-              <Two a={`درخواست نقش «${r.roleName}» برای ${r.userName}`} b={r.scopeName} />
-            </Row>
-          ))}
-          {kmReview.slice(0, 2).map((d) => (
-            <Row key={d.id} to={`/dashboard/knowledge?tab=workflow&doc=${d.id}`} icon={<BookOpen size={12} className="text-brand-500" />}>
-              <Two a={`بررسی سند «${d.title}»`} />
-            </Row>
-          ))}
-          {decisions === 0 && <Empty>چیزی منتظر تصمیم شما نیست.</Empty>}
+          {unreadChats.length === 0 && <Empty>پیام خوانده‌نشده‌ای ندارید.</Empty>}
         </Panel>
       ),
     },
@@ -619,10 +351,10 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
       ? [
           {
             id: "topics",
-            title: "موضوعات دنبال‌شده",
+            title: "پرسش و پاسخ",
             span: 1 as Span,
             node: (
-              <Panel title="موضوعات دنبال‌شده" icon={<BellRing size={14} className="text-brand-600" />} to="/dashboard/forum?scope=followed" count={topicUnread}>
+              <Panel title="پرسش و پاسخ" icon={<BellRing size={14} className="text-brand-600" />} to="/dashboard/forum?scope=followed" count={topicUnread}>
                 <FollowedTopicRows rows={followedTopics} />
                 {followedTopics.length === 0 && <Empty>موضوعی را دنبال نمی‌کنید؛ در صفحه‌ی هر پرسش «دنبال کردن» را بزنید.</Empty>}
               </Panel>
@@ -631,28 +363,8 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
         ]
       : []),
     ...(prayer.enabled ? [{ id: "prayer", title: "اوقات شرعی", span: 1 as Span, node: <PrayerTimesWidget className="h-full" /> }] : []),
-    {
-      id: "polls",
-      title: "نظرسنجی‌های من",
-      span: 4,
-      node: (
-        <div className="card p-3.5">
-          <button type="button" onClick={() => setPollsOpen((v) => !v)} aria-expanded={pollsOpen} className="w-full flex items-center justify-between gap-2 text-xs font-bold text-ink-800">
-            <span className="flex items-center gap-1.5">
-              <BarChart3 size={14} className="text-violet-600" /> نظرسنجی‌های من
-            </span>
-            <ChevronDown size={14} className={`text-ink-400 transition-transform ${pollsOpen ? "rotate-180" : ""}`} />
-          </button>
-          {pollsOpen && (
-            <div className="mt-2.5">
-              <MyPollsPanel />
-            </div>
-          )}
-        </div>
-      ),
-    },
   ];
-  const DEFAULT_ORDER = ["slideshow", "summary", "role", "alerts", ...pinnedReports.map((r) => `report:${r.id}`), "tasks", "agenda", "decisions", "announce", "projects", "feed", "messages", "suggest", "people", "topics", "prayer", "polls"];
+  const DEFAULT_ORDER = ["summary", "role", ...pinnedReports.map((r) => `report:${r.id}`), "tasks", "agenda", "announce", "projects", "messages", "topics", "prayer"];
   const byId = new Map(widgetList.map((x) => [x.id, x]));
   const order = mergeOrder(layout?.order, widgetList.map((x) => x.id), DEFAULT_ORDER);
   const hidden = new Set(layout?.hidden ?? []);
@@ -762,247 +474,48 @@ export default function PersonalHub({ header }: { header: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// کارت نقش — هر نقش میز کار مخصوص خودش را دارد
+// «مدیریت سامانه» — خلاصه‌ی ساختار و دسترسی‌های واحد فعلی، فقط برای راهبران
+// (از روی مجوزها، نه نام نقش — تا با نقش‌های سفارشی هم کار کند)
 // ---------------------------------------------------------------------------
-// کارت نقش از روی «مجوزها» انتخاب می‌شود، نه نام نقش — تا با نقش‌های سفارشی هم کار کند
-function roleKindOf(t: { hasPermission: (p: string) => boolean }): "" | "r1" | "org" | "r2" | "r3" | "r5" {
-  return t.hasPermission("settings.system")
-    ? "r1"
-    : t.hasPermission("iam.members.manage") || t.hasPermission("roles.assign")
-      ? "org"
-      : t.hasPermission("comments.moderate") && t.hasPermission("news.manage")
-        ? "r2"
-        : t.hasPermission("projects.create")
-          ? "r3"
-          : t.hasPermission("groups.create")
-            ? "r5"
-            : "";
+function canSeeAdminPanel(t: { hasPermission: (p: string) => boolean }) {
+  return t.hasPermission("settings.system") || t.hasPermission("iam.members.manage") || t.hasPermission("roles.assign");
 }
 
-function RolePanel({ roleTitle }: { roleId: string; roleTitle: string }) {
-  const s = useSocial();
-  const pm = useProjectsPM();
+function AdminPanel() {
   const t = useTenancy();
-  const { actingUser } = t;
-  const me = actingUser.name;
-  const roleId = roleKindOf(t);
-
-  if (roleId === "org") {
-    const node = t.contextNode;
-    const sub = t.iam.scopes.filter((x) => x.active && t.scopePath(x.id).startsWith(t.scopePath(node.id)));
-    const subIds = new Set(sub.map((x) => x.id));
-    const members = t.iam.memberships.filter((m) => subIds.has(m.scopeId));
-    const live = t.iam.bindings.filter((b) => b.active && subIds.has(b.scopeId));
-    const expiring = live.filter((b) => b.validUntil && b.validUntil >= t.today && b.validUntil <= addDaysJ(t.today, 45));
-    const suspended = members.filter((m) => m.status === "suspended");
-    const roles = t.iam.roles.filter((r) => subIds.has(r.createdIn));
-    const audits = t.iam.audits.filter((a) => subIds.has(a.scopeId)).slice(0, 4);
-    const tiles = [
-      { label: "زیرمجموعه‌ها", value: sub.length - 1, to: "/dashboard/settings?section=structure" },
-      { label: "عضویت‌ها", value: members.length, to: "/dashboard/settings?section=members" },
-      { label: "نقش‌های تعریف‌شده", value: roles.length, to: "/dashboard/settings?section=roles" },
-      { label: "تخصیص‌های فعال", value: live.length, to: "/dashboard/settings?section=bindings" },
-      { label: "دسترسی رو به انقضا", value: expiring.length, to: "/dashboard/settings?section=review" },
-      { label: "عضویت معلق", value: suspended.length, to: "/dashboard/settings?section=members" },
-    ];
-    return (
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <Gauge size={15} className="text-brand-600" /> میز کار {roleTitle} — {node.name}
-          </p>
-          <Link to="/dashboard/settings" className="text-[11px] text-brand-700 hover:underline flex items-center">
-            تنظیمات سامانه <ChevronLeft size={12} />
+  const node = t.contextNode;
+  const sub = t.iam.scopes.filter((x) => x.active && t.scopePath(x.id).startsWith(t.scopePath(node.id)));
+  const subIds = new Set(sub.map((x) => x.id));
+  const members = t.iam.memberships.filter((m) => subIds.has(m.scopeId));
+  const live = t.iam.bindings.filter((b) => b.active && subIds.has(b.scopeId));
+  const expiring = live.filter((b) => b.validUntil && b.validUntil >= t.today && b.validUntil <= addDaysJ(t.today, 45));
+  const suspended = members.filter((m) => m.status === "suspended");
+  const roles = t.iam.roles.filter((r) => subIds.has(r.createdIn));
+  const audits = t.iam.audits.filter((a) => subIds.has(a.scopeId)).slice(0, 4);
+  const tiles = [
+    { label: "زیرمجموعه‌ها", value: sub.length - 1, to: "/dashboard/settings?section=structure" },
+    { label: "عضویت‌ها", value: members.length, to: "/dashboard/settings?section=members" },
+    { label: "نقش‌های تعریف‌شده", value: roles.length, to: "/dashboard/settings?section=roles" },
+    { label: "تخصیص‌های فعال", value: live.length, to: "/dashboard/settings?section=bindings" },
+    { label: "دسترسی رو به انقضا", value: expiring.length, to: "/dashboard/settings?section=review" },
+    { label: "عضویت معلق", value: suspended.length, to: "/dashboard/settings?section=members" },
+  ];
+  return (
+    <Panel title="مدیریت سامانه" icon={<Gauge size={14} className="text-brand-600" />} to="/dashboard/settings">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {tiles.map((x) => (
+          <Link key={x.label} to={x.to} className="rounded-lg border border-ink-100 p-2.5 hover:border-brand-300">
+            <p className="text-[11px] text-ink-500">{x.label}</p>
+            <p className="text-lg font-bold text-ink-900">{fa(x.value)}</p>
           </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {tiles.map((x) => (
-            <Link key={x.label} to={x.to} className="rounded-lg border border-ink-100 p-2.5 hover:border-brand-300">
-              <p className="text-[11px] text-ink-500">{x.label}</p>
-              <p className="text-lg font-bold text-ink-900">{fa(x.value)}</p>
-            </Link>
-          ))}
-        </div>
-        {audits.length > 0 && (
-          <div className="mt-3 space-y-1">
-            {audits.map((a) => (
-              <p key={a.id} className="text-[11.5px] text-ink-600 truncate">
-                <span className="text-ink-400">{a.at} · </span>
-                {a.summary}
-              </p>
-            ))}
-          </div>
-        )}
+        ))}
       </div>
-    );
-  }
-
-  if (roleId === "r1") {
-    const mods: { m: SocialModule; label: string; to: string }[] = [
-      { m: "content", label: "محتوا", to: "/dashboard/magazines" },
-      { m: "media", label: "رسانه", to: "/dashboard/media" },
-      { m: "forums", label: "پرسش و پاسخ", to: "/dashboard/forum" },
-      { m: "events", label: "رویدادها", to: "/dashboard/events" },
-      { m: "messaging", label: "پیام‌رسانی", to: "/dashboard/groups" },
-      { m: "relations", label: "ارتباطات", to: "/dashboard/members" },
-    ];
-    const pending = s.comments.filter((c) => !c.approved).length;
-    return (
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <Gauge size={15} className="text-brand-600" /> میز کار {roleTitle}
-          </p>
-          <Link to="/dashboard/social-admin" className="text-[11px] text-brand-700 hover:underline flex items-center">
-            داشبورد مدیریتی شبکه <ChevronLeft size={12} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
-          {mods.map(({ m, label, to }) => {
-            const st = s.dashboard(m, "admin");
-            return (
-              <Link key={m} to={to} className="rounded-lg border border-ink-100 p-2.5 hover:border-brand-300">
-                <p className="text-[11px] font-bold text-ink-600 mb-1">{label}</p>
-                {st.slice(0, 2).map((x) => (
-                  <p key={x.key} className="text-[11px] text-ink-500 flex justify-between gap-1">
-                    <span className="truncate">{x.title}</span>
-                    <b className="text-ink-900">{fa(x.value)}</b>
-                  </p>
-                ))}
-              </Link>
-            );
-          })}
-        </div>
-        {pending > 0 && (
-          <Link to="/dashboard/social-admin" className="mt-3 inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-            <FileClock size={13} /> {fa(pending)} نظر در صف تأیید است
-          </Link>
-        )}
-      </div>
-    );
-  }
-
-  if (roleId === "r2") {
-    const drafts = [
-      ...s.content.filter((c) => c.is_draft).map((c) => ({ id: c.id, title: c.title, type: c.kind === "news" ? "خبر" : c.kind === "blogs" ? "بلاگ" : "مجله", to: `/dashboard/${c.kind === "news" ? "news" : c.kind === "blogs" ? "blog" : "magazines"}/${c.id}` })),
-      ...s.media.filter((m) => m.is_draft).map((m) => ({ id: m.id, title: m.caption, type: "رسانه", to: `/dashboard/media/${m.id}` })),
-      ...s.events.filter((e) => e.is_draft).map((e) => ({ id: e.id, title: e.title, type: "رویداد", to: `/dashboard/events/${e.id}` })),
-    ];
-    const pending = s.comments.filter((c) => !c.approved);
-    const st = s.dashboard("content", "admin");
-    return (
-      <div className="card p-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Panel title={`میز کار ${roleTitle} — پیش‌نویس‌ها`} icon={<FileClock size={14} className="text-amber-600" />} count={drafts.length}>
-          {drafts.slice(0, 4).map((d) => (
-            <Row key={d.id} to={d.to} icon={<FileClock size={12} className="text-amber-500" />} extra={<Badge tone="warning">{d.type}</Badge>}>
-              <Two a={d.title} />
-            </Row>
-          ))}
-          {drafts.length === 0 && <Empty>پیش‌نویسی در صف انتشار نیست.</Empty>}
-        </Panel>
-        <Panel title="نظرهای منتظر تأیید" icon={<ShieldCheck size={14} className="text-violet-600" />} to="/dashboard/social-admin" count={pending.length}>
-          {pending.slice(0, 4).map((c) => (
-            <div key={c.id} className="flex items-center gap-2 text-[12px] rounded-lg border border-ink-100 px-2.5 py-1.5">
-              <span className="flex-1 min-w-0">
-                <Two a={c.content} b={`${s.userName(c.user_id)} · ${entityLabel[c.entity_name]}`} />
-              </span>
-              <button onClick={() => s.approveComment(c.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" aria-label="تأیید نظر">
-                <Check size={14} />
-              </button>
-            </div>
-          ))}
-          {pending.length === 0 && <Empty>صف تأیید خالی است.</Empty>}
-        </Panel>
-        <Panel title="آمار محتوا" icon={<Gauge size={14} className="text-brand-600" />}>
-          <div className="grid grid-cols-2 gap-2">
-            {st.map((x) => (
-              <div key={x.key} className="rounded-lg bg-ink-50 px-2.5 py-2">
-                <p className="text-[10.5px] text-ink-400 truncate">{x.title}</p>
-                <p className="text-sm font-bold text-ink-900">{fa(x.value)}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-    );
-  }
-
-  if (roleId === "r3") {
-    const managed = pm.projects.filter((p) => !p.meta.archived && (p.meta.manager === me || p.members.some((m) => (m.name === me || m.userId === actingUser.id) && (isOwner(m) || effectiveMatrix(m).team === "manage"))));
-    return (
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <KanbanSquare size={15} className="text-brand-600" /> میز کار {roleTitle} — سلامت پروژه‌های تحت مدیریت
-          </p>
-          <Link to="/dashboard/projects" className="text-[11px] text-brand-700 hover:underline flex items-center">
-            همه‌ی پروژه‌ها <ChevronLeft size={12} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
-          {managed.map((p) => {
-            const late = p.tasks.filter((t) => !t.archived && isOverdue(p, t, pm.refDate)).length;
-            const approvals = p.expenses.filter((e) => e.status === "در انتظار تأیید").length;
-            const risks = p.risks.filter((r) => r.status !== "بسته").length;
-            const dot = p.meta.health === "سبز" ? "bg-emerald-500" : p.meta.health === "زرد" ? "bg-amber-500" : "bg-rose-500";
-            return (
-              <Link key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} className="rounded-lg border border-ink-100 p-3 hover:border-brand-300">
-                <p className="text-[12.5px] font-medium text-ink-900 flex items-center gap-1.5 truncate">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} /> {p.meta.name}
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="flex-1 h-1.5 rounded-full bg-ink-100 overflow-hidden">
-                    <span className="block h-full bg-brand-500" style={{ width: `${projectProgress(p)}%` }} />
-                  </span>
-                  <span className="text-[11px] text-ink-600">{fa(projectProgress(p))}٪</span>
-                </div>
-                <p className="text-[11px] text-ink-500 mt-1.5">
-                  <span className={late ? "text-rose-600" : ""}>{fa(late)} تسک عقب</span>، {fa(approvals)} هزینه منتظر تأیید، {fa(risks)} ریسک باز
-                </p>
-              </Link>
-            );
-          })}
-          {managed.length === 0 && <Empty>پروژه‌ای به مدیریت شما ثبت نشده است.</Empty>}
-        </div>
-      </div>
-    );
-  }
-
-  if (roleId === "r5") {
-    const mine = s.chats.filter((c) => (c.chat_type === "group" || c.chat_type === "channel") && !c.parent && s.chatRole(c) === "admin");
-    return (
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
-            <UsersRound size={15} className="text-brand-600" /> میز کار {roleTitle} — گروه‌ها و کانال‌های تحت مدیریت
-          </p>
-          <Link to="/dashboard/groups" className="text-[11px] text-brand-700 hover:underline flex items-center">
-            <Plus size={12} /> گروه جدید
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
-          {mine.map((c) => {
-            const topics = s.chats.filter((x) => x.parent === c.id).length;
-            const files = s.files.filter((f) => f.owner_type === (c.chat_type === "channel" ? "channel" : "group") && f.owner_id === c.id).length;
-            return (
-              <Link key={c.id} to={`/dashboard/${c.chat_type === "channel" ? "channels" : "groups"}/${c.id}`} className="rounded-lg border border-ink-100 p-3 hover:border-brand-300 flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center text-white text-sm font-bold" style={{ background: c.profile_photos[0] ?? "#0d9488" }}>
-                  {c.title.slice(0, 1)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[12.5px] font-medium text-ink-900 truncate">{c.title}</span>
-                  <span className="block text-[11px] text-ink-500">
-                    {c.chat_type === "channel" ? "کانال" : "گروه"} · {fa(c.members.length)} عضو · {fa(topics)} {c.chat_type === "channel" ? "زیرکانال" : "تاپیک"} · {fa(files)} فایل
-                  </span>
-                </span>
-                {s.unreadCount(c) > 0 && <Badge tone="brand">{fa(s.unreadCount(c))}</Badge>}
-              </Link>
-            );
-          })}
-          {mine.length === 0 && <Empty>هنوز مدیر گروه یا کانالی نیستید.</Empty>}
-        </div>
-      </div>
-    );
-  }
-  return null;
+      {audits.map((a) => (
+        <Link key={a.id} to="/dashboard/settings?section=audit-log" className="block text-[11.5px] text-ink-600 hover:text-brand-700 truncate">
+          <span className="text-ink-400">{a.at} · </span>
+          {a.summary}
+        </Link>
+      ))}
+    </Panel>
+  );
 }

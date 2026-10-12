@@ -142,11 +142,9 @@ export const EVENT_CATALOG = [
   { code: "MINUTES_PUBLISHED", category: "meeting", label: "انتشار صورت‌جلسه", sample: "صورت‌جلسه‌ی «بازبینی اسپرینت» با ۳ مصوبه منتشر شد.", api: "proposed", trigger: "user", notify: r(["participants", "manager"], ["inapp", "email"]), why: "بند ۳۷ سند: «صورت جلسه منتشر شد»." },
   { code: "ACTION_ITEM_CONVERTED", category: "meeting", label: "تبدیل مصوبه به تسک", sample: "مصوبه‌ی «تکمیل صفحه‌ی ورود» به تسک تبدیل شد.", api: "proposed", trigger: "user", notify: null, why: "خودِ تبدیل فقط ثبت می‌شود؛ مسئول با TASK_ASSIGNED مطلع می‌شود." },
 
-  // ------------------------------ سند و ارتباطات ------------------------------
+  // ------------------------------ سند ------------------------------
   { code: "DOCUMENT_UPLOADED", category: "document", label: "بارگذاری سند", sample: "سند «قرارداد پیمانکار.pdf» بارگذاری شد.", api: "proposed", trigger: "user", notify: r(["team"], ["inapp"], "کم") },
   { code: "DOCUMENT_DELETED", category: "document", label: "حذف سند", sample: "سند «قرارداد پیمانکار.pdf» حذف شد.", api: "proposed", trigger: "user", notify: null },
-  { code: "ANNOUNCEMENT_POSTED", category: "communication", label: "انتشار اطلاعیه", sample: "اطلاعیه‌ی «جلسه‌ی پروژه فردا ساعت ۱۰» منتشر شد.", api: "proposed", trigger: "user", notify: r(["team"], ["inapp", "email", "push"], "مهم") },
-  { code: "CHANNEL_CREATED", category: "communication", label: "ایجاد کانال", sample: "کانال «طراحی» ایجاد شد.", api: "proposed", trigger: "user", notify: r(["team"], ["inapp"], "کم") },
 
   // ------------------------------ Playbook ------------------------------
   { code: "PLAYBOOK_STARTED", category: "playbook", label: "شروع اجرای Playbook", sample: "اجرای قالب «آنبوردینگ» آغاز شد.", en: "Execution of Playbook 'Onboarding' was started.", api: "requested", trigger: "user", notify: r(["manager", "team"], ["inapp"]) },

@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
 // F18 «پروفایل سازمانی» (۲.۱.۵) — /dashboard/org/:id برای هر لایه‌ی IAM (سیستم/هلدینگ/شرکت/واحد):
-// سربرگ (کاور، لوگو، نام، نوع لایه، سازمان بالادست، شعار، راه‌های تماس)، دنبال‌کردن و «پیام به روابط عمومی»،
+// سربرگ (کاور، لوگو، نام، نوع لایه، سازمان بالادست، شعار، راه‌های تماس)، «پیام به روابط عمومی»،
 // تب‌های معرفی (متن، حوزه‌ها، آمار، مدیران، اکوسیستم نوآوری)، اعضا (قابل جستجو)، واحدهای زیرمجموعه (درخت)،
 // پروژه‌ها، محتوا (خبر، رویداد، رسانه) و اسناد عمومی.
 // ویرایش فقط برای مدیر همان لایه (یا لایه‌های بالاتر)؛ لایه‌های بالادست برای مدیران پایین‌دست فقط‌خواندنی‌اند.
 // ---------------------------------------------------------------------------
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Building2, ChevronLeft, FileText, FolderKanban, Globe, Mail, MapPin, MessageCircle, Network, Pencil, Phone, Search, Star, Users } from "lucide-react";
+import { Building2, ChevronLeft, FileText, FolderKanban, Globe, Mail, MapPin, MessageCircle, Network, Pencil, Phone, Search, Users } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
@@ -54,7 +54,6 @@ function OrgPage({ node }: { node: ScopeNode }) {
   const brand = useEffectiveBranding(node.id);
   const st = useLocalStore(orgStore);
   const navigate = useNavigate();
-  const { notify } = useToast();
   const [tab, setTab] = useState<TabId>("about");
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState(false);
@@ -102,14 +101,6 @@ function OrgPage({ node }: { node: ScopeNode }) {
   const children = (pid: string) => t.iam.scopes.filter((n) => n.parentId === pid && n.active);
   const units = subtree.filter((n) => n.id !== node.id && n.active);
 
-  const following = (st.followers[node.id] ?? []).includes(t.actingUser.id);
-  const toggleFollow = () => {
-    orgStore.set((x) => {
-      const cur = x.followers[node.id] ?? [];
-      return { ...x, followers: { ...x.followers, [node.id]: following ? cur.filter((u) => u !== t.actingUser.id) : [...cur, t.actingUser.id] } };
-    });
-    notify(following ? `دنبال‌کردن «${node.name}» لغو شد.` : `صفحه‌ی «${node.name}» را دنبال می‌کنید.`, "success");
-  };
   const pr = managers[0]?.userId;
   const messagePr = () => {
     if (!pr) return;
@@ -156,7 +147,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
                 <Badge tone="navy">{t.scopeTypeLabel[node.type]}</Badge>
                 {!node.active && <Badge tone="danger">غیرفعال</Badge>}
               </div>
-              {(profile.tagline || brand.tagline) && <p className="text-[12.5px] text-ink-500 mt-0.5">{profile.tagline || brand.tagline}</p>}
+              {profile.tagline && <p className="text-[12.5px] text-ink-500 mt-0.5">{profile.tagline}</p>}
               {parent && (
                 <p className="text-[11.5px] text-ink-400 mt-0.5">
                   زیرمجموعه‌ی{" "}
@@ -167,9 +158,6 @@ function OrgPage({ node }: { node: ScopeNode }) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant={following ? "secondary" : "primary"} icon={<Star size={13} className={following ? "fill-current" : ""} />} onClick={toggleFollow} aria-pressed={following}>
-                {following ? "دنبال می‌کنید" : "دنبال‌کردن"}
-              </Button>
               {t.hasPermission("chat.view") && pr && pr !== t.actingUser.id && (
                 <Button size="sm" icon={<MessageCircle size={13} />} onClick={messagePr} title={`گفتگو با ${users.find((u) => u.id === pr)?.name}`}>
                   پیام به روابط عمومی

@@ -103,7 +103,7 @@ export const ACCESS_GROUPS: AccessGroup[] = [
     scope: "project",
     resources: [
       { id: "meetings", label: "جلسات و صورت‌جلسه", hint: "ایجاد جلسه، ثبت صورت‌جلسه و تبدیل اقدام به تسک", group: "collab", max: "write", tab: "minutes" },
-      { id: "communication", label: "کانال‌ها و گفتگو", hint: "کانال‌ها، پیام‌ها و اطلاعیه‌ها", group: "collab", max: "write", tab: "communication" },
+      { id: "communication", label: "کانال‌ها و گفتگو", hint: "گروه‌ها و کانال‌های پیام‌رسان پروژه", group: "collab", max: "write", tab: "communication" },
       { id: "documents", label: "اسناد", hint: "بارگذاری و نسخه‌ی اسناد", group: "collab", max: "write", tab: "documents" },
       { id: "calendar", label: "تقویم", hint: "تقویم سررسیدها و جلسات پروژه", group: "collab", max: "write", tab: "calendar" },
     ],

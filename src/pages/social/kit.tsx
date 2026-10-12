@@ -108,7 +108,9 @@ export function UserLine({ id, sub, size = 28, link = true }: { id: string; sub?
 /** انتخاب چند کاربر با جستجو (دعوت، افزودن عضو، …) */
 export function UserPicker({ value, onChange, exclude = [], placeholder = "جستجوی نام…" }: { value: string[]; onChange: (ids: string[]) => void; exclude?: string[]; placeholder?: string }) {
   const [q, setQ] = useState("");
-  const list = users.filter((u) => !exclude.includes(u.id) && (!q || u.name.includes(q) || u.role.includes(q) || u.org.includes(q)));
+  // فقط افراد قابل‌دید (اعضای واحدهای من و زیرمجموعه‌ها)؛ انتخاب‌های قبلی همیشه می‌مانند
+  const vis = new Set(useTenancy().visibleUserIds());
+  const list = users.filter((u) => !exclude.includes(u.id) && (vis.has(u.id) || value.includes(u.id)) && (!q || u.name.includes(q) || u.role.includes(q) || u.org.includes(q)));
   return (
     <div>
       <div className="relative mb-2">
@@ -540,11 +542,34 @@ export function CategoryBadges({ ids }: { ids: string[] }) {
   );
 }
 
-/** پوستر رنگی (در پروتوتایپ به‌جای تصویر آپلودشده) */
+/** پوستر تصویری است؟ (مسیر /samples/…، نشانی http یا data/blob) — در غیر این صورت رنگ است */
+export const isImagePoster = (p: string | null | undefined): p is string => !!p && /^(\/|https?:|data:|blob:)/.test(p);
+/** نشانی قابل‌نمایش پوستر تصویری؛ مسیرهای ریشه‌ای با base بیلد (VITE_BASE) پیشوند می‌گیرند */
+export const posterUrl = (p: string) => (p.startsWith("/") && !p.startsWith("//") ? `${(import.meta.env.BASE_URL || "/").replace(/\/$/, "")}${p}` : p);
+
+/** پوستر: تصویر (اگر مسیر تصویر باشد) یا رنگ گرادیانی (در پروتوتایپ به‌جای تصویر آپلودشده) */
 export function Poster({ color, children, className = "h-32" }: { color: string | null; children?: ReactNode; className?: string }) {
+  const bg = isImagePoster(color) ? `center / cover no-repeat url("${posterUrl(color)}"), #334155` : `linear-gradient(135deg, ${color ?? "#1f4f99"}, color-mix(in srgb, ${color ?? "#1f4f99"} 55%, #000))`;
   return (
-    <div className={`rounded-lg flex items-end p-3 text-white ${className}`} style={{ background: `linear-gradient(135deg, ${color ?? "#1f4f99"}, color-mix(in srgb, ${color ?? "#1f4f99"} 55%, #000))` }}>
+    <div className={`rounded-lg flex items-end p-3 text-white ${className}`} style={{ background: bg }}>
       {children}
+    </div>
+  );
+}
+
+/** کاور ۱۶:۹ کارت/صفحه‌ی محتوا (هم‌شکل motodev): تصویر، رنگ تخت یا جای‌نگهدار خاکستری با آیکن تصویر */
+export function CoverImage({ src, alt = "", icon, className = "", children }: { src: string | null; alt?: string; icon?: ReactNode; className?: string; children?: ReactNode }) {
+  const [broken, setBroken] = useState(false);
+  const img = isImagePoster(src) && !broken;
+  const color = !isImagePoster(src) && src ? src : null;
+  return (
+    <div className={`relative aspect-video rounded-lg overflow-hidden ${color ? "" : "bg-ink-200/70"} ${className}`} style={color ? { background: color } : undefined}>
+      {img ? (
+        <img src={posterUrl(src as string)} alt={alt} loading="lazy" className="absolute inset-0 w-full h-full object-cover" onError={() => setBroken(true)} />
+      ) : !color ? (
+        <span className="absolute inset-0 flex items-center justify-center text-ink-400">{icon ?? <ImageIcon size={56} strokeWidth={1.25} />}</span>
+      ) : null}
+      {children && <div className="absolute top-2 right-2 left-2 flex flex-wrap gap-1">{children}</div>}
     </div>
   );
 }

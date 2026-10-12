@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // F17 «اوقات شرعی تمامی شهرهای ایران» (۱.۲۱.۹)
 //  - PrayerTimesWidget (پیش‌فرض): ابزارک میز کار — شش وقت، تاریخ شمسی و قمری، شمارش معکوس، یادآور اذان ظهر.
-//  - usePrayerTimes(): برای تقویم (خط اوقات در نمای روز/هفته).
+//  - usePrayerTimes(): داده‌ی اوقات برای ابزارک و تنظیمات.
 //  - PrayerCityCard: انتخاب استان و شهر در «تنظیمات ← برند و ظاهر ← ظاهر من».
 //  - PrayerAdminCard: روشن/خاموش ابزارک برای کل سامانه و شهر پیش‌فرض (راهبر).
 // محاسبه کاملاً آفلاین (src/lib/prayer.ts)؛ ترجیح کاربر: user_pref.prayer_city_id
@@ -214,7 +214,7 @@ export function PrayerCityCard() {
           <MoonStar size={15} className="text-emerald-600" /> شهر اوقات شرعی
         </p>
         <p className="text-[11.5px] text-ink-500 mt-0.5">
-          {p.city.name}، {p.city.province} — ابزارک میز کار و خط اوقات در تقویم بر اساس همین شهر است.
+          {p.city.name}، {p.city.province} — ابزارک اوقات شرعی میز کار بر اساس همین شهر است.
         </p>
       </div>
       <Button size="sm" icon={<MapPin size={13} />} onClick={() => setPick(true)}>
@@ -258,7 +258,7 @@ export function PrayerAdminCard() {
         <ApiChip items={[{ label: "اوقات یک شهر در یک روز", ep: platformEndpoints.prayerTimes() }, { label: "جستجوی شهرها", ep: platformEndpoints.cities() }]} />
       </div>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[12.5px] text-ink-700">نمایش ابزارک در میز کار و خط اوقات در تقویم (کل سامانه)</span>
+        <span className="text-[12.5px] text-ink-700">نمایش ابزارک در میز کار (کل سامانه)</span>
         <Toggle on={st.system.enabled} disabled={!can} onChange={() => set({ enabled: !st.system.enabled }, st.system.enabled ? "ابزارک اوقات شرعی خاموش شد" : "ابزارک اوقات شرعی روشن شد")} label="ابزارک اوقات شرعی" />
       </div>
       <div className="flex items-center justify-between gap-3 flex-wrap">

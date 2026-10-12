@@ -45,7 +45,6 @@ import { loginPolicyStore, otpRequiredFor } from "../iam/loginPolicy";
 import { onSettingsChange } from "../iam/settingsAudit";
 import { onSecurityAudit } from "../iam/securityAudit";
 import { recordLogin, type LoginMethod } from "../iam/loginHistory";
-import { applyFeaturedOnJoin } from "../social/follow/core";
 import { OtpForm } from "../iam/OtpChallenge";
 import Modal from "../components/ui/Modal";
 
@@ -128,7 +127,7 @@ type TenancyValue = {
   primaryRoleOf: (userId: string) => Role | undefined;
   membershipsOf: (userId: string) => (Membership & { scope: ScopeNode })[];
   membersOf: (scopeId: string, includeDescendants?: boolean) => Membership[];
-  /** اعضایی که کاربرِ فعلی (در کانتکست) حق دیدنشان را دارد */
+  /** افرادی که کاربر می‌بیند: اعضای واحدهای عضویت فعالش + زیرمجموعه‌ها (مستقل از کانتکست؛ عضو ریشه همه را) */
   visibleUserIds: () => string[];
   scopePath: (id: string) => string;
   scopeLabel: (id?: string) => string;
@@ -554,8 +553,6 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         affectedUserId: userId,
         summary: `«${uname(userId)}» عضو «${node(scopeId)?.name}» شد.`,
       });
-      // ارتباط خودکار عضو تازه با کاربران برجسته‌ی همین لایه و لایه‌های بالاتر (F09)
-      applyFeaturedOnJoin(userId, ancestorsOrSelf(iam, scopeId).map((x) => x.id));
       return ok;
     };
     const setMembershipStatus: TenancyValue["setMembershipStatus"] = (id, status) => {
@@ -818,6 +815,16 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       return subtree.has(o) || chain.has(o);
     };
     const scopeLabel = (id?: string) => node(id)?.name ?? "—";
+    // دید افراد (مستقل از کانتکست سربرگ): اجتماعِ اعضای هر واحدی که کاربر در آن عضو فعال است
+    // + همه‌ی زیرمجموعه‌هایش (نه لایه‌های بالاتر). عضو ریشه‌ی سامانه همه را می‌بیند.
+    const visiblePeople = (() => {
+      const mine = iam.memberships.filter((m) => m.userId === me && m.status === "active");
+      if (mine.some((m) => m.scopeId === ROOT_ID)) return allUsers.map((u) => u.id);
+      const scopes = new Set(mine.flatMap((m) => descendantsOrSelf(iam, m.scopeId).map((x) => x.id)));
+      const ids = new Set(iam.memberships.filter((m) => m.status === "active" && scopes.has(m.scopeId)).map((m) => m.userId));
+      ids.add(me);
+      return allUsers.filter((u) => ids.has(u.id)).map((u) => u.id);
+    })();
 
     const mkHoldingNode = (h: Omit<Holding, "id">, id: string): ScopeNode => ({ id, type: "holding", name: h.name, code: id, parentId: ROOT_ID, active: h.active, color: h.color, lead: h.lead, createdAt: `${today} ${nowClock()}` });
 
@@ -931,11 +938,7 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         const set = includeDescendants ? new Set(descendantsOrSelf(iam, scopeId).map((x) => x.id)) : new Set([scopeId]);
         return iam.memberships.filter((m) => set.has(m.scopeId));
       },
-      visibleUserIds: () => {
-        if (contextNode.type === "system") return allUsers.map((u) => u.id);
-        const ids = new Set(iam.memberships.filter((m) => m.status === "active" && (subtree.has(m.scopeId) || chain.has(m.scopeId))).map((m) => m.userId));
-        return allUsers.filter((u) => ids.has(u.id)).map((u) => u.id);
-      },
+      visibleUserIds: () => visiblePeople,
       scopePath: (id) => pathLabel(iam, id),
       scopeLabel,
       scopeTypeLabel,

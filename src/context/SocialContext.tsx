@@ -90,7 +90,6 @@ import type {
 import { fetchFeed as fetchFeedSim, matchesKeywords } from "../social/feedCatalog";
 import { aparatHash, aparatMeta, APARAT_CHANNEL_FEED } from "../social/linkPreview";
 import { av, scheduleDue, type QuarantineItem } from "../social/av";
-import { followStore } from "../social/follow/core";
 import { contentKindLabel } from "../social/types";
 import { withDemoScopes, type Scoped as OrgScopedT } from "../data/tenancy";
 import { ROOT_ID } from "../iam/model";
@@ -226,6 +225,13 @@ function load(): Store {
           st.files = [...st.files, ...base.files.filter((x) => V5_FILES.includes(x.id) && !haveF.has(x.id))];
           st.version = VERSION;
         }
+        // پوسترهای تصویری نمونه: آیتم نمونه‌ای که هنوز پوستر رنگی قدیمی دارد و ویرایش نشده، پوستر تازه می‌گیرد
+        const seedPoster = <T extends { id: string; poster: string | null; updated_at: string }>(x: T, b: T | undefined): T =>
+          b && (typeof x.poster !== "string" || x.poster.startsWith("#")) && !(b.poster ?? "").startsWith("#") && x.poster !== b.poster && x.updated_at === b.updated_at ? { ...x, poster: b.poster } : x;
+        const baseC = new Map(base.content.map((x) => [x.id, x]));
+        const baseM = new Map(base.media.map((x) => [x.id, x]));
+        st.content = st.content.map((x) => seedPoster(x, baseC.get(x.id)));
+        st.media = st.media.map((x) => seedPoster(x, baseM.get(x.id)));
         // تنظیم‌های تازه‌ای که در ذخیره‌ی قدیمی نیستند
         const haveS = new Set(st.settings.map((x) => x.key));
         st.settings = [...st.settings, ...base.settings.filter((x) => !haveS.has(x.key))];
@@ -416,8 +422,6 @@ type Ctx = Store & {
   unfriend: (id: string) => void;
   blockUser: (userId: string) => void;
   unblock: (id: string) => void;
-  /** «پیشنهادی» — F09 دوستی خودکار با کاربران برجسته: دوستیِ پذیرفته‌شده میان دو کاربر دلخواه (تکرارپذیر، با ثبت ممیزی) */
-  connectUsers: (a: string, b: string, reason?: string) => Result;
   // ------------------------------------------------ dashboards
   dashboard: (module: SocialModule, who: "admin" | "user") => DashboardStat[];
   resetSocial: () => void;
@@ -705,19 +709,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           chats: s.chats.map((x) => ({ ...x, category_ids: drop(x.category_ids) })),
         };
       }),
-    connectUsers: (a, b, reason) => {
-      if (!a || !b || a === b) return { ok: false, error: "دو کاربر متفاوت لازم است." };
-      const cur = store.friendships.find((f) => (f.sender_id === a && f.receiver_id === b) || (f.sender_id === b && f.receiver_id === a));
-      if (cur?.status === "accepted") return { ok: true, id: cur.id };
-      if (cur?.status === "blocked") return { ok: false, error: "یکی از دو کاربر دیگری را مسدود کرده است." };
-      const id = cur?.id ?? nid("fr");
-      upd((s) => {
-        if (s.friendships.some((f) => f.status === "accepted" && ((f.sender_id === a && f.receiver_id === b) || (f.sender_id === b && f.receiver_id === a)))) return s;
-        const rest = s.friendships.filter((f) => f.id !== id);
-        return fx({ ...s, friendships: [...rest, { id, sender_id: a, receiver_id: b, status: "accepted", blocked_by: null, created_at: cur?.created_at ?? now(), updated_at: now() }] }, "friendship", "دوستی خودکار", `${userName(a)} ↔ ${userName(b)}`, reason);
-      });
-      return { ok: true, id };
-    },
     reassignCategory: (fromId, toId) => {
       const from = store.categories.find((c) => c.id === fromId);
       const to = store.categories.find((c) => c.id === toId);
@@ -1812,14 +1803,6 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       });
     const h = window.setInterval(tick, 30_000);
     return () => window.clearInterval(h);
-  }, []);
-  // «پیشنهادی» — F09: پیوندهای «دوستی خودکار» انبار دنبال‌کردن (src/social/follow) به دوستی واقعی تبدیل می‌شوند
-  useEffect(() => {
-    const sync = () => followStore.get().autoLinks.forEach((l) => {
-      if (!latest.current.areFriends(l.user_id, l.featured_id)) latest.current.connectUsers(l.user_id, l.featured_id, "کاربر برجسته‌ی واحد");
-    });
-    sync();
-    return followStore.subscribe(sync);
   }, []);
   useEffect(() => {
     const check = () => {

@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { GanttChartSquare, LayoutGrid, Wallet, Plus, Archive, Eye, History, Bell, Settings, ChevronDown, MoreHorizontal, Info, X, KanbanSquare, CalendarRange, Share2, Timer } from "lucide-react";
+import { GanttChartSquare, LayoutGrid, Plus, Archive, Eye, ChevronDown, Info, X, KanbanSquare, CalendarRange, Share2, Timer } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
-import StatCard from "../components/ui/StatCard";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
-import { activeTasks, budgetUsage, findTask, paidTotal, projectProgress } from "../pm/selectors";
-import { fa, fmtRial } from "../pm/jalali";
+import { activeTasks, budgetUsage, findTask, projectProgress } from "../pm/selectors";
+import { fa } from "../pm/jalali";
 import { ProjectPageContext, type TabId } from "./project/shared";
 import { ProjectIcon } from "./project/projectIcons";
 import OverviewTab from "./project/OverviewTab";
@@ -62,7 +61,6 @@ export default function ProjectBoard() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<string | undefined>();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [headOpen, setHeadOpen] = useState(false);
 
   // دروازه‌ی بیرونی: مجوز سراسری projects.tasks و دست‌کم یک دسترسی ویرایش در این پروژه؛ سپس دسترسی ریز هر بخش
   const viewOnlyMember = !!access.member && access.viewOnly;
@@ -194,16 +192,10 @@ export default function ProjectBoard() {
     </button>
   );
 
-  const headItems = [
-    access.canSeeTab("history") && { tab: "history" as TabId, label: "تاریخچه رویدادها", Icon: History },
-    access.canSeeTab("notifications") && { tab: "notifications" as TabId, label: "اعلان‌ها و خودکارسازی", Icon: Bell, badge: unreadHere },
-    access.canSeeTab("settings") && { tab: "settings" as TabId, label: "تنظیمات پروژه", Icon: Settings },
-  ].filter(Boolean) as { tab: TabId; label: string; Icon: typeof Bell; badge?: number }[];
-
   const progress = projectProgress(p);
   const usage = Math.round(budgetUsage(p));
   const healthDot = p.meta.health === "سبز" ? "bg-emerald-500" : p.meta.health === "زرد" ? "bg-amber-500" : "bg-rose-500";
-  const viewIcon: Partial<Record<TabId, typeof Bell>> = { board: KanbanSquare, sprints: Timer, gantt: CalendarRange, graph: Share2 };
+  const viewIcon: Partial<Record<TabId, typeof Info>> = { board: KanbanSquare, sprints: Timer, gantt: CalendarRange, graph: Share2 };
 
   const ctxBase = { p, pid: id, canManage, hasPerm: hasPermission, refDate: pm.refDate, openTask: setTaskId, goTab, focusId, access, editable };
 
@@ -222,28 +214,6 @@ export default function ProjectBoard() {
           actions={
             <div className="flex items-center gap-2">
               <ProjectSearch />
-              {headItems.length > 0 && (
-                <div className="relative">
-                  <button onClick={() => setHeadOpen((v) => !v)} aria-expanded={headOpen} title="ابزارهای پروژه" aria-label="ابزارهای پروژه" className={`relative w-9 h-9 rounded-lg border flex items-center justify-center ${headItems.some((h) => h.tab === view) ? "border-brand-300 bg-brand-50 text-brand-700" : "border-ink-200 bg-white text-ink-500 hover:text-ink-800"}`}>
-                    <MoreHorizontal size={16} />
-                    {unreadHere && access.canSeeTab("notifications") ? <span className="absolute -top-1 -left-1 bg-rose-600 text-white text-[10px] rounded-full min-w-4 h-4 px-0.5 flex items-center justify-center">{fa(unreadHere)}</span> : null}
-                  </button>
-                  {headOpen && (
-                    <>
-                      <div className="fixed inset-0 z-20" onClick={() => setHeadOpen(false)} />
-                      <div className="absolute left-0 top-full mt-1 z-30 w-56 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5">
-                        {headItems.map(({ tab, label, Icon, badge }) => (
-                          <button key={tab} onClick={() => { setHeadOpen(false); goTab(tab); }} className={`w-full text-right px-3 py-2 text-[13px] flex items-center gap-2 hover:bg-ink-50 ${view === tab ? "text-brand-700 font-medium" : "text-ink-700"}`}>
-                            <Icon size={14} className="text-ink-400" />
-                            <span className="flex-1">{label}</span>
-                            {badge ? <span className="text-[10px] rounded-full px-1.5 bg-rose-600 text-white">{fa(badge)}</span> : null}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
               {canTaskWrite && (
                 <Button variant="primary" icon={<Plus size={15} />} onClick={() => openCreate()}>
                   تسک جدید
@@ -292,14 +262,7 @@ export default function ProjectBoard() {
           </div>
         )}
 
-        {view === "overview" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <StatCard label="پیشرفت کلی" value={`${fa(progress)}٪`} tone="brand" icon={<GanttChartSquare size={16} />} />
-            {access.can("budget") && <StatCard label="مصرف بودجه" value={`${fa(usage)}٪`} hint={`${fmtRial(paidTotal(p))} از ${fmtRial(p.budget.total)}`} tone="warning" icon={<Wallet size={16} />} />}
-            <StatCard label="تعداد تسک" value={fa(ts.length)} icon={<LayoutGrid size={16} />} />
-            <StatCard label="وضعیت سلامت" value={p.meta.health} hint={`مرحله: ${p.meta.phase}`} tone={p.meta.health === "سبز" ? "success" : p.meta.health === "زرد" ? "warning" : "danger"} />
-          </div>
-        ) : (
+        {view !== "overview" && (
           <div className="card px-4 py-2.5 mb-4 flex items-center gap-x-6 gap-y-2 flex-wrap text-xs text-ink-600">
             <span className="flex items-center gap-2 min-w-[180px]">
               پیشرفت

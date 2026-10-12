@@ -279,23 +279,9 @@ export type PMDocument = {
   version: number;
   taskId?: string;
   meetingId?: string;
-  channelId?: string;
   /** صورت‌جلسه‌ای که این فایل پیوست آن است */
   minuteId?: string;
 };
-
-export type ChatMessage = {
-  id: string;
-  author: string;
-  text: string;
-  at: string;
-  pinned?: boolean;
-  replyTo?: string;
-  reactions?: Record<string, string[]>;
-  fileName?: string;
-};
-export type PMChannel = { id: string; name: string; description: string; members: string[] | "all"; messages: ChatMessage[] };
-export type Announcement = { id: string; title: string; body: string; author: string; at: string; pinned: boolean };
 
 export type AutomationRule = {
   id: string;
@@ -348,6 +334,8 @@ export type ProjectMeta = {
   contractId?: string;
   opportunityId?: string;
   companyName?: string;
+  /** گروه‌ها/کانال‌های پیام‌رسان سامانه که به این پروژه وصل‌اند (شناسه‌ی گفتگو در SocialContext) */
+  chatIds?: string[];
 } & Scoped;
 
 /** رکورد تاریخچه — شکل API: ProjectActivityLog {user_id, event_category, description, metadata, created_at} */
@@ -562,8 +550,6 @@ export type ProjectState = {
   meetings: PMMeeting[];
   minutes: PMMinute[];
   documents: PMDocument[];
-  channels: PMChannel[];
-  announcements: Announcement[];
   automation: AutomationRule[];
   /** بازنویسی قواعد اعلانِ پیش‌فرض برای همین پروژه */
   notifRules: Partial<Record<EventCode, NotifRule>>;

@@ -338,7 +338,7 @@ export default function Tickets() {
         <EmptyState
           icon={<LifeBuoy size={22} />}
           title={base.length === 0 ? (view === "mine" ? "هنوز تیکتی ثبت نکرده‌اید" : "تیکتی در این بخش نیست") : "تیکتی با این فیلترها پیدا نشد"}
-          description={view === "mine" && base.length === 0 ? "هر جا مشکلی دیدید از دکمه‌ی «گزارش مشکل» یا «تیکت جدید» استفاده کنید؛ مسیر صفحه و مرورگر خودکار ثبت می‌شود." : undefined}
+          description={view === "mine" && base.length === 0 ? "هر جا مشکلی دیدید از «تیکت جدید» یا «گزارش مشکل» در راهنمای همان صفحه استفاده کنید." : undefined}
         />
       ) : (
         <div className="card overflow-hidden divide-y divide-ink-100">

@@ -8,9 +8,10 @@ import EmptyState from "../../components/ui/EmptyState";
 import { useKnowledge } from "../../context/KnowledgeContext";
 import { useSocial } from "../../context/SocialContext";
 import { dayNum, fa, weekDayNames, weekdayOf } from "../../pm/jalali";
-import { counts, daysBetween, entryTypeLabel, expectedOn, fh, inRange, isLeave, shortDate, sourceLabel, teamLabel, type Period, type Person, type TimeEntry } from "../../timesheet/types";
+import { counts, daysBetween, entryTypeLabel, expectedOn, fh, inRange, isLeave, isPersonalTaskId, shortDate, sourceLabel, teamLabel, type Period, type Person, type TimeEntry } from "../../timesheet/types";
 import { useTs } from "./lib";
 import { DayColumns, Donut, HBarChart, palette, type Datum } from "./ui";
+import MonthlyReports from "./MonthlyReports";
 
 type Dim = "project" | "task" | "day" | "source" | "type" | "person";
 const dimLabel: Record<Dim, string> = { project: "پروژه", task: "تسک", day: "روز", source: "منبع", type: "نوع", person: "شخص" };
@@ -42,7 +43,7 @@ export default function Reports({ period }: { period: Period }) {
     const src = dim === "type" ? entries : work;
     src.forEach((e) => {
       if (dim === "project") add(e.projectId ?? "-", projectName(e.projectId), e.hours, projectColor(e.projectId));
-      else if (dim === "task") add(`${e.projectId}/${e.taskId ?? "-"}`, taskTitle(e.projectId, e.taskId) ?? (e.projectId ? `${projectName(e.projectId)} — بدون تسک` : "کار عمومی"), e.hours);
+      else if (dim === "task") add(`${e.projectId}/${e.taskId ?? "-"}`, isPersonalTaskId(e.taskId) ? `${taskTitle(e.projectId, e.taskId) ?? "تسک شخصی"} (شخصی)` : taskTitle(e.projectId, e.taskId) ?? (e.projectId ? `${projectName(e.projectId)} — بدون تسک` : "کار عمومی"), e.hours);
       else if (dim === "source") add(e.source, sourceLabel[e.source], e.hours);
       else if (dim === "type") add(e.type, entryTypeLabel[e.type], e.hours);
       else if (dim === "person") add(e._person.id, e._person.name, e.hours, e._person.avatarColor);
@@ -120,6 +121,8 @@ export default function Reports({ period }: { period: Period }) {
           </p>
         )}
       </div>
+
+      <MonthlyReports />
 
       {person ? <ActivityFeed person={person} period={period} /> : <p className="text-xs text-ink-400 text-center">برای دیدن «تجمیع فعالیت‌ها» یک نفر را انتخاب کنید.</p>}
     </div>

@@ -34,9 +34,9 @@ export function useMyAccessRequests() {
   return useMemo(() => t.iam.requests.filter((r) => r.userId === t.actingUser.id), [t]);
 }
 
-export type EffectiveBranding = { name: string; tagline: string; color: string; logo: string; initials: string; sourceScopeId: string | null; scopeId: string };
+export type EffectiveBranding = { name: string; /** حذف شد (زیرعنوان منو)؛ برای سازگاری همیشه خالی */ tagline: string; color: string; logo: string; initials: string; sourceScopeId: string | null; scopeId: string };
 
-/** برند مؤثر در کانتکست فعلی (یا یک واحد مشخص) — نام، زیرعنوان، رنگ و لوگو با ارث‌بری لایه‌ای */
+/** برند مؤثر در کانتکست فعلی (یا یک واحد مشخص) — عنوان سامانه، رنگ و لوگو با ارث‌بری لایه‌ای */
 export function useEffectiveBranding(scopeId?: string): EffectiveBranding {
   const { iam, contextId } = useTenancy();
   const state = useLocalStore(scopedStore);
@@ -46,7 +46,7 @@ export function useEffectiveBranding(scopeId?: string): EffectiveBranding {
     const name = String(r("brand.name").value);
     return {
       name,
-      tagline: String(r("brand.tagline").value),
+      tagline: "",
       color: String(r("brand.color").value),
       logo: String(r("brand.logo").value ?? ""),
       initials: initialsOf(name),

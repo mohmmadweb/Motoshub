@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
-// «تنظیمات سامانه ← برند و ظاهر ← اسلایدشو» (F15) — مدیریت اسلایدهای صفحه‌ی عمومی و بالای داشبورد:
-// افزودن/ویرایش (تصویر دسکتاپ و موبایل، عنوان، زیرعنوان، دکمه و لینک، بازه‌ی نمایش، مخاطب، مکان)،
+// «تنظیمات سامانه ← برند و ظاهر ← اسلایدشو» (F15) — مدیریت اسلایدهای صفحه‌ی عمومی:
+// افزودن/ویرایش (تصویر دسکتاپ و موبایل، عنوان، زیرعنوان، دکمه و لینک، بازه‌ی نمایش، مخاطب)،
 // مرتب‌سازی با کشیدن (و دکمه‌های بالا/پایین برای صفحه‌کلید/موبایل)، فعال/غیرفعال، پیش‌نمایش،
-// و تنظیمات اسلایدر هر مکان (زمان هر اسلاید، پخش خودکار، نشانگرها). هر تغییر در لاگ ممیزی ثبت می‌شود.
+// و تنظیمات اسلایدر (زمان هر اسلاید، پخش خودکار، نشانگرها). هر تغییر در لاگ ممیزی ثبت می‌شود.
 // ---------------------------------------------------------------------------
 import { useState, type DragEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Eye, GalleryHorizontal, GripVertical, ImagePlus, Plus } from "lucide-react";
@@ -22,7 +22,7 @@ import { dayNum, nowClock } from "../../pm/jalali";
 import { platformEndpoints } from "../../lib/platformEndpoints";
 import { ApiChip } from "../social/kit";
 import { SectionHead, ScopeSelect, Field } from "./iam/shared";
-import { Slider, audienceLabel, placementLabel, slideStatus, slideStore, type Slide, type SlideAudience, type SlidePlacement, type SliderSettings } from "../../components/Slideshow";
+import { Slider, audienceLabel, slideStatus, slideStore, type Slide, type SlideAudience, type SliderSettings } from "../../components/Slideshow";
 
 const GALLERY = ["lab", "expo", "training", "energy", "meeting", "teamwork", "factory", "datacenter", "rail", "agri-drone", "construction", "warehouse", "school", "dairy"].map((n) => `/img/${n}.jpg`);
 const statusMeta: Record<ReturnType<typeof slideStatus>, { label: string; tone: BadgeTone }> = {
@@ -40,7 +40,7 @@ export default function SlideshowSection() {
   const confirm = useConfirm();
   const can = t.hasPermission("settings.branding") && !t.readOnly;
   const [edit, setEdit] = useState<Slide | null>(null);
-  const [preview, setPreview] = useState<"landing" | "dashboard" | null>(null);
+  const [preview, setPreview] = useState<"landing" | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const slides = [...st.slides].sort((a, b) => a.order - b.order);
   const stamp = () => `${t.today} ${nowClock()}`;
@@ -99,10 +99,10 @@ export default function SlideshowSection() {
     notify("اسلاید ذخیره شد.", "success");
     setEdit(null);
   };
-  const setSettings = (where: "landing" | "dashboard", patch: Partial<SliderSettings>) => {
+  const setSettings = (where: "landing", patch: Partial<SliderSettings>) => {
     const before = st.settings[where];
     slideStore.set((x) => ({ ...x, settings: { ...x.settings, [where]: { ...x.settings[where], ...patch } } }));
-    audit(`تنظیمات اسلایدر ${where === "landing" ? "صفحه‌ی عمومی" : "داشبورد"}`, { ...before }, { ...before, ...patch });
+    audit("تنظیمات اسلایدر صفحه‌ی عمومی", { ...before }, { ...before, ...patch });
   };
 
   return (
@@ -110,7 +110,7 @@ export default function SlideshowSection() {
       <SectionHead
         icon={<GalleryHorizontal size={18} />}
         title="اسلایدشو"
-        description="اسلایدهای صفحه‌ی عمومی و بالای میز کار — با ترتیب، بازه‌ی زمانی و مخاطب."
+        description="اسلایدهای صفحه‌ی عمومی — با ترتیب، بازه‌ی زمانی و مخاطب."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <ApiChip
@@ -167,7 +167,7 @@ export default function SlideshowSection() {
                     <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                       <Badge tone={status.tone}>{status.label}</Badge>
                       <span className="text-[10.5px] text-ink-400">
-                        {placementLabel[s.placement]} · {s.audience === "scope" ? t.scopeLabel(s.scope_id ?? undefined) : audienceLabel[s.audience]}
+                        {s.audience === "scope" ? t.scopeLabel(s.scope_id ?? undefined) : audienceLabel[s.audience]}
                         {(s.starts_at || s.ends_at) && ` · ${s.starts_at || "…"} تا ${s.ends_at || "…"}`}
                       </span>
                     </div>
@@ -192,12 +192,12 @@ export default function SlideshowSection() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {(["landing", "dashboard"] as const).map((w) => {
+        {(["landing"] as const).map((w) => {
           const cfg = st.settings[w];
           return (
             <div key={w} className="card p-4 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[13px] font-bold text-ink-900">اسلایدر {w === "landing" ? "صفحه‌ی عمومی" : "بالای داشبورد"}</p>
+                <p className="text-[13px] font-bold text-ink-900">اسلایدر صفحه‌ی عمومی</p>
                 <Button size="sm" variant="ghost" icon={<Eye size={13} />} onClick={() => setPreview(w)}>
                   پیش‌نمایش
                 </Button>
@@ -226,18 +226,18 @@ export default function SlideshowSection() {
       </div>
 
       {edit && <SlideEditor value={edit} onClose={() => setEdit(null)} onSave={save} />}
-      <Modal open={!!preview} onClose={() => setPreview(null)} title={`پیش‌نمایش ${preview === "landing" ? "صفحه‌ی عمومی" : "داشبورد"}`} description="اسلایدهای در حال نمایش امروز، با ترتیب فعلی (مخاطب «لایه‌ی سازمانی» در پیش‌نمایش هم دیده می‌شود)." width="max-w-3xl">
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="پیش‌نمایش صفحه‌ی عمومی" description="اسلایدهای در حال نمایش امروز، با ترتیب فعلی (مخاطب «لایه‌ی سازمانی» در پیش‌نمایش هم دیده می‌شود)." width="max-w-3xl">
         {preview && (
-          <PreviewSlides where={preview} slides={slides.filter((s) => (s.placement === "both" || s.placement === preview) && slideStatus(s, t.today) === "live" && (preview === "dashboard" || s.audience === "public"))} settings={st.settings[preview]} />
+          <PreviewSlides where={preview} slides={slides.filter((s) => s.placement !== "dashboard" && slideStatus(s, t.today) === "live" && s.audience === "public")} settings={st.settings[preview]} />
         )}
       </Modal>
     </div>
   );
 }
 
-function PreviewSlides({ where, slides, settings }: { where: "landing" | "dashboard"; slides: Slide[]; settings: SliderSettings }) {
+function PreviewSlides({ slides, settings }: { where: "landing"; slides: Slide[]; settings: SliderSettings }) {
   if (!slides.length) return <p className="text-sm text-ink-500">امروز اسلایدی برای این مکان در حال نمایش نیست.</p>;
-  return <Slider slides={slides} settings={settings} variant={where === "landing" ? "hero" : "slim"} label="پیش‌نمایش اسلایدشو" />;
+  return <Slider slides={slides} settings={settings} variant="hero" label="پیش‌نمایش اسلایدشو" />;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -299,7 +299,7 @@ function SlideEditor({ value, onClose, onSave }: { value: Slide; onClose: () => 
   return (
     <Modal open onClose={onClose} title={value.id ? "ویرایش اسلاید" : "اسلاید جدید"} description={value.id ? `PATCH /core/slides/${value.id}/` : "POST /core/slides/"} width="max-w-2xl">
       <div className="space-y-3">
-        <Slider slides={[s.title ? s : { ...s, title: "عنوان اسلاید" }]} settings={{ enabled: true, autoplay: false, indicators: false, interval_sec: 6 }} variant={s.placement === "dashboard" ? "slim" : "hero"} label="پیش‌نمایش اسلاید" />
+        <Slider slides={[s.title ? s : { ...s, title: "عنوان اسلاید" }]} settings={{ enabled: true, autoplay: false, indicators: false, interval_sec: 6 }} variant="hero" label="پیش‌نمایش اسلاید" />
         <ImagePick label="تصویر دسکتاپ (image_desktop)" value={s.image_desktop} onChange={(v) => set({ image_desktop: v })} />
         <ImagePick label="تصویر موبایل (image_mobile) — اختیاری" value={s.image_mobile} onChange={(v) => set({ image_mobile: v })} optional />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -321,15 +321,6 @@ function SlideEditor({ value, onClose, onSave }: { value: Slide; onClose: () => 
           <Box label="پایان نمایش (ends_at)">
             <JalaliDatePicker value={s.ends_at} onChange={(v) => set({ ends_at: v })} placeholder="بدون پایان" />
           </Box>
-          <Field label="مکان (placement)">
-            <select className="input-field" value={s.placement} onChange={(e) => set({ placement: e.target.value as SlidePlacement })}>
-              {(Object.keys(placementLabel) as SlidePlacement[]).map((k) => (
-                <option key={k} value={k}>
-                  {placementLabel[k]}
-                </option>
-              ))}
-            </select>
-          </Field>
           <Field label="مخاطب (audience)">
             <select className="input-field" value={s.audience} onChange={(e) => set({ audience: e.target.value as SlideAudience })}>
               {(Object.keys(audienceLabel) as SlideAudience[]).map((k) => (
@@ -345,7 +336,7 @@ function SlideEditor({ value, onClose, onSave }: { value: Slide; onClose: () => 
             </Box>
           )}
         </div>
-        {s.audience !== "public" && s.placement !== "dashboard" && <p className="text-[11.5px] text-amber-700">صفحه‌ی عمومی فقط اسلایدهای با مخاطب «عمومی» را نشان می‌دهد؛ این اسلاید فقط در داشبورد دیده می‌شود.</p>}
+        {s.audience !== "public" && <p className="text-[11.5px] text-amber-700">صفحه‌ی عمومی فقط اسلایدهای با مخاطب «عمومی» را نشان می‌دهد.</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           <span className="flex items-center gap-2 text-[12.5px] text-ink-700">
             <Toggle on={s.is_active} onChange={() => set({ is_active: !s.is_active })} label="فعال" /> فعال (is_active)

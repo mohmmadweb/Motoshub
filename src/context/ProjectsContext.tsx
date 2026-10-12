@@ -6,7 +6,7 @@
 //   ۳) قواعد خودکارسازی (Done ← تکمیل، آزادسازی وابسته‌ها، آستانه‌ی بودجه، …) را اجرا می‌کند
 // در محصول واقعی همین منطق سمت سرور است؛ این‌جا برای دمو در مرورگر شبیه‌سازی شده.
 // ---------------------------------------------------------------------------
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
 import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa, weekdayOf } from "../pm/jalali";
@@ -21,7 +21,6 @@ import type {
   BoardColumn,
   ColumnKind,
   NotifRule,
-  PMChannel,
   PMDocument,
   PMExpense,
   PMIssue,
@@ -40,7 +39,6 @@ import type {
   RecipientRole,
   TimeLog,
   PMBudget,
-  Announcement,
   ProjectGroup,
   Sprint,
   CustomFieldDef,
@@ -108,7 +106,8 @@ const tabOfCategory: Record<string, string> = {
   milestone: "milestones",
   meeting: "minutes",
   document: "documents",
-  communication: "communication",
+  // منشن‌ها اکنون فقط از نظرهای تسک می‌آیند (گفتگوی پروژه در پیام‌رسان است)
+  communication: "board",
   time: "time",
   // تب Playbook از صفحه‌ی پروژه حذف شد؛ رویدادهای آن در تاریخچه دیده می‌شوند
   playbook: "history",
@@ -449,17 +448,63 @@ function withExplicitAccess(s: StoreState): StoreState {
   };
 }
 
+/** پیشوند یکتای جلسات پروژه: «QGJ · …» تا نام جلسه در تقویم، رویدادها و جستجو با پروژه‌اش شناخته شود */
+export const meetingPrefix = (p: ProjectState) => `${p.meta.key ?? p.meta.name} · `;
+export const bareMeetingTitle = (p: ProjectState, title: string) => (title.startsWith(meetingPrefix(p)) ? title.slice(meetingPrefix(p).length) : title).trim();
+/** نام کامل و یکتای جلسه در پروژه (جلسات یک سری تکرارشونده هم‌نام می‌مانند) */
+function uniqueMeetingTitle(p: ProjectState, m: { id?: string; title: string; seriesOf?: string }): string {
+  const base = `${meetingPrefix(p)}${bareMeetingTitle(p, m.title)}`;
+  const sameSeries = (x: PMMeeting) => x.id === m.id || x.seriesOf === m.id || (!!m.seriesOf && (x.id === m.seriesOf || x.seriesOf === m.seriesOf));
+  const taken = (t: string) => p.meetings.some((x) => !sameSeries(x) && x.title === t);
+  let title = base;
+  for (let n = 2; taken(title); n++) title = `${base} (${fa(n)})`;
+  return title;
+}
+
+/**
+ * مهاجرت تحمل‌پذیر مدل جلسه (بدون تغییر STORE_VERSION):
+ * ۱) نام جلسات با کلید پروژه پیشوند می‌گیرد؛ ۲) صورت‌جلسه‌ی بدون جلسه، جلسه‌ی «برگزارشده»ی خودش را می‌گیرد
+ * (صورت‌جلسه جزئی از جلسه است)؛ ۳) داده‌ی گفتگوی درون‌پروژه‌ی قدیمی (کانال/اطلاعیه) کنار گذاشته می‌شود.
+ */
+function withMeetingModel(s: StoreState): StoreState {
+  let seq = s.seq;
+  const projects = s.projects.map((p0) => {
+    const legacy = p0 as ProjectState & { channels?: unknown; announcements?: unknown };
+    const orphan = p0.minutes.filter((mn) => !mn.meetingId || !p0.meetings.some((m) => m.id === mn.meetingId));
+    const needsName = p0.meetings.some((m) => !m.title.startsWith(meetingPrefix(p0)));
+    if (!orphan.length && !needsName && legacy.channels === undefined && legacy.announcements === undefined) return p0;
+    const { channels: _c, announcements: _a, ...rest } = legacy;
+    void _c;
+    void _a;
+    const p: ProjectState = { ...rest, meetings: [...p0.meetings], minutes: [...p0.minutes] };
+    p.minutes = p.minutes.map((mn) => {
+      if (!orphan.includes(mn)) return mn;
+      // جلسه‌ی هم‌نام (یا هم‌تاریخ) موجود → همان جلسه؛ وگرنه جلسه‌ی «برگزارشده»ی تازه
+      const same = p.meetings.find((m) => bareMeetingTitle(p0, m.title) === bareMeetingTitle(p0, mn.title)) ?? p.meetings.find((m) => m.date === mn.date && m.status !== "لغوشده");
+      if (same) return { ...mn, meetingId: same.id };
+      seq += 1;
+      const id = `mt${seq}`;
+      p.meetings.push({ id, title: mn.title, date: mn.date, time: "۱۰:۰۰", duration: 60, mode: "حضوری", participants: mn.participants ?? [], description: "", taskIds: [], status: "برگزارشده" });
+      return { ...mn, meetingId: id };
+    });
+    const out: ProjectState = { ...p, meetings: [] };
+    p.meetings.forEach((m) => out.meetings.push(m.title.startsWith(meetingPrefix(p)) ? m : { ...m, title: uniqueMeetingTitle(out, m) }));
+    return out;
+  });
+  return { ...s, seq, projects };
+}
+
 function loadStore(): StoreState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as StoreState;
-      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withExplicitAccess(withMeetingLinks(withRecurringDemo(parsed)));
+      if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withMeetingModel(withExplicitAccess(withMeetingLinks(withRecurringDemo(parsed))));
     }
   } catch {
     /* ذخیره‌سازی مرورگر در دسترس نیست — از داده‌ی نمونه شروع می‌کنیم */
   }
-  return withExplicitAccess(withMeetingLinks(withRecurringDemo(initialStore())));
+  return withMeetingModel(withExplicitAccess(withMeetingLinks(withRecurringDemo(initialStore()))));
 }
 
 // --------------------------------------------------------------------------
@@ -587,16 +632,12 @@ type Ctx = {
   setMeetingStatus: (pid: string, id: string, status: PMMeeting["status"]) => void;
   saveMinutes: (pid: string, m: Omit<PMMinute, "id"> & { id?: string }, publish: boolean, newFiles?: { name: string; type: PMDocument["type"]; size: string }[]) => void;
   convertAction: (pid: string, minuteId: string, action: ActionItem) => void;
-  // --- اسناد و ارتباطات ---
+  // --- اسناد و گفتگوی پروژه ---
   addDocument: (pid: string, d: Omit<PMDocument, "id" | "uploadedBy" | "date" | "version">) => void;
   newDocumentVersion: (pid: string, id: string) => void;
   removeDocument: (pid: string, id: string) => void;
-  createChannel: (pid: string, c: Omit<PMChannel, "id" | "messages">) => void;
-  postMessage: (pid: string, channelId: string, text: string, opts?: { replyTo?: string; fileName?: string }) => void;
-  togglePin: (pid: string, channelId: string, msgId: string) => void;
-  react: (pid: string, channelId: string, msgId: string, reaction: string) => void;
-  postAnnouncement: (pid: string, a: Pick<Announcement, "title" | "body" | "pinned">) => void;
-  removeAnnouncement: (pid: string, id: string) => void;
+  /** اتصال یک گروه/کانال واقعی پیام‌رسان (SocialContext) به پروژه */
+  linkChat: (pid: string, chatId: string) => void;
   // --- خودکارسازی و اعلان ---
   toggleAutomation: (pid: string, id: string) => void;
   setNotifRule: (pid: string, code: EventCode, rule: NotifRule | null) => void;
@@ -642,6 +683,16 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   }, [store]);
 
   const on = (pid: string, fn: (p: ProjectState, emit: Emit, s: StoreState) => void) => setStore((prev) => apply(prev, pid, actor, fn));
+
+  // جلسات و صورت‌جلسات پروژه فقط برای اعضای همان پروژه دیده می‌شوند (تقویم، رویدادها و جلسات، جستجو، …)
+  const visibleProjects = useMemo(
+    () =>
+      store.projects.map((p) => {
+        const member = p.meta.manager === actingUser.name || p.members.some((m) => m.userId === actingUser.id || m.name === actingUser.name);
+        return member || (!p.meetings.length && !p.minutes.length) ? p : { ...p, meetings: [], minutes: [] };
+      }),
+    [store.projects, actingUser.id, actingUser.name]
+  );
 
   // ---------------------------------------------------------------- تسک (هسته)
   const doMove = (p: ProjectState, emit: Emit, t: PMTask, to: string, s?: StoreState) => {
@@ -906,8 +957,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     store,
     refDate: store.refDate,
     actor,
-    projects: store.projects,
-    getProject: (id) => store.projects.find((p) => p.meta.id === id),
+    projects: visibleProjects,
+    getProject: (id) => visibleProjects.find((p) => p.meta.id === id),
 
     // ============================================================ پروژه
     createProject: (input) => {
@@ -966,11 +1017,6 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           meetings: [],
           minutes: [],
           documents: [],
-          channels: [
-            { id: "ch1", name: "عمومی", description: "گفتگوی عمومی تیم پروژه", members: "all", messages: [] },
-            { id: "ch2", name: "اطلاع‌رسانی", description: "فقط اطلاعیه‌های مهم", members: "all", messages: [] },
-          ],
-          announcements: [],
           automation: defaultAutomation().map((r) => ({ ...r, enabled: defs.automation[r.id] ?? r.enabled })),
           notifRules: {},
           logs: [],
@@ -1882,6 +1928,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     // ============================================================ جلسات
     saveMeeting: (pid, input) =>
       on(pid, (p, emit, s) => {
+        input = { ...input, title: uniqueMeetingTitle(p, input) };
         if (!input.id) {
           const m: PMMeeting = { ...input, id: nid(s, "mt"), status: "برنامه‌ریزی‌شده" };
           p.meetings.unshift(m);
@@ -1997,67 +2044,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       }),
 
     // ============================================================ ارتباطات
-    createChannel: (pid, c) =>
-      on(pid, (p, emit, s) => {
-        const ch: PMChannel = { ...c, id: nid(s, "ch"), messages: [] };
-        p.channels.push(ch);
-        emit("CHANNEL_CREATED", `کانال «${ch.name}» ${ch.members === "all" ? "برای همه‌ی اعضا" : `با ${fa(ch.members.length)} عضو`} ایجاد شد.`, { entity: { type: "channel", id: ch.id } });
-      }),
-    postMessage: (pid, channelId, text, opts = {}) =>
-      on(pid, (p, emit, s) => {
-        const ch = p.channels.find((x) => x.id === channelId);
-        if (!ch) return;
-        ch.messages.push({ id: nid(s, "ms"), author: actor, text, at: `${s.refDate} ${nowClock()}`, replyTo: opts.replyTo, fileName: opts.fileName });
-        const mentioned = parseMentions(p, text);
-        if (mentioned.length) emit("USER_MENTIONED", `«${actor}» ${mentioned.map((m) => `«${m}»`).join("، ")} را در کانال «${ch.name}» منشن کرد.`, { entity: { type: "channel", id: channelId }, ctx: { mentioned } });
-        if (opts.fileName) {
-          const doc: PMDocument = { id: nid(s, "dc"), name: opts.fileName, type: "سایر", size: "—", uploadedBy: actor, date: s.refDate, version: 1, channelId };
-          p.documents.unshift(doc);
-          emit("DOCUMENT_UPLOADED", `فایل «${opts.fileName}» در کانال «${ch.name}» ارسال شد و در اسناد پروژه قرار گرفت.`, { entity: { type: "document", id: doc.id } });
-        }
-      }),
-    togglePin: (pid, channelId, msgId) =>
-      setStore((prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) =>
-          p.meta.id !== pid ? p : { ...p, channels: p.channels.map((c) => (c.id !== channelId ? c : { ...c, messages: c.messages.map((m) => (m.id === msgId ? { ...m, pinned: !m.pinned } : m)) })) }
-        ),
-      })),
-    react: (pid, channelId, msgId, reaction) =>
-      setStore((prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) =>
-          p.meta.id !== pid
-            ? p
-            : {
-                ...p,
-                channels: p.channels.map((c) =>
-                  c.id !== channelId
-                    ? c
-                    : {
-                        ...c,
-                        messages: c.messages.map((m) => {
-                          if (m.id !== msgId) return m;
-                          const rs = { ...(m.reactions ?? {}) };
-                          const who = rs[reaction] ?? [];
-                          rs[reaction] = who.includes(actor) ? who.filter((x) => x !== actor) : [...who, actor];
-                          return { ...m, reactions: rs };
-                        }),
-                      }
-                ),
-              }
-        ),
-      })),
-    postAnnouncement: (pid, a) =>
-      on(pid, (p, emit, s) => {
-        const an: Announcement = { ...a, id: nid(s, "an"), author: actor, at: `${s.refDate} ${nowClock()}` };
-        p.announcements.unshift(an);
-        const ch = p.channels.find((c) => c.name === "اطلاع‌رسانی");
-        if (ch) ch.messages.push({ id: nid(s, "ms"), author: actor, text: `[اطلاعیه] ${a.title} — ${a.body}`, at: an.at, pinned: a.pinned });
-        emit("ANNOUNCEMENT_POSTED", `اطلاعیه‌ی «${a.title}» منتشر شد.`, { entity: { type: "announcement", id: an.id } });
-      }),
-    removeAnnouncement: (pid, id) =>
-      setStore((prev) => ({ ...prev, projects: prev.projects.map((p) => (p.meta.id !== pid ? p : { ...p, announcements: p.announcements.filter((a) => a.id !== id) })) })),
+    linkChat: (pid, chatId) =>
+      setStore((prev) => ({ ...prev, projects: prev.projects.map((p) => (p.meta.id !== pid || (p.meta.chatIds ?? []).includes(chatId) ? p : { ...p, meta: { ...p.meta, chatIds: [...(p.meta.chatIds ?? []), chatId] } })) })),
 
     // ============================================================ خودکارسازی و اعلان
     toggleAutomation: (pid, id) =>
@@ -2156,7 +2144,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       } catch {
         /* نادیده */
       }
-      setStore(withMeetingLinks(withRecurringDemo(initialStore())));
+      setStore(withMeetingModel(withExplicitAccess(withMeetingLinks(withRecurringDemo(initialStore())))));
     },
   };
 

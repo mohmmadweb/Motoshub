@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Video, Save, Link2, Building2, Landmark, FileSignature, Lightbulb, Hash } from "lucide-react";
+import { Video, Save, Link2, Hash } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -9,7 +9,7 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import { contracts, funds, researchOpportunities } from "../../data/mock";
 import { defaultMeetingSettings } from "../../pm/selectors";
 import { fa } from "../../pm/jalali";
-import type { MeetingSettings, PMMeeting, ProjectMeta } from "../../pm/types";
+import type { MeetingSettings, PMMeeting } from "../../pm/types";
 import { Field, SectionTitle, numIn, useProjectPage } from "./shared";
 
 /** انتخاب فضای کاری از ساختار سازمانی IAM (هلدینگ/شرکت/واحدهایی که کاربر به آن‌ها دسترسی دارد) */
@@ -36,34 +36,6 @@ export const fundTitle = (id?: string) => funds.find((f) => f.id === id)?.title;
 export const contractTitle = (id?: string) => contracts.find((c) => c.id === id)?.title;
 export const opportunityTitle = (id?: string) => researchOpportunities.find((r) => r.id === id)?.title;
 
-/** پیوند پروژه به موجودیت‌های نوآوری و هشتگ‌ها — نمایش در نمای کلی */
-export function ProjectLinks({ meta, compact = false }: { meta: ProjectMeta; compact?: boolean }) {
-  const items = [
-    meta.fundId && fundTitle(meta.fundId) ? { icon: <Landmark size={12} />, label: "صندوق نوآوری", text: fundTitle(meta.fundId)!, to: `/dashboard/funds?focus=${meta.fundId}` } : null,
-    meta.contractId && contractTitle(meta.contractId) ? { icon: <FileSignature size={12} />, label: "قرارداد فناورانه", text: contractTitle(meta.contractId)!, to: `/dashboard/contracts?focus=${meta.contractId}` } : null,
-    meta.opportunityId && opportunityTitle(meta.opportunityId) ? { icon: <Lightbulb size={12} />, label: "فرصت پژوهشی", text: opportunityTitle(meta.opportunityId)!, to: `/dashboard/research?focus=${meta.opportunityId}` } : null,
-    meta.companyName ? { icon: <Building2 size={12} />, label: "شرکت / مجری", text: meta.companyName, to: "" } : null,
-  ].filter(Boolean) as { icon: ReactNode; label: string; text: string; to: string }[];
-  if (!items.length) return compact ? null : <p className="text-[11px] text-ink-400">به صندوق، قرارداد یا فرصت پژوهشی متصل نیست.</p>;
-  return (
-    <div className="space-y-1.5">
-      {items.map((x) => (
-        <div key={x.label} className="flex items-start gap-1.5 text-[11.5px]">
-          <span className="text-brand-600 mt-0.5">{x.icon}</span>
-          <span className="text-ink-400 whitespace-nowrap">{x.label}:</span>
-          {x.to ? (
-            <Link to={x.to} className="text-brand-700 hover:underline min-w-0 break-words">
-              {x.text}
-            </Link>
-          ) : (
-            <span className="text-ink-700 min-w-0 break-words">{x.text}</span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** برچسب‌های پروژه به‌صورت لینک به صفحه‌ی «هشتگ‌ها و موضوعات» */
 export function TagLinks({ tags }: { tags: string[] }) {
   return (
@@ -88,7 +60,7 @@ export function InnovationLinksCard() {
   if (!canEdit) return null;
   const save = () => {
     pm.updateMeta(pid, { fundId: d.fundId || undefined, contractId: d.contractId || undefined, opportunityId: d.opportunityId || undefined, companyName: d.companyName.trim() || undefined });
-    notify("پیوندهای پروژه ذخیره شد؛ در نمای کلی و دفتر تصمیمات دیده می‌شود.");
+    notify("پیوندهای پروژه ذخیره شد؛ در «مشخصات پروژه» دیده می‌شود.");
   };
   return (
     <div className="card p-4">

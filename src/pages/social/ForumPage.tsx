@@ -16,8 +16,8 @@ import { endpoints } from "../../social/endpoints";
 import type { Attachment, Topic } from "../../social/types";
 import { DuplicateBadge, SimilarQuestions, SolvedBadge } from "./qa/QaKit";
 import { ApiChip, AttachmentList, AttachmentPicker, CategoryBadges, Field, PublishBadge, PublishOptions, UserLine, defaultPublish, fa, stamp, type PublishState, MentionInput } from "./kit";
-import { autoFollowTopic, useFollows } from "../../social/follow/store";
-import { useCanFollow } from "../../social/follow/FollowButton";
+import { autoFollowTopic, useTopicFollows } from "../../social/follow/store";
+import { useCanFollowTopic } from "../../social/follow/FollowButton";
 import { followEndpoints } from "../../social/follow/endpoints";
 import { useWriteGuard, WriteBlockNotice } from "../../iam/useWriteGuard";
 
@@ -107,7 +107,7 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
 
 /** «…» ردیف فهرست: دنبال/لغو دنبال و اعلان موضوع (داخل لینک ردیف؛ کلیک به ردیف نمی‌رسد) */
 function FollowRowMenu({ topicId }: { topicId: string }) {
-  const f = useFollows();
+  const f = useTopicFollows();
   const { notify } = useToast();
   const [open, setOpen] = useState(false);
   const tf = f.topicFollow(topicId);
@@ -152,8 +152,8 @@ export default function ForumPage() {
   const s = useSocial();
   const { hasPermission } = useTenancy();
   const moderator = hasPermission("forum.moderate");
-  const fol = useFollows();
-  const canFollow = useCanFollow("topic");
+  const fol = useTopicFollows();
+  const canFollow = useCanFollowTopic();
   const [params] = useSearchParams();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");

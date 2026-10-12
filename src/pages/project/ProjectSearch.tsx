@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+import { useSocial } from "../../context/SocialContext";
 import { Search, ListTodo, Users, MessageSquare, FileText, Video, ScrollText, ShieldAlert, Bug, Gavel, Flag, X, CornerDownLeft } from "lucide-react";
 import { fa } from "../../pm/jalali";
 import { findTask } from "../../pm/selectors";
@@ -7,7 +9,7 @@ import { useProjectPage, type TabId } from "./shared";
 import { TaskKey, TypeIcon } from "./taskTypes";
 import type { PMTask } from "../../pm/types";
 
-type Hit = { id: string; title: string; sub?: string; tab: TabId; entity?: string; task?: PMTask };
+type Hit = { id: string; title: string; sub?: string; tab: TabId; entity?: string; task?: PMTask; /** مقصد بیرون از صفحه‌ی پروژه (مثلاً گروه پیام‌رسان پروژه) */ to?: string };
 type Group = { id: string; label: string; icon: ReactNode; hits: Hit[] };
 
 const norm = (s: string) => s.toLowerCase().replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/‌/g, " ");
@@ -15,6 +17,8 @@ const norm = (s: string) => s.toLowerCase().replace(/ي/g, "ی").replace(/ك/g, 
 /** جستجوی یکپارچه‌ی درون‌پروژه (بند ۴۰ سند): تسک، عضو، پیام، فایل، جلسه، صورت‌جلسه، ریسک، مشکل، تصمیم */
 export default function ProjectSearch() {
   const { p, goTab, openTask, access } = useProjectPage();
+  const social = useSocial();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -44,11 +48,13 @@ export default function ProjectSearch() {
     const has = (...xs: (string | undefined)[]) => xs.some((x) => x && norm(x).includes(term));
     const exact = findTask(p, q.trim());
     const tasks = p.tasks.filter((t) => has(t.title, t.key, t.description, t.labels.join(" "), t.assignee)).sort((a, b) => Number(b.id === exact?.id) - Number(a.id === exact?.id));
-    const msgs = p.channels.flatMap((c) => c.messages.filter((m) => has(m.text, m.fileName, m.author)).map((m) => ({ c, m })));
+    // پیام‌های گروه‌ها/کانال‌های پیام‌رسانِ متصل به پروژه
+    const chats = (p.meta.chatIds ?? []).map((id) => social.chats.find((c) => c.id === id && !c.deleted_at)).filter((c): c is NonNullable<typeof c> => !!c && social.isMember(c));
+    const msgs = chats.flatMap((c) => social.chatMessages(c.id).filter((m) => has(m.content, social.userName(m.user_id))).map((m) => ({ c, m })));
     const out: Group[] = [
       { id: "tasks", label: "تسک‌ها", icon: <ListTodo size={13} />, hits: tasks.map((t) => ({ id: t.id, title: t.title, sub: `${t.assignee} · ${t.due}${t.archived ? " · بایگانی" : ""}`, tab: "board", task: t })) },
       { id: "members", label: "اعضا", icon: <Users size={13} />, hits: p.members.filter((m) => has(m.name, m.title, m.role)).map((m) => ({ id: m.id, title: m.name, sub: `${m.title} · ${m.role}`, tab: "team", entity: m.id })) },
-      { id: "messages", label: "پیام‌ها", icon: <MessageSquare size={13} />, hits: msgs.map(({ c, m }) => ({ id: m.id, title: m.text.length > 80 ? `${m.text.slice(0, 80)}…` : m.text, sub: `#${c.name} · ${m.author} · ${m.at}`, tab: "communication", entity: m.id })) },
+      { id: "messages", label: "پیام‌ها", icon: <MessageSquare size={13} />, hits: msgs.map(({ c, m }) => ({ id: m.id, title: m.content.length > 80 ? `${m.content.slice(0, 80)}…` : m.content, sub: `${c.title} · ${social.userName(m.user_id)}`, tab: "communication", to: `/dashboard/${c.chat_type === "channel" ? "channels" : "groups"}/${c.id}` })) },
       { id: "files", label: "فایل‌ها و اسناد", icon: <FileText size={13} />, hits: p.documents.filter((d) => has(d.name, d.type, d.uploadedBy)).map((d) => ({ id: d.id, title: d.name, sub: `${d.type} · نسخه‌ی ${fa(d.version)} · ${d.date}`, tab: "documents", entity: d.id })) },
       { id: "meetings", label: "جلسات", icon: <Video size={13} />, hits: p.meetings.filter((m) => has(m.title, m.description, m.participants.join(" "))).map((m) => ({ id: m.id, title: m.title, sub: `${m.date} ساعت ${m.time} · ${m.mode} · ${m.status}`, tab: "minutes", entity: m.id })) },
       { id: "minutes", label: "صورت‌جلسات و مصوبات", icon: <ScrollText size={13} />, hits: p.minutes.filter((m) => has(m.title, (m.topics ?? []).join(" "), (m.decisionList ?? []).join(" "), (m.actions ?? []).map((a) => a.text).join(" "))).map((m) => ({ id: m.id, title: m.title, sub: `${m.date} · ${fa(m.decisions)} مصوبه`, tab: "minutes", entity: m.id })) },
@@ -59,13 +65,14 @@ export default function ProjectSearch() {
     ];
     // بخش‌هایی که کاربر به آن‌ها دسترسی مشاهده ندارد در نتایج نمی‌آیند
     return out.filter((g) => g.hits.length && access.canSeeTab(g.hits[0].tab));
-  }, [q, p, access]);
+  }, [q, p, access, social]);
 
   const flat = groups.flatMap((g) => g.hits.slice(0, 6));
   const total = groups.reduce((s, g) => s + g.hits.length, 0);
   const go = (h: Hit) => {
     setOpen(false);
-    if (h.task) {
+    if (h.to) navigate(h.to);
+    else if (h.task) {
       goTab("board");
       setTimeout(() => openTask(h.task!.id), 0);
     } else goTab(h.tab, h.entity);

@@ -67,6 +67,15 @@ export type UserProfile = {
    * در هدر ظاهر می‌شود؛ اگر یکی باشد دامنه ثابت و نامرئی است.
    */
   companyIds?: string[];
+  /** نام کاربری لاتین (بدون @) */
+  username?: string;
+  /** شماره موبایل (ارقام فارسی) */
+  mobile?: string;
+  email?: string;
+  /** تاریخ عضویت جلالی «۱۴۰۴/۱۰/۰۱» */
+  joinedAt?: string;
+  /** آخرین فعالیت «۱۴۰۵/۰۳/۰۸ ۰۹:۴۰» */
+  lastActivity?: string;
 };
 
 export const currentUser: UserProfile = {
@@ -77,6 +86,11 @@ export const currentUser: UserProfile = {
   avatarColor: "#1f4f99",
   skills: ["مدیریت محتوا", "روابط‌عمومی", "گزارش‌نویسی", "راهبری سامانه"],
   online: true,
+  username: "info",
+  mobile: "۰۹۱۲۱۰۰۴۵۲۰",
+  email: "info@motoshub.ir",
+  joinedAt: "۱۴۰۴/۱۰/۰۱",
+  lastActivity: "۱۴۰۵/۰۳/۰۸ ۰۹:۴۰",
 };
 
 export const users: UserProfile[] = [
@@ -88,6 +102,11 @@ export const users: UserProfile[] = [
     org: "بنیاد مستضعفان انقلاب اسلامی",
     avatarColor: "#0d9488",
     skills: ["راهبری کلان", "سیاست‌گذاری"],
+    username: "h.dehghan",
+    mobile: "۰۹۱۲۳۸۰۱۱۷۴",
+    email: "h.dehghan@motoshub.ir",
+    joinedAt: "۱۴۰۴/۱۰/۰۳",
+    lastActivity: "۱۴۰۵/۰۳/۰۷ ۱۸:۱۲",
     online: true,
   },
   {
@@ -97,6 +116,11 @@ export const users: UserProfile[] = [
     org: "بنیاد مستضعفان انقلاب اسلامی",
     avatarColor: "#b45309",
     skills: ["عمران و آبادانی", "نظارت راهبردی"],
+    username: "m.saeedikia",
+    mobile: "۰۹۱۲۴۵۶۲۰۹۱",
+    email: "saeedikia@motoshub.ir",
+    joinedAt: "۱۴۰۴/۱۰/۰۳",
+    lastActivity: "۱۴۰۵/۰۲/۲۹ ۱۱:۰۵",
     online: false,
     companyIds: ["c-behnoush"],
   },
@@ -107,6 +131,11 @@ export const users: UserProfile[] = [
     org: "بنیاد علوی",
     avatarColor: "#1f4f99",
     skills: ["محرومیت‌زدایی", "توسعه منطقه‌ای"],
+    username: "v.khavoei",
+    mobile: "۰۹۱۹۲۲۷۴۴۱۳",
+    email: "v.khavoei@motoshub.ir",
+    joinedAt: "۱۴۰۴/۱۰/۱۵",
+    lastActivity: "۱۴۰۵/۰۳/۰۶ ۱۰:۲۰",
     online: false,
     companyIds: ["c-dashtnaz", "c-ferdows-agri"],
   },
@@ -117,18 +146,23 @@ export const users: UserProfile[] = [
     org: "بنیاد علوی",
     avatarColor: "#7c3aed",
     skills: ["اشتغال‌زایی", "طرح‌های خرد و متوسط"],
+    username: "m.mardali",
+    mobile: "۰۹۱۲۷۰۵۳۸۶۲",
+    email: "m.mardali@motoshub.ir",
+    joinedAt: "۱۴۰۴/۱۰/۱۵",
+    lastActivity: "۱۴۰۵/۰۳/۰۸ ۰۸:۵۵",
     online: true,
     companyIds: ["c-saba-niru"],
   },
   // --- نخبگان و فناوران شبکه (شخصیت‌های نمایشی) ---
-  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], online: true, companyIds: ["c-behnoush"] },
-  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], online: true, companyIds: ["c-ferdows-agri"] },
-  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], online: false, companyIds: ["c-sina-rail"] },
-  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], online: true, companyIds: ["c-energy-sina", "c-saba-niru"] },
-  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], online: true, companyIds: ["c-dashtnaz"] },
-  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], online: false, companyIds: ["c-zamzam"] },
-  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], online: true, companyIds: ["c-pak", "c-behnoush", "c-zamzam"] },
-  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], online: true, companyIds: ["c-bank-sina"] },
+  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], username: "a.sadra", mobile: "۰۹۳۵۱۴۸۶۰۲۷", email: "arian.sadra@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۰:۱۵", online: true, companyIds: ["c-behnoush"] },
+  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], username: "m.nikandish", mobile: "۰۹۱۳۲۰۹۸۴۵۶", email: "nikandish.mahsa@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۷ ۱۴:۳۰", online: true, companyIds: ["c-ferdows-agri"] },
+  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], username: "k.rastin", mobile: "۰۹۰۱۳۳۶۷۲۱۸", email: "kian.rastin@gmail.com", joinedAt: "۱۴۰۵/۰۱/۱۸", lastActivity: "۱۴۰۵/۰۳/۰۴ ۱۶:۴۸", online: false, companyIds: ["c-sina-rail"] },
+  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], username: "n.farahmand", mobile: "۰۹۱۲۵۵۴۰۳۸۹", email: "farahmand@ut.ac.ir", joinedAt: "۱۴۰۵/۰۱/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۸ ۰۷:۵۰", online: true, companyIds: ["c-energy-sina", "c-saba-niru"] },
+  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], username: "p.yeganeh", mobile: "۰۹۱۷۴۱۰۲۶۶۳", email: "parsa@keshtyar.ir", joinedAt: "۱۴۰۵/۰۲/۰۲", lastActivity: "۱۴۰۵/۰۳/۰۵ ۱۲:۱۰", online: true, companyIds: ["c-dashtnaz"] },
+  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], username: "sh.mehrvarz", mobile: "۰۹۱۲۶۸۸۳۰۴۷", email: "mehrvarz.sh@gmail.com", joinedAt: "۱۴۰۵/۰۲/۰۹", lastActivity: "۱۴۰۵/۰۲/۳۰ ۰۹:۲۵", online: false, companyIds: ["c-zamzam"] },
+  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], username: "y.roshan", mobile: "۰۹۱۰۲۴۷۵۹۱۸", email: "y.roshan@motoshub.ir", joinedAt: "۱۴۰۵/۰۲/۱۴", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۱:۰۲", online: true, companyIds: ["c-pak", "c-behnoush", "c-zamzam"] },
+  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], username: "b.koosha", mobile: "۰۹۳۹۸۱۲۵۶۰۴", email: "bardia.koosha@gmail.com", joinedAt: "۱۴۰۵/۰۲/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۷ ۲۰:۳۵", online: true, companyIds: ["c-bank-sina"] },
 ];
 
 export type Group = {
@@ -1355,8 +1389,6 @@ export const permissionCatalog: PermissionGroup[] = [
     actions: [
       { id: "members.view", label: "مشاهده‌ی اعضای سازمان" },
       { id: "relations.use", label: "ارتباطات من (درخواست، پذیرش، مسدودسازی)" },
-      { id: "relations.follow", label: "دنبال‌کردن افراد" },
-      { id: "relations.featured.manage", label: "مدیریت کاربران برجسته" },
     ],
   },
   {

@@ -13,6 +13,8 @@ import { useProjectsPM } from "../context/ProjectsContext";
 import { useInbox } from "../context/InboxContext";
 import { useI18n } from "../i18n";
 import { startTour } from "./GuidedTour";
+import { useEffectiveBranding } from "../iam/hooks";
+import { BrandMark } from "../iam/BrandMark";
 
 const statusOptions: { id: PresenceStatus; label: string; dot: string }[] = [
   { id: "online", label: "آنلاین", dot: "bg-emerald-500" },
@@ -33,7 +35,8 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
   const { t, dir, lang, active: langs, setLang } = useI18n();
-  const { actingUser, session, identity, role } = useTenancy();
+  const { actingUser, session, role } = useTenancy();
+  const brand = useEffectiveBranding();
   const displayUser = actingUser;
   const { store: pmStore } = useProjectsPM();
   const inbox = useInbox();
@@ -60,7 +63,7 @@ export default function Topbar({ onOpenPalette }: { onOpenPalette: () => void })
           <div className="absolute inset-0 bg-black/50" onClick={() => setNavOpen(false)} />
           <div className="absolute inset-y-0 start-0 w-72 max-w-[85vw] bg-navy-900 shadow-2xl flex flex-col animate-[slideIn_0.2s_ease-out]">
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
-              <p className="font-bold text-sm text-white truncate">{identity.name}</p>
+              <BrandMark logo={brand.logo} initials={brand.initials} color={brand.color} size={40} />
               <button onClick={() => setNavOpen(false)} aria-label="بستن منو" className="w-9 h-9 rounded-lg hover:bg-white/10 text-navy-200 flex items-center justify-center">
                 <X size={18} />
               </button>

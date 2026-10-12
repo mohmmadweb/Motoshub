@@ -125,7 +125,7 @@ export default function TopicDetail() {
           />
           {topic && !hidden && (
             <>
-              <FollowButton kind="topic" id={id} showCount />
+              <FollowButton id={id} showCount />
               <TopicNotifyToggle topicId={id} />
             </>
           )}

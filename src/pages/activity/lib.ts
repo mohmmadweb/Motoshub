@@ -12,6 +12,8 @@ import {
   fixedEntries,
   inRange,
   isOffDay,
+  isPersonalTaskId,
+  type PersonalTask,
   type Integration,
   type IntegrationKind,
   type Person,
@@ -20,6 +22,8 @@ import {
 } from "../../timesheet/types";
 
 export type ProjectOpt = { id: string; name: string; color: string; tasks: { id: string; title: string; assignee: string }[] };
+/** تسک‌های واگذارشده به کاربر در یک پروژه (برای انتخاب‌گر تسک فرم ثبت زمان) */
+export type AssignedGroup = { projectId: string; projectName: string; color: string; tasks: { id: string; title: string }[] };
 
 /** همه‌ی داده‌ای که تب‌ها لازم دارند */
 export function useTs() {
@@ -45,7 +49,7 @@ export function useTs() {
   /** پروژه‌هایی که کاربر می‌بیند (برای ثبت زمان) */
   const myProjects: ProjectOpt[] = useMemo(() => {
     const scoped = filterScoped(pm.projects.map((p) => ({ ...p.meta, _p: p }))).map((x) => x._p);
-    const member = pm.projects.filter((p) => p.members.some((m) => m.userId === actingUser.id || m.name === actingUser.name));
+    const member = pm.projects.filter((p) => p.members.some((m) => m.userId === actingUser.id || m.name === actingUser.name) || p.tasks.some((t) => !t.archived && t.assignee === actingUser.name));
     const all = [...scoped, ...member.filter((p) => !scoped.includes(p))].filter((p) => !p.meta.archived);
     return all.map(toOpt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,7 +58,28 @@ export function useTs() {
   const allProjects = useMemo(() => pm.projects.map(toOpt), [pm.projects]);
   const projectName = (id?: string) => (id ? allProjects.find((p) => p.id === id)?.name ?? "پروژه‌ی حذف‌شده" : "بدون پروژه");
   const projectColor = (id?: string) => (id ? allProjects.find((p) => p.id === id)?.color ?? "#94a3b8" : "#94a3b8");
-  const taskTitle = (pid?: string, tid?: string) => (pid && tid ? allProjects.find((p) => p.id === pid)?.tasks.find((t) => t.id === tid)?.title : undefined);
+  const taskTitle = (pid?: string, tid?: string) =>
+    isPersonalTaskId(tid) ? ts.personalTasks.find((t) => t.id === tid)?.title : pid && tid ? allProjects.find((p) => p.id === pid)?.tasks.find((t) => t.id === tid)?.title : undefined;
+
+  /** تسک‌هایی که در پروژه‌ها به کاربر واگذار شده‌اند (مسئول = نام کاربر یا عضوِ پروژه با همین userId)، به تفکیک پروژه */
+  const myTasks: AssignedGroup[] = useMemo(
+    () =>
+      pm.projects
+        .filter((p) => !p.meta.archived)
+        .map((p) => {
+          const names = new Set([actingUser.name, ...p.members.filter((m) => m.userId === actingUser.id).map((m) => m.name)]);
+          return {
+            projectId: p.meta.id,
+            projectName: p.meta.name,
+            color: p.meta.color,
+            tasks: p.tasks.filter((t) => !t.archived && names.has(t.assignee)).map((t) => ({ id: t.id, title: t.title })),
+          };
+        })
+        .filter((g) => g.tasks.length > 0),
+    [pm.projects, actingUser.id, actingUser.name],
+  );
+  /** تسک‌های شخصی خود کاربر */
+  const myPersonalTasks: PersonalTask[] = useMemo(() => ts.personalTasks.filter((t) => t.personId === me.id), [ts.personalTasks, me.id]);
 
   /** ثبت‌های تایمر پروژه‌ها برای یک نفر (فقط‌خواندنی) */
   const projectLogs = (p: Person): TimeEntry[] =>
@@ -106,7 +131,7 @@ export function useTs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ts.roster, contextId, iam, hasPermission]);
 
-  return { ts, ten, pm, me, myProjects, allProjects, projectName, projectColor, taskTitle, entriesOf, teamPeople };
+  return { ts, ten, pm, me, myProjects, myTasks, myPersonalTasks, allProjects, projectName, projectColor, taskTitle, entriesOf, teamPeople };
 }
 
 const toOpt = (p: ProjectState): ProjectOpt => ({

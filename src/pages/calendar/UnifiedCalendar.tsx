@@ -6,7 +6,6 @@
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { CalendarRange, ChevronLeft, ChevronRight, Download, Plus, Search, Users, Sparkles, Eye, EyeOff } from "lucide-react";
-import PrayerTimesWidget from "../../components/PrayerTimes";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
@@ -484,8 +483,6 @@ export default function UnifiedCalendar() {
               }}
             />
           </div>
-
-          <PrayerTimesWidget />
 
           <div className="card p-4">
             <p className="text-sm font-bold text-ink-900 mb-2">لایه‌ها</p>

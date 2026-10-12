@@ -15,7 +15,7 @@ import { useSocial } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints } from "../../social/endpoints";
 import { mediaTypeLabel } from "../../social/types";
-import { ApiChip, CategoryBadges, CommentsPanel, Poster, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, fileIcon, stamp } from "./kit";
+import { ApiChip, CategoryBadges, CommentsPanel, Poster, isImagePoster, PrivacyBadge, PublishBadge, ReactionBar, TagList, UserLine, fa, fileIcon, stamp } from "./kit";
 import { MediaEditor, mediaTypeIcon } from "./MediaPage";
 import { HiddenBanner, ReportButton } from "./moderation";
 import { AnalyticsButton } from "./ItemAnalytics";
@@ -133,7 +133,7 @@ export default function MediaDetail() {
           ) : (
           <div className="card overflow-hidden">
             <Poster color={m.poster} className="h-64 sm:h-96 !rounded-none !p-0 !items-stretch">
-              <div className="relative w-full flex flex-col justify-between p-3">
+              <div className={`relative w-full flex flex-col justify-between p-3 ${isImagePoster(m.poster) ? "bg-gradient-to-t from-black/50 via-transparent to-black/20" : ""}`}>
                 <span className="flex items-start justify-between gap-2">
                   <span className="flex flex-wrap gap-1">
                     <PublishBadge item={m} />
@@ -148,6 +148,8 @@ export default function MediaDetail() {
                   <button onClick={() => notify("پخش ویدیو — در نسخه‌ی متصل فایل از سرور استریم می‌شود.", "info")} className="self-center w-16 h-16 rounded-full bg-black/40 hover:bg-black/55 flex items-center justify-center" aria-label="پخش">
                     <Play size={28} fill="currentColor" />
                   </button>
+                ) : isImagePoster(m.poster) ? (
+                  <span />
                 ) : (
                   <span className="self-center opacity-70">
                     <ImageIcon size={40} />

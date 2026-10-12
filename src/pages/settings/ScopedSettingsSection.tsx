@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «برند و تنظیمات لایه‌ای» — هر هلدینگ/شرکت می‌تواند برند (نام، رنگ، لوگو) و چند تنظیم را
+// «برند و تنظیمات لایه‌ای» — هر هلدینگ/شرکت می‌تواند برند (عنوان سامانه، لوگو، رنگ) و چند تنظیم را
 // بازنویسی کند. وضعیت هر مورد: ارث‌رسیده / بازنویسی‌شده / قفل‌شده (والد اجازه‌ی بازنویسی نداده).
 // واحدِ موردِ تنظیم = کانتکست فعلی (انتخابگر بالای «تنظیمات سامانه»).
 // گروه «برند» در «برند و ظاهر ← برند سازمان» می‌آید؛ ردیف‌های رفتاری (مهلت نشست، یادآوری گزارش،
@@ -68,14 +68,10 @@ export default function ScopedSettingsSection({ groups = ["brand", "behavior"] }
           {groups.includes("behavior") && group("behavior", "رفتار سامانه")}
         </div>
         <div className="card p-3 lg:sticky lg:top-20">
-          <p className="text-[11px] text-ink-400 mb-2">پیش‌نمایش سربرگ در این واحد</p>
+          <p className="text-[11px] text-ink-400 mb-2">پیش‌نمایش سربرگ منو در این واحد</p>
           <div className="rounded-lg overflow-hidden border border-ink-200">
-            <div className="flex items-center gap-2 px-3 h-14 bg-navy-900" style={{ boxShadow: `inset 0 -3px 0 ${brand.color}` }}>
+            <div className="flex items-center justify-center px-3 h-14 bg-navy-900">
               <BrandMark logo={brand.logo} initials={brand.initials} color={brand.color} />
-              <div className="min-w-0">
-                <p className="text-[11.5px] font-bold text-white truncate">{brand.name}</p>
-                <p className="text-[10px] text-navy-300 truncate">{brand.tagline}</p>
-              </div>
             </div>
             <div className="p-3 bg-ink-50 space-y-2">
               <div className="h-2 w-3/4 rounded bg-ink-200" />
@@ -85,7 +81,7 @@ export default function ScopedSettingsSection({ groups = ["brand", "behavior"] }
               </span>
             </div>
           </div>
-          <p className="text-[10.5px] text-ink-400 mt-2 leading-5">نام برند از «{brand.sourceScopeId ? t.scopeLabel(brand.sourceScopeId) : "پیش‌فرض سامانه"}» آمده است.</p>
+          <p className="text-[10.5px] text-ink-400 mt-2 leading-5">عنوان سامانه: «{brand.name}» — از «{brand.sourceScopeId ? t.scopeLabel(brand.sourceScopeId) : "پیش‌فرض سامانه"}»</p>
         </div>
       </div>
       {ss.state && Object.keys(ss.state.byScope).length > 0 && (

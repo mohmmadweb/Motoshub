@@ -29,7 +29,7 @@ export const tours: Tour[] = [
   {
     id: "intro",
     title: "آشنایی کلی",
-    summary: "منو، جستجو، تغییر سازمان یا نقش، اعلان‌ها و گزارش مشکل — در کمتر از یک دقیقه.",
+    summary: "منو، جستجو، تغییر سازمان یا نقش و اعلان‌ها — در کمتر از یک دقیقه.",
     role_scope: "all",
     steps: [
       { route: "/dashboard", title: "به موتوشاب خوش آمدید", body: "این تور کوتاه بخش‌های اصلی را نشان می‌دهد. هر وقت خواستید رد شوید؛ از «راهنمای تعاملی» در سربرگ یا مرکز راهنما دوباره اجرا می‌شود.", help_article: "intro" },
@@ -37,7 +37,6 @@ export const tours: Tour[] = [
       { selector: "[data-tour=search]", title: "جستجوی سراسری", body: "در همه‌ی محتوا، افراد، پروژه‌ها و اسناد جستجو کنید. با Ctrl+K هم به هر صفحه سریع بروید.", help_article: "intro" },
       { selector: "[data-tour=scope]", title: "تغییر سازمان یا نقش", body: "اگر در چند شرکت یا با چند نقش عضو هستید، از اینجا «کانتکست» کاری را عوض کنید؛ دسترسی‌ها و داده‌ها با آن تغییر می‌کند.", help_article: "context" },
       { selector: "[data-tour=notifications]", title: "اعلان‌ها", body: "دعوت‌ها، پاسخ‌ها، منشن‌ها و کارهای ارجاعی اینجا جمع می‌شوند.", help_article: "intro" },
-      { selector: "[aria-label='گزارش مشکل به تیم سازنده']", title: "گزارش مشکل", body: "از هر صفحه یک تیکت برای تیم سازنده ثبت کنید؛ نشانی صفحه و مشخصات مرورگر خودکار پیوست می‌شود.", help_article: "report-anywhere" },
       { selector: "[data-tour=tour-button], [data-tour=avatar]", title: "پایان تور", body: "هر زمان خواستید، تورهای دیگر (گروه‌ها، محتوا، دانش، پروژه‌ها) را از همین‌جا یا مرکز راهنما اجرا کنید.", help_article: "faq-help" },
     ],
   },
@@ -143,7 +142,6 @@ function findTarget(selector?: string): HTMLElement | null {
 export function GuidedTourHost() {
   const st = useLocalStore(tourStore);
   const { actingUser, isViewingAs } = useTenancy();
-  const allowed = useTourAccess();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const { dir } = useI18n();
@@ -178,17 +176,6 @@ export function GuidedTourHost() {
     const tm = setTimeout(() => setRun({ tour: tours[0], step: 0 }), 900);
     return () => clearTimeout(tm);
   }, [me, st.settings.autorun, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // پیشنهاد تور مرتبط در اولین ورود به هر بخش
-  useEffect(() => {
-    if (run || isViewingAs) return;
-    const t = tours.find((x) => x.base_route && x.id !== "intro" && pathname.startsWith(x.base_route.split("?")[0]) && allowed(x));
-    if (!t) return setOffer(null);
-    const p = mine[t.id];
-    if (p?.offered || p?.completed_at || p?.skipped_at) return;
-    setOffer(t);
-    setProg(t.id, { offered: true });
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const step = run ? run.tour.steps[run.step] : null;
   // رفتن به مسیر گام

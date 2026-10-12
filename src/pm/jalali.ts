@@ -55,12 +55,28 @@ const arDigits = "٠١٢٣٤٥٦٧٨٩";
 
 /** ارقام فارسی/عربی را به لاتین برمی‌گرداند */
 export function toEnDigits(s: string): string {
-  return s.replace(/[۰-۹]/g, (c) => String(faDigits.indexOf(c))).replace(/[٠-٩]/g, (c) => String(arDigits.indexOf(c)));
+  if (!/[۰-۹٠-٩]/.test(s)) return s;
+  return s.replace(/[۰-۹٠-٩]/g, (c) => {
+    const i = faDigits.indexOf(c);
+    return String(i >= 0 ? i : arDigits.indexOf(c));
+  });
 }
 
 /** مدت کار: زیر یک ساعت به دقیقه، بالاتر به ساعت (تا دو رقم اعشار) */
 export const fmtHours = (h: number) => (h < 1 ? `${Math.round(h * 60).toLocaleString("fa-IR")} دقیقه` : `${h.toLocaleString("fa-IR", { maximumFractionDigits: 2 })} ساعت`);
-export const fa = (n: number, grouping = false) => n.toLocaleString("fa-IR", { useGrouping: grouping, maximumFractionDigits: 1 });
+// قالب‌بندهای Intl گران‌اند؛ یک بار ساخته و نگه داشته می‌شوند. اعداد صحیحِ نامنفی بدون جداکننده
+// (پرتکرارترین حالت در تاریخ‌ها) مستقیم با جدول ارقام ساخته می‌شوند — خروجی دقیقاً همان toLocaleString است.
+const faFmt = new Intl.NumberFormat("fa-IR", { useGrouping: false, maximumFractionDigits: 1 });
+const faFmtGrouped = new Intl.NumberFormat("fa-IR", { useGrouping: true, maximumFractionDigits: 1 });
+export const fa = (n: number, grouping = false) => {
+  if (!grouping && Number.isSafeInteger(n) && n >= 0) {
+    const d = String(n);
+    let out = "";
+    for (let i = 0; i < d.length; i++) out += faDigits[d.charCodeAt(i) - 48];
+    return out;
+  }
+  return (grouping ? faFmtGrouped : faFmt).format(n);
+};
 
 export function parseJalali(s: string | undefined): [number, number, number] | null {
   if (!s) return null;
@@ -70,17 +86,33 @@ export function parseJalali(s: string | undefined): [number, number, number] | n
 }
 
 /** شماره‌ی روز (روزهای گذشته از ۱۹۷۰) — برای مقایسه و فاصله‌ی تاریخ‌ها */
+// تبدیل‌ها قطعی‌اند و در داده‌ی نمونه ده‌ها هزار بار تکرار می‌شوند؛ نتیجه کش می‌شود.
+const dayNumCache = new Map<string, number | null>();
 export function dayNum(s: string | undefined): number | null {
+  if (!s) return null;
+  const hit = dayNumCache.get(s);
+  if (hit !== undefined) return hit;
   const p = parseJalali(s);
-  if (!p) return null;
-  const [gy, gm, gd] = jalaliToGregorian(p[0], p[1], p[2]);
-  return Math.round(Date.UTC(gy, gm - 1, gd) / 86400000);
+  let v: number | null = null;
+  if (p) {
+    const [gy, gm, gd] = jalaliToGregorian(p[0], p[1], p[2]);
+    v = Math.round(Date.UTC(gy, gm - 1, gd) / 86400000);
+  }
+  if (dayNumCache.size > 20000) dayNumCache.clear();
+  dayNumCache.set(s, v);
+  return v;
 }
 
+const fromDayCache = new Map<number, string>();
 export function fromDayNum(n: number): string {
+  const hit = fromDayCache.get(n);
+  if (hit !== undefined) return hit;
   const d = new Date(n * 86400000);
   const [jy, jm, jd] = gregorianToJalali(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
-  return formatJalali(jy, jm, jd);
+  const v = formatJalali(jy, jm, jd);
+  if (fromDayCache.size > 20000) fromDayCache.clear();
+  fromDayCache.set(n, v);
+  return v;
 }
 
 export function formatJalali(jy: number, jm: number, jd: number): string {

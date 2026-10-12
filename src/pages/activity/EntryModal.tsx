@@ -7,6 +7,7 @@ import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import { entryTypeLabel, entryTypes, fmtHM, parseHours, sourceLabel, type EntryType, type TimeEntry } from "../../timesheet/types";
 import type { ProjectOpt } from "./lib";
 import { SourceIcon } from "./ui";
+import TaskPicker from "./TaskPicker";
 
 export type EntryDraft = { date: string; hours: string; type: EntryType; projectId: string; taskId: string; description: string };
 
@@ -124,17 +125,10 @@ export default function EntryModal({
                 {projectMissing && <option value={d.projectId}>پروژه‌ی خارج از دسترس</option>}
               </select>
             </label>
-            <label className="block text-xs text-ink-600">
+            <div className="block text-xs text-ink-600">
               تسک (اختیاری)
-              <select className="input-field mt-1" value={d.taskId} onChange={(e) => setD({ ...d, taskId: e.target.value })} disabled={!project}>
-                <option value="">—</option>
-                {project?.tasks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <TaskPicker className="mt-1" value={d.taskId} projectId={d.projectId || undefined} onChange={(taskId, projectId) => setD({ ...d, taskId, projectId: projectId ?? "" })} />
+            </div>
           </div>
         )}
         <label className="block text-xs text-ink-600">

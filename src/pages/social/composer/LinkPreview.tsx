@@ -10,6 +10,7 @@ import { ExternalLink, Globe, Play, X, Newspaper, CalendarDays, Users, Megaphone
 import { useSocial } from "../../../context/SocialContext";
 import { aparatEmbedUrl, aparatHash, aparatMeta, aparatPageUrl, domainOf, firstUrl, internalRef, lookupPreview, markFetched, parseBlocked, PREVIEW_DELAY_MS, wasFetched, type InternalRef } from "../../../social/linkPreview";
 import type { AparatVideo } from "../../../social/types";
+import { isImagePoster, posterUrl } from "../kit";
 
 const grad = (c: string | null) => `linear-gradient(135deg, ${c ?? "#334155"}, color-mix(in srgb, ${c ?? "#334155"} 55%, #000))`;
 
@@ -78,7 +79,7 @@ function InternalCard({ r }: { r: InternalRef }) {
   const M = internalMeta[r.kind];
   return (
     <Link to={`/dashboard/${r.kind}/${r.id}`} className="mt-1.5 flex items-stretch gap-0 rounded-xl border border-ink-200 bg-white overflow-hidden hover:border-brand-300 max-w-md">
-      <span className="w-14 shrink-0 flex items-center justify-center text-white" style={{ background: grad(color ?? "#1f4f99") }}>
+      <span className="w-14 shrink-0 flex items-center justify-center text-white" style={isImagePoster(color) ? { backgroundImage: `url(${posterUrl(color)})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: grad(color ?? "#1f4f99") }}>
         <M.icon size={18} />
       </span>
       <span className="min-w-0 px-2.5 py-1.5">

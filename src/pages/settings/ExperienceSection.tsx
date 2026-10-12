@@ -8,7 +8,7 @@ import { SectionHead } from "./iam/shared";
 export default function ExperienceSection() {
   return (
     <div className="space-y-4">
-      <SectionHead icon={<LayoutGrid size={18} />} title="ابزارک‌ها و راهنما" description="تور محصول برای کاربران تازه‌وارد و ابزارک اوقات شرعی در میز کار و تقویم." />
+      <SectionHead icon={<LayoutGrid size={18} />} title="ابزارک‌ها و راهنما" description="تور محصول برای کاربران تازه‌وارد و ابزارک اوقات شرعی در میز کار." />
       <TourAdminCard />
       <PrayerAdminCard />
     </div>

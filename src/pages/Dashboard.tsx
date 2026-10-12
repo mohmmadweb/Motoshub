@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   Clock3,
-  CheckCircle2,
-  Circle,
   Sunrise,
   Sun,
   Sunset,
@@ -15,64 +13,6 @@ import PersonalHub from "./dashboard/PersonalHub";
 import { ReportBuilderModal } from "../reports/ModuleReportsButton";
 import { reportStore } from "../reports/store";
 import { useI18n } from "../i18n";
-
-// «شروع سریع سازمان» — چک‌لیست راه‌اندازی برای راهبر؛ قابل بستن (localStorage)
-const quickStartSteps = [
-  { id: "brand", label: "برندسازی سازمان (لوگو و رنگ)", to: "/dashboard/settings?section=brand&tab=org" },
-  { id: "structure", label: "تعریف هلدینگ‌ها و شرکت‌های زیرمجموعه", to: "/dashboard/settings?section=structure" },
-  { id: "roles", label: "ساخت نقش‌های سفارشی و دسترسی‌ها", to: "/dashboard/settings?section=roles" },
-  { id: "users", label: "دعوت و واردسازی کاربران", to: "/dashboard/settings?section=members&tab=invite" },
-  { id: "params", label: "تنظیم پارامترهای گردش کار", to: "/dashboard/settings?section=innovation&tab=funds" },
-];
-
-function QuickStart() {
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem("ms-quickstart") === "done");
-  const [done, setDone] = useState<string[]>(() => JSON.parse(localStorage.getItem("ms-quickstart-steps") || "[]"));
-
-  if (dismissed) return null;
-
-  const toggle = (id: string) => {
-    const next = done.includes(id) ? done.filter((x) => x !== id) : [...done, id];
-    setDone(next);
-    localStorage.setItem("ms-quickstart-steps", JSON.stringify(next));
-  };
-
-  return (
-    <div className="card p-4 mb-5 border-brand-200 bg-brand-50/40">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-ink-900">شروع سریع راه‌اندازی سازمان</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-400">{done.length.toLocaleString("fa-IR")} از {quickStartSteps.length.toLocaleString("fa-IR")}</span>
-          <button
-            onClick={() => {
-              localStorage.setItem("ms-quickstart", "done");
-              setDismissed(true);
-            }}
-            className="text-[11px] text-ink-400 hover:text-ink-600"
-          >
-            نمایش نده
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-        {quickStartSteps.map((s, i) => {
-          const isDone = done.includes(s.id);
-          return (
-            <div key={s.id} className={`rounded-lg border p-2.5 flex items-start gap-2 ${isDone ? "border-emerald-200 bg-emerald-50/50" : "border-ink-200 bg-white"}`}>
-              <button onClick={() => toggle(s.id)} aria-label={isDone ? "بازگردانی گام" : "علامت انجام گام"} className="shrink-0 mt-0.5">
-                {isDone ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Circle size={15} className="text-ink-300 hover:text-brand-500" />}
-              </button>
-              <Link to={s.to} className={`text-[11.5px] leading-5 ${isDone ? "line-through text-ink-400" : "text-ink-700 hover:text-brand-700"}`}>
-                <span className="font-bold text-ink-400 ml-1">{(i + 1).toLocaleString("fa-IR")}.</span>
-                {s.label}
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ساعت و تاریخ زنده‌ی شمسی + سلام متناسب با ساعت روز
 function useNow() {
@@ -134,11 +74,9 @@ function ReportFromLink() {
 }
 
 export default function Dashboard() {
-  const { actingUser, role, hasPermission } = useTenancy();
   return (
     <div>
-      <PageHeader title="میزکار من" description={`خوش آمدید، ${actingUser.name} — میز کار شخصی شما به‌عنوان «${role.title}»: کارها، جلسات، اعلان‌های مهم، پیام‌ها و پیشنهادهای همکاری`} />
-      {hasPermission("settings.system") && <QuickStart />}
+      <PageHeader title="میزکار من" />
       <PersonalHub header={<LiveDateTime />} />
       <ReportFromLink />
     </div>

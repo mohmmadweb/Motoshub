@@ -48,7 +48,6 @@ const kindIcon: Record<InboxKind, typeof AtSign> = {
   report: BarChart3,
   access: KeyRound,
   topic_follow: BellRing,
-  follow: UserCheck,
   security: ShieldAlert,
 };
 

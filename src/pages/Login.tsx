@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Ban, Eye, EyeOff, MailCheck } from "lucide-react";
-import { systemIdentity } from "../data/tenancy";
+import { useEffectiveBranding } from "../iam/hooks";
+import { ROOT_ID } from "../iam/model";
 import { demoPersonas, users } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
 import { useInbox } from "../context/InboxContext";
@@ -90,16 +91,23 @@ export default function Login() {
   };
 
   const title = mode === "login" ? "ورود به سامانه" : "بازیابی گذرواژه";
+  // عنوان سامانه و لوگو از «مدیریت سامانه ← برند و ظاهر» (لایه‌ی سامانه)
+  const brand = useEffectiveBranding(ROOT_ID);
+  useEffect(() => {
+    document.title = `${title} | ${brand.name}`;
+  }, [title, brand.name]);
 
   return (
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-navy-900 px-4">
       <div className="w-full max-w-sm card p-8">
         <div className="flex flex-col items-center text-center mb-7">
-          <span className="bg-white rounded-xl px-3 py-2 mb-4 border border-ink-100">
-            <img src="/bonyad-logo.png" alt={systemIdentity.name} className="h-9 w-auto" />
-          </span>
+          {brand.logo && (
+            <span className="bg-white rounded-xl px-3 py-2 mb-4 border border-ink-100">
+              <img src={brand.logo} alt={brand.name} className="h-9 w-auto" />
+            </span>
+          )}
           <h1 className="font-bold text-base text-ink-900">{title}</h1>
-          <p className="text-xs text-ink-500 mt-1">{systemIdentity.name}</p>
+          <p className="text-xs text-ink-500 mt-1">{brand.name}</p>
         </div>
 
         {otpFor ? (

@@ -59,7 +59,6 @@ import WorkflowParamsCard from "./WorkflowParams";
 import { KnowledgeSettingsPanel, NotificationQueuePanel, SocialSettingsPanel, TimesheetSettingsPanel } from "./ModuleSettings";
 import { SystemVarsCard } from "../AdminSections";
 import { useToast } from "../../components/ui/ToastProvider";
-import FeaturedUsersSection from "./FeaturedUsersSection";
 import CaptchaSection from "./CaptchaSection";
 import RateLimitSection from "./RateLimitSection";
 import AutoBlockSection from "./AutoBlockSection";
@@ -110,7 +109,6 @@ export const settingsGroups: SettingsGroupDef[] = [
         tabs: [
           { id: "list", label: "اعضا و عضویت‌ها", perms: ["iam.members.manage"], keywords: ["عضویت", "تعلیق", "مشاهده به‌عنوان"], render: () => <MembersSection /> },
           { id: "invite", label: "دعوت و واردسازی", perms: ["users.import", "users.create", "iam.members.manage"], keywords: ["دعوت", "واردسازی", "اکسل", "CSV", "فایل نمونه"], render: () => <InviteImportSection /> },
-          { id: "featured", label: "کاربران برجسته", perms: ["relations.featured.manage", "iam.members.manage"], keywords: ["برجسته", "دوستی خودکار", "دنبال‌کردن خودکار", "اعضای جدید"], render: () => <FeaturedUsersSection /> },
         ],
       },
       { id: "roles", label: "نقش‌ها و مجوزها", icon: KeyRound, perms: ["roles.list", "roles.create", "roles.edit"], keywords: ["مجوز", "نقش سفارشی"], render: () => <RolesSection /> },
@@ -151,7 +149,7 @@ export const settingsGroups: SettingsGroupDef[] = [
             id: "org",
             label: "برند سازمان",
             perms: ["settings.branding"],
-            keywords: ["لوگو", "رنگ برند", "نام نمایشی", "زیرعنوان", "دامنه", "ارث‌بری", "قفل", "پروفایل سازمانی", "فیلدهای عمومی"],
+            keywords: ["لوگو", "رنگ برند", "عنوان سامانه", "نام سامانه", "دامنه", "ارث‌بری", "قفل", "پروفایل سازمانی", "فیلدهای عمومی"],
             render: () => (
               <div className="space-y-4">
                 <BrandOrgTab />
@@ -159,7 +157,7 @@ export const settingsGroups: SettingsGroupDef[] = [
               </div>
             ),
           },
-          { id: "slideshow", label: "اسلایدشو", perms: ["settings.branding"], keywords: ["اسلاید", "اسلایدر", "بنر", "صفحه‌ی عمومی", "بالای داشبورد", "پخش خودکار"], render: () => <SlideshowSection /> },
+          { id: "slideshow", label: "اسلایدشو", perms: ["settings.branding"], keywords: ["اسلاید", "اسلایدر", "بنر", "صفحه‌ی عمومی", "پخش خودکار"], render: () => <SlideshowSection /> },
           { id: "me", label: "ظاهر من", keywords: ["حالت تیره", "روشن", "رنگ تأکید", "اندازه‌ی متن", "فونت", "اوقات شرعی", "شهر"], render: () => <MyAppearanceTab /> },
         ],
       },
@@ -389,7 +387,7 @@ export const legacySectionMap: Record<string, { section: string; tab?: string }>
   captcha: { section: "login", tab: "captcha" },
   "rate-limit": { section: "security", tab: "rate-limit" },
   "auto-block": { section: "security", tab: "auto-block" },
-  featured: { section: "members", tab: "featured" },
+  featured: { section: "members" },
   import: { section: "members", tab: "invite" },
   "access-requests": { section: "bindings", tab: "requests" },
   sod: { section: "review", tab: "sod" },

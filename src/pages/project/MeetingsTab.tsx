@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, CheckCircle2, Phone, Paperclip, BellRing, Upload, Repeat, ChevronDown, ListOrdered, ExternalLink, Copy, Link2, MonitorPlay } from "lucide-react";
+import { CalendarCheck2, CalendarPlus, FileText, Mic, MicOff, Video, VideoOff, MonitorUp, Circle, PhoneOff, MessageSquare, UserPlus, Users, Plus, X, ListChecks, ArrowLeftRight, Ban, Phone, Paperclip, BellRing, Upload, Repeat, ChevronDown, ExternalLink, Copy, Link2, MonitorPlay } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
-import EmptyState from "../../components/ui/EmptyState";
 import Modal from "../../components/ui/Modal";
 import RowActions from "../../components/ui/RowActions";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -12,7 +11,7 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import { dayNum, fa, fromDayNum } from "../../pm/jalali";
 import type { ActionItem, AgendaItem, DocType, PMMeeting, PMMinute, PMPriority, ProjectState, TaskType } from "../../pm/types";
 import { typeLabel } from "../../pm/selectors";
-import { meetingLinkFor } from "../../context/ProjectsContext";
+import { bareMeetingTitle, meetingLinkFor, meetingPrefix } from "../../context/ProjectsContext";
 import { taskTypes } from "./taskTypes";
 import { endBefore, nextOccurrence, reminderLabel, ruleLabel, splitEdit, withException, type EditScope } from "../../pm/recurrence";
 import AvailabilityPanel from "../calendar/AvailabilityPanel";
@@ -55,15 +54,16 @@ export default function MeetingsTab() {
   const [meet, setMeet] = useState<MeetDraft | null>(null);
   const [room, setRoom] = useState<PMMeeting | null>(null);
   const [minute, setMinute] = useState<MinDraft | null>(null);
-  const [viewMin, setViewMin] = useState<string | null>(null);
   const [viewMeet, setViewMeet] = useState<string | null>(null);
   const [convert, setConvert] = useState<{ minuteId: string; a: ActionItem } | null>(null);
   const [more, setMore] = useState(false);
   const [scopeAsk, setScopeAsk] = useState<{ title: string; run: (s: EditScope) => void } | null>(null);
   const ms = p.meetingSettings ?? defaultMeetingSettings;
-  // پرش از جستجو/اعلان به یک صورت‌جلسه
+  const prefix = meetingPrefix(p);
+  // پرش از جستجو/اعلان/دفتر تصمیمات: به جلسه یا به صورت‌جلسه‌ی یک جلسه ← جزئیات همان جلسه
   useEffect(() => {
-    if (focusId && p.minutes.some((m) => m.id === focusId)) setViewMin(focusId);
+    const mn = focusId ? p.minutes.find((m) => m.id === focusId) : undefined;
+    if (mn?.meetingId) setViewMeet(mn.meetingId);
     else if (focusId && p.meetings.some((m) => m.id === focusId)) setViewMeet(focusId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId]);
@@ -71,8 +71,9 @@ export default function MeetingsTab() {
   /** تاریخ وقوع بعدی (برای جلسات تکرارشونده) */
   const nextOf = (m: PMMeeting) => (m.recurrence ? nextOccurrence(m.recurrence, m.date, ref) ?? dayNum(m.date) ?? 0 : dayNum(m.date) ?? 0);
   const upcoming = p.meetings.filter((m) => m.status === "برنامه‌ریزی‌شده").sort((a, b) => nextOf(a) - nextOf(b));
-  const past = p.meetings.filter((m) => m.status !== "برنامه‌ریزی‌شده");
+  const past = p.meetings.filter((m) => m.status !== "برنامه‌ریزی‌شده").sort((a, b) => (dayNum(b.date) ?? 0) - (dayNum(a.date) ?? 0));
   const memberList = p.members.map((m) => m.name);
+  const minutesOf = (id: string) => p.minutes.filter((x) => x.meetingId === id).sort((a, b) => (dayNum(b.date) ?? 0) - (dayNum(a.date) ?? 0));
 
   const saveMeet = () => {
     if (!meet) return;
@@ -82,7 +83,7 @@ export default function MeetingsTab() {
     if (isOnline(meet.mode) && !validUrl(meet.link ?? "")) return notify(`برای جلسه‌ی ${meet.mode} «لینک جلسه» معتبر (با https://) الزامی است.`, "warning");
     const { occDate, ...draft } = meet;
     const agenda = (draft.agenda ?? []).filter((a) => a.title.trim());
-    const clean = { ...draft, link: isOnline(draft.mode) ? draft.link?.trim() : undefined, agenda: agenda.length ? agenda : undefined, reminders: draft.reminders?.length ? draft.reminders : undefined };
+    const clean = { ...draft, title: `${prefix}${draft.title.trim()}`, link: isOnline(draft.mode) ? draft.link?.trim() : undefined, agenda: agenda.length ? agenda : undefined, reminders: draft.reminders?.length ? draft.reminders : undefined };
     const orig = draft.id ? p.meetings.find((x) => x.id === draft.id) : undefined;
     if (orig?.recurrence && occDate) {
       setScopeAsk({
@@ -106,7 +107,7 @@ export default function MeetingsTab() {
   const editMeet = (m: PMMeeting) => {
     const occ = m.recurrence ? nextOccurrence(m.recurrence, m.date, ref) : null;
     setMore(!!(m.recurrence || m.reminders?.length || m.agenda?.length));
-    setMeet({ ...m, date: occ !== null ? fromDayNum(occ) : m.date, occDate: occ !== null ? fromDayNum(occ) : undefined });
+    setMeet({ ...m, title: bareMeetingTitle(p, m.title), date: occ !== null ? fromDayNum(occ) : m.date, occDate: occ !== null ? fromDayNum(occ) : undefined });
   };
 
   const cancelMeet = (m: PMMeeting) => {
@@ -125,27 +126,27 @@ export default function MeetingsTab() {
     });
   };
 
-  const newMinuteFor = (m?: PMMeeting) =>
+  /** صورت‌جلسه همیشه متعلق به یک جلسه است */
+  const newMinuteFor = (m: PMMeeting) =>
     setMinute({
-      title: m?.title ?? "",
-      date: m ? (m.recurrence ? fromDayNum(Math.min(nextOf(m), ref)) : m.date) : refDate,
-      attendees: m?.participants.length ?? 0,
+      title: bareMeetingTitle(p, m.title),
+      date: m.recurrence ? fromDayNum(Math.min(nextOf(m), ref)) : m.date,
+      attendees: m.participants.length,
       decisions: 0,
       followUps: 0,
-      meetingId: m?.id,
-      participants: m?.participants ?? [],
+      meetingId: m.id,
+      participants: m.participants,
       // دستور جلسه، موضوعات صورت‌جلسه را پیش‌پر می‌کند
-      topics: m?.agenda?.length ? m.agenda.map((a) => `${a.title}${a.owner ? ` — ${a.owner}` : ""}${a.minutes ? ` (${fa(a.minutes)} دقیقه)` : ""}`) : [""],
+      topics: m.agenda?.length ? m.agenda.map((a) => `${a.title}${a.owner ? ` — ${a.owner}` : ""}${a.minutes ? ` (${fa(a.minutes)} دقیقه)` : ""}`) : [""],
       decisionList: [""],
       actions: [],
       publish: true,
-      fileIds: m ? p.documents.filter((d) => d.meetingId === m.id).map((d) => d.id) : [],
+      fileIds: p.documents.filter((d) => d.meetingId === m.id).map((d) => d.id),
       newFiles: [],
     });
 
   const saveMinute = () => {
     if (!minute) return;
-    if (!minute.title.trim()) return notify("موضوع جلسه الزامی است.", "warning");
     const bad = (minute.actions ?? []).find((a) => a.text.trim() && a.start && a.due && (dayNum(a.start) ?? 0) > (dayNum(a.due) ?? 0));
     if (bad) return notify(`در اقدام «${bad.text}» تاریخ شروع بعد از سررسید است.`, "warning");
     const { publish, newFiles, ...rest } = minute;
@@ -154,55 +155,28 @@ export default function MeetingsTab() {
     setMinute(null);
   };
 
-  const mv = viewMin ? p.minutes.find((x) => x.id === viewMin) : undefined;
-
   const MeetingRow = ({ m }: { m: PMMeeting }) => {
     const d = nextOf(m);
     const hasMin = p.minutes.some((x) => x.meetingId === m.id);
     return (
-      <div className={`card p-4 flex items-center justify-between gap-3 flex-wrap ${focusId === m.id ? "ring-2 ring-brand-300" : ""}`}>
-        <div className="flex items-center gap-3 min-w-0">
+      <div className={`card p-3.5 flex items-center justify-between gap-3 flex-wrap ${focusId === m.id ? "ring-2 ring-brand-300" : ""} ${m.status === "لغوشده" ? "opacity-70" : ""}`}>
+        <button onClick={() => setViewMeet(m.id)} className="flex items-center gap-3 min-w-0 flex-1 basis-full sm:basis-0 text-right">
           <span className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${m.mode === "ویدیویی" ? "bg-brand-50 text-brand-700" : m.mode === "صوتی" ? "bg-emerald-50 text-emerald-700" : "bg-ink-100 text-ink-600"}`}>{modeIcon(m.mode)}</span>
-          <div className="min-w-0">
-            <button onClick={() => setViewMeet(m.id)} className="text-sm font-medium text-ink-900 hover:text-brand-700 text-right">
-              {m.title}
-            </button>
-            <p className="text-xs text-ink-400 mt-0.5">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-ink-900 hover:text-brand-700 truncate">{m.title}</span>
+            <span className="block text-xs text-ink-400 mt-0.5">
               {m.recurrence && m.status === "برنامه‌ریزی‌شده" ? fromDayNum(d) : m.date} ساعت {m.time} · {fa(m.duration)} دقیقه · {m.mode} · {fa(m.participants.length)} شرکت‌کننده
               {m.status === "برنامه‌ریزی‌شده" && d - ref >= 0 && d - ref <= 1 && <span className="text-amber-600"> · {d === ref ? "امروز" : "فردا"}</span>}
-              {m.status === "برنامه‌ریزی‌شده" && d >= ref && (
-                <span className="inline-flex items-center gap-0.5 mr-1" title={m.reminders?.length ? m.reminders.map(reminderLabel).join("، ") : "یادآوری خودکار به شرکت‌کنندگان"}>
-                  · <BellRing size={10} /> {m.reminders?.length ? reminderLabel(m.reminders[0]) : `${fa(ms.reminderMinutes)} دقیقه قبل`}
-                  {(m.reminders?.length ?? 0) > 1 && ` +${fa(m.reminders!.length - 1)}`}
-                </span>
-              )}
-            </p>
-            {(m.recurrence || m.agenda?.length) && (
-              <p className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                {m.recurrence && (
-                  <span className="inline-flex items-center gap-1" title="جلسه‌ی تکرارشونده">
-                    <Repeat size={11} className="text-brand-600" /> {ruleLabel(m.recurrence, m.date)}
-                  </span>
-                )}
-                {m.agenda?.length ? (
-                  <span className="inline-flex items-center gap-1" title={m.agenda.map((a) => a.title).join("، ")}>
-                    <ListOrdered size={11} /> دستور جلسه: {fa(m.agenda.length)} بند
-                  </span>
-                ) : null}
-              </p>
-            )}
-            {m.taskIds.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {m.taskIds.map((id) => (
-                  <button key={id} onClick={() => openTask(id)} className="text-[10.5px] px-1.5 rounded bg-ink-100 text-ink-600 hover:text-brand-700">
-                    {taskTitle(p, id)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+              {m.recurrence && <Repeat size={11} className="inline mr-1 text-brand-600" />}
+            </span>
+          </span>
+        </button>
+        <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 mr-auto sm:mr-0">
+          {hasMin && (
+            <Badge tone="success" icon={<FileText size={11} />}>
+              صورت‌جلسه دارد
+            </Badge>
+          )}
           {m.status === "برنامه‌ریزی‌شده" ? (
             <>
               {isOnline(m.mode) &&
@@ -213,37 +187,18 @@ export default function MeetingsTab() {
                     {m.mode === "صوتی" ? "پیوستن به تماس" : "ورود به جلسه"}
                   </Button>
                 ))}
-              {isOnline(m.mode) && m.link && (
-                <button onClick={() => setRoom(m)} className="p-1.5 rounded-lg text-ink-400 hover:text-brand-700 hover:bg-ink-50" title="اتاق جلسه‌ی درون‌سامانه (پیش‌نمایش)" aria-label="اتاق جلسه‌ی درون‌سامانه">
-                  <MonitorPlay size={15} />
-                </button>
-              )}
-              {canEdit && (
-                <>
-                  <Button size="sm" variant="secondary" icon={<CheckCircle2 size={13} />} onClick={() => newMinuteFor(m)}>
-                    ثبت صورت‌جلسه
-                  </Button>
-                  <Button size="sm" variant="ghost" icon={<Ban size={13} />} onClick={() => cancelMeet(m)}>
-                    لغو
-                  </Button>
-                  <RowActions onEdit={() => editMeet(m)} />
-                </>
-              )}
+              {canEdit && <RowActions onEdit={() => editMeet(m)} />}
             </>
           ) : (
-            <>
-              <Badge tone={m.status === "لغوشده" ? "danger" : "success"}>{m.status}</Badge>
-              {m.status === "برگزارشده" && !hasMin && canEdit && (
-                <Button size="sm" variant="secondary" onClick={() => newMinuteFor(m)}>
-                  ثبت صورت‌جلسه
-                </Button>
-              )}
-            </>
+            <Badge tone={m.status === "لغوشده" ? "danger" : "neutral"}>{m.status}</Badge>
           )}
         </div>
       </div>
     );
   };
+
+  const mt = viewMeet ? p.meetings.find((x) => x.id === viewMeet) : undefined;
+  const mtMins = mt ? minutesOf(mt.id) : [];
 
   return (
     <div className="space-y-6">
@@ -251,7 +206,7 @@ export default function MeetingsTab() {
         <SectionTitle
           icon={<CalendarPlus size={15} className="text-brand-600" />}
           title="جلسات پیش‌رو"
-          hint="ایجاد جلسه: عنوان، تاریخ، ساعت، شرکت‌کنندگان، توضیحات و تسک‌های مرتبط — جلسه‌ی ویدیویی یا تماس صوتی بدون خروج از سامانه برگزار می‌شود."
+          hint="روی هر جلسه بزنید تا جزئیات و صورت‌جلسه‌ی آن را ببینید. جلسات پروژه فقط برای اعضای پروژه دیده می‌شوند."
           action={
             canEdit && (
               <Button size="sm" variant="primary" icon={<Plus size={13} />} onClick={() => { setMore(false); setMeet({ title: "", date: refDate, time: "۱۰:۰۰", duration: ms.defaultDuration, mode: ms.defaultMode, link: isOnline(ms.defaultMode) ? draftLink(p) : undefined, participants: [p.meta.manager], description: "", taskIds: [], reminders: [{ minutes: ms.reminderMinutes, channel: "inapp" }] }); }}>
@@ -268,61 +223,9 @@ export default function MeetingsTab() {
         </div>
       </div>
 
-      <div>
-        <SectionTitle
-          icon={<FileText size={15} className="text-brand-600" />}
-          title="صورت‌جلسات"
-          hint="هر اقدام (Action Item) صورت‌جلسه با یک کلیک به تسک تبدیل می‌شود."
-          action={
-            canEdit && (
-              <Button size="sm" variant="secondary" icon={<Plus size={13} />} onClick={() => newMinuteFor()}>
-                صورت‌جلسه‌ی جدید
-              </Button>
-            )
-          }
-        />
-        {p.minutes.length > 0 ? (
-          <div className="space-y-3">
-            {p.minutes.map((mn) => (
-              <div key={mn.id} className="card p-4 flex items-center justify-between gap-3 flex-wrap">
-                <button className="flex items-center gap-3 min-w-0 text-right" onClick={() => setViewMin(mn.id)}>
-                  <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-600 flex items-center justify-center shrink-0">
-                    <FileText size={15} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink-900 truncate">{mn.title}</p>
-                    <p className="text-xs text-ink-400 mt-0.5">
-                      {mn.date} · {fa(mn.attendees)} حاضر {mn.published === false && "· پیش‌نویس"}
-                    </p>
-                  </div>
-                </button>
-                <div className="flex items-center gap-2">
-                  <Badge tone="brand" icon={<CalendarCheck2 size={11} />}>
-                    {fa(mn.decisions)} مصوبه
-                  </Badge>
-                  <Badge tone="warning">{fa(mn.followUps)} پیگیری</Badge>
-                  {(mn.fileIds ?? []).length > 0 && (
-                    <Badge tone="neutral" icon={<Paperclip size={11} />}>
-                      {fa((mn.fileIds ?? []).length)} فایل
-                    </Badge>
-                  )}
-                  {mn.actions && mn.actions.length > 0 && (
-                    <Badge tone="success">
-                      {fa(mn.actions.filter((a) => a.taskId).length)}/{fa(mn.actions.length)} به تسک تبدیل شده
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState icon={<FileText size={20} />} title="صورت‌جلسات این پروژه" description="آرشیو صورت‌جلسات از ماژول مدیریت دانش با دسته‌بندی این پروژه نمایش داده می‌شود." />
-        )}
-      </div>
-
       {past.length > 0 && (
         <div>
-          <SectionTitle title="جلسات برگزارشده / لغوشده" />
+          <SectionTitle icon={<CalendarCheck2 size={15} className="text-ink-500" />} title="جلسات برگزارشده / لغوشده" />
           <div className="space-y-2">
             {past.map((m) => (
               <MeetingRow key={m.id} m={m} />
@@ -335,8 +238,11 @@ export default function MeetingsTab() {
       <Modal open={!!meet} onClose={() => setMeet(null)} title={meet?.id ? "ویرایش جلسه" : "ایجاد جلسه"} width="max-w-xl">
         {meet && (
           <div className="space-y-3">
-            <Field label="عنوان جلسه">
-              <input className="input-field" value={meet.title} onChange={(e) => setMeet({ ...meet, title: e.target.value })} placeholder="مثلاً: بازبینی اسپرینت" />
+            <Field label="عنوان جلسه" hint="نام جلسه با کلید پروژه شروع می‌شود تا در تقویم و «رویدادها و جلسات» یکتا و قابل‌تشخیص باشد.">
+              <div className="flex items-stretch">
+                <span className="shrink-0 inline-flex items-center px-2.5 rounded-r-lg border border-l-0 border-ink-200 bg-ink-50 text-xs font-mono text-ink-500">{prefix.trim()}</span>
+                <input className="input-field !rounded-r-none" value={meet.title} onChange={(e) => setMeet({ ...meet, title: e.target.value })} placeholder="مثلاً: بازبینی اسپرینت" />
+              </div>
             </Field>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Field label="تاریخ">
@@ -346,7 +252,7 @@ export default function MeetingsTab() {
                 <input className="input-field" value={meet.time} onChange={(e) => setMeet({ ...meet, time: e.target.value })} placeholder="۱۰:۰۰" />
               </Field>
               <Field label="مدت (دقیقه)">
-                <input className="input-field" value={fa(meet.duration)} onChange={(e) => setMeet({ ...meet, duration: Number(e.target.value.replace(/[۰-۹]/g, (c) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c)))) || 0 })} />
+                <input className="input-field" value={fa(meet.duration)} onChange={(e) => setMeet({ ...meet, duration: numIn(e.target.value) })} />
               </Field>
               <Field label="نوع">
                 <select className="input-field" value={meet.mode} onChange={(e) => { const mode = e.target.value as PMMeeting["mode"]; setMeet({ ...meet, mode, link: isOnline(mode) ? meet.link || draftLink(p, meet.id) : meet.link }); }}>
@@ -369,7 +275,7 @@ export default function MeetingsTab() {
                 </div>
               </Field>
             )}
-            <Field label="شرکت‌کنندگان">
+            <Field label="شرکت‌کنندگان" hint="فقط اعضای پروژه.">
               <div className="flex flex-wrap gap-1.5">
                 {memberList.map((n) => (
                   <button key={n} onClick={() => setMeet({ ...meet, participants: meet.participants.includes(n) ? meet.participants.filter((x) => x !== n) : [...meet.participants, n] })} className={`text-[11px] px-2 py-1 rounded-md border ${meet.participants.includes(n) ? "bg-brand-50 border-brand-300 text-brand-700" : "border-ink-200 text-ink-500"}`}>
@@ -420,7 +326,7 @@ export default function MeetingsTab() {
                 ))}
               </div>
             </Field>
-            <Field label="توضیحات / دستور جلسه">
+            <Field label="توضیحات">
               <textarea className="input-field min-h-[60px]" value={meet.description} onChange={(e) => setMeet({ ...meet, description: e.target.value })} />
             </Field>
             <div className="flex gap-2 pt-2">
@@ -435,19 +341,14 @@ export default function MeetingsTab() {
         )}
       </Modal>
 
-      {/* ثبت صورت‌جلسه */}
-      <Modal open={!!minute} onClose={() => setMinute(null)} title="ثبت صورت‌جلسه" description="موضوعات، تصمیمات و اقدامات موردنیاز با مسئول و سررسید" width="max-w-2xl">
+      {/* ثبت/ویرایش صورت‌جلسه‌ی یک جلسه */}
+      <Modal open={!!minute} onClose={() => setMinute(null)} title={`صورت‌جلسه — ${minute?.title ?? ""}`} description="موضوعات، تصمیمات و اقدامات با مسئول و سررسید" width="max-w-2xl">
         {minute && (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="موضوع جلسه">
-                <input className="input-field" value={minute.title} onChange={(e) => setMinute({ ...minute, title: e.target.value })} />
-              </Field>
-              <Field label="تاریخ جلسه">
-                <JalaliDatePicker value={minute.date} onChange={(v) => setMinute({ ...minute, date: v })} />
-              </Field>
-            </div>
-            <Field label="شرکت‌کنندگان">
+            <Field label="تاریخ جلسه">
+              <JalaliDatePicker value={minute.date} onChange={(v) => setMinute({ ...minute, date: v })} />
+            </Field>
+            <Field label="حاضران">
               <div className="flex flex-wrap gap-1.5">
                 {memberList.map((n) => {
                   const on = minute.participants?.includes(n);
@@ -476,7 +377,7 @@ export default function MeetingsTab() {
                 </div>
               </Field>
             ))}
-            <Field label="اقدامات موردنیاز (Action Items)" hint="هر اقدام با «تسک شد» به تسکی با همین مسئول، بازه، اولویت، برآورد و نوع تبدیل می‌شود.">
+            <Field label="اقدامات (Action Items)" hint="هر اقدام بعد از ثبت با «تبدیل به تسک» به تسکی با همین مسئول، بازه و اولویت تبدیل می‌شود.">
               <div className="space-y-2">
                 {(minute.actions ?? []).map((a, i) => (
                   <ActionRow
@@ -492,7 +393,7 @@ export default function MeetingsTab() {
                 </Button>
               </div>
             </Field>
-            <Field label="فایل‌های مرتبط صورت‌جلسه">
+            <Field label="فایل‌های صورت‌جلسه">
               <div className="space-y-2">
                 {p.documents.length > 0 && (
                   <div className="max-h-32 overflow-y-auto border border-ink-200 rounded-lg p-2 space-y-1">
@@ -536,7 +437,7 @@ export default function MeetingsTab() {
             </Field>
             <label className="flex items-center gap-2 text-xs text-ink-700">
               <input type="checkbox" checked={minute.publish} onChange={(e) => setMinute({ ...minute, publish: e.target.checked })} className="accent-[var(--color-brand-600)]" />
-              انتشار و ارسال برای شرکت‌کنندگان (رویداد MINUTES_PUBLISHED)
+              انتشار و ارسال برای شرکت‌کنندگان
             </label>
             <div className="flex gap-2 pt-2">
               <Button variant="primary" className="flex-1 justify-center" onClick={saveMinute}>
@@ -550,209 +451,179 @@ export default function MeetingsTab() {
         )}
       </Modal>
 
-      {/* مشاهده‌ی صورت‌جلسه */}
-      <Modal open={!!mv} onClose={() => setViewMin(null)} title={mv?.title ?? ""} description={mv ? `${mv.date} · ${fa(mv.attendees)} حاضر` : undefined} width="max-w-xl">
-        {mv && (
-          <div className="space-y-4 text-sm">
-            {(() => {
-              const mt = mv.meetingId ? p.meetings.find((x) => x.id === mv.meetingId) : undefined;
-              if (!mt) return null;
-              return (
-                <div className="-mt-1 flex items-center justify-between gap-2 flex-wrap rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2">
-                  <button onClick={() => { setViewMin(null); setViewMeet(mt.id); }} className="text-xs text-ink-600 hover:text-brand-700 flex items-center gap-1.5 min-w-0">
-                    {modeIcon(mt.mode, 13)} <span className="truncate">جلسه‌ی «{mt.title}» · {mt.mode}</span>
-                  </button>
-                  <JoinLink m={mt} />
-                </div>
-              );
-            })()}
-            {mv.participants && (
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-1">شرکت‌کنندگان</p>
-                <p className="text-xs text-ink-600">{mv.participants.join("، ")}</p>
+      {/* جزئیات جلسه + صورت‌جلسه‌ی آن */}
+      <Modal open={!!mt} onClose={() => setViewMeet(null)} title={mt?.title ?? ""} description={mt ? `${mt.recurrence && mt.status === "برنامه‌ریزی‌شده" ? fromDayNum(nextOf(mt)) : mt.date} ساعت ${mt.time} · ${fa(mt.duration)} دقیقه · ${mt.mode} · ${mt.status}` : undefined} width="max-w-2xl">
+        {mt && (
+          <div className="space-y-4 text-xs">
+            {isOnline(mt.mode) && mt.status === "برنامه‌ریزی‌شده" && (
+              <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3 space-y-2">
+                {mt.link ? (
+                  <>
+                    <p className="font-mono text-[11px] text-ink-600 break-all" dir="ltr">
+                      {mt.link}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <JoinLink m={mt} />
+                      <Button size="sm" variant="secondary" icon={<Copy size={12} />} onClick={() => { navigator.clipboard?.writeText(mt.link!); notify("لینک جلسه کپی شد."); }}>
+                        کپی لینک
+                      </Button>
+                      <Button size="sm" variant="ghost" icon={<MonitorPlay size={12} />} onClick={() => { setViewMeet(null); setRoom(mt); }}>
+                        اتاق درون‌سامانه
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-ink-400">لینکی ثبت نشده است.</p>
+                )}
               </div>
-            )}
-            {mv.topics && mv.topics.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-1">موضوعات مطرح‌شده</p>
-                <ul className="list-disc pr-5 text-xs text-ink-700 space-y-1">
-                  {mv.topics.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {mv.decisionList && mv.decisionList.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-1">تصمیمات</p>
-                <ul className="list-decimal pr-5 text-xs text-ink-700 space-y-1">
-                  {mv.decisionList.map((t, i) => (
-                    <li key={i}>{t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {(mv.fileIds ?? []).length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-ink-700 mb-1 flex items-center gap-1">
-                  <Paperclip size={13} /> فایل‌های مرتبط
-                </p>
-                <div className="space-y-1">
-                  {(mv.fileIds ?? []).map((fid) => {
-                    const d = p.documents.find((x) => x.id === fid);
-                    if (!d) return null;
-                    return (
-                      <button key={fid} onClick={() => { setViewMin(null); goTab("documents", d.id); }} className="flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
-                        <FileText size={12} /> {d.name} <span className="text-ink-400">({d.type} · نسخه‌ی {fa(d.version)})</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {canEdit && (
-              <Button size="sm" variant="ghost" onClick={() => { const { id, ...rest } = mv; setViewMin(null); setMinute({ ...rest, id, publish: !!mv.published, newFiles: [], topics: mv.topics ?? [""], decisionList: mv.decisionList ?? [""], actions: mv.actions ?? [], participants: mv.participants ?? [] }); }}>
-                ویرایش صورت‌جلسه / افزودن فایل
-              </Button>
             )}
             <div>
-              <p className="text-xs font-bold text-ink-700 mb-2 flex items-center gap-1">
-                <ListChecks size={13} /> اقدامات
+              <p className="font-bold text-ink-700 mb-1">شرکت‌کنندگان ({fa(mt.participants.length)})</p>
+              <p className="text-ink-600 leading-6">{mt.participants.join("، ") || "—"}</p>
+            </div>
+            {mt.recurrence && (
+              <p className="text-ink-600 flex items-center gap-1">
+                <Repeat size={12} className="text-brand-600" /> {ruleLabel(mt.recurrence, mt.date)}
+                {mt.reminders?.length ? <span className="text-ink-400 inline-flex items-center gap-0.5 mr-2"><BellRing size={11} /> {mt.reminders.map(reminderLabel).join("، ")}</span> : null}
               </p>
-              {(mv.actions ?? []).map((a: ActionItem) => {
-                const task = a.taskId ? p.tasks.find((t) => t.id === a.taskId) : undefined;
-                return (
-                  <div key={a.id} className="py-1.5 border-b border-ink-100 text-xs flex items-start gap-2 flex-wrap">
-                    <div className="flex-1 min-w-[180px]">
-                      <p className="text-ink-800">{a.text}</p>
-                      <p className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1 flex-wrap">
-                        <span>{a.owner}</span>
-                        {(a.start || a.due) && <span>· {a.start && a.start !== a.due ? `${a.start} ← ${a.due || "—"}` : a.due}</span>}
-                        {a.priority && (
-                          <>
-                            · <Badge tone={priorityTone[a.priority]}>{a.priority}</Badge>
-                          </>
-                        )}
-                        {a.estHours ? <span>· {fa(a.estHours)} ساعت</span> : null}
-                        {a.type && a.type !== "task" && <span>· {typeLabel[a.type]}</span>}
-                        {a.milestoneId && <span>· {p.milestones.find((m) => m.id === a.milestoneId)?.title ?? "مایل‌ستون"}</span>}
-                        {a.sprintId && <span>· {(p.sprints ?? []).find((x) => x.id === a.sprintId)?.name ?? "اسپرینت"}</span>}
-                      </p>
-                    </div>
-                    {a.taskId ? (
-                      <button onClick={() => { setViewMin(null); openTask(a.taskId!); }} className="text-emerald-700 hover:underline whitespace-nowrap">
-                        تسک شد <span className="font-mono">{task?.key ?? ""}</span> ←
-                      </button>
-                    ) : (
-                      canEdit && (
-                        <Button size="sm" variant="secondary" icon={<ArrowLeftRight size={12} />} onClick={() => setConvert({ minuteId: mv.id, a })}>
-                          تبدیل به تسک
-                        </Button>
-                      )
+            )}
+            {mt.agenda?.length ? (
+              <div>
+                <p className="font-bold text-ink-700 mb-1">دستور جلسه</p>
+                <ol className="list-decimal pr-5 space-y-1 text-ink-700">
+                  {mt.agenda.map((a) => (
+                    <li key={a.id}>
+                      {a.title}
+                      <span className="text-ink-400">{a.owner ? ` — ${a.owner}` : ""}{a.minutes ? ` (${fa(a.minutes)} دقیقه)` : ""}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+            {mt.description && <p className="text-ink-600 leading-6 whitespace-pre-line">{mt.description}</p>}
+            {mt.taskIds.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {mt.taskIds.map((id) => (
+                  <button key={id} onClick={() => { setViewMeet(null); openTask(id); }} className="text-[10.5px] px-1.5 rounded bg-ink-100 text-ink-600 hover:text-brand-700">
+                    {taskTitle(p, id)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* صورت‌جلسه — بخشی از خود جلسه */}
+            <div className="border-t border-ink-100 pt-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="font-bold text-ink-800 flex items-center gap-1 text-[13px]">
+                  <FileText size={14} className="text-brand-600" /> صورت‌جلسه
+                </p>
+                {canEdit && mt.status !== "لغوشده" && (
+                  <Button size="sm" variant={mtMins.length ? "ghost" : "primary"} icon={<Plus size={12} />} onClick={() => { setViewMeet(null); newMinuteFor(mt); }}>
+                    ثبت صورت‌جلسه
+                  </Button>
+                )}
+              </div>
+              {mtMins.length === 0 && <p className="text-[11px] text-ink-400">هنوز صورت‌جلسه‌ای برای این جلسه ثبت نشده است.</p>}
+              <div className="space-y-4">
+                {mtMins.map((mv) => (
+                  <div key={mv.id} className={`space-y-3 ${focusId === mv.id ? "rounded-lg ring-2 ring-brand-200 p-2" : ""}`}>
+                    <p className="text-[11px] text-ink-400 flex items-center gap-2 flex-wrap">
+                      {mv.date} · {fa(mv.participants?.length ?? mv.attendees)} حاضر{mv.published === false && " · پیش‌نویس"}
+                      {canEdit && (
+                        <button className="text-brand-700 hover:underline" onClick={() => { const { id, ...rest } = mv; setViewMeet(null); setMinute({ ...rest, id, publish: !!mv.published, newFiles: [], topics: mv.topics ?? [""], decisionList: mv.decisionList ?? [""], actions: mv.actions ?? [], participants: mv.participants ?? [] }); }}>
+                          ویرایش
+                        </button>
+                      )}
+                    </p>
+                    {mv.topics && mv.topics.length > 0 && (
+                      <div>
+                        <p className="font-bold text-ink-700 mb-1">موضوعات</p>
+                        <ul className="list-disc pr-5 text-ink-700 space-y-1">
+                          {mv.topics.map((t, i) => (
+                            <li key={i}>{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {mv.decisionList && mv.decisionList.length > 0 && (
+                      <div>
+                        <p className="font-bold text-ink-700 mb-1">تصمیمات</p>
+                        <ul className="list-decimal pr-5 text-ink-700 space-y-1">
+                          {mv.decisionList.map((t, i) => (
+                            <li key={i}>{t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {!mv.topics?.length && !mv.decisionList?.length && !mv.actions?.length && <p className="text-[11px] text-ink-400">این صورت‌جلسه فقط خلاصه‌ی عددی دارد ({fa(mv.decisions)} مصوبه، {fa(mv.followUps)} پیگیری).</p>}
+                    {(mv.fileIds ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {(mv.fileIds ?? []).map((fid) => {
+                          const d = p.documents.find((x) => x.id === fid);
+                          if (!d) return null;
+                          return (
+                            <button key={fid} onClick={() => { setViewMeet(null); goTab("documents", d.id); }} className="flex items-center gap-1 text-brand-700 hover:underline">
+                              <Paperclip size={11} /> {d.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {(mv.actions ?? []).length > 0 && (
+                      <div>
+                        <p className="font-bold text-ink-700 mb-1 flex items-center gap-1">
+                          <ListChecks size={13} /> اقدامات
+                        </p>
+                        {(mv.actions ?? []).map((a: ActionItem) => {
+                          const task = a.taskId ? p.tasks.find((t) => t.id === a.taskId) : undefined;
+                          return (
+                            <div key={a.id} className="py-1.5 border-b border-ink-100 last:border-0 flex items-start gap-2 flex-wrap">
+                              <div className="flex-1 min-w-[180px]">
+                                <p className="text-ink-800">{a.text}</p>
+                                <p className="text-[11px] text-ink-500 mt-0.5 flex items-center gap-1 flex-wrap">
+                                  <span>{a.owner}</span>
+                                  {(a.start || a.due) && <span>· {a.start && a.start !== a.due ? `${a.start} ← ${a.due || "—"}` : a.due}</span>}
+                                  {a.priority && (
+                                    <>
+                                      · <Badge tone={priorityTone[a.priority]}>{a.priority}</Badge>
+                                    </>
+                                  )}
+                                </p>
+                              </div>
+                              {a.taskId ? (
+                                <button onClick={() => { setViewMeet(null); openTask(a.taskId!); }} className="text-emerald-700 hover:underline whitespace-nowrap">
+                                  تسک شد <span className="font-mono">{task?.key ?? ""}</span> ←
+                                </button>
+                              ) : (
+                                canEdit && (
+                                  <Button size="sm" variant="secondary" icon={<ArrowLeftRight size={12} />} onClick={() => setConvert({ minuteId: mv.id, a })}>
+                                    تبدیل به تسک
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-                );
-              })}
-              {!mv.actions?.length && <p className="text-[11px] text-ink-400">این صورت‌جلسه فقط خلاصه‌ی عددی دارد ({fa(mv.decisions)} مصوبه، {fa(mv.followUps)} پیگیری).</p>}
+                ))}
+              </div>
             </div>
+
+            {canEdit && mt.status === "برنامه‌ریزی‌شده" && (
+              <div className="flex gap-2 pt-1 border-t border-ink-100 pt-3">
+                <Button size="sm" variant="secondary" onClick={() => { setViewMeet(null); editMeet(mt); }}>
+                  ویرایش جلسه
+                </Button>
+                <Button size="sm" variant="ghost" icon={<Ban size={12} />} onClick={() => { setViewMeet(null); cancelMeet(mt); }}>
+                  لغو جلسه
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
-
-      {/* جزئیات جلسه */}
-      {(() => {
-        const mt = viewMeet ? p.meetings.find((x) => x.id === viewMeet) : undefined;
-        const mins = mt ? p.minutes.filter((x) => x.meetingId === mt.id) : [];
-        return (
-          <Modal open={!!mt} onClose={() => setViewMeet(null)} title={mt?.title ?? ""} description={mt ? `${mt.date} ساعت ${mt.time} · ${fa(mt.duration)} دقیقه · ${mt.mode} · ${mt.status}` : undefined} width="max-w-lg">
-            {mt && (
-              <div className="space-y-4 text-xs">
-                {isOnline(mt.mode) && (
-                  <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3 space-y-2">
-                    <p className="font-bold text-ink-700 flex items-center gap-1">
-                      <Link2 size={13} /> لینک جلسه
-                    </p>
-                    {mt.link ? (
-                      <>
-                        <p className="font-mono text-[11px] text-ink-600 break-all" dir="ltr">
-                          {mt.link}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <JoinLink m={mt} />
-                          <Button size="sm" variant="secondary" icon={<Copy size={12} />} onClick={() => { navigator.clipboard?.writeText(mt.link!); notify("لینک جلسه کپی شد."); }}>
-                            کپی لینک
-                          </Button>
-                          <Button size="sm" variant="ghost" icon={<MonitorPlay size={12} />} onClick={() => { setViewMeet(null); setRoom(mt); }}>
-                            اتاق درون‌سامانه
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-ink-400">لینکی ثبت نشده است.</p>
-                    )}
-                  </div>
-                )}
-                <div>
-                  <p className="font-bold text-ink-700 mb-1">شرکت‌کنندگان ({fa(mt.participants.length)})</p>
-                  <p className="text-ink-600 leading-6">{mt.participants.join("، ")}</p>
-                </div>
-                {mt.recurrence && (
-                  <p className="text-ink-600 flex items-center gap-1">
-                    <Repeat size={12} className="text-brand-600" /> {ruleLabel(mt.recurrence, mt.date)}
-                  </p>
-                )}
-                {mt.agenda?.length ? (
-                  <div>
-                    <p className="font-bold text-ink-700 mb-1">دستور جلسه</p>
-                    <ol className="list-decimal pr-5 space-y-1 text-ink-700">
-                      {mt.agenda.map((a) => (
-                        <li key={a.id}>
-                          {a.title}
-                          <span className="text-ink-400">{a.owner ? ` — ${a.owner}` : ""}{a.minutes ? ` (${fa(a.minutes)} دقیقه)` : ""}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ) : null}
-                {mt.description && (
-                  <div>
-                    <p className="font-bold text-ink-700 mb-1">توضیحات</p>
-                    <p className="text-ink-600 leading-6 whitespace-pre-line">{mt.description}</p>
-                  </div>
-                )}
-                {mt.taskIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {mt.taskIds.map((id) => (
-                      <button key={id} onClick={() => { setViewMeet(null); openTask(id); }} className="text-[10.5px] px-1.5 rounded bg-ink-100 text-ink-600 hover:text-brand-700">
-                        {taskTitle(p, id)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {mins.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {mins.map((x) => (
-                      <button key={x.id} onClick={() => { setViewMeet(null); setViewMin(x.id); }} className="text-brand-700 hover:underline flex items-center gap-1">
-                        <FileText size={12} /> صورت‌جلسه‌ی {x.date}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {canEdit && mt.status === "برنامه‌ریزی‌شده" && (
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="secondary" onClick={() => { setViewMeet(null); editMeet(mt); }}>
-                      ویرایش جلسه
-                    </Button>
-                    <Button size="sm" variant="ghost" icon={<CheckCircle2 size={12} />} onClick={() => { setViewMeet(null); newMinuteFor(mt); }}>
-                      ثبت صورت‌جلسه
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </Modal>
-        );
-      })()}
 
       {/* تبدیل اقدام به تسک — تکمیل فیلدهای تسک (برای اقدام‌های قدیمی بدون تاریخ هم) */}
       <Modal open={!!convert} onClose={() => setConvert(null)} title="تبدیل اقدام به تسک" description="مسئول، بازه، اولویت، برآورد و نوع تسک را بررسی کنید." width="max-w-lg">
@@ -799,6 +670,7 @@ export default function MeetingsTab() {
     </div>
   );
 }
+
 
 /** ویرایشگر دستور جلسه: عنوان، مسئول، دقیقه */
 function AgendaEditor({ items, duration, members, onChange }: { items: AgendaItem[]; duration: number; members: string[]; onChange: (a: AgendaItem[]) => void }) {

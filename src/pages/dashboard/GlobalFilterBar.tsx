@@ -92,7 +92,7 @@ export function GlobalFilterBar({ value, onChange, projects, people }: { value: 
               {people.map((p) => <option key={p}>{p}</option>)}
             </select>
           </label>
-          <p className="text-[10.5px] text-ink-400 leading-5">روی گزارش‌های سنجاق‌شده و کارت‌های کارها، جلسات، پروژه‌ها و هشدارهای مدیریتی اعمال می‌شود.</p>
+          <p className="text-[10.5px] text-ink-400 leading-5">روی گزارش‌های سنجاق‌شده و کارت‌های «فعالیت و وظایف من»، «رویدادها و جلسات» و «پروژه‌های من» اعمال می‌شود.</p>
         </div>
       )}
     </div>

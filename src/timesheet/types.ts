@@ -58,6 +58,12 @@ export type TimeEntry = {
   aggregate?: boolean;
 };
 
+/** تسک شخصی — کاری که کاربر برای خودش تعریف می‌کند (خارج از پروژه‌ها؛ فقط در کارکرد ذخیره می‌شود) */
+export type PersonalTask = { id: string; personId: string; title: string; createdAt: string };
+/** شناسه‌ی تسک‌های شخصی با این پیشوند ساخته می‌شود تا از تسک پروژه جدا شود */
+export const PERSONAL_TASK_PREFIX = "ptask-";
+export const isPersonalTaskId = (id?: string) => !!id && id.startsWith(PERSONAL_TASK_PREFIX);
+
 export type TeamId = "pm" | "backend" | "frontend" | "qa" | "devops" | "staff";
 export const teamLabel: Record<TeamId, string> = {
   pm: "مدیریت محصول",
@@ -173,6 +179,8 @@ export type TsState = {
   periods: PeriodRecord[];
   integrations: Integration[];
   settings: TsSettings;
+  /** تسک‌های شخصی کاربران (اختیاری — داده‌ی قدیمی بدون آن هم بار می‌شود) */
+  personalTasks?: PersonalTask[];
   /** کلید یادآوری‌های فرستاده‌شده (جلوگیری از تکرار) */
   remindLog?: string[];
   /** آخرین روزی (تاریخ واقعی) که یادآوری‌های هر شخص بررسی شد */

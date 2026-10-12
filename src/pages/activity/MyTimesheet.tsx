@@ -20,6 +20,7 @@ import {
   fmtHM,
   holidayOf,
   isLeave,
+  isPersonalTaskId,
   leaveBalance,
   parseHours,
   periodOf,
@@ -38,6 +39,7 @@ import { useTimesheet } from "../../context/TimesheetContext";
 import { daysToDate, useTs } from "./lib";
 import { SourceIcon } from "./ui";
 import EntryModal from "./EntryModal";
+import TaskPicker, { PersonalTag } from "./TaskPicker";
 import SettingsModal from "./SettingsModal";
 import LeaveBalanceModal from "./LeaveBalance";
 
@@ -305,7 +307,6 @@ function QuickAdd({ days, today, projects, onAdd }: { days: string[]; today: str
   const [desc, setDesc] = useState("");
   const [err, setErr] = useState(false);
   useEffect(() => setDate(def), [def]);
-  const project = projects.find((p) => p.id === projectId);
   const leave = isLeave(type);
   const add = () => {
     const h = type === "leave_daily" && !hours.trim() ? 8 : parseHours(hours);
@@ -355,14 +356,9 @@ function QuickAdd({ days, today, projects, onAdd }: { days: string[]; today: str
             </option>
           ))}
         </select>
-        <select className="input-field col-span-2 sm:col-span-2" value={taskId} onChange={(e) => setTaskId(e.target.value)} disabled={!project || leave} aria-label="تسک">
-          <option value="">تسک (اختیاری)</option>
-          {project?.tasks.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
+        <div className="col-span-2 sm:col-span-2 min-w-0">
+          <TaskPicker value={taskId} projectId={projectId || undefined} disabled={leave} onChange={(t, p) => (setTaskId(t), setProjectId(p ?? ""))} />
+        </div>
         <input className="input-field col-span-2 sm:col-span-2" placeholder="شرح کار" value={desc} onChange={(e) => setDesc(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} aria-label="شرح" />
         <Button variant="primary" icon={<Plus size={14} />} onClick={add} className="col-span-2 sm:col-span-1 justify-center">
           ثبت
@@ -452,6 +448,7 @@ export function EntryLine({
   onReview?: (e: TimeEntry, ok: boolean) => void;
 }) {
   const task = ctx.taskTitle(e.projectId, e.taskId);
+  const personal = isPersonalTaskId(e.taskId);
   const pending = e.review === "pending";
   return (
     <div className={`flex items-center gap-2 rounded-md px-1.5 py-1 ${pending ? "border border-dashed border-amber-300 bg-amber-50/60" : "hover:bg-ink-50"}`}>
@@ -463,11 +460,20 @@ export function EntryLine({
             <span>{entryTypeLabel[e.type]}</span>
           ) : (
             <>
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ctx.projectColor(e.projectId) }} />
-              <span className="truncate">
-                {e.projectId ? ctx.projectName(e.projectId) : e.externalProject ? `نگاشت‌نشده: ${e.externalProject}` : "بدون پروژه"}
-                {task && e.description ? ` · ${task}` : ""}
-              </span>
+              {personal ? (
+                <>
+                  <PersonalTag />
+                  {task && e.description && <span className="truncate">{task}</span>}
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ctx.projectColor(e.projectId) }} />
+                  <span className="truncate">
+                    {e.projectId ? ctx.projectName(e.projectId) : e.externalProject ? `نگاشت‌نشده: ${e.externalProject}` : "بدون پروژه"}
+                    {task && e.description ? ` · ${task}` : ""}
+                  </span>
+                </>
+              )}
             </>
           )}
         </p>
