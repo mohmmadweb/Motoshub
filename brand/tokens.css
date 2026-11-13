@@ -1,0 +1,44 @@
+/* توکن‌های برند موتوشاب — همسان با src/index.css (منبع اصلی) */
+:root {
+  --brand-font: "Sahel FD", "Sahel", sans-serif;
+  --font-sans: "Sahel FD", system-ui, sans-serif;
+  --color-brand-50: #eef4fc;
+  --color-brand-100: #d9e7f8;
+  --color-brand-200: #b3cef1;
+  --color-brand-300: #82aee6;
+  --color-brand-400: #4d87d6;
+  --color-brand-500: #2a66bd;
+  --color-brand-600: #1f4f99;
+  --color-brand-700: #1b4079;
+  --color-brand-800: #17325f;
+  --color-brand-900: #112442;
+  --color-navy-50: #f4f6f9;
+  --color-navy-100: #e3e8ef;
+  --color-navy-200: #c3ccd9;
+  --color-navy-300: #93a2b8;
+  --color-navy-400: #5e7191;
+  --color-navy-500: #3f526f;
+  --color-navy-600: #2c3c56;
+  --color-navy-700: #213044;
+  --color-navy-800: #182536;
+  --color-navy-900: #0f1828;
+  --color-navy-950: #0b1220;
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef1;
+  --color-ink-200: #dde1e6;
+  --color-ink-300: #c1c7d0;
+  --color-ink-400: #5d6b81;
+  --color-ink-500: #5b6678;
+  --color-ink-600: #4f5867;
+  --color-ink-700: #383f4c;
+  --color-ink-800: #232831;
+  --color-ink-900: #14171d;
+  --color-success: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-warning: #d97706;
+  --color-warning-soft: #fffbeb;
+  --color-info: #0284c7;
+  --color-info-soft: #f0f9ff;
+}
