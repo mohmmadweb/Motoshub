@@ -20,6 +20,12 @@ import { RecurrenceEditor, RemindersEditor, SeriesScopeDialog } from "../calenda
 import { fmtMin, toMin } from "../calendar/model";
 import { defaultMeetingSettings } from "../../pm/selectors";
 import { Field, MemberSelect, SectionTitle, numIn, priorities, priorityTone, taskTitle, useProjectPage } from "./shared";
+import { Link, useNavigate } from "react-router-dom";
+import { useMeetings, isLocked } from "../../context/MeetingsContext";
+import { meetingHref, routeIdOf } from "../../meetings/types";
+import { modulesOf } from "../../pm/rules";
+import { MeetingRow as OrgMeetingRow, NewMeetingDialog } from "../meetings/MeetingsHub";
+import { MinutesStatusBadge } from "../meetings/MeetingSheet";
 
 type MeetDraft = Omit<PMMeeting, "id" | "status"> & { id?: string; /** تاریخ وقوعی از سری که ویرایش می‌شود */ occDate?: string };
 type MinDraft = Omit<PMMinute, "id"> & { id?: string; publish: boolean; newFiles: { name: string; type: DocType; size: string }[] };
@@ -59,6 +65,14 @@ export default function MeetingsTab() {
   const [more, setMore] = useState(false);
   const [scopeAsk, setScopeAsk] = useState<{ title: string; run: (s: EditScope) => void } | null>(null);
   const ms = p.meetingSettings ?? defaultMeetingSettings;
+  // لایه‌ی سازمانی جلسه‌ها (نقش، حضور، امضا) و صورتجلسه‌های سازمانی این پروژه
+  const meetings = useMeetings();
+  const viewOf = (mid: string) => meetings.byRoute(routeIdOf("project", mid, pid));
+  const orgMinutes = meetings.views.filter((v) => v.source === "org" && v.pid === pid);
+  const orgOn = modulesOf(p).org_minutes;
+  const [orgOpen, setOrgOpen] = useState(false);
+  const nav = useNavigate();
+  const navigateTo = (mid: string) => viewOf(mid);
   const prefix = meetingPrefix(p);
   // پرش از جستجو/اعلان/دفتر تصمیمات: به جلسه یا به صورت‌جلسه‌ی یک جلسه ← جزئیات همان جلسه
   useEffect(() => {
@@ -127,7 +141,9 @@ export default function MeetingsTab() {
   };
 
   /** صورت‌جلسه همیشه متعلق به یک جلسه است */
-  const newMinuteFor = (m: PMMeeting) =>
+  const newMinuteFor = (m: PMMeeting) => {
+    const ov = viewOf(m.id);
+    if (ov && isLocked(ov)) return notify("صورتجلسه‌ی این جلسه در انتظار امضا یا امضاشده است و ویرایش نمی‌شود.", "warning");
     setMinute({
       title: bareMeetingTitle(p, m.title),
       date: m.recurrence ? fromDayNum(Math.min(nextOf(m), ref)) : m.date,
@@ -144,6 +160,7 @@ export default function MeetingsTab() {
       fileIds: p.documents.filter((d) => d.meetingId === m.id).map((d) => d.id),
       newFiles: [],
     });
+  };
 
   const saveMinute = () => {
     if (!minute) return;
@@ -177,6 +194,12 @@ export default function MeetingsTab() {
               صورت‌جلسه دارد
             </Badge>
           )}
+          {navigateTo(m.id) && <MinutesStatusBadge m={navigateTo(m.id)!} />}
+          {navigateTo(m.id) && (
+            <Link to={meetingHref(navigateTo(m.id)!)} className="btn btn-link btn-sm">
+              صفحه‌ی جلسه
+            </Link>
+          )}
           {m.status === "برنامه‌ریزی‌شده" ? (
             <>
               {isOnline(m.mode) &&
@@ -202,6 +225,29 @@ export default function MeetingsTab() {
 
   return (
     <div className="space-y-6">
+      {orgOn && (
+        <div>
+          <SectionTitle
+            icon={<FileText size={15} className="text-brand-600" />}
+            title="صورتجلسه‌های سازمانی این پروژه"
+            hint="رئیس، دبیر، اعضا و مدعوین؛ حضور و غیاب، امضا و پیامک — ماژول «صورتجلسه‌ی سازمانی» در تنظیمات پروژه روشن است."
+            action={
+              canEdit && (
+                <Button size="sm" variant="tonal" icon={<Plus size={13} />} onClick={() => setOrgOpen(true)}>
+                  صورتجلسه‌ی سازمانی
+                </Button>
+              )
+            }
+          />
+          <div className="card">
+            {orgMinutes.map((v) => (
+              <OrgMeetingRow key={v.route_id} v={v} onOpen={() => nav(meetingHref(v))} />
+            ))}
+            {orgMinutes.length === 0 && <p className="text-[13px] text-ink-500 p-4">صورتجلسه‌ی سازمانی‌ای برای این پروژه ثبت نشده است.</p>}
+          </div>
+          <NewMeetingDialog open={orgOpen} onClose={() => setOrgOpen(false)} defaultProject={pid} />
+        </div>
+      )}
       <div>
         <SectionTitle
           icon={<CalendarPlus size={15} className="text-brand-600" />}
@@ -530,7 +576,7 @@ export default function MeetingsTab() {
                     <p className="text-[11px] text-ink-400 flex items-center gap-2 flex-wrap">
                       {mv.date} · {fa(mv.participants?.length ?? mv.attendees)} حاضر{mv.published === false && " · پیش‌نویس"}
                       {canEdit && (
-                        <button className="text-brand-700 hover:underline" onClick={() => { const { id, ...rest } = mv; setViewMeet(null); setMinute({ ...rest, id, publish: !!mv.published, newFiles: [], topics: mv.topics ?? [""], decisionList: mv.decisionList ?? [""], actions: mv.actions ?? [], participants: mv.participants ?? [] }); }}>
+                        <button className="text-brand-700 hover:underline" onClick={() => { const ov = mv.meetingId ? viewOf(mv.meetingId) : undefined; if (ov && isLocked(ov)) return notify("صورتجلسه در انتظار امضا یا امضاشده است و ویرایش نمی‌شود.", "warning"); const { id, ...rest } = mv; setViewMeet(null); setMinute({ ...rest, id, publish: !!mv.published, newFiles: [], topics: mv.topics ?? [""], decisionList: mv.decisionList ?? [""], actions: mv.actions ?? [], participants: mv.participants ?? [] }); }}>
                           ویرایش
                         </button>
                       )}

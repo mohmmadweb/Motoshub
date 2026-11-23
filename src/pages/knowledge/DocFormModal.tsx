@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Send, Save, X, FileUp, PenSquare, ShieldCheck, ChevronDown, ChevronUp, LayoutTemplate, BadgeCheck, Plus } from "lucide-react";
 import Toggle from "../../components/ui/Toggle";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { isCircularType, templateForType } from "../../km/templates";
 import Modal from "../../components/ui/Modal";
+import Note from "../../components/ui/Note";
 import Button from "../../components/ui/Button";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -12,7 +13,7 @@ import { useKnowledge } from "../../context/KnowledgeContext";
 import { users } from "../../data/mock";
 import type { Scoped } from "../../data/tenancy";
 import { addDays } from "../../pm/jalali";
-import { accessLevels, type AccessLevel, type KAcl, type KAudienceEntry, type KDoc, type KFile } from "../../km/types";
+import { accessLevels, type AccessLevel, type KAcl, type KAudienceEntry, type KDoc, type KFile, type KRelation } from "../../km/types";
 import { Field, FilePicker } from "./shared";
 import { MarkdownEditor } from "./Markdown";
 import { AclEditor, AccessSummary } from "./AccessEditor";
@@ -38,7 +39,10 @@ type Draft = {
 type CircularDraft = { on: boolean; audience: KAudienceEntry[]; deadline: string };
 
 /** ثبت سند جدید (چند فایل) یا ویرایش اطلاعات سند موجود */
-export default function DocFormModal({ open, doc, onClose, defaultCategory }: { open: boolean; doc?: KDoc | null; onClose: () => void; defaultCategory?: string }) {
+/** پیش‌پر کردن فرم سند جدید از مبدأ (مثلاً صورتجلسه: ?new=1&from=meeting:<id>) */
+export type DocPrefill = Partial<Pick<Draft, "title" | "description" | "type" | "categoryId" | "format" | "body" | "tags">> & { relations?: KRelation[]; source?: ReactNode };
+
+export default function DocFormModal({ open, doc, onClose, defaultCategory, prefill }: { open: boolean; doc?: KDoc | null; onClose: () => void; defaultCategory?: string; prefill?: DocPrefill | null }) {
   const km = useKnowledge();
   const { notify } = useToast();
   const { defaultScopeForNew, actingUser, hasPermission } = useTenancy();
@@ -73,6 +77,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
         format: "file",
         body: "",
         acl: undefined,
+        ...(prefill ? (({ title, description, type, categoryId, format, body, tags }) => Object.fromEntries(Object.entries({ title, description, type, categoryId, format, body, tags }).filter(([, v]) => v !== undefined)))(prefill) : {}),
       });
       setAclOpen(false);
       setScope(defaultScopeForNew());
@@ -80,7 +85,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
     }
     setTagInput("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, doc?.id]);
+  }, [open, doc?.id, prefill]);
 
   if (!d) return null;
 
@@ -106,7 +111,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
       notify(format === "article" && body !== (doc.body ?? "") ? "تغییرات ذخیره و نسخه‌ی جدید متن ثبت شد." : "اطلاعات سند ذخیره شد.");
     } else {
       const skipReview = !km.settings.workflowSteps.review;
-      km.createDoc({ ...meta, format, body: format === "article" ? body : undefined, title: d.title.trim(), relations: [], ...scope, authorId: actingUser.id, circular, submit: sendForReview && !skipReview });
+      km.createDoc({ ...meta, format, body: format === "article" ? body : undefined, title: d.title.trim(), relations: prefill?.relations ?? [], ...scope, authorId: actingUser.id, circular, submit: sendForReview && !skipReview });
       notify(sendForReview ? (skipReview ? "سند ثبت شد." : `سند ثبت و برای بررسی به ${d.approvers.length.toLocaleString("fa-IR")} نفر ارسال شد.`) : "پیش‌نویس سند ذخیره شد.");
     }
     onClose();
@@ -124,6 +129,7 @@ export default function DocFormModal({ open, doc, onClose, defaultCategory }: { 
   return (
     <Modal open={open} onClose={onClose} title={doc ? "ویرایش اطلاعات سند" : "افزودن سند به مخزن دانش"} description={doc ? `${doc.code} · نسخه‌ی ${doc.version.toLocaleString("fa-IR")}${(doc.format ?? "file") === "file" ? " — برای تغییر فایل، «نسخه‌ی جدید» بارگذاری کنید." : ""}` : "فایل بارگذاری کنید یا مقاله را همین‌جا بنویسید؛ سند پس از طی گردش کار منتشر می‌شود."} width="max-w-3xl">
       <div className="space-y-4">
+        {!doc && prefill?.source && <Note tone="info">{prefill.source}</Note>}
         {!doc && (
           <div className="flex rounded-lg border border-ink-200 overflow-hidden w-fit">
             {(

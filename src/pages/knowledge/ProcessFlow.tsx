@@ -3,7 +3,7 @@
 // به‌همراه ویرایشگر ساده. نمودار راست‌به‌چپ رسم می‌شود (شروع در سمت راست).
 // ---------------------------------------------------------------------------
 import { useState } from "react";
-import { Plus, Trash2, X, WandSparkles } from "lucide-react";
+import { Plus, Trash2, X, ListOrdered } from "lucide-react";
 import Button from "../../components/ui/Button";
 import { fa } from "../../pm/jalali";
 import { flowOf, linearFlow, raciLabel } from "../../km/templates";
@@ -201,7 +201,7 @@ export function ProcessFlowEditor({ value, onChange }: { value: FlowDraft; onCha
     return (
       <div className="rounded-lg border border-dashed border-ink-300 p-3 text-center space-y-2">
         <p className="text-[11.5px] text-ink-500">نمودار تصمیم‌دار تعریف نشده؛ نمایش از روی «گام‌های فرآیند» ساخته می‌شود.</p>
-        <Button size="sm" icon={<WandSparkles size={13} />} onClick={() => onChange({ flow: linearFlow(value), lanes: [value.owner], raci: {} })}>
+        <Button size="sm" icon={<ListOrdered size={13} />} onClick={() => onChange({ flow: linearFlow(value), lanes: [value.owner], raci: {} })}>
           ساخت از گام‌ها و ویرایش
         </Button>
       </div>

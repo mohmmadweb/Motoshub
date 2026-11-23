@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bot, ChevronDown, Download, FileJson, History, Search, BookOpen, User } from "lucide-react";
+import { Cog, ChevronDown, Download, FileJson, History, Search, BookOpen, User } from "lucide-react";
 import Badge, { type BadgeTone } from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import { useProjectsPM } from "../../context/ProjectsContext";
@@ -157,7 +157,7 @@ export default function HistoryTab() {
                       <div key={l.id} className="relative">
                         <span className={`absolute -right-[23px] top-1.5 w-3 h-3 rounded-full border-2 border-white ${sys ? "bg-amber-500" : "bg-brand-500"}`} />
                         <div className="flex items-start gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">{sys ? <Bot size={13} /> : <User size={13} />}</span>
+                          <span className="w-7 h-7 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">{sys ? <Cog size={13} /> : <User size={13} />}</span>
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] text-ink-900 leading-6">{l.description}</p>
                             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">

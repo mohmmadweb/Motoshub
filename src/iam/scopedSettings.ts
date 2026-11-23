@@ -25,12 +25,15 @@ export const scopedMetaOf = (k: ScopedKey) => scopedMeta.find((m) => m.key === k
 
 /**
  * مقدار ریشه (سطح سامانه) هر کلید. مهلت نشست از «سیاست ورود» و یادآوری گزارش از پارامترهای
- * گردش کار (SettingsContext ← تنظیمات صندوق نوآوری) زنده خوانده می‌شود تا دو منبع جدا نداشته باشیم.
+ * گردش کار (SettingsContext) زنده خوانده می‌شود تا دو منبع جدا نداشته باشیم.
  */
+/** برند پیش‌فرض محصول — وقتی هیچ لایه‌ای (حتی سازمان ریشه) برند خودش را ثبت نکرده باشد (۴.۱۱) */
+export const PRODUCT_BRANDING = { name: "کاریز", color: "#114167", logo: "" } as const;
+
 export const scopedDefaults: Record<ScopedKey, ScopedValue> = {
-  "brand.name": systemIdentity.name,
-  "brand.color": systemIdentity.color,
-  "brand.logo": "/bonyad-logo.png",
+  "brand.name": PRODUCT_BRANDING.name,
+  "brand.color": PRODUCT_BRANDING.color,
+  "brand.logo": PRODUCT_BRANDING.logo,
   get "security.sessionTimeoutMin"() {
     return loginPolicyStore.get().sessionTimeoutMin;
   },
@@ -41,12 +44,15 @@ export const scopedDefaults: Record<ScopedKey, ScopedValue> = {
 };
 
 export type ScopeEntry = { values: Partial<Record<ScopedKey, ScopedValue>>; locks: ScopedKey[] };
-export type ScopedState = { version: 1; byScope: Record<string, ScopeEntry> };
+export type ScopedState = { version: 1 | 2; byScope: Record<string, ScopeEntry> };
+
+/** برند سازمان ریشه (tenant) — مثل هر واحد دیگر یک بازنویسی است؛ پاک کردنش برند «کاریز» را برمی‌گرداند */
+const ROOT_BRAND: ScopeEntry["values"] = { "brand.name": systemIdentity.name, "brand.color": systemIdentity.color, "brand.logo": "/bonyad-logo.png" };
 
 const seed = (): ScopedState => ({
-  version: 1,
+  version: 2,
   byScope: {
-    sys: { values: {}, locks: ["security.sessionTimeoutMin"] },
+    sys: { values: { ...ROOT_BRAND }, locks: ["security.sessionTimeoutMin"] },
     "h-sina-food": { values: { "brand.name": "هلدینگ صنایع غذایی سینا", "brand.color": "#b45309", "brand.logo": "" }, locks: [] },
     "h-ferdows": { values: { "brand.name": "هلدینگ کشاورزی فردوس پارس", "brand.color": "#0d9488", "brand.logo": "" }, locks: ["brand.color"] },
     "c-bank-sina": { values: { "brand.name": "بانک سینا", "brand.color": "#1d4ed8", "brand.logo": "", "content.requireApproval": true }, locks: [] },
@@ -55,7 +61,12 @@ const seed = (): ScopedState => ({
 
 export const scopedStore = createLocalStore<ScopedState>("motoshub.scopedSettings.v1", seed, (raw) => {
   const r = raw as Partial<ScopedState> | null;
-  return r && r.version === 1 && r.byScope && typeof r.byScope === "object" ? (r as ScopedState) : null;
+  if (!r || !r.byScope || typeof r.byScope !== "object") return null;
+  if (r.version === 2) return r as ScopedState;
+  if (r.version !== 1) return null;
+  // نسخه‌ی ۱: برند ریشه پیش‌فرض بود؛ حالا بازنویسیِ واحد ریشه است (پیش‌فرض = «کاریز»)
+  const sys = r.byScope.sys ?? { values: {}, locks: [] };
+  return { version: 2, byScope: { ...r.byScope, sys: { ...sys, values: { ...ROOT_BRAND, ...sys.values } } } };
 });
 
 export type ScopedStatus = "root" | "inherited" | "overridden" | "locked";

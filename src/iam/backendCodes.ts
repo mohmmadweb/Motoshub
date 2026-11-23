@@ -1,3 +1,5 @@
+import { permissionCatalog } from "../data/mock";
+
 // ---------------------------------------------------------------------------
 // هم‌ترازی کد مجوزهای دمو با کاتالوگ واقعی بک‌اند Identity (motonext2.shub.ir)
 // منبع: GET /api/identity/admin?tenant_id=2 → catalogue (contract_version 3.0) — ۵۸ کد در
@@ -146,9 +148,27 @@ const suggested: Record<string, string> = {
   "settings.branding": `${I}branding.manage`,
 };
 
+/** کدهای واقعی که در خود کاتالوگ (data/mock.ts → `code`) کنار مجوز دمو آمده‌اند — سرویس اجتماعی و FAQ */
+const catalogueCode = new Map<string, string>(permissionCatalog.flatMap((g) => g.actions.filter((a) => a.code).map((a) => [a.id, a.code!] as [string, string])));
+
+/** «پیشنهادی» برای ماژول‌های بدون بک‌اند (دبیرخانه، مشتریان، مانیتورینگ) */
+const proposedModule: Record<string, string> = {
+  "monitoring.view": "workspace.monitoring.dashboard.view",
+  "secretariat.view": "workspace.secretariat.letter.view",
+  "secretariat.register": "workspace.secretariat.registration.create",
+  "secretariat.series.manage": "workspace.secretariat.number_series.manage",
+  "crm.view": "workspace.crm.customer.view",
+  "crm.manage": "workspace.crm.customer.manage",
+  "crm.finance.view": "workspace.crm.finance_document.view",
+  "crm.finance.manage": "workspace.crm.finance_document.manage",
+  "crm.import": "workspace.crm.customer.import",
+};
+
 /** نگاشت یک مجوز دمو به بک‌اند */
 export function backendMapping(id: string): BackendMapping {
   if (exact[id]) return { code: exact[id] };
+  if (catalogueCode.has(id)) return { code: catalogueCode.get(id)!, service: "social" };
+  if (proposedModule[id]) return { code: null, suggest: proposedModule[id], note: "ماژول بدون بک‌اند — کد «پیشنهادی»" };
   if (partial[id]) return { code: partial[id][0], partial: true, note: partial[id][1] };
   const group = id.split(".")[0];
   if (SOCIAL_GROUPS.includes(group)) return { code: null, service: "social", note: "در سرویس شبکه‌ی اجتماعی (social.shub.ir) کنترل می‌شود — خارج از کاتالوگ Identity." };

@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// F18 «پروفایل سازمانی» (۲.۱.۵) — /dashboard/org/:id برای هر لایه‌ی IAM (سیستم/هلدینگ/شرکت/واحد):
+// F18 «پروفایل سازمانی» (۲.۱.۵) — /org/:id برای هر لایه‌ی IAM (سیستم/هلدینگ/شرکت/واحد):
 // سربرگ (کاور، لوگو، نام، نوع لایه، سازمان بالادست، شعار، راه‌های تماس)، «پیام به روابط عمومی»،
-// تب‌های معرفی (متن، حوزه‌ها، آمار، مدیران، اکوسیستم نوآوری)، اعضا (قابل جستجو)، واحدهای زیرمجموعه (درخت)،
+// تب‌های معرفی (متن، حوزه‌ها، آمار، مدیران)، اعضا (قابل جستجو)، واحدهای زیرمجموعه (درخت)،
 // پروژه‌ها، محتوا (خبر، رویداد، رسانه) و اسناد عمومی.
 // ویرایش فقط برای مدیر همان لایه (یا لایه‌های بالاتر)؛ لایه‌های بالادست برای مدیران پایین‌دست فقط‌خواندنی‌اند.
 // ---------------------------------------------------------------------------
@@ -20,7 +20,6 @@ import { useTenancy } from "../../context/TenancyContext";
 import { useSocial } from "../../context/SocialContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
-import { useInnovation } from "../../context/InnovationContext";
 import { useEffectiveBranding } from "../../iam/hooks";
 import { BrandMark } from "../../iam/BrandMark";
 import { useLocalStore } from "../../iam/store";
@@ -29,7 +28,6 @@ import { emitSettingsChange } from "../../iam/settingsAudit";
 import { users } from "../../data/mock";
 import { contentKindLabel } from "../../social/types";
 import { platformEndpoints } from "../../lib/platformEndpoints";
-import { entityHref } from "../innovation/shared";
 import { ApiChip, Field } from "../social/kit";
 import { emptyProfile, orgFieldLabel, orgStore, type OrgField, type OrgProfile as Profile } from "./store";
 
@@ -50,7 +48,6 @@ function OrgPage({ node }: { node: ScopeNode }) {
   const s = useSocial();
   const pm = useProjectsPM();
   const km = useKnowledge();
-  const inn = useInnovation();
   const brand = useEffectiveBranding(node.id);
   const st = useLocalStore(orgStore);
   const navigate = useNavigate();
@@ -92,12 +89,11 @@ function OrgPage({ node }: { node: ScopeNode }) {
     : [];
   const pub = <T extends { is_public: boolean; is_draft: boolean; deleted_at: string | null }>(x: T) => x.is_public && !x.is_draft && !x.deleted_at;
   const content = [
-    ...s.content.filter((c) => pub(c) && s.canView(c) && belongs(c)).map((c) => ({ id: c.id, title: c.title, kind: contentKindLabel[c.kind], to: `/dashboard/${c.kind === "blogs" ? "blog" : c.kind}/${c.id}`, at: c.published_at ?? c.created_at })),
-    ...s.events.filter((e) => pub(e) && s.canView(e) && belongs(e)).map((e) => ({ id: e.id, title: e.title, kind: "رویداد", to: `/dashboard/events/${e.id}`, at: e.start_date })),
-    ...s.media.filter((m) => pub(m) && s.canView(m) && belongs(m)).map((m) => ({ id: m.id, title: m.caption || "رسانه", kind: "رسانه", to: `/dashboard/media/${m.id}`, at: m.published_at ?? m.created_at })),
+    ...s.content.filter((c) => pub(c) && s.canView(c) && belongs(c)).map((c) => ({ id: c.id, title: c.title, kind: contentKindLabel[c.kind], to: `/${c.kind}/${c.id}`, at: c.published_at ?? c.created_at })),
+    ...s.events.filter((e) => pub(e) && s.canView(e) && belongs(e)).map((e) => ({ id: e.id, title: e.title, kind: "رویداد", to: `/events/${e.id}`, at: e.start_date })),
+    ...s.media.filter((m) => pub(m) && s.canView(m) && belongs(m)).map((m) => ({ id: m.id, title: m.caption || "رسانه", kind: "رسانه", to: `/media/${m.id}`, at: m.published_at ?? m.created_at })),
   ].sort((a, b) => String(b.at ?? "").localeCompare(String(a.at ?? "")));
   const docs = km.docs.filter((d) => d.status === "منتشرشده" && d.access === "عمومی" && km.canSee(d) && belongs(d));
-  const eco = inn.entities.filter((e) => (node.type === "holding" && e.holdingId === node.id) || (node.type === "company" && e.companyId === node.id));
   const children = (pid: string) => t.iam.scopes.filter((n) => n.parentId === pid && n.active);
   const units = subtree.filter((n) => n.id !== node.id && n.active);
 
@@ -105,14 +101,14 @@ function OrgPage({ node }: { node: ScopeNode }) {
   const messagePr = () => {
     if (!pr) return;
     const cid = s.openDirect(pr, `سلام؛ از صفحه‌ی سازمانی «${node.name}» پیام می‌دهم.`);
-    navigate(`/dashboard/chat/${cid}`);
+    navigate(`/conversations/${cid}`);
   };
 
   const filteredMembers = memberIds
     .map((uid) => ({ u: users.find((x) => x.id === uid), m: memberships.find((x) => x.userId === uid)! }))
     .filter((x) => x.u && (!q.trim() || x.u.name.includes(q.trim()) || (x.m.title ?? "").includes(q.trim())));
 
-  const crumbs = t.iam.scopes.length ? pathOf(t.iam.scopes, node).map((n) => ({ label: n.name, to: n.id === node.id ? undefined : `/dashboard/org/${n.id}` })) : [];
+  const crumbs = t.iam.scopes.length ? pathOf(t.iam.scopes, node).map((n) => ({ label: n.name, to: n.id === node.id ? undefined : `/org/${n.id}` })) : [];
 
   return (
     <div>
@@ -151,7 +147,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
               {parent && (
                 <p className="text-[11.5px] text-ink-400 mt-0.5">
                   زیرمجموعه‌ی{" "}
-                  <Link to={`/dashboard/org/${parent.id}`} className="text-brand-700 hover:underline">
+                  <Link to={`/org/${parent.id}`} className="text-brand-700 hover:underline">
                     {parent.name}
                   </Link>
                 </p>
@@ -235,21 +231,6 @@ function OrgPage({ node }: { node: ScopeNode }) {
                 </div>
               ))}
             </div>
-            {eco.length > 0 && (
-              <div className="card p-4">
-                <p className="text-[13px] font-bold text-ink-900 mb-2">اکوسیستم نوآوری مرتبط</p>
-                <ul className="divide-y divide-ink-100">
-                  {eco.map((e) => (
-                    <li key={e.id}>
-                      <Link to={entityHref(e.id)} className="flex items-center justify-between gap-2 py-2 text-[12.5px] text-ink-700 hover:text-brand-700">
-                        <span className="truncate">{e.name}</span>
-                        <span className="text-[11px] text-ink-400 shrink-0">{e.field}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
           <div className="card p-4 h-fit">
             <p className="text-[13px] font-bold text-ink-900 mb-2">مدیران</p>
@@ -259,7 +240,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
                   const u = users.find((x) => x.id === m.userId);
                   return u ? (
                     <li key={m.userId}>
-                      <Link to={`/dashboard/profile/${u.id}`} className="flex items-center gap-2.5 hover:bg-ink-50 rounded-lg p-1 -m-1">
+                      <Link to={`/profile/${u.id}`} className="flex items-center gap-2.5 hover:bg-ink-50 rounded-lg p-1 -m-1">
                         <Avatar name={u.name} color={u.avatarColor} size={32} />
                         <span className="min-w-0">
                           <span className="block text-[12.5px] font-medium text-ink-800 truncate">{u.name}</span>
@@ -291,7 +272,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-ink-100">
               {filteredMembers.map(({ u, m }) => (
                 <li key={u!.id} className="bg-white">
-                  <Link to={`/dashboard/profile/${u!.id}`} className="flex items-center gap-2.5 p-3 hover:bg-ink-50">
+                  <Link to={`/profile/${u!.id}`} className="flex items-center gap-2.5 p-3 hover:bg-ink-50">
                     <Avatar name={u!.name} color={u!.avatarColor} size={34} />
                     <span className="min-w-0">
                       <span className="block text-[12.5px] font-medium text-ink-800 truncate">{u!.name}</span>
@@ -317,7 +298,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
       {tab === "projects" && (
         <ListCard empty="پروژه‌ی قابل‌مشاهده‌ای برای این سازمان نیست.">
           {projects.map((p) => (
-            <Row key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} title={p.meta.name} meta={`${p.meta.phase} · سلامت ${p.meta.health} · ${p.meta.manager}`} />
+            <Row key={p.meta.id} to={`/projects/${p.meta.id}`} title={p.meta.name} meta={`${p.meta.phase} · سلامت ${p.meta.health} · ${p.meta.manager}`} />
           ))}
         </ListCard>
       )}
@@ -331,7 +312,7 @@ function OrgPage({ node }: { node: ScopeNode }) {
       {tab === "docs" && (
         <ListCard empty="سند عمومیِ منتشرشده‌ای برای این سازمان نیست.">
           {docs.map((d) => (
-            <Row key={d.id} to={`/dashboard/knowledge?doc=${d.id}`} title={d.title} meta={`${d.type} · ${d.code}`} />
+            <Row key={d.id} to={`/knowledge?doc=${d.id}`} title={d.title} meta={`${d.type} · ${d.code}`} />
           ))}
         </ListCard>
       )}
@@ -358,7 +339,7 @@ function UnitTree({ nodes, childrenOf, typeLabel, depth = 0 }: { nodes: ScopeNod
     <ul>
       {nodes.map((n) => (
         <li key={n.id}>
-          <Link to={`/dashboard/org/${n.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-ink-50" style={{ paddingInlineStart: 8 + depth * 18 }}>
+          <Link to={`/org/${n.id}`} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-ink-50" style={{ paddingInlineStart: 8 + depth * 18 }}>
             {depth > 0 && <ChevronLeft size={12} className="text-ink-300 shrink-0" />}
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: n.color ?? "var(--color-brand-500)" }} />
             <span className="text-[13px] text-ink-800 truncate flex-1">{n.name}</span>

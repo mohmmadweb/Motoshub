@@ -2,7 +2,7 @@
 // «لاگ ممیزی» — همه‌ی رویدادهای ثبت‌شده در ماژول‌ها در یک جدول (ادغام «تاریخچه‌ی تغییرات» IAM
 // و «لاگ ممیزی یکپارچه»): پیش‌تنظیم «سازمان و دسترسی» = همان تاریخچه‌ی قبلی با فیلتر نوع رویداد،
 // کاربر متأثر و نمای قبل/بعد؛ خروجی CSV ستون‌های قبل/بعد را هم دارد.
-// هویت و دسترسی (IAM) · مدیریت دانش · تاریخچه‌ی پروژه‌ها · دانش و نوآوری · تیکت پشتیبانی ·
+// هویت و دسترسی (IAM) · مدیریت دانش · تاریخچه‌ی پروژه‌ها · تیکت پشتیبانی ·
 // نظارت شبکه‌ی اجتماعی (تأیید نظر و حذف محتوا).
 // فقط رویدادهای واحد فعلی و زیرمجموعه‌هایش دیده می‌شوند و مجوز iam.audit.view لازم است.
 // ---------------------------------------------------------------------------
@@ -17,14 +17,12 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { useInnovation } from "../../context/InnovationContext";
 import { useTicketsMaybe } from "../../context/TicketsContext";
 import { useSocial } from "../../context/SocialContext";
 import { auditLabel, descendantsOrSelf, ROOT_ID, type Audit, type AuditEvent } from "../../iam/model";
 import { logCodeLabel } from "../../km/types";
 import { eventByCode } from "../../pm/events";
 import { dayNum, toEnDigits } from "../../pm/jalali";
-import { moduleTitle } from "../../innovation/types";
 import { fmtTs, statusLabel, type TicketStatus } from "../tickets/model";
 import { users } from "../../data/mock";
 import { contentKindLabel, moderationActionLabel } from "../../social/types";
@@ -32,13 +30,12 @@ import { ownerScopeOf } from "../search/liveData";
 import { Callout, ScopeSelect, SearchBox, SectionHead, downloadCsv, useSubtree } from "./iam/shared";
 import { useComposerAuditEntries } from "../../social/featureAudit";
 
-type ModuleId = "iam" | "settings" | "knowledge" | "projects" | "innovation" | "tickets" | "social";
+type ModuleId = "iam" | "settings" | "knowledge" | "projects" | "tickets" | "social";
 const MODULES: { id: ModuleId; label: string; tone: BadgeTone }[] = [
   { id: "iam", label: "هویت و دسترسی", tone: "navy" },
   { id: "settings", label: "تغییر تنظیمات", tone: "warning" },
   { id: "knowledge", label: "مدیریت دانش", tone: "brand" },
   { id: "projects", label: "پروژه‌ها", tone: "success" },
-  { id: "innovation", label: "دانش و نوآوری", tone: "warning" },
   { id: "tickets", label: "تیکت پشتیبانی", tone: "neutral" },
   { id: "social", label: "نظارت شبکه‌ی اجتماعی", tone: "danger" },
 ];
@@ -73,7 +70,6 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
   const sub = useSubtree();
   const km = useKnowledge();
   const pm = useProjectsPM();
-  const inn = useInnovation();
   const tk = useTicketsMaybe();
   const s = useSocial();
   const fx = useComposerAuditEntries();
@@ -113,12 +109,7 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
       p.logs.forEach((l) => push({ id: `pm-${p.meta.id}-${l.id}`, module: "projects", at: `${l.date} ${l.time}`, actor: l.actor, action: eventByCode[l.event]?.label ?? l.event, target: `${p.meta.name} — ${l.description}`, scopeId: sc }));
     });
 
-    // ۴) دانش و نوآوری
-    const innScope = new Map<string, string>();
-    [...inn.calls, ...inn.contracts, ...inn.employment, ...inn.nfProjects, ...inn.courses, ...inn.rfps, ...inn.sabbaticals].forEach((x) => innScope.set(x.id, ownerScopeOf(x)));
-    inn.logs.forEach((l) => push({ id: `inn-${l.id}`, module: "innovation", at: l.at, actor: l.actor, action: `${moduleTitle[l.module]} — ${l.action}`, target: l.subject?.title ?? "—", scopeId: (l.subject && innScope.get(l.subject.id)) || ROOT_ID }));
-
-    // ۵) تیکت‌ها (یادداشت داخلی فقط برای تیم سازنده)
+    // ۴) تیکت‌ها (یادداشت داخلی فقط برای تیم سازنده)
     tk?.tickets.forEach((tic) =>
       tic.events
         .filter((e) => !e.internal || tk.isVendor)
@@ -129,7 +120,7 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
         })
     );
 
-    // ۶) نظارت شبکه‌ی اجتماعی: تأیید نظرها و حذف محتوا
+    // ۵) نظارت شبکه‌ی اجتماعی: تأیید نظرها و حذف محتوا
     const contentById = new Map(s.content.map((c) => [c.id, c]));
     s.comments
       .filter((c) => c.approved && c.approved_by && c.approved_at)
@@ -147,7 +138,7 @@ export default function UnifiedAuditSection({ preset }: { preset?: string | null
     s.moderationLog.forEach((e) => push({ id: `so-m-${e.id}`, module: "social", at: e.at, actor: userName(e.actor_id), action: moderationActionLabel[e.action], target: e.target_title, scopeId: ROOT_ID, detail: e.note }));
 
     return out;
-  }, [t.iam, km.logs, km.docs, pm.projects, inn, tk, s.content, s.comments, s.topics, s.events, s.moderationLog, fx]);
+  }, [t.iam, km.logs, km.docs, pm.projects, tk, s.content, s.comments, s.topics, s.events, s.moderationLog, fx]);
 
   // دامنه‌ی بیننده: فقط واحد فعلی و زیرمجموعه‌ها
   const inScope = useMemo(() => all.filter((e) => sub.ids.has(e.scopeId)), [all, sub]);

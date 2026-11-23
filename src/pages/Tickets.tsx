@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // تیکت پشتیبانی — هر کاربرِ سامانه (در هر لایه‌ی سازمان) می‌تواند خطا، درخواست قابلیت یا
-// پرسش خود را برای تیم سازنده‌ی موتوشاب ثبت کند و تا بسته شدن، تاریخچه‌ی کامل را ببیند.
+// پرسش خود را برای تیم سازنده‌ی کاریز ثبت کند و تا بسته شدن، تاریخچه‌ی کامل را ببیند.
 //   «تیکت‌های من»       — tickets.create
 //   «تیکت‌های سازمان»   — tickets.view-org (تیکت‌های اعضای واحد فعلی و زیرمجموعه‌ها)
 //   «میز پشتیبانی»      — tickets.vendor (صف تیم سازنده با فیلتر، ارجاع گروهی و پاسخ آماده)
@@ -162,7 +162,7 @@ export default function Tickets() {
     <div>
       <PageHeader
         title="تیکت پشتیبانی"
-        description="گزارش خطا، درخواست قابلیت و پرسش به تیم سازنده‌ی موتوشاب — با تاریخچه‌ی کامل و پیگیری SLA"
+        description="گزارش خطا، درخواست قابلیت و پرسش به تیم سازنده‌ی کاریز — با تاریخچه‌ی کامل و پیگیری SLA"
         icon={<LifeBuoy size={18} />}
         actions={
           <>
@@ -370,7 +370,7 @@ export default function Tickets() {
         </div>
       )}
 
-      <Modal open={newOpen} onClose={() => patchParams({ new: null, from: null })} title="تیکت پشتیبانی جدید" description="تیکت مستقیم به صف تیم سازنده‌ی موتوشاب می‌رود" width="max-w-2xl">
+      <Modal open={newOpen} onClose={() => patchParams({ new: null, from: null })} title="تیکت پشتیبانی جدید" description="تیکت مستقیم به صف تیم سازنده‌ی کاریز می‌رود" width="max-w-2xl">
         {newOpen && (
           <TicketForm
             route={params.get("from") ?? undefined}

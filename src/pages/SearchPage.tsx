@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
 // جستجوی سراسری روی داده‌ی زنده — مطالب، پرسش‌ها، رسانه، گفتگوها، فایل‌ها، اسناد دانش،
-// پروژه و تسک، افراد و نوآوری. هر نتیجه دقیقاً با قواعد دیدِ ماژول خودش فیلتر می‌شود
+// پروژه و تسک و افراد. هر نتیجه دقیقاً با قواعد دیدِ ماژول خودش فیلتر می‌شود
 // (src/pages/search/liveData.ts). نرمال‌سازی فارسی (ی/ي، ک/ك، نیم‌فاصله، ارقام) از
 // src/km/text.ts می‌آید؛ کلید تسک (مثل QGJ-12) دقیق تطبیق می‌شود.
-// پارامترها: ?q=عبارت &tab=content|qa|media|chats|files|docs|pm|people|innovation &scope=<scopeId> &when=7|30|90|365
+// پارامترها: ?q=عبارت &tab=content|qa|media|chats|files|docs|pm|people &scope=<scopeId> &when=7|30|90|365
 // ---------------------------------------------------------------------------
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -19,7 +19,6 @@ import {
   KanbanSquare,
   ListChecks,
   FileText,
-  Lightbulb,
   HelpCircle,
   CheckCircle2,
   X,
@@ -38,8 +37,9 @@ import { descendantsOrSelf, ROOT_ID } from "../iam/model";
 import { contentKindLabel } from "../social/types";
 import { chatLink, contentLink, datePart, ownerScopeOf, useVisibleData } from "./search/liveData";
 import Highlight from "./search/Highlight";
+import { kmDocHref } from "../km/nav";
 
-type TabId = "all" | "content" | "qa" | "media" | "chats" | "files" | "docs" | "pm" | "people" | "innovation";
+type TabId = "all" | "content" | "qa" | "media" | "chats" | "files" | "docs" | "pm" | "people";
 const TAB_LABEL: Record<TabId, string> = {
   all: "همه",
   content: "مطالب",
@@ -50,9 +50,8 @@ const TAB_LABEL: Record<TabId, string> = {
   docs: "اسناد دانش",
   pm: "پروژه و تسک",
   people: "افراد",
-  innovation: "نوآوری",
 };
-const TAB_ORDER: TabId[] = ["all", "content", "qa", "media", "chats", "files", "docs", "pm", "people", "innovation"];
+const TAB_ORDER: TabId[] = ["all", "content", "qa", "media", "chats", "files", "docs", "pm", "people"];
 
 type Hit = {
   id: string;
@@ -72,7 +71,15 @@ type Hit = {
   key?: string;
   hay: string;
   titleN: string;
+  /** `SearchHit.type` در `/search/search/` — فقط blog/event/forum/magazine/media/news نمایه می‌شوند؛ بقیه «پیشنهادی» */
+  apiType?: SearchHitType;
 };
+
+/** انواع نمایه‌شده در سرویس جستجوی واقعی */
+export type SearchHitType = "blog" | "event" | "forum" | "magazine" | "media" | "news";
+/** شکل واقعی هر نتیجه (`GET /search/search/` → `{ data: SearchHit[], meta }`) */
+export type SearchHit = { id: string; type: SearchHitType; title: string; snippet: string; author_id: string | null; privacy: string; tags: string[] };
+const contentApiType: Record<string, SearchHitType> = { news: "news", blogs: "blog", magazines: "magazine" };
 
 const WHEN: { id: string; label: string; days: number }[] = [
   { id: "", label: "هر زمان", days: 0 },
@@ -83,6 +90,23 @@ const WHEN: { id: string; label: string; days: number }[] = [
 ];
 const PAGE = 30;
 const KEY_RE = /^[a-z]{2,6}-\d+$/;
+
+/** نمای «همه»: نتایج به ترتیب گروه (v6.8 popover groups)، حداکثر ۵ ردیف از هر گروه با سرآیند گروه */
+function groupHeads<T extends { tab: Exclude<TabId, "all"> }>(rows: T[]): { h: T; head: TabId | null }[] {
+  const out: { h: T; head: TabId | null }[] = [];
+  TAB_ORDER.filter((x) => x !== "all").forEach((g) => {
+    rows
+      .filter((r) => r.tab === g)
+      .slice(0, 5)
+      .forEach((h, i) => out.push({ h, head: i === 0 ? g : null }));
+  });
+  return out;
+}
+
+/** تبدیل نتیجه به شکل واقعی SearchHit (فقط انواع نمایه‌شده) */
+export function toSearchHit(h: { id: string; apiType?: SearchHitType; title: string; meta: string }): SearchHit | null {
+  return h.apiType ? { id: h.id.replace(/^[a-z]+-/, ""), type: h.apiType, title: h.title, snippet: h.meta, author_id: null, privacy: "EVERYONE", tags: [] } : null;
+}
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
@@ -110,23 +134,23 @@ export default function SearchPage() {
     const userName = (id: string) => s.userName(id);
 
     v.content.forEach((c) =>
-      hits.push({ id: `c-${c.id}`, tab: "content", kind: contentKindLabel[c.kind], icon: Newspaper, title: c.title, body: `${c.excerpt} ${mdToPlain(c.content)} ${c.tags.join(" ")}`, meta: `${userName(c.user_id)} · ${c.excerpt}`, date: datePart(c.published_at ?? c.created_at), scopeId: ownerScopeOf(c), to: contentLink(c.kind, c.id), tone: c.kind === "news" ? "navy" : "brand" })
+      hits.push({ id: `c-${c.id}`, tab: "content", kind: contentKindLabel[c.kind], icon: Newspaper, title: c.title, body: `${c.excerpt} ${mdToPlain(c.content)} ${c.tags.join(" ")}`, meta: `${userName(c.user_id)} · ${c.excerpt}`, date: datePart(c.published_at ?? c.created_at), scopeId: ownerScopeOf(c), to: contentLink(c.kind, c.id), tone: c.kind === "news" ? "navy" : "brand", apiType: contentApiType[c.kind] })
     );
     v.events.forEach((e) =>
-      hits.push({ id: `ev-${e.id}`, tab: "content", kind: "رویداد", icon: CalendarDays, title: e.title, body: `${e.description} ${e.location} ${e.tags.join(" ")}`, meta: `${e.start_date} · ${e.is_online ? "آنلاین" : e.location}`, date: datePart(e.start_date), scopeId: ownerScopeOf(e), to: `/dashboard/events/${e.id}`, tone: "success" })
+      hits.push({ id: `ev-${e.id}`, tab: "content", kind: "رویداد", icon: CalendarDays, title: e.title, body: `${e.description} ${e.location} ${e.tags.join(" ")}`, meta: `${e.start_date} · ${e.is_online ? "آنلاین" : e.location}`, date: datePart(e.start_date), scopeId: ownerScopeOf(e), to: `/events/${e.id}`, tone: "success", apiType: "event" })
     );
     v.topics.forEach((x) =>
-      hits.push({ id: `tp-${x.id}`, tab: "qa", kind: x.accepted_post_id ? "پرسش (پاسخ پذیرفته)" : "پرسش", icon: HelpCircle, title: x.title, body: `${mdToPlain(x.content)} ${x.tags.join(" ")}`, meta: `${userName(x.user_id)} · ${x.view_count.toLocaleString("fa-IR")} بازدید`, date: datePart(x.created_at), scopeId: ownerScopeOf(x), to: `/dashboard/forum/${x.id}`, tone: x.accepted_post_id ? "success" : "brand" })
+      hits.push({ id: `tp-${x.id}`, tab: "qa", kind: x.accepted_post_id ? "پرسش (پاسخ پذیرفته)" : "پرسش", icon: HelpCircle, title: x.title, body: `${mdToPlain(x.content)} ${x.tags.join(" ")}`, meta: `${userName(x.user_id)} · ${x.view_count.toLocaleString("fa-IR")} بازدید`, date: datePart(x.created_at), scopeId: ownerScopeOf(x), to: `/forums/${x.id}`, tone: x.accepted_post_id ? "success" : "brand", apiType: "forum" })
     );
     const topicTitle = new Map(v.topics.map((x) => [x.id, x]));
     v.answers.forEach((p) => {
       const tp = topicTitle.get(p.topic_id);
       if (!tp) return;
       const accepted = tp.accepted_post_id === p.id;
-      hits.push({ id: `ps-${p.id}`, tab: "qa", kind: accepted ? "پاسخ پذیرفته" : "پاسخ", icon: accepted ? CheckCircle2 : MessageSquareText, title: `پاسخ ${userName(p.user_id)} در «${tp.title}»`, body: mdToPlain(p.content), meta: tp.title, date: datePart(p.created_at), scopeId: ownerScopeOf(tp), to: `/dashboard/forum/${tp.id}`, tone: accepted ? "success" : "neutral" });
+      hits.push({ id: `ps-${p.id}`, tab: "qa", kind: accepted ? "پاسخ پذیرفته" : "پاسخ", icon: accepted ? CheckCircle2 : MessageSquareText, title: `پاسخ ${userName(p.user_id)} در «${tp.title}»`, body: mdToPlain(p.content), meta: tp.title, date: datePart(p.created_at), scopeId: ownerScopeOf(tp), to: `/forums/${tp.id}`, tone: accepted ? "success" : "neutral" });
     });
     v.media.forEach((m) =>
-      hits.push({ id: `md-${m.id}`, tab: "media", kind: "رسانه", icon: ImageIcon, title: m.caption || "بدون توضیح", body: m.tags.join(" "), meta: userName(m.user_id), date: datePart(m.published_at ?? m.created_at), scopeId: ownerScopeOf(m), to: `/dashboard/media/${m.id}` })
+      hits.push({ id: `md-${m.id}`, tab: "media", kind: "رسانه", icon: ImageIcon, title: m.caption || "بدون توضیح", body: m.tags.join(" "), meta: userName(m.user_id), date: datePart(m.published_at ?? m.created_at), scopeId: ownerScopeOf(m), to: `/media/${m.id}`, apiType: "media" })
     );
     v.chats.forEach((c) => {
       if (c.chat_type === "saved_messages") return;
@@ -141,31 +165,24 @@ export default function SearchPage() {
     });
     v.files.forEach((f) => {
       const owner = f.owner_type === "user" ? "فایل‌های من" : chatById.get(f.owner_id)?.title ?? "—";
-      hits.push({ id: `f-${f.id}`, tab: "files", kind: "فایل", icon: FileText, title: f.name, body: owner, meta: `${owner} · ${f.size}`, date: datePart(f.created_at), scopeId: ROOT_ID, to: f.owner_type === "user" ? "/dashboard/files" : `/dashboard/files?owner=${f.owner_type}:${f.owner_id}` });
+      hits.push({ id: `f-${f.id}`, tab: "files", kind: "فایل", icon: FileText, title: f.name, body: owner, meta: `${owner} · ${f.size}`, date: datePart(f.created_at), scopeId: ROOT_ID, to: f.owner_type === "user" ? "/files" : `/files?owner=${f.owner_type}:${f.owner_id}` });
     });
     v.docs.forEach((d) =>
-      hits.push({ id: `k-${d.id}`, tab: "docs", kind: `سند ${d.access}`, icon: BookOpen, title: d.title, body: docSearchText(d, true), meta: `${d.code} · ${d.owner} · ${d.status}`, date: datePart(d.updatedAt), scopeId: ownerScopeOf(d), to: `/dashboard/knowledge?doc=${d.id}`, tone: d.access === "محرمانه" || d.access === "خیلی محرمانه" ? "danger" : "neutral" })
+      hits.push({ id: `k-${d.id}`, tab: "docs", kind: `سند ${d.access}`, icon: BookOpen, title: d.title, body: docSearchText(d, true), meta: `${d.code} · ${d.owner} · ${d.status}`, date: datePart(d.updatedAt), scopeId: ownerScopeOf(d), to: kmDocHref(d.id), tone: d.access === "محرمانه" || d.access === "خیلی محرمانه" ? "danger" : "neutral" })
     );
     v.projects.forEach((p) => {
       const sc = ownerScopeOf(p.meta);
-      hits.push({ id: `p-${p.meta.id}`, tab: "pm", kind: "پروژه", icon: KanbanSquare, title: p.meta.name, body: `${p.meta.description} ${p.meta.client} ${p.meta.manager} ${p.meta.tags.join(" ")} ${p.meta.category}`, meta: `${p.meta.key ? `${p.meta.key} · ` : ""}مدیر: ${p.meta.manager} · ${p.meta.phase}`, date: datePart(p.meta.createdAt), scopeId: sc, to: `/dashboard/projects/${p.meta.id}`, key: p.meta.key?.toLowerCase(), tone: "brand" });
+      hits.push({ id: `p-${p.meta.id}`, tab: "pm", kind: "پروژه", icon: KanbanSquare, title: p.meta.name, body: `${p.meta.description} ${p.meta.client} ${p.meta.manager} ${p.meta.tags.join(" ")} ${p.meta.category}`, meta: `${p.meta.key ? `${p.meta.key} · ` : ""}مدیر: ${p.meta.manager} · ${p.meta.phase}`, date: datePart(p.meta.createdAt), scopeId: sc, to: `/projects/${p.meta.id}`, key: p.meta.key?.toLowerCase(), tone: "brand" });
       p.tasks
         .filter((x) => !x.archived)
         .forEach((x) =>
-          hits.push({ id: `t-${p.meta.id}-${x.id}`, tab: "pm", kind: "تسک", icon: ListChecks, title: `${x.key ? `${x.key} — ` : ""}${x.title}`, body: `${x.description} ${x.labels.join(" ")} ${x.assignee} ${x.comments.map((c) => c.text).join(" ")}`, meta: `${p.meta.name} · ${x.assignee || "بدون مسئول"}${x.due ? ` · سررسید ${x.due}` : ""}`, date: datePart(x.createdAt), scopeId: sc, to: `/dashboard/projects/${p.meta.id}?tab=board&focus=${x.key ?? x.id}`, key: x.key?.toLowerCase() })
+          hits.push({ id: `t-${p.meta.id}-${x.id}`, tab: "pm", kind: "تسک", icon: ListChecks, title: `${x.key ? `${x.key} — ` : ""}${x.title}`, body: `${x.description} ${x.labels.join(" ")} ${x.assignee} ${x.comments.map((c) => c.text).join(" ")}`, meta: `${p.meta.name} · ${x.assignee || "بدون مسئول"}${x.due ? ` · سررسید ${x.due}` : ""}`, date: datePart(x.createdAt), scopeId: sc, to: `/projects/${p.meta.id}?tab=board&focus=${x.key ?? x.id}`, key: x.key?.toLowerCase() })
         );
     });
     v.people.forEach((u) => {
       const mem = t.membershipsOf(u.id).find((m) => m.primary) ?? t.membershipsOf(u.id)[0];
-      hits.push({ id: `u-${u.id}`, tab: "people", kind: "فرد", icon: User, title: u.name, body: `${u.role} ${u.org} ${u.skills.join(" ")} ${mem?.title ?? ""}`, meta: `${mem?.title ?? u.role} · ${mem ? mem.scope.name : u.org}`, date: "", scopeId: mem?.scopeId ?? ROOT_ID, to: `/dashboard/profile/${u.id}`, tone: "navy" });
+      hits.push({ id: `u-${u.id}`, tab: "people", kind: "فرد", icon: User, title: u.name, body: `${u.role} ${u.org} ${u.skills.join(" ")} ${mem?.title ?? ""}`, meta: `${mem?.title ?? u.role} · ${mem ? mem.scope.name : u.org}`, date: "", scopeId: mem?.scopeId ?? ROOT_ID, to: `/profile/${u.id}`, tone: "navy" });
     });
-    v.calls.forEach((c) => hits.push({ id: `rc-${c.id}`, tab: "innovation", kind: "فرصت پژوهشی", icon: Lightbulb, title: c.title, body: `${c.field} ${c.description} ${c.supervisor}`, meta: `${c.field} · ${c.stage}`, date: datePart(c.createdAt), scopeId: ownerScopeOf(c), to: `/dashboard/research?open=${c.id}` }));
-    v.contracts.forEach((c) => hits.push({ id: `ct-${c.id}`, tab: "innovation", kind: "قرارداد", icon: FileText, title: c.title, body: `${c.vendor} ${c.type} ${c.method} ${c.owner}`, meta: `${c.vendor} · ${c.stage}`, date: datePart(c.createdAt || c.startDate), scopeId: ownerScopeOf(c), to: `/dashboard/contracts?open=${c.id}` }));
-    v.funds.forEach((f) => hits.push({ id: `fn-${f.id}`, tab: "innovation", kind: "طرح صندوق", icon: Lightbulb, title: f.title, body: `${f.applicant} ${f.region} ${f.field}`, meta: `${f.applicant} · ${f.stage}`, date: "", scopeId: ownerScopeOf(f), to: `/dashboard/funds?tab=employment&focus=${f.id}` }));
-    v.nf.forEach((p) => hits.push({ id: `nf-${p.id}`, tab: "innovation", kind: "صندوق نوآور", icon: Lightbulb, title: `${p.id} — ${p.titleFa}`, body: `${p.titleEn} ${p.field} ${p.macroField} ${p.team.name}`, meta: `${p.team.name} · ${p.stage}`, date: "", scopeId: ownerScopeOf(p), to: `/dashboard/funds?focus=${p.id}`, key: p.id.toLowerCase() }));
-    v.courses.forEach((c) => hits.push({ id: `co-${c.id}`, tab: "innovation", kind: "دوره آموزشی", icon: Lightbulb, title: c.title, body: `${c.instructor} ${c.field} ${c.mode}`, meta: `${c.instructor} · ${c.status}`, date: datePart(c.date), scopeId: ownerScopeOf(c), to: "/dashboard/training" }));
-    v.awards.forEach((a) => hits.push({ id: `aw-${a.id}`, tab: "innovation", kind: "اثر جایزه", icon: Lightbulb, title: a.title, body: `${a.companyName} ${a.summary} ${a.category} ${a.submitter}`, meta: `${a.companyName} · ${a.status}`, date: datePart(a.createdAt), scopeId: a.holdingId ?? ROOT_ID, to: "/dashboard/award" }));
-    v.entities.forEach((e) => hits.push({ id: `en-${e.id}`, tab: "innovation", kind: e.kind === "company" ? "شرکت فناور" : "پژوهشگر", icon: Lightbulb, title: e.name, body: `${e.field} ${e.city} ${e.affiliation ?? ""} ${(e.certificates ?? []).join(" ")}`, meta: `${e.field} · ${e.city}`, date: "", scopeId: e.companyId ?? e.holdingId ?? ROOT_ID, to: `/dashboard/research?tab=bank&entity=${e.id}` }));
 
     return hits.map((h) => ({ ...h, titleN: normalizeFa(h.title), hay: normalizeFa(`${h.title} \n ${h.body} \n ${h.meta}`) }));
   }, [v, s, t]);
@@ -220,7 +237,7 @@ export default function SearchPage() {
 
   return (
     <div>
-      <PageHeader title="جستجوی سراسری" description="جستجو در همه‌ی داده‌هایی که اجازه‌ی دیدنشان را دارید — با یکسان‌سازی «ی/ي»، «ک/ك»، نیم‌فاصله و ارقام." icon={<Search size={18} />} />
+      <PageHeader title="جستجوی سراسری" description="جستجو در همه‌ی داده‌هایی که اجازه‌ی دیدنشان را دارید — با یکسان‌سازی «ی/ي»، «ک/ك»، نیم‌فاصله و ارقام." />
 
       <div className="card p-3 mb-4">
         <div className="flex flex-col sm:flex-row gap-2">
@@ -277,20 +294,31 @@ export default function SearchPage() {
           <EmptyState icon={<Search size={20} />} title={`نتیجه‌ای برای «${q}» پیدا نشد`} description={isKey ? "کلید تسک باید دقیقاً منطبق باشد (مثل QGJ-12)." : activeFilters ? "فیلتر دامنه یا بازه‌ی زمانی را بردارید." : "املای دیگری را امتحان کنید."} />
         </div>
       ) : (
-        <div className="card divide-y divide-ink-100">
-          {results.slice(0, limit).map((h) => {
+        <div className="card overflow-hidden">
+          {(tab === "all" ? groupHeads(results.slice(0, limit)) : results.slice(0, limit).map((h) => ({ h, head: null as TabId | null }))).map(({ h, head }) => {
             const Icon = h.icon;
             const titleHit = terms.every((x) => h.titleN.includes(x));
             const bodyText = h.body.trim();
             const snippet = !isKey && bodyText && normalizeFa(bodyText).includes(terms[0]) ? snippetOf(bodyText, terms, 70) : h.meta;
             return (
-              <Link key={h.id} to={h.to} className="flex items-start gap-3 px-4 py-3 hover:bg-ink-50/60 transition-colors group">
-                <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                  <Icon size={15} />
+              <div key={h.id}>
+              {head && (
+                <div className="flex items-center justify-between px-5 pt-3 pb-1.5 bg-ink-50 border-y border-[var(--color-border)] first:border-t-0">
+                  <span className="text-[12.5px] font-bold text-ink-600">
+                    {TAB_LABEL[head]} <span className="font-normal text-ink-500">({counts[head].toLocaleString("fa-IR")})</span>
+                  </span>
+                  <button type="button" onClick={() => setParam({ tab: head })} className="text-[12.5px] text-[var(--color-link)] hover:underline">
+                    نمایش همه
+                  </button>
+                </div>
+              )}
+              <Link to={h.to} className="flex items-start gap-3 px-5 py-3 border-b border-[var(--color-border)] hover:bg-ink-50 transition-colors group">
+                <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                  <Icon size={20} strokeWidth={1.5} />
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-ink-900 group-hover:text-brand-700 truncate">{titleHit || isKey ? <Highlight text={h.title} terms={isKey ? [qn.replace(/\s+/g, "")] : terms} /> : h.title}</span>
+                    <span className="text-[15px] font-medium text-ink-900 group-hover:text-[var(--color-link)] truncate">{titleHit || isKey ? <Highlight text={h.title} terms={isKey ? [qn.replace(/\s+/g, "")] : terms} /> : h.title}</span>
                   </span>
                   <span className="block text-[12px] text-ink-500 leading-5 mt-0.5 line-clamp-2 break-words">
                     <Highlight text={snippet} terms={terms} />
@@ -300,10 +328,12 @@ export default function SearchPage() {
                     {h.scopeId !== ROOT_ID && <span>{t.scopeLabel(h.scopeId)}</span>}
                   </span>
                 </span>
-                <span className="shrink-0">
+                <span className="shrink-0 flex flex-col items-end gap-1">
                   <Badge tone={h.tone ?? "neutral"}>{h.kind}</Badge>
+                  {!h.apiType && <span className="text-[11px] text-ink-400" title="این نوع در سرویس جستجوی فعلی نمایه نمی‌شود">پیشنهادی</span>}
                 </span>
               </Link>
+              </div>
             );
           })}
           {results.length > limit && (

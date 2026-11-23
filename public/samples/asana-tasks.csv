@@ -1,0 +1,4 @@
+Task ID,Created At,Completed At,Last Modified,Name,Section/Column,Assignee,Assignee Email,Start Date,Due Date,Tags,Notes,Projects,Parent task
+1201,2026-06-01,,2026-06-03,تدوین برنامه‌ی آموزش بهداشت آب,برنامه‌ریزی,Negar Ahmadi,negar@example.org,2026-06-02,2026-06-09,آموزش,سرفصل‌ها و زمان‌بندی,آموزش جامعه,
+1202,2026-06-01,,2026-06-03,هماهنگی با خانه‌ی بهداشت,برنامه‌ریزی,Mahsa Rezaei,mahsa@example.org,,2026-06-07,,,آموزش جامعه,تدوین برنامه‌ی آموزش بهداشت آب
+1203,2026-06-01,2026-06-04,2026-06-04,تهیه‌ی بروشور,اجرا,Reza Karimi,reza@example.org,2026-06-01,2026-06-04,"آموزش, چاپ",,آموزش جامعه,

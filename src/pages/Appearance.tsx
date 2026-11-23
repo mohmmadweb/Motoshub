@@ -1,9 +1,8 @@
-import { Palette, Sun, Moon, MonitorSmartphone, Type, Check, Sparkles, Building2 } from "lucide-react";
+import { Palette, Sun, Moon, MonitorSmartphone, Type, Check, Droplet, Building2 } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import Badge from "../components/ui/Badge";
 import Tabs from "../components/ui/Tabs";
 import BrandingPanel from "../components/BrandingPanel";
-import { PrayerCityCard } from "../components/PrayerTimes";
 import { useTheme, accentPresets, type ThemeMode, type FontScale } from "../context/ThemeContext";
 import { useToast } from "../components/ui/ToastProvider";
 import { useTabParam } from "../lib/useTabParam";
@@ -91,7 +90,7 @@ export function MyAppearanceTab() {
           {/* رنگ برند */}
           <div className="card p-5">
             <h3 className="text-sm font-bold text-ink-900 mb-1 flex items-center gap-1.5">
-              <Sparkles size={15} className="text-brand-600" /> رنگ برند
+              <Droplet size={15} className="text-brand-600" /> رنگ برند
             </h3>
             <p className="text-xs text-ink-400 mb-4">
               رنگ اصلی دکمه‌ها، لینک‌ها و حالت‌های فعال. راهبر سازمان می‌تواند رنگ پیش‌فرض سازمان را از «تنظیمات سامانه ← برند و ظاهر ← برند سازمان» تعیین کند.
@@ -147,9 +146,6 @@ export function MyAppearanceTab() {
               ))}
             </div>
           </div>
-
-          {/* F17 — شهر اوقات شرعی */}
-          <PrayerCityCard />
         </div>
 
         {/* پیش‌نمایش زنده */}

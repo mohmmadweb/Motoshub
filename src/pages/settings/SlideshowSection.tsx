@@ -313,7 +313,7 @@ function SlideEditor({ value, onClose, onSave }: { value: Slide; onClose: () => 
             <input className="input-field" value={s.cta_text} onChange={(e) => set({ cta_text: e.target.value })} placeholder="مثلاً: ثبت‌نام" />
           </Field>
           <Field label="لینک دکمه (cta_url)">
-            <input className="input-field" dir="ltr" value={s.cta_url} onChange={(e) => set({ cta_url: e.target.value })} placeholder="/dashboard/events یا https://…" />
+            <input className="input-field" dir="ltr" value={s.cta_url} onChange={(e) => set({ cta_url: e.target.value })} placeholder="/events یا https://…" />
           </Field>
           <Box label="شروع نمایش (starts_at)">
             <JalaliDatePicker value={s.starts_at} onChange={(v) => set({ starts_at: v })} placeholder="از همین حالا" />

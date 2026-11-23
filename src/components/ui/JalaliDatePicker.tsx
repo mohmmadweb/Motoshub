@@ -113,25 +113,25 @@ export default function JalaliDatePicker({
         aria-expanded={open}
       >
         <span>{value || placeholder}</span>
-        <CalendarDays size={15} className="text-ink-400 shrink-0" />
+        <CalendarDays size={18} strokeWidth={1.5} className="text-ink-400 shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1.5 w-64 bg-white border border-ink-200 rounded-xl shadow-xl p-3" role="dialog" aria-label="انتخاب تاریخ شمسی">
+        <div className="absolute z-30 mt-1.5 w-72 bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl shadow-lg p-3 animate-fadein" role="dialog" aria-label="انتخاب تاریخ شمسی">
           <div className="flex items-center justify-between mb-2">
-            <button type="button" onClick={prevMonth} aria-label="ماه قبل" className="w-7 h-7 rounded-lg hover:bg-ink-100 flex items-center justify-center text-ink-500">
+            <button type="button" onClick={prevMonth} aria-label="ماه قبل" className="w-8 h-8 rounded-lg hover:bg-ink-100 flex items-center justify-center text-ink-600">
               <ChevronRight size={15} />
             </button>
-            <span className="text-[13px] font-bold text-ink-900">
+            <span className="text-sm font-bold text-ink-900">
               {monthNames[vm - 1]} {faNum(vy)}
             </span>
-            <button type="button" onClick={nextMonth} aria-label="ماه بعد" className="w-7 h-7 rounded-lg hover:bg-ink-100 flex items-center justify-center text-ink-500">
+            <button type="button" onClick={nextMonth} aria-label="ماه بعد" className="w-8 h-8 rounded-lg hover:bg-ink-100 flex items-center justify-center text-ink-600">
               <ChevronLeft size={15} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
             {weekDays.map((w) => (
-              <span key={w} className="text-[10.5px] text-ink-400 py-1">{w}</span>
+              <span key={w} className="text-xs text-ink-500 py-1">{w}</span>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-0.5">
@@ -147,11 +147,11 @@ export default function JalaliDatePicker({
                   key={d}
                   type="button"
                   onClick={() => pick(d)}
-                  className={`h-8 rounded-lg text-[12px] transition-colors ${
+                  className={`h-9 rounded-lg text-[13px] transition-colors ${
                     isSelected
-                      ? "bg-brand-600 text-white font-bold"
+                      ? "bg-brand-600 text-[var(--color-on-primary)] font-bold"
                       : isToday
-                        ? "bg-brand-50 text-brand-700 font-bold border border-brand-300"
+                        ? "bg-teal-50 text-teal-700 font-bold border border-teal-500"
                         : "text-ink-700 hover:bg-ink-100"
                   }`}
                 >
@@ -166,7 +166,7 @@ export default function JalaliDatePicker({
               setView([today[0], today[1]]);
               pick(today[2]);
             }}
-            className="w-full mt-2 text-[11.5px] text-brand-600 font-medium hover:text-brand-700 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
+            className="w-full mt-2 text-[13px] text-[var(--color-link)] font-medium py-2 rounded-lg hover:bg-teal-50 transition-colors"
           >
             امروز — {monthNames[today[1] - 1].slice(0, 8)} {faNum(today[2])}
           </button>

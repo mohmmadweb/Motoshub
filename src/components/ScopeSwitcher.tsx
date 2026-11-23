@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Check, ChevronDown, Globe2, Network, UserRound, Layers, ShieldCheck } from "lucide-react";
+import { Building2, Check, ChevronDown, Globe2, Network, Layers, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTenancy } from "../context/TenancyContext";
 import { users as allUsers, demoPersonas } from "../data/mock";
@@ -17,7 +17,7 @@ const typeIcon: Record<ScopeType, typeof Globe2> = { system: Globe2, holding: Ne
  */
 export default function ScopeSwitcher() {
   const t = useTenancy();
-  const { actingUser, setActingUser, reachable, contextId, contextNode, setContext, myBindings, iam, primaryRoleOf, scopeLabel } = t;
+  const { reachable, contextId, contextNode, setContext, myBindings, iam, scopeLabel } = t;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -59,7 +59,7 @@ export default function ScopeSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
         title="تغییر سازمان یا نقش"
-        className="flex items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 py-2 text-[12.5px] font-medium max-w-[280px] transition-colors border-ink-200 bg-ink-50 text-ink-700 hover:border-ink-300"
+        className="flex items-center gap-1.5 h-10 rounded-[10px] border px-2.5 text-[13px] font-medium max-w-[280px] transition-colors border-ink-200 bg-card text-ink-700 hover:border-ink-300 outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]"
       >
         <Icon size={14} className="shrink-0" />
         <span className="truncate hidden sm:inline">
@@ -70,39 +70,7 @@ export default function ScopeSwitcher() {
       </button>
 
       {open && (
-        <div role="listbox" aria-label="تغییر سازمان یا نقش" className="absolute top-full mt-1.5 left-0 w-80 max-w-[90vw] max-h-[75vh] overflow-y-auto bg-white border border-ink-200 rounded-xl shadow-lg py-1.5 z-40">
-          {IS_DEMO && (
-            <>
-              <p className="px-3 py-1 text-[10px] font-semibold text-ink-400 flex items-center gap-1">
-                <UserRound size={11} /> مشاهده به‌عنوان کاربر (دمو)
-              </p>
-              {demoPersonas.map((p) => {
-                const u = allUsers.find((x) => x.id === p.id);
-                if (!u) return null;
-                const active = actingUser.id === u.id;
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      setActingUser(u.id);
-                      setOpen(false);
-                    }}
-                    title={p.summary}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-right hover:bg-ink-50 ${active ? "bg-brand-50/60" : ""}`}
-                  >
-                    <Avatar name={u.name} color={u.avatarColor} size={26} />
-                    <span className="flex-1 min-w-0">
-                      <span className={`block truncate text-[12.5px] ${active ? "text-brand-700 font-semibold" : "text-ink-800"}`}>{u.name}</span>
-                      <span className="block truncate text-[10.5px] text-ink-400">{primaryRoleOf(u.id)?.name ?? "کاربر عادی"}</span>
-                    </span>
-                    {active && <Check size={14} className="shrink-0 text-brand-600" />}
-                  </button>
-                );
-              })}
-              <div className="h-px bg-ink-100 my-1.5" />
-            </>
-          )}
-
+        <div role="listbox" aria-label="تغییر سازمان یا نقش" className="absolute top-full mt-1.5 end-0 w-80 max-w-[90vw] max-h-[75vh] overflow-y-auto bg-card border border-border rounded-xl shadow-lg py-1.5 z-40 animate-fadein">
           <p className="px-3 py-1 text-[10px] font-semibold text-ink-400">سازمانی که در آن کار می‌کنید</p>
           {ordered.map(({ id, depth }) => {
             const n = iam.scopes.find((s) => s.id === id)!;
@@ -115,7 +83,7 @@ export default function ScopeSwitcher() {
                   setContext(id);
                   setOpen(false);
                 }}
-                className={`w-full flex items-center gap-2 py-1.5 pl-3 text-right hover:bg-ink-50 ${active ? "text-brand-700 font-semibold" : "text-ink-700"}`}
+                className={`w-full flex items-center gap-2 py-1.5 pl-3 text-right hover:bg-ink-50 ${active ? "text-teal-700 font-semibold bg-teal-50" : "text-ink-700"}`}
                 style={{ paddingRight: 12 + depth * 14 }}
               >
                 <I size={13} className="shrink-0 opacity-70" />
@@ -132,19 +100,57 @@ export default function ScopeSwitcher() {
             </p>
             <div className="flex flex-wrap gap-1">
               {myBindings.map((b) => (
-                <span key={b.id} className="text-[10.5px] bg-brand-50 text-brand-800 rounded px-1.5 py-0.5" title={`تخصیص در «${scopeLabel(b.scopeId)}»`}>
+                <span key={b.id} className="text-[10.5px] bg-teal-50 text-teal-700 rounded-full px-2 py-0.5" title={`تخصیص در «${scopeLabel(b.scopeId)}»`}>
                   {b.role.name}
                   {b.scopeId !== contextId ? ` ← ${scopeLabel(b.scopeId)}` : ""}
                 </span>
               ))}
               {myBindings.length === 0 && <span className="text-[11px] text-ink-400">نقشی ندارید — فقط مشاهده.</span>}
             </div>
-            <Link to="/dashboard/access" onClick={() => setOpen(false)} className="block text-[11px] text-brand-700 hover:underline mt-1.5">
+            <Link to="/my-access" onClick={() => setOpen(false)} className="block text-[11px] text-link hover:underline mt-1.5">
               جزئیات نقش و دسترسی من ←
             </Link>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * «مشاهده به‌عنوان» (دمو): جابه‌جایی بین پرسوناهای نمایشی — در منوی آواتار نوار بالا.
+ * در بیلد محصول (VITE_DEMO=false) چیزی رندر نمی‌شود.
+ */
+export function DemoPersonaList({ onPick }: { onPick?: () => void }) {
+  const { actingUser, setActingUser, primaryRoleOf } = useTenancy();
+  if (!IS_DEMO) return null;
+  return (
+    <div role="group" aria-label="مشاهده به‌عنوان">
+      {demoPersonas.map((p) => {
+        const u = allUsers.find((x) => x.id === p.id);
+        if (!u) return null;
+        const active = actingUser.id === u.id;
+        return (
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => {
+              setActingUser(u.id);
+              onPick?.();
+            }}
+            title={p.summary}
+            aria-pressed={active}
+            className={`w-full flex items-center gap-2.5 px-3.5 py-1.5 text-start hover:bg-ink-50 ${active ? "bg-teal-50" : ""}`}
+          >
+            <Avatar name={u.name} color={u.avatarColor} size={26} />
+            <span className="flex-1 min-w-0">
+              <span className={`block truncate text-[13px] ${active ? "text-teal-700 font-bold" : "text-ink-800"}`}>{u.name}</span>
+              <span className="block truncate text-[11.5px] text-ink-500">{primaryRoleOf(u.id)?.name ?? "کاربر عادی"}</span>
+            </span>
+            {active && <Check size={14} className="shrink-0 text-teal-700" />}
+          </button>
+        );
+      })}
     </div>
   );
 }

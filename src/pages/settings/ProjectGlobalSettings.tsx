@@ -18,6 +18,8 @@ import { typeLabel } from "../../pm/selectors";
 import { ACCESS_TEMPLATES } from "../../pm/access";
 import type { ColumnKind, PMMeeting, PMPriority, ProjectPriority, Visibility } from "../../pm/types";
 import TimesheetSettingsModal from "../activity/SettingsModal";
+import { DEFAULT_CONTROL, DEFAULT_MODULES, controlLabels, moduleLabels } from "../../pm/rules";
+import type { ProjectControlSettings, ProjectModules } from "../../pm/types";
 import { allTaskTypes, defaultProjectDefaults, saveProjectDefaults, useProjectDefaults, type ProjectDefaults } from "./projectDefaults";
 
 const kinds = Object.keys(kindLabel) as ColumnKind[];
@@ -275,6 +277,29 @@ export default function ProjectGlobalSettings() {
           </ul>
         </Card>
 
+        <Card icon={<Settings2 size={15} />} title="ماژول‌ها و کنترل اعضای پروژه‌ی جدید" hint="هر پروژه پس از ساخت در «تنظیمات پروژه» خودش تغییرشان می‌دهد. مجوز «ایجاد پروژه» در نقش‌ها (راهبری دسترسی) تعیین می‌شود.">
+          <ul className="divide-y divide-ink-100">
+            {(Object.keys(moduleLabels) as (keyof ProjectModules)[]).map((k) => {
+              const m = { ...DEFAULT_MODULES, ...d.modules };
+              return (
+                <li key={k} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[12px] text-ink-700 leading-5 min-w-0">ماژول «{moduleLabels[k].label}»</span>
+                  <Toggle on={m[k]} disabled={!canEdit} onChange={() => set("modules", { ...m, [k]: !m[k] })} label={moduleLabels[k].label} />
+                </li>
+              );
+            })}
+            {(Object.keys(controlLabels) as (keyof ProjectControlSettings)[]).map((k) => {
+              const c = { ...DEFAULT_CONTROL, ...d.control };
+              return (
+                <li key={k} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-[12px] text-ink-700 leading-5 min-w-0">{controlLabels[k].label}</span>
+                  <Toggle on={c[k]} disabled={!canEdit} onChange={() => set("control", { ...c, [k]: !c[k] })} label={controlLabels[k].label} />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+
         <Card icon={<KeyRound size={15} />} title="دسترسی پیش‌فرض عضو تازه" hint="وقتی عضوی به پروژه اضافه می‌شود، دسترسی اولیه‌اش از این قالب پر می‌شود.">
           <div className="space-y-2">
             {[{ id: "overview" as const, label: "نمای کلی", hint: "مشاهده‌ی وظایف، مایل‌ستون‌ها و جلسات." }, ...ACCESS_TEMPLATES].map((tp) => (
@@ -287,7 +312,7 @@ export default function ProjectGlobalSettings() {
         </Card>
 
         <Card icon={<LayoutTemplate size={15} />} title="قالب‌های پروژه" hint="قالب‌ها (بورد، تسک‌ها، وابستگی‌ها، مایل‌ستون‌ها و نقش‌ها) در بخش «قالب‌های پروژه» صفحه‌ی پروژه‌ها مدیریت می‌شوند؛ هر پروژه هم از تب تنظیمات خودش «ذخیره به‌عنوان قالب» دارد.">
-          <Link to="/dashboard/projects?section=templates" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand-700 hover:underline">
+          <Link to="/projects?section=templates" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand-700 hover:underline">
             مدیریت قالب‌های پروژه <ArrowUpLeft size={13} />
           </Link>
         </Card>

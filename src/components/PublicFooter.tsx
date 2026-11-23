@@ -8,6 +8,7 @@ const quickLinks = [
   { to: "/public/knowledge", label: "پایگاه دانش" },
   { to: "/public/forum", label: "انجمن پرسش‌وپاسخ" },
   { to: "/public/media", label: "تصاویر و ویدیو" },
+  { to: "/public/faqs", label: "سوالات متداول" },
 ];
 
 const bonyadLinks = [
@@ -29,7 +30,7 @@ export default function PublicFooter() {
             <span className="font-bold text-white text-sm">بنیاد مستضعفان انقلاب اسلامی</span>
           </div>
           <p className="text-xs leading-6 text-navy-300 max-w-xs">
-            شبکه اجتماعی و فضای کاری سازمانی بنیاد — بستر یکپارچه‌ی ارتباط، دانش و همکاری
+            شبکه اجتماعی و فضای کاری سازمانی بنیاد بر بستر «کاریز» — بستر یکپارچه‌ی ارتباط، دانش و همکاری
             هلدینگ‌ها و شرکت‌های زیرمجموعه.
           </p>
         </div>

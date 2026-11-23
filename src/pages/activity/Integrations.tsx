@@ -292,7 +292,7 @@ function ConnectModal({
 
         <div>
           <p className="text-xs font-bold text-ink-700 mb-1.5">نگاشت پروژه‌ها</p>
-          <p className="text-[11px] text-ink-400 mb-2">{kind === "jira" ? "کلید پروژه‌ی Jira (مثل KMS)" : kind === "calendar" ? "نام تقویم یا عنوان جلسه‌ی تکرارشونده" : "نام مخزن یا پروژه (مثل bonyad/km-portal)"} ← پروژه‌ی موتوشاب. ورودیِ نگاشت‌نشده بدون پروژه وارد می‌شود.</p>
+          <p className="text-[11px] text-ink-400 mb-2">{kind === "jira" ? "کلید پروژه‌ی Jira (مثل KMS)" : kind === "calendar" ? "نام تقویم یا عنوان جلسه‌ی تکرارشونده" : "نام مخزن یا پروژه (مثل bonyad/km-portal)"} ← پروژه‌ی کاریز. ورودیِ نگاشت‌نشده بدون پروژه وارد می‌شود.</p>
           <div className="space-y-2">
             {mappings.map((m, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">

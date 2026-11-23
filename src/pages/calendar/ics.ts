@@ -63,7 +63,7 @@ export function appUrl(path: string): string {
   return `${window.location.origin}${window.location.pathname}#${path}`;
 }
 
-export function buildIcs(events: IcsEvent[], calName = "تقویم موتوشاب"): string {
+export function buildIcs(events: IcsEvent[], calName = "تقویم کاریز"): string {
   const now = new Date();
   const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
   const lines = [
@@ -136,7 +136,7 @@ export function socialEventToIcs(ev: SocialEvent): IcsEvent {
     end: st === null ? null : (en ?? st + 60),
     description: [ev.description, ev.is_online && ev.meeting_link ? `لینک جلسه: ${ev.meeting_link}` : ""].filter(Boolean).join("\n\n"),
     location: ev.is_online ? ev.meeting_link || "آنلاین" : ev.location,
-    url: appUrl(`/dashboard/events/${ev.id}`),
+    url: appUrl(`/events/${ev.id}`),
     rrule: repeat ? `FREQ=WEEKLY;BYDAY=${[...ev.repeat_days].sort().map((d) => byDay[d]).join(",")}` : undefined,
   };
 }

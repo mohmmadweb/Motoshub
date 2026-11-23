@@ -141,7 +141,7 @@ export function SimilarQuestions({ title, pool, excludeId, onOpen }: { title: st
       <ul className="space-y-1">
         {list.map((t) => (
           <li key={t.id} className="flex items-center gap-2 min-w-0">
-            <Link to={`/dashboard/forum/${t.id}`} onClick={onOpen} className="text-[12px] text-brand-700 hover:underline truncate flex-1 min-w-0">
+            <Link to={`/forums/${t.id}`} onClick={onOpen} className="text-[12px] text-brand-700 hover:underline truncate flex-1 min-w-0">
               {t.title}
             </Link>
             {t.accepted_post_id && <CheckCircle2 size={13} className="text-emerald-600 shrink-0" aria-label="حل‌شده" />}

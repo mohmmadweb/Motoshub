@@ -5,7 +5,7 @@ import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import PhaseGateModal, { gateTone } from "./StageGateCard";
 import ClosureWizard, { ClosureSummary, FinalReportModal } from "./ClosureWizard";
-import { TagLinks, contractTitle, fundTitle, opportunityTitle } from "./SettingsExtras";
+import { TagLinks } from "./SettingsExtras";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { useTenancy } from "../../context/TenancyContext";
 import { users } from "../../data/mock";
@@ -94,7 +94,7 @@ export default function OverviewTab() {
   // ---- پیوندها: هر مقدار به صفحه‌ی منبعش
   const person = (name: string) => {
     const u = users.find((x) => x.name === name);
-    return u ? <Link to={`/dashboard/profile/${u.id}`} className="text-brand-700 hover:underline">{name}</Link> : name || "—";
+    return u ? <Link to={`/profile/${u.id}`} className="text-brand-700 hover:underline">{name}</Link> : name || "—";
   };
   const tabLink = (tab: TabId, text: ReactNode) => (access.canSeeTab(tab) ? <button onClick={() => goTab(tab)} className="text-brand-700 hover:underline text-right">{text}</button> : text);
   const company = p.meta.companyName ? iam.scopes.find((sc) => sc.name === p.meta.companyName) : undefined;
@@ -103,10 +103,7 @@ export default function OverviewTab() {
     ["مدیر پروژه", person(p.meta.manager)],
     ["بازه", `${p.meta.start} تا ${p.meta.deadline}`],
     ["تیم", tabLink("team", `${fa(p.members.length)} عضو`)],
-    ...(p.meta.fundId && fundTitle(p.meta.fundId) ? ([["صندوق نوآوری", <Link to={`/dashboard/funds?focus=${p.meta.fundId}`} className="text-brand-700 hover:underline">{fundTitle(p.meta.fundId)}</Link>]] as [string, ReactNode][]) : []),
-    ...(p.meta.contractId && contractTitle(p.meta.contractId) ? ([["قرارداد فناورانه", <Link to={`/dashboard/contracts?focus=${p.meta.contractId}`} className="text-brand-700 hover:underline">{contractTitle(p.meta.contractId)}</Link>]] as [string, ReactNode][]) : []),
-    ...(p.meta.opportunityId && opportunityTitle(p.meta.opportunityId) ? ([["فرصت پژوهشی", <Link to={`/dashboard/research?focus=${p.meta.opportunityId}`} className="text-brand-700 hover:underline">{opportunityTitle(p.meta.opportunityId)}</Link>]] as [string, ReactNode][]) : []),
-    ...(p.meta.companyName ? ([["شرکت / مجری", company ? <Link to={`/dashboard/org/${company.id}`} className="text-brand-700 hover:underline">{p.meta.companyName}</Link> : p.meta.companyName]] as [string, ReactNode][]) : []),
+    ...(p.meta.companyName ? ([["شرکت / مجری", company ? <Link to={`/org/${company.id}`} className="text-brand-700 hover:underline">{p.meta.companyName}</Link> : p.meta.companyName]] as [string, ReactNode][]) : []),
   ];
   const extraRows: [string, ReactNode][] = [
     ["حامی مالی", p.meta.sponsor || "—"],
@@ -116,7 +113,7 @@ export default function OverviewTab() {
     ["بودجه‌ی کل", access.can("budget") ? tabLink("budget", fmtRial(p.budget.total)) : "—"],
     ...(activeSprint ? ([["اسپرینت فعال", tabLink("sprints", `${activeSprint.name} (تا ${activeSprint.end})`)]] as [string, ReactNode][]) : []),
     ["کلید پروژه", p.meta.key ?? "—"],
-    ["فضای کاری", p.meta.scopeId ? <Link to={`/dashboard/org/${p.meta.scopeId}`} className="text-brand-700 hover:underline">{scopePath(p.meta.scopeId)}</Link> : p.meta.workspace],
+    ["فضای کاری", p.meta.scopeId ? <Link to={`/org/${p.meta.scopeId}`} className="text-brand-700 hover:underline">{scopePath(p.meta.scopeId)}</Link> : p.meta.workspace],
     ["مالک محتوا", ownerLabel(p.meta)],
     ["سطح دسترسی", p.meta.visibility],
     ["ایجاد", p.meta.createdAt],

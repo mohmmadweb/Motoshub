@@ -58,16 +58,20 @@ const seed = (): SlideState => ({
   seq: 10,
   settings: { landing: { enabled: true, interval_sec: 6, autoplay: true, indicators: true }, dashboard: { enabled: true, interval_sec: 8, autoplay: true, indicators: true } },
   slides: [
-    S({ id: "sl1", order: 1, image_desktop: "/img/lab.jpg", title: "هفته‌ی پژوهش و فناوری بنیاد", subtitle: "فراخوان طرح‌های پژوهشی ۱۴۰۵ تا پایان خرداد باز است.", cta_text: "مشاهده‌ی فرصت‌ها", cta_url: "/dashboard/research", starts_at: "۱۴۰۵/۰۳/۰۱", ends_at: "۱۴۰۵/۰۳/۳۱", placement: "both" }),
-    S({ id: "sl2", order: 2, image_desktop: "/img/expo.jpg", title: "جایزه‌ی نوآوری و فناوری — دوره‌ی سوم", subtitle: "ثبت آثار شرکت‌ها و تیم‌های فناور زیرمجموعه آغاز شد.", cta_text: "ثبت اثر", cta_url: "/dashboard/award", placement: "both" }),
-    S({ id: "sl3", order: 3, image_desktop: "/img/training.jpg", title: "دوره‌ی مدیریت پروژه‌ی چابک", subtitle: "ویژه‌ی مدیران پروژه — ثبت‌نام در سامانه‌ی آموزش.", cta_text: "ثبت‌نام", cta_url: "/dashboard/training", audience: "members", placement: "dashboard", starts_at: "۱۴۰۵/۰۲/۲۰", ends_at: "۱۴۰۵/۰۴/۱۵" }),
-    S({ id: "sl4", order: 4, image_desktop: "/img/energy.jpg", title: "نشست هم‌اندیشی بهره‌وری انرژی", subtitle: "ویژه‌ی کارکنان هلدینگ برق و انرژی صبا — سه‌شنبه، سالن همایش‌ها.", cta_text: "رویدادها", cta_url: "/dashboard/events", audience: "scope", scope_id: "h-saba", placement: "dashboard" }),
-    S({ id: "sl5", order: 5, image_desktop: "/img/meeting.jpg", title: "همایش سالانه‌ی مدیران ۱۴۰۴", subtitle: "گزارش تصویری همایش.", cta_text: "رسانه", cta_url: "/dashboard/media", starts_at: "۱۴۰۵/۰۱/۱۵", ends_at: "۱۴۰۵/۰۲/۳۰", placement: "both" }),
+    S({ id: "sl1", order: 1, image_desktop: "/img/lab.jpg", title: "هفته‌ی پژوهش و فناوری بنیاد", subtitle: "سندهای فرصت تحقیق و توسعه‌ی هلدینگ‌ها در مدیریت دانش.", cta_text: "مشاهده‌ی فرصت‌ها", cta_url: "/knowledge/research", starts_at: "۱۴۰۵/۰۳/۰۱", ends_at: "۱۴۰۵/۰۳/۳۱", placement: "both" }),
+    S({ id: "sl4", order: 4, image_desktop: "/img/energy.jpg", title: "نشست هم‌اندیشی بهره‌وری انرژی", subtitle: "ویژه‌ی کارکنان هلدینگ برق و انرژی صبا — سه‌شنبه، سالن همایش‌ها.", cta_text: "رویدادها", cta_url: "/events", audience: "scope", scope_id: "h-saba", placement: "dashboard" }),
+    S({ id: "sl5", order: 5, image_desktop: "/img/meeting.jpg", title: "همایش سالانه‌ی مدیران ۱۴۰۴", subtitle: "گزارش تصویری همایش.", cta_text: "رسانه", cta_url: "/media", starts_at: "۱۴۰۵/۰۱/۱۵", ends_at: "۱۴۰۵/۰۲/۳۰", placement: "both" }),
   ],
 });
 export const slideStore = createLocalStore<SlideState>("motoshub.slides.v1", seed, (r) => {
   const x = r as SlideState;
-  return x && Array.isArray(x.slides) && x.settings ? x : null;
+  if (!(x && Array.isArray(x.slides) && x.settings)) return null;
+  // پیوند اسلایدها به بخش حذف‌شده‌ی «نوآوری و پژوهش»: اسلایدهای جایزه/آموزش کنار گذاشته و فراخوان پژوهشی به مدیریت دانش می‌رود
+  const gone = /^(\/dashboard)?\/(contracts|funds|award|training)(\/|\?|$)/;
+  const slides = x.slides
+    .filter((sl) => !gone.test(sl.cta_url ?? ""))
+    .map((sl) => (/^(\/dashboard)?\/research(\/|\?|$)/.test(sl.cta_url ?? "") ? { ...sl, cta_url: "/knowledge/research" } : sl));
+  return { ...x, slides };
 });
 
 /** وضعیت زمانی یک اسلاید نسبت به امروز */

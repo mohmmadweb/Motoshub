@@ -1,0 +1,396 @@
+{
+ "id": "b1",
+ "name": "آبرسانی روستای نمونه",
+ "desc": "بورد نمونه برای آزمودن ورود از ترلو",
+ "closed": false,
+ "lists": [
+  {
+   "id": "l1",
+   "name": "ایده‌ها",
+   "closed": false,
+   "pos": 16384
+  },
+  {
+   "id": "l2",
+   "name": "برای انجام",
+   "closed": false,
+   "pos": 32768
+  },
+  {
+   "id": "l3",
+   "name": "در حال انجام",
+   "closed": false,
+   "pos": 49152
+  },
+  {
+   "id": "l4",
+   "name": "بازبینی",
+   "closed": false,
+   "pos": 65536
+  },
+  {
+   "id": "l5",
+   "name": "انجام شد",
+   "closed": false,
+   "pos": 81920
+  },
+  {
+   "id": "l6",
+   "name": "فاز قدیمی",
+   "closed": true,
+   "pos": 98304
+  }
+ ],
+ "cards": [
+  {
+   "id": "c1",
+   "idShort": 1,
+   "name": "برگزاری جلسه‌ی هم‌اندیشی با شورای روستا",
+   "desc": "پیشنهاد اهالی برای محل مخزن دوم جمع‌آوری شود.",
+   "due": null,
+   "start": null,
+   "dueComplete": false,
+   "idList": "l1",
+   "idMembers": [],
+   "idLabels": [
+    "g3"
+   ],
+   "closed": false,
+   "pos": 16384,
+   "idChecklists": []
+  },
+  {
+   "id": "c2",
+   "idShort": 2,
+   "name": "تهیه‌ی نقشه‌ی مسیر لوله‌کشی",
+   "desc": "نقشه با مقیاس ۱:۲۰۰۰ و مشخص‌کردن تقاطع‌ها با جاده.",
+   "due": "2026-06-14T09:00:00.000Z",
+   "start": "2026-06-07T05:30:00.000Z",
+   "dueComplete": false,
+   "idList": "l2",
+   "idMembers": [
+    "m2"
+   ],
+   "idLabels": [
+    "g1"
+   ],
+   "closed": false,
+   "pos": 32768,
+   "idChecklists": []
+  },
+  {
+   "id": "c3",
+   "idShort": 3,
+   "name": "استعلام قیمت لوله‌ی پلی‌اتیلن",
+   "desc": "حداقل از سه تأمین‌کننده.",
+   "due": "2026-06-10T12:00:00.000Z",
+   "start": null,
+   "dueComplete": false,
+   "idList": "l2",
+   "idMembers": [
+    "m3"
+   ],
+   "idLabels": [
+    "g2"
+   ],
+   "closed": false,
+   "pos": 49152,
+   "idChecklists": []
+  },
+  {
+   "id": "c4",
+   "idShort": 4,
+   "name": "حفاری ترانشه‌ی بخش شمالی",
+   "desc": "طول تقریبی ۸۰۰ متر.",
+   "due": "2026-06-20T12:00:00.000Z",
+   "start": "2026-06-08T05:30:00.000Z",
+   "dueComplete": false,
+   "idList": "l3",
+   "idMembers": [
+    "m2",
+    "m1"
+   ],
+   "idLabels": [
+    "g1",
+    "g2"
+   ],
+   "closed": false,
+   "pos": 65536,
+   "idChecklists": []
+  },
+  {
+   "id": "c5",
+   "idShort": 5,
+   "name": "هماهنگی با اداره‌ی آب‌وفاضلاب",
+   "desc": "",
+   "due": "2026-06-12T12:00:00.000Z",
+   "start": null,
+   "dueComplete": false,
+   "idList": "l3",
+   "idMembers": [
+    "m1"
+   ],
+   "idLabels": [],
+   "closed": false,
+   "pos": 81920,
+   "idChecklists": []
+  },
+  {
+   "id": "c6",
+   "idShort": 6,
+   "name": "گزارش پیشرفت ماه خرداد",
+   "desc": "پیش‌نویس گزارش برای کارفرما.",
+   "due": "2026-06-09T12:00:00.000Z",
+   "start": "2026-06-03T05:30:00.000Z",
+   "dueComplete": false,
+   "idList": "l4",
+   "idMembers": [
+    "m3"
+   ],
+   "idLabels": [
+    "g3"
+   ],
+   "closed": false,
+   "pos": 98304,
+   "idChecklists": []
+  },
+  {
+   "id": "c7",
+   "idShort": 7,
+   "name": "بازدید اولیه‌ی میدانی",
+   "desc": "",
+   "due": "2026-05-28T12:00:00.000Z",
+   "start": "2026-05-25T05:30:00.000Z",
+   "dueComplete": true,
+   "idList": "l5",
+   "idMembers": [
+    "m1",
+    "m2"
+   ],
+   "idLabels": [
+    "g4"
+   ],
+   "closed": false,
+   "pos": 114688,
+   "idChecklists": []
+  },
+  {
+   "id": "c8",
+   "idShort": 8,
+   "name": "خرید شیرآلات و اتصالات",
+   "desc": "فاکتورها در پوشه‌ی مالی است.",
+   "due": "2026-06-02T12:00:00.000Z",
+   "start": null,
+   "dueComplete": true,
+   "idList": "l5",
+   "idMembers": [
+    "m3"
+   ],
+   "idLabels": [],
+   "closed": false,
+   "pos": 131072,
+   "idChecklists": []
+  },
+  {
+   "id": "c9",
+   "idShort": 9,
+   "name": "آموزش بهره‌برداری به دهیار",
+   "desc": "",
+   "due": "2026-07-01T12:00:00.000Z",
+   "start": null,
+   "dueComplete": false,
+   "idList": "l2",
+   "idMembers": [],
+   "idLabels": [
+    "g3"
+   ],
+   "closed": true,
+   "pos": 147456,
+   "idChecklists": []
+  },
+  {
+   "id": "c10",
+   "idShort": 10,
+   "name": "مطالعه‌ی گزینه‌ی چاه عمیق",
+   "desc": "در فاز قبل کنار گذاشته شد.",
+   "due": null,
+   "start": null,
+   "dueComplete": false,
+   "idList": "l6",
+   "idMembers": [
+    "m2"
+   ],
+   "idLabels": [],
+   "closed": false,
+   "pos": 163840,
+   "idChecklists": []
+  }
+ ],
+ "members": [
+  {
+   "id": "m1",
+   "fullName": "نگار احمدی",
+   "username": "negar_a"
+  },
+  {
+   "id": "m2",
+   "fullName": "رضا کریمی",
+   "username": "reza.k"
+  },
+  {
+   "id": "m3",
+   "fullName": "مهسا رضایی",
+   "username": "mahsa_r"
+  }
+ ],
+ "labels": [
+  {
+   "id": "g1",
+   "name": "عمرانی",
+   "color": "green"
+  },
+  {
+   "id": "g2",
+   "name": "فوری",
+   "color": "red"
+  },
+  {
+   "id": "g3",
+   "name": "مستندات",
+   "color": "blue"
+  },
+  {
+   "id": "g4",
+   "name": "",
+   "color": "purple"
+  }
+ ],
+ "checklists": [
+  {
+   "id": "k1",
+   "idCard": "c2",
+   "name": "Checklist",
+   "pos": 1,
+   "checkItems": [
+    {
+     "name": "برداشت نقاط با GPS",
+     "state": "complete",
+     "pos": 1
+    },
+    {
+     "name": "ترسیم در نرم‌افزار نقشه",
+     "state": "incomplete",
+     "pos": 2
+    },
+    {
+     "name": "تأیید ناظر",
+     "state": "incomplete",
+     "pos": 3
+    }
+   ]
+  },
+  {
+   "id": "k2",
+   "idCard": "c4",
+   "name": "ایمنی کارگاه",
+   "pos": 1,
+   "checkItems": [
+    {
+     "name": "نصب تابلوی هشدار",
+     "state": "complete",
+     "pos": 1
+    },
+    {
+     "name": "حصارکشی موقت",
+     "state": "incomplete",
+     "pos": 2
+    }
+   ]
+  },
+  {
+   "id": "k3",
+   "idCard": "c6",
+   "name": "Checklist",
+   "pos": 1,
+   "checkItems": [
+    {
+     "name": "جدول درصد پیشرفت",
+     "state": "incomplete",
+     "pos": 1
+    },
+    {
+     "name": "عکس‌های کارگاه",
+     "state": "incomplete",
+     "pos": 2
+    }
+   ]
+  }
+ ],
+ "actions": [
+  {
+   "id": "a3",
+   "type": "commentCard",
+   "date": "2026-06-09T08:15:00.000Z",
+   "idMemberCreator": "m1",
+   "memberCreator": {
+    "id": "m1",
+    "fullName": "نگار احمدی",
+    "username": "negar_a"
+   },
+   "data": {
+    "text": "پیمانکار گفت دستگاه حفاری پنجشنبه می‌رسد.",
+    "card": {
+     "id": "c4",
+     "name": "حفاری ترانشه‌ی بخش شمالی"
+    }
+   }
+  },
+  {
+   "id": "a2",
+   "type": "commentCard",
+   "date": "2026-06-08T10:40:00.000Z",
+   "idMemberCreator": "m2",
+   "memberCreator": {
+    "id": "m2",
+    "fullName": "رضا کریمی",
+    "username": "reza.k"
+   },
+   "data": {
+    "text": "مسیر از کنار باغ‌ها عوض شد؛ نقشه را به‌روز کردم.",
+    "card": {
+     "id": "c2",
+     "name": "تهیه‌ی نقشه‌ی مسیر لوله‌کشی"
+    }
+   }
+  },
+  {
+   "id": "a1",
+   "type": "commentCard",
+   "date": "2026-06-04T07:05:00.000Z",
+   "idMemberCreator": "m3",
+   "memberCreator": {
+    "id": "m3",
+    "fullName": "مهسا رضایی",
+    "username": "mahsa_r"
+   },
+   "data": {
+    "text": "دو استعلام رسید، منتظر سومی هستیم.",
+    "card": {
+     "id": "c3",
+     "name": "استعلام قیمت لوله‌ی پلی‌اتیلن"
+    }
+   }
+  },
+  {
+   "id": "a0",
+   "type": "updateCard",
+   "date": "2026-06-03T07:00:00.000Z",
+   "idMemberCreator": "m1",
+   "data": {
+    "card": {
+     "id": "c7"
+    }
+   }
+  }
+ ]
+}

@@ -4,22 +4,21 @@
 // ---------------------------------------------------------------------------
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Award, BookOpen, CalendarDays, CheckCircle2, ChevronLeft, GitBranch, GraduationCap, HelpCircle, Image as ImageIcon, KanbanSquare, ListChecks, MessageSquareText, Newspaper, Pencil, UserCog } from "lucide-react";
+import { BookOpen, CalendarDays, CheckCircle2, ChevronLeft, GitBranch, HelpCircle, Image as ImageIcon, KanbanSquare, ListChecks, MessageSquareText, Newspaper, Pencil, UserCog } from "lucide-react";
 import Badge, { type BadgeTone } from "../../components/ui/Badge";
-import EmptyState from "../../components/ui/EmptyState";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import Avatar from "../../components/Avatar";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
-import { useInnovation } from "../../context/InnovationContext";
 import { users, type UserProfile } from "../../data/mock";
 import { contentKindLabel } from "../../social/types";
 import { dayNum } from "../../pm/jalali";
 import { isDone, columnLabel } from "../../pm/selectors";
 import { contentLink, datePart, type VisibleData } from "../search/liveData";
 import { reportingChain, useManagerOverrides } from "./reporting";
+import { kmDocHref } from "../../km/nav";
 
 const fa = (n: number) => n.toLocaleString("fa-IR");
 
@@ -57,7 +56,6 @@ const byDate = (a: Row, b: Row) => (dayNum(b.date) ?? 0) - (dayNum(a.date) ?? 0)
 /** داده‌ی پروفایل یک نفر از روی داده‌ی قابل‌دیدن برای بیننده */
 export function useProfileData(user: UserProfile, v: VisibleData) {
   const km = useKnowledge();
-  const inn = useInnovation();
   return useMemo(() => {
     const content = v.content.filter((c) => c.user_id === user.id && c.is_public && !c.is_draft);
     const media = v.media.filter((m) => m.user_id === user.id && m.is_public && !m.is_draft);
@@ -73,12 +71,8 @@ export function useProfileData(user: UserProfile, v: VisibleData) {
 
     const docs = v.docs.filter((d) => d.owner === user.name || d.author === user.name);
     const expert = km.experts.find((e) => e.userId === user.id || e.name === user.name);
-
-    const courseById = new Map(inn.courses.map((c) => [c.id, c]));
-    const trainingCerts = inn.enrollments.filter((e) => e.user === user.name && e.certificateNo).map((e) => ({ e, course: courseById.get(e.courseId) }));
-    const awardCerts = inn.awardEntries.filter((a) => a.submitter === user.name && a.certificateNo);
-    return { content, media, events, topics, answers, accepted, topicById, projects, openTasks, docs, expert, trainingCerts, awardCerts };
-  }, [user, v, km.experts, inn.courses, inn.enrollments, inn.awardEntries]);
+    return { content, media, events, topics, answers, accepted, topicById, projects, openTasks, docs, expert };
+  }, [user, v, km.experts]);
 }
 export type ProfileData = ReturnType<typeof useProfileData>;
 
@@ -86,13 +80,13 @@ export type ProfileData = ReturnType<typeof useProfileData>;
 export function ActivityTab({ d }: { d: ProfileData }) {
   const rows: Row[] = [
     ...d.content.map((c) => ({ id: c.id, icon: Newspaper, kind: contentKindLabel[c.kind], tone: (c.kind === "news" ? "navy" : "brand") as BadgeTone, title: c.title, sub: c.excerpt, date: datePart(c.published_at ?? c.created_at), to: contentLink(c.kind, c.id) })),
-    ...d.media.map((m) => ({ id: m.id, icon: ImageIcon, kind: "رسانه", title: m.caption || "بدون توضیح", date: datePart(m.published_at ?? m.created_at), to: `/dashboard/media/${m.id}` })),
-    ...d.events.map((e) => ({ id: e.id, icon: CalendarDays, kind: "رویداد", tone: "success" as BadgeTone, title: e.title, sub: e.location, date: datePart(e.start_date), to: `/dashboard/events/${e.id}` })),
-    ...d.topics.map((x) => ({ id: x.id, icon: HelpCircle, kind: "پرسش", title: x.title, sub: `${fa(x.view_count)} بازدید`, date: datePart(x.created_at), to: `/dashboard/forum/${x.id}` })),
+    ...d.media.map((m) => ({ id: m.id, icon: ImageIcon, kind: "رسانه", title: m.caption || "بدون توضیح", date: datePart(m.published_at ?? m.created_at), to: `/media/${m.id}` })),
+    ...d.events.map((e) => ({ id: e.id, icon: CalendarDays, kind: "رویداد", tone: "success" as BadgeTone, title: e.title, sub: e.location, date: datePart(e.start_date), to: `/events/${e.id}` })),
+    ...d.topics.map((x) => ({ id: x.id, icon: HelpCircle, kind: "پرسش", title: x.title, sub: `${fa(x.view_count)} بازدید`, date: datePart(x.created_at), to: `/forums/${x.id}` })),
     ...d.answers.map((p) => {
       const tp = d.topicById.get(p.topic_id);
       const acc = tp?.accepted_post_id === p.id;
-      return { id: p.id, icon: acc ? CheckCircle2 : MessageSquareText, kind: acc ? "پاسخ پذیرفته" : "پاسخ", tone: (acc ? "success" : "neutral") as BadgeTone, title: tp?.title ?? "پرسش", sub: p.content.slice(0, 80), date: datePart(p.created_at), to: `/dashboard/forum/${p.topic_id}` };
+      return { id: p.id, icon: acc ? CheckCircle2 : MessageSquareText, kind: acc ? "پاسخ پذیرفته" : "پاسخ", tone: (acc ? "success" : "neutral") as BadgeTone, title: tp?.title ?? "پرسش", sub: p.content.slice(0, 80), date: datePart(p.created_at), to: `/forums/${p.topic_id}` };
     }),
   ].sort(byDate);
   return (
@@ -123,7 +117,7 @@ export function WorkTab({ d, user }: { d: ProfileData; user: UserProfile }) {
               const done = p.tasks.filter((t) => !t.archived && isDone(p, t)).length;
               const pct = total ? Math.round((done / total) * 100) : 0;
               return (
-                <Link key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} className="border border-ink-100 rounded-lg p-3 hover:border-brand-300">
+                <Link key={p.meta.id} to={`/projects/${p.meta.id}`} className="border border-ink-100 rounded-lg p-3 hover:border-brand-300">
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-[13px] font-medium text-ink-800 truncate">{p.meta.name}</span>
                     <Badge tone={p.meta.health === "سبز" ? "success" : p.meta.health === "زرد" ? "warning" : "danger"}>{p.meta.health}</Badge>
@@ -147,7 +141,7 @@ export function WorkTab({ d, user }: { d: ProfileData; user: UserProfile }) {
         <RowList
           rows={d.openTasks.map(({ p, t }) => {
             const late = (dayNum(t.due) ?? 9e9) < todayN;
-            return { id: `${p.meta.id}-${t.id}`, icon: ListChecks, kind: late ? "عقب‌افتاده" : columnLabel(p, t.status), tone: late ? "danger" : "neutral", title: `${t.key ? `${t.key} — ` : ""}${t.title}`, sub: p.meta.name, date: t.due ? `سررسید ${t.due}` : "", to: `/dashboard/projects/${p.meta.id}?tab=board&focus=${t.key ?? t.id}` };
+            return { id: `${p.meta.id}-${t.id}`, icon: ListChecks, kind: late ? "عقب‌افتاده" : columnLabel(p, t.status), tone: late ? "danger" : "neutral", title: `${t.key ? `${t.key} — ` : ""}${t.title}`, sub: p.meta.name, date: t.due ? `سررسید ${t.due}` : "", to: `/projects/${p.meta.id}?tab=board&focus=${t.key ?? t.id}` };
           })}
           empty="کار بازی ندارد."
         />
@@ -181,25 +175,11 @@ export function KnowledgeTab({ d }: { d: ProfileData }) {
         </h3>
         <RowList
           rows={d.docs
-            .map((k) => ({ id: k.id, icon: BookOpen, kind: k.access, tone: (k.access === "محرمانه" || k.access === "خیلی محرمانه" ? "danger" : "neutral") as BadgeTone, title: k.title, sub: `${k.code} · ${k.status}`, date: datePart(k.updatedAt), to: `/dashboard/knowledge?doc=${k.id}` }))
+            .map((k) => ({ id: k.id, icon: BookOpen, kind: k.access, tone: (k.access === "محرمانه" || k.access === "خیلی محرمانه" ? "danger" : "neutral") as BadgeTone, title: k.title, sub: `${k.code} · ${k.status}`, date: datePart(k.updatedAt), to: kmDocHref(k.id) }))
             .sort(byDate)}
           empty="سندی که اجازه‌ی دیدنش را داشته باشید ثبت نکرده است."
         />
       </div>
-    </div>
-  );
-}
-
-// ================================================================= گواهی‌ها
-export function CertificatesTab({ d }: { d: ProfileData }) {
-  const rows: Row[] = [
-    ...d.awardCerts.map((a) => ({ id: a.id, icon: Award, kind: a.status, tone: "warning" as BadgeTone, title: a.title, sub: `جایزه نوآوری · گواهی ${a.certificateNo}`, date: datePart(a.createdAt), to: "/dashboard/award" })),
-    ...d.trainingCerts.map(({ e, course }) => ({ id: e.id, icon: GraduationCap, kind: "گواهی دوره", tone: "success" as BadgeTone, title: course?.title ?? "دوره آموزشی", sub: `${course?.hours ? `${fa(course.hours)} ساعت · ` : ""}شماره ${e.certificateNo}`, date: datePart(e.certifiedAt), to: "/dashboard/training" })),
-  ].sort(byDate);
-  return (
-    <div className="card p-4">
-      <h3 className="text-sm font-bold text-ink-900 mb-3">گواهی‌ها و افتخارات</h3>
-      {rows.length === 0 ? <EmptyState icon={<Award size={20} />} title="گواهی‌ای ثبت نشده" description="گواهی دوره‌های آموزشی و آثار برگزیده‌ی جایزه نوآوری اینجا نمایش داده می‌شود." /> : <RowList rows={rows} empty="" />}
     </div>
   );
 }
@@ -258,7 +238,7 @@ export function ReportingChain({ user }: { user: UserProfile }) {
               <li key={`${c.scope.id}-${c.name}`} className="pr-4 relative">
                 <span className="absolute -right-[7px] top-3 w-3 h-3 rounded-full bg-white border-2 border-brand-500" />
                 {c.userId ? (
-                  <Link to={`/dashboard/profile/${c.userId}`} className="block rounded-lg px-2 py-1.5 hover:bg-ink-50">
+                  <Link to={`/profile/${c.userId}`} className="block rounded-lg px-2 py-1.5 hover:bg-ink-50">
                     {body}
                   </Link>
                 ) : (

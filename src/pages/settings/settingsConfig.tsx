@@ -9,6 +9,9 @@ import type { ReactNode } from "react";
 import {
   Activity,
   BellRing,
+  FileText,
+  FolderOpen,
+  Palette,
   Brush,
   ClipboardCheck,
   Clock,
@@ -25,7 +28,6 @@ import {
   Plug,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   UserCheck,
   Users,
   Webhook,
@@ -37,6 +39,11 @@ import { settingsMeta } from "../../context/SettingsContext";
 import { systemVarMeta } from "./systemVars";
 import { StructureSection } from "./iam/StructureSection";
 import { MembersSection } from "./iam/MembersSection";
+import { TitlesSection } from "./iam/TitlesSection";
+import { HandoverSection } from "./iam/HandoverSection";
+import { ObjectAccessSection } from "./iam/ObjectAccessSection";
+import NumberSeriesSection from "../../office/settings/NumberSeriesSection";
+import CrmLabelsSection from "../../office/settings/CrmLabelsSection";
 import { RolesSection } from "./iam/RolesSection";
 import { BindingsSection } from "./iam/BindingsSection";
 import { AccessReviewSection } from "./iam/AccessReviewSection";
@@ -54,7 +61,6 @@ import LanguagesSection from "./LanguagesSection";
 import SlideshowSection from "./SlideshowSection";
 import ExperienceSection from "./ExperienceSection";
 import { OrgPublicFieldsCard } from "../org/OrgProfile";
-import { AwardSettingsTab, ContractsSettingsTab, FundSettingsTab } from "./InnovationSettings";
 import WorkflowParamsCard from "./WorkflowParams";
 import { KnowledgeSettingsPanel, NotificationQueuePanel, SocialSettingsPanel, TimesheetSettingsPanel } from "./ModuleSettings";
 import { SystemVarsCard } from "../AdminSections";
@@ -97,6 +103,11 @@ function SessionVars() {
 
 export const settingsGroups: SettingsGroupDef[] = [
   {
+    id: "general",
+    title: "تنظیمات عمومی",
+    sections: [{ id: "general", label: "تنظیمات عمومی", icon: Palette, perms: [], keywords: ["حالت تیره", "روشن", "رنگ تأکید", "اندازه‌ی متن", "فونت", "ظاهر من"], render: () => <MyAppearanceTab /> }],
+  },
+  {
     id: "org",
     title: "سازمان و دسترسی",
     sections: [
@@ -108,7 +119,10 @@ export const settingsGroups: SettingsGroupDef[] = [
         perms: ["iam.members.manage", "users.import", "users.create"],
         tabs: [
           { id: "list", label: "اعضا و عضویت‌ها", perms: ["iam.members.manage"], keywords: ["عضویت", "تعلیق", "مشاهده به‌عنوان"], render: () => <MembersSection /> },
-          { id: "invite", label: "دعوت و واردسازی", perms: ["users.import", "users.create", "iam.members.manage"], keywords: ["دعوت", "واردسازی", "اکسل", "CSV", "فایل نمونه"], render: () => <InviteImportSection /> },
+          { id: "invite", label: "دعوت و واردسازی", perms: ["users.import", "users.create", "iam.members.manage"], keywords: ["دعوت", "واردسازی", "اکسل", "CSV", "فایل نمونه", "مهمان"], render: () => <InviteImportSection /> },
+          { id: "titles", label: "سِمت‌ها", perms: ["iam.members.manage"], keywords: ["سمت", "عنوان شغلی", "عناوین سِمت‌های سازمانی"], render: () => <TitlesSection /> },
+          { id: "handover", label: "انتقال کار به کاربر دیگر", perms: ["iam.members.manage"], keywords: ["جابجایی اطلاعات", "جانشین", "انتقال وظایف", "تحویل کار"], render: () => <HandoverSection /> },
+          { id: "objects", label: "دسترسی‌های اشیا", perms: ["iam.members.manage"], keywords: ["دسترسی به پروژه", "پرونده مشتری", "گروه گفتگو", "اصلاح دسترسی"], render: () => <ObjectAccessSection /> },
         ],
       },
       { id: "roles", label: "نقش‌ها و مجوزها", icon: KeyRound, perms: ["roles.list", "roles.create", "roles.edit"], keywords: ["مجوز", "نقش سفارشی"], render: () => <RolesSection /> },
@@ -158,34 +172,16 @@ export const settingsGroups: SettingsGroupDef[] = [
             ),
           },
           { id: "slideshow", label: "اسلایدشو", perms: ["settings.branding"], keywords: ["اسلاید", "اسلایدر", "بنر", "صفحه‌ی عمومی", "پخش خودکار"], render: () => <SlideshowSection /> },
-          { id: "me", label: "ظاهر من", keywords: ["حالت تیره", "روشن", "رنگ تأکید", "اندازه‌ی متن", "فونت", "اوقات شرعی", "شهر"], render: () => <MyAppearanceTab /> },
         ],
       },
       { id: "languages", label: "زبان‌ها", icon: Languages, perms: ["settings.system"], keywords: ["ترجمه", "انگلیسی", "عربی", "راست‌چین", "چپ‌چین", "زبان پیش‌فرض", "JSON"], render: () => <LanguagesSection /> },
-      { id: "experience", label: "ابزارک‌ها و راهنما", icon: LayoutGrid, perms: ["settings.system"], keywords: ["تور محصول", "راهنمای تعاملی", "اجرای خودکار", "اوقات شرعی", "شهر پیش‌فرض"], render: () => <ExperienceSection /> },
+      { id: "experience", label: "ابزارک‌ها و راهنما", icon: LayoutGrid, perms: ["settings.system"], keywords: ["تور محصول", "راهنمای تعاملی", "اجرای خودکار"], render: () => <ExperienceSection /> },
     ],
   },
   {
     id: "knowledge",
     title: "دانش",
     sections: [{ id: "knowledge", label: "مدیریت دانش", icon: Library, perms: ["knowledge.settings"], keywords: ["طبقه‌بندی اسناد", "گردش کار سند", "تأییدکنندگان", "سطوح دسترسی سند", "برچسب‌ها"], render: () => <KnowledgeSettingsPanel /> }],
-  },
-  {
-    id: "innovation",
-    title: "نوآوری",
-    sections: [
-      {
-        id: "innovation",
-        label: "دانش و نوآوری",
-        icon: Sparkles,
-        perms: ["settings.system", "funds.allocate", "funds.monitor"],
-        tabs: [
-          { id: "funds", label: "صندوق نوآوری", perms: ["settings.system", "funds.allocate", "funds.monitor"], keywords: [...paramLabels("funds"), "اختلاف داوران"], render: () => <FundSettingsTab /> },
-          { id: "contracts", label: "قراردادها", perms: ["settings.system"], keywords: paramLabels("contracts"), render: () => <ContractsSettingsTab /> },
-          { id: "award", label: "جایزه", perms: ["settings.system"], keywords: paramLabels("award"), render: () => <AwardSettingsTab /> },
-        ],
-      },
-    ],
   },
   {
     id: "social",
@@ -211,6 +207,15 @@ export const settingsGroups: SettingsGroupDef[] = [
           { id: "queue", label: "صف و خلاصه‌ی روزانه", keywords: varLabels("notify"), render: () => <NotificationQueuePanel /> },
         ],
       },
+    ],
+  },
+  {
+    // قرارداد C7 — بخش‌های تنظیمات «دبیرخانه و مشتریان» (WP8)
+    id: "office",
+    title: "دبیرخانه و مشتریان",
+    sections: [
+      { id: "number-series", label: "سری‌های شماره‌ی نامه", icon: FileText, perms: ["secretariat.series.manage"], keywords: ["دبیرخانه", "شماره نامه", "پیشوند", "سال شمسی", "شمارنده"], render: () => <NumberSeriesSection /> },
+      { id: "crm-labels", label: "برچسب‌های پرونده مشتریان", icon: FolderOpen, perms: ["crm.manage"], keywords: ["پرونده مشتری", "برچسب", "فرصت فروش", "CRM"], render: () => <CrmLabelsSection /> },
     ],
   },
   {
@@ -395,13 +400,18 @@ export const legacySectionMap: Record<string, { section: string; tab?: string }>
   "audit-all": { section: "audit-log" },
   branding: { section: "brand", tab: "org" },
   scoped: { section: "brand", tab: "org" },
-  appearance: { section: "brand", tab: "me" },
+  appearance: { section: "general" },
+  me: { section: "general" },
+  titles: { section: "members", tab: "titles" },
+  handover: { section: "members", tab: "handover" },
+  "object-access": { section: "members", tab: "objects" },
   slideshow: { section: "brand", tab: "slideshow" },
   slides: { section: "brand", tab: "slideshow" },
   tours: { section: "experience" },
-  prayer: { section: "experience" },
   pages: { section: "modules", tab: "pages" },
-  workflow: { section: "innovation", tab: "funds" },
+  // بخش «نوآوری» حذف شد — پیوندهای قدیمی به تنظیمات عمومی
+  workflow: { section: "general" },
+  innovation: { section: "general" },
   channels: { section: "notifications", tab: "channels" },
   identity: { section: "login", tab: "sso" },
   "system-identity": { section: "login", tab: "sso" },

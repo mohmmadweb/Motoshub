@@ -1,26 +1,51 @@
 // ---------------------------------------------------------------------------
 // مدل داده‌ی «شبکه اجتماعی» — دقیقاً مطابق Motoshub Social API
-// (https://social.shub.ir/api/docs/ · OpenAPI 3.0.3 · v1.0.0).
+// (درگاه Kong: https://api.shub.ir/api/v1/social/… · DATA_ALIGNMENT §1).
 // نام فیلدها همان نام‌های API است (snake_case) تا اتصال به بک‌اند یک‌به‌یک باشد.
+// شکل دقیق پاسخ‌های API (شناسه‌ی عددی، user تو در تو، is_owner، reaction_counts، …) در
+// src/social/api.ts ساخته می‌شود؛ این فایل مدل انبار دمو است و فیلدهای واقعی را هم نگه می‌دارد.
 // تاریخ‌ها مثل API به شکل «۱۴۰۵/۰۶/۳۱ ۱۱:۱۲:۵۱» (شمسی) نگه‌داری می‌شوند.
 // ---------------------------------------------------------------------------
 
-/** Privacy5eeEnum / Privacy9f4Enum */
+/** Privacy5eeEnum / Privacy9f4Enum — مقادیری که دمو می‌سازد */
 export type Privacy = "ME" | "FRIENDS" | "EVERYONE";
+/** enum کامل API: SCOPE = اعضای واحد سازمانی مالک. انبار دمو هنوز SCOPE نمی‌سازد چون گزارش‌ساز (reports/sources.ts، WP4)
+ *  نگاشت سه‌مقداری دارد؛ پس از هم‌ترازی آن، Privacy همین نوع می‌شود. */
+export type ApiPrivacy = Privacy | "SCOPE";
 
-/** entity_name در /core/categories/{entity_name}/ ، /core/comments/{entity_name}/ و /core/reactions/{entity_name}/ */
-export type EntityName = "blog" | "news" | "magazine" | "media" | "event" | "topic" | "post" | "channel" | "group" | "poll";
+/** entity_name در /social/categories/{entity_name}/ ، /social/comments/{entity_name}/ و /social/reactions/{entity_name}/
+ *  = EntityNameChoices واقعی API؛ post و poll «پیشنهادی» (پاسخ پرسش و نظرسنجی محتوا) */
+export type EntityName =
+  | "blog"
+  | "news"
+  | "magazine"
+  | "forum"
+  | "event"
+  | "media"
+  | "messaging_chat"
+  | "messaging_group"
+  | "messaging_channel"
+  | "file_manager_folder"
+  | "comment"
+  | "faq"
+  | "post"
+  | "poll";
+/** نام‌های قدیمی دمو (topic/group/channel) — فقط برای سازگاری فراخوانی‌های قدیمی؛ در انبار به نام واقعی تبدیل می‌شوند */
+export type LegacyEntityName = "topic" | "group" | "channel";
+const LEGACY_ENTITY: Record<LegacyEntityName, EntityName> = { topic: "forum", group: "messaging_group", channel: "messaging_channel" };
+/** نام قدیمی ← نام واقعی EntityNameChoices */
+export const normEntity = (e: EntityName | LegacyEntityName | string): EntityName => (e in LEGACY_ENTITY ? LEGACY_ENTITY[e as LegacyEntityName] : (e as EntityName));
 
-/** کلید ماژول‌های محتوایی: /content/blogs ، /content/news ، /content/magazines */
+/** کلید ماژول‌های محتوایی: /social/blogs ، /social/news ، /social/magazines */
 export type ContentKind = "blogs" | "news" | "magazines";
 
 export type Attachment = { id: string; name: string; size: string; mime: string };
 
-/** Category */
-export type Category = { id: string; title: string; entity_name: EntityName; parent_id: string | null; created_at: string; updated_at: string };
+/** Category — parent_id ↔ API `parent`؛ user_id و is_active از مدل واقعی */
+export type Category = { id: string; title: string; entity_name: EntityName; parent_id: string | null; created_at: string; updated_at: string; user_id?: string; is_active?: boolean };
 
 /** Tag */
-export type Tag = { id: string; name: string; created_at: string; updated_at: string };
+export type Tag = { id: string; name: string; created_at: string; updated_at: string; user_id?: string; is_active?: boolean };
 
 /** Comment — با تأیید مدیر (approve) */
 export type Comment = {
@@ -80,7 +105,9 @@ export type ContentItem = Publishable & {
   poster: string | null;
   add_comment: boolean;
   show_comment: boolean;
-  /** فقط پروتوتایپ — شمارنده‌ی بازدید */
+  /** شمارنده‌ی بازدید (API: view_count) */
+  view_count?: number;
+  /** @deprecated نام قدیمی دمو برای view_count — همگام نگه داشته می‌شود تا گزارش‌ها کار کنند */
   views: number;
   /** «پیشنهادی» — اطلاعیه‌ی رسمی با تأیید خواندن (در API فعلی نیست) */
   announcement?: Announcement | null;
@@ -171,14 +198,18 @@ export type MediaPost = Publishable & {
   poster: string | null;
   add_comment: boolean;
   show_comment: boolean;
+  /** شمارنده‌ی بازدید (API: view_count) */
+  view_count?: number;
   /** «پیشنهادی» — منبع پست: بارگذاری مستقیم (پیش‌فرض) یا ویدیوی آپارات */
   source?: "upload" | "aparat";
   /** «پیشنهادی» — فراداده‌ی ویدیوی آپارات (وقتی source = aparat) */
   aparat?: AparatVideo | null;
 };
 
-/** EventMemberStatusEnum / MemberTypeEnum */
+/** EventMemberStatusEnum / MemberTypeEnum (مقادیری که دمو می‌سازد) */
 export type EventMemberStatus = "invited" | "accepted" | "declined" | "joined";
+/** enum کامل API — pending = درخواست عضویت در انتظار تأیید (همان توضیح ApiPrivacy) */
+export type ApiEventMemberStatus = EventMemberStatus | "pending";
 export type MemberType = "owner" | "member" | "organizer";
 export type EventMember = { id: string; event_id: string; user_id: string; status: EventMemberStatus; member_type: MemberType; created_at: string; updated_at: string };
 
@@ -193,7 +224,20 @@ export type SocialEvent = Publishable & {
   end_time: string;
   is_online: boolean;
   meeting_link: string;
+  /** @deprecated متن نشانی دمو — همان address است؛ برای سازگاری صفحه‌های دیگر نگه داشته می‌شود */
   location: string;
+  /** API: استان، شهر و نشانی جداگانه (به‌جای location) */
+  province_id?: number | null;
+  city_id?: number | null;
+  address?: string;
+  /** API: برگزاری حضوری (is_hybrid = is_online && is_offline محاسبه می‌شود) */
+  is_offline?: boolean;
+  /** API: پیوستن آزاد بدون دعوت */
+  allow_join?: boolean;
+  /** API: آخرین یادآوری سرور */
+  last_reminded_at?: string | null;
+  /** شمارنده‌ی بازدید (API: view_count) */
+  view_count?: number;
   capacity: number;
   add_comment: boolean;
   show_comment: boolean;
@@ -210,6 +254,8 @@ export type Topic = Publishable & {
   view_count: number;
   is_pinned: boolean;
   is_locked: boolean;
+  /** API: زمان آخرین پاسخ (posts_count در api.ts از پاسخ‌ها محاسبه می‌شود) */
+  last_reply_at?: string | null;
   /** «پیشنهادی» — رأی کاربران: شناسه‌ی کاربر ← ۱ یا ‎-۱ */
   votes?: Record<string, Vote>;
   /** «پیشنهادی» — پاسخ پذیرفته‌شده (صاحب پرسش یا ناظر) */
@@ -241,7 +287,9 @@ export type ForumPost = {
 export type ChatType = "saved_messages" | "direct_message" | "group" | "channel" | "bot";
 /** RoleEnum */
 export type ChatRole = "admin" | "member";
-export type ChatMember = { user_id: string; role: ChatRole; joined_at: string };
+/** ChatMember — فیلدهای واقعی: role، last_read_message_id، is_muted، is_pinned، pinned_at
+ *  (دمو هنوز muted_by/last_read روی Chat را هم نگه می‌دارد؛ api.ts از روی آن‌ها این فیلدها را می‌سازد) */
+export type ChatMember = { user_id: string; role: ChatRole; joined_at: string; last_read_message_id?: string | null; is_muted?: boolean; is_pinned?: boolean; pinned_at?: string | null };
 
 /** ChatDetail */
 export type Chat = {
@@ -274,8 +322,8 @@ export type Chat = {
   deleted_at: string | null;
 };
 
-/** TypeEnum */
-export type MessageType = "text" | "sticker";
+/** TypeEnum — audio = پیام صوتی (گفتگوی دو نفره)، service = رویداد سیستمی، poll، location */
+export type MessageType = "text" | "sticker" | "audio" | "service" | "poll" | "location";
 /** Message (MessageStoreRequest: content, type, parent_message_id, uploaded_files, tags) */
 export type Message = {
   id: string;
@@ -291,14 +339,24 @@ export type Message = {
   seq: number;
   created_at: string;
   updated_at: string;
+  /** @deprecated نام دمو برای is_edited */
   edited: boolean;
+  /** API */
+  is_edited?: boolean;
+  message_uid?: string;
+  service_event?: "member_joined" | "member_left" | "photo_changed" | "title_changed" | null;
+  metadata?: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
+  published_at?: string | null;
+  /** API: مدت پیام صوتی (ثانیه) — فقط برای type = audio */
+  audio_duration?: number | null;
   /** «پیشنهادی» — واکنش اموجی روی پیام: reaction_code ← شناسه‌ی کاربران */
   reactions?: Record<string, string[]>;
   /** «پیشنهادی» — پاسخ در رشته (thread): ریشه = parent_message_id و پیام در جریان اصلی نمی‌آید */
   in_thread?: boolean;
   /** «پیشنهادی» — پنهان‌شده توسط ناظر */
   moderation?: Moderation | null;
-  /** «پیشنهادی» — نظرسنجیِ پیوست این پیام (/core/polls/{id}/) */
+  /** «پیشنهادی» — نظرسنجیِ پیوست این پیام (/social/polls/{id}/) */
   poll_id?: string | null;
   /** «پیشنهادی» — منشن‌ها با شناسه‌ی کاربر (به‌جای تطبیق نام) */
   mentions?: Mention[];
@@ -308,6 +366,9 @@ export type Message = {
   feed_item?: { feed_id: string; guid: string; title: string; link: string } | null;
 };
 
+/** PinnedMessage (API) — دمو سنجاق‌ها را در Chat.pinned_message_ids نگه می‌دارد؛ api.ts این شکل را می‌سازد */
+export type PinnedMessage = { id: string; chat_id: string; message_id: string; user_id: string; is_for_everyone: boolean; created_at: string };
+
 /** «پیشنهادی» — منشن در بدنه‌ی پیام/محتوا */
 export type Mention = { user_id: string; offset: number; length: number };
 export type FriendshipStatus = "pending" | "accepted" | "declined" | "blocked";
@@ -316,7 +377,7 @@ export type Friendship = { id: string; sender_id: string; receiver_id: string; s
 /** OwnerTypeEnum — مدیر فایل: کاربر، گروه یا کانال */
 export type OwnerType = "user" | "group" | "channel";
 /** FileManagerFolder */
-export type FileFolder = { id: string; owner_type: OwnerType; owner_id: string; name: string; parent_id: string | null; created_by_user_id: string; created_at: string; updated_at: string };
+export type FileFolder = { id: string; owner_type: OwnerType; owner_id: string; name: string; parent_id: string | null; created_by_user_id: string; created_at: string; updated_at: string; /** API */ is_root?: boolean; /** API: حجم بایت (در api.ts از فایل‌ها جمع زده می‌شود) */ size?: number };
 export type FileItem = {
   id: string;
   owner_type: OwnerType;
@@ -340,8 +401,18 @@ export type FileItem = {
 };
 /** «پیشنهادی» — یک نسخه‌ی قبلی فایل */
 export type FileVersion = { id: string; version: number; size: string; created_at: string; created_by_user_id: string };
-/** «پیشنهادی» — لینک اشتراک */
-export type FileShare = { token: string; expires_on: string; created_by: string; created_at: string; allow_download: boolean; /** «پیشنهادی» — اشتراک با افراد مشخص (در «اشتراک‌گذاشته با من» آن‌ها) */ shared_with?: string[] };
+/** «پیشنهادی» — لینک اشتراک (الگوی Seafile: انقضا، رمز اختیاری، فقط مشاهده/دریافت) */
+export type FileShare = {
+  token: string;
+  expires_on: string;
+  created_by: string;
+  created_at: string;
+  allow_download: boolean;
+  /** «پیشنهادی» — اشتراک با افراد مشخص (در «اشتراک‌گذاشته با من» آن‌ها) */
+  shared_with?: string[];
+  /** «پیشنهادی» — لینک رمزدار؛ در API فقط password_hash نگه داشته می‌شود — دمو فقط «دارد/ندارد» را نگه می‌دارد */
+  has_password?: boolean;
+};
 /** «پیشنهادی» — رویداد فعالیت فایل */
 export type FileEventAction = "upload" | "version" | "restore_version" | "rename" | "share" | "unshare" | "download" | "delete" | "restore" | "purge";
 export type FileEvent = { id: string; file_id: string; file_name: string; user_id: string; action: FileEventAction; at: string; detail?: string };
@@ -370,20 +441,56 @@ export type DashboardStat = { title: string; value: number; key: string };
 /** ماژول‌هایی که endpoint داشبورد admin/user دارند */
 export type SocialModule = "content" | "events" | "forums" | "media" | "messaging" | "relations";
 
-export const privacyLabel: Record<Privacy, string> = { ME: "فقط خودم", FRIENDS: "دوستان", EVERYONE: "همه" };
+export const privacyLabel: Record<ApiPrivacy, string> = { ME: "فقط خودم", FRIENDS: "دوستان", EVERYONE: "همه", SCOPE: "اعضای واحد" };
 export const contentKindLabel: Record<ContentKind, string> = { blogs: "بلاگ", news: "خبر", magazines: "مجله" };
 export const contentEntity: Record<ContentKind, EntityName> = { blogs: "blog", news: "news", magazines: "magazine" };
 export const chatTypeLabel: Record<ChatType, string> = { saved_messages: "پیام‌های ذخیره‌شده", direct_message: "پیام مستقیم", group: "گروه", channel: "کانال", bot: "بات" };
 export const eventStatusLabel: Record<EventMemberStatus, string> = { invited: "دعوت‌شده", accepted: "می‌آیم", declined: "نمی‌آیم", joined: "عضو شده" };
 export const memberTypeLabel: Record<MemberType, string> = { owner: "برگزارکننده‌ی اصلی", organizer: "هماهنگ‌کننده", member: "شرکت‌کننده" };
 export const mediaTypeLabel: Record<MediaPostType, string> = { image: "تصویر", video: "ویدیو", album: "آلبوم" };
-export const entityLabel: Record<EntityName, string> = { blog: "بلاگ", news: "اخبار", magazine: "مجلات", media: "رسانه", event: "رویدادها", topic: "پرسش و پاسخ", post: "پاسخ‌ها", channel: "کانال‌ها", group: "گروه‌ها", poll: "نظرسنجی‌ها" };
+export const entityLabel: Record<EntityName, string> = {
+  blog: "بلاگ",
+  news: "اخبار",
+  magazine: "مجلات",
+  media: "رسانه",
+  event: "رویدادها",
+  forum: "پرسش و پاسخ",
+  post: "پاسخ‌ها",
+  messaging_chat: "گفتگوها",
+  messaging_channel: "کانال‌ها",
+  messaging_group: "گروه‌ها",
+  file_manager_folder: "پوشه‌ها",
+  comment: "نظرها",
+  faq: "سوالات متداول",
+  poll: "نظرسنجی‌ها",
+};
+
+// ===================================================================== سوالات متداول (/social/faqs/)
+/** Faq — فیلدهای واقعی FaqDetailSerializer؛ دسته‌ها از /social/categories/faq/ */
+export type Faq = OrgScoped & {
+  id: string;
+  user_id: string;
+  question: string;
+  answer: string;
+  is_active: boolean;
+  is_public: boolean;
+  is_draft: boolean;
+  published_at: string | null;
+  view_count: number;
+  /** درخواست: category_ids (پاسخ: categories) */
+  category_ids: string[];
+  tags: string[];
+  attachments: Attachment[];
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
 
 
 // ===================================================================== «پیشنهادی» — اقلام باقی‌مانده (F01–F05)
 /** F01 — گزینه‌ی نظرسنجی؛ image در پروتوتایپ یک رنگ است */
 export type PollOption = { id: string; text: string; image: string | null; votes_count: number };
-/** F01 — نظرسنجی (POST /core/polls/) — روی پیام گروه/کانال یا پست عمومی */
+/** F01 — نظرسنجی (POST /social/polls/) — روی پیام گروه/کانال یا پست عمومی */
 export type Poll = {
   id: string;
   question: string;
@@ -412,7 +519,7 @@ export type Poll = {
 };
 export type PollVote = { poll_id: string; user_id: string; option_ids: string[]; voted_at: string };
 
-/** F02 — پیش‌نمایش لینک (GET /core/link-preview/?url=) — image در پروتوتایپ رنگ است */
+/** F02 — پیش‌نمایش لینک (GET /social/link-preview/?url=) — image در پروتوتایپ رنگ است */
 export type LinkPreview = { url: string; final_url: string; title: string; description: string; image: string | null; site_name: string; favicon: string | null; fetched_at: string };
 
 /** F03 — خوراک RSS/Atom متصل به گروه/کانال */

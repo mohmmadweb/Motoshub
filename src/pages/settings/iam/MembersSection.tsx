@@ -8,7 +8,9 @@ import Drawer from "../../../components/ui/Drawer";
 import EmptyState from "../../../components/ui/EmptyState";
 import { useConfirm } from "../../../components/ui/ConfirmProvider";
 import { useTenancy } from "../../../context/TenancyContext";
-import { descendantsOrSelf, type Membership } from "../../../iam/model";
+import { descendantsOrSelf, membershipStatusLabel, type Membership } from "../../../iam/model";
+import { usePositionTitles } from "../../../iam/titles";
+import { UserStatusBadge } from "../../../components/UserStatus";
 import {
   BindingStatusBadge,
   Callout,
@@ -32,7 +34,7 @@ import {
 } from "./shared";
 import { UserSecurityPanel } from "../../profile/SecurityTab";
 
-type StatusFilter = "" | "active" | "suspended";
+type StatusFilter = "" | "active" | "suspended" | "revoked";
 
 export function MembersSection() {
   const t = useTenancy();
@@ -104,6 +106,7 @@ export function MembersSection() {
           <option value="">همه‌ی وضعیت‌ها</option>
           <option value="active">فعال</option>
           <option value="suspended">معلق</option>
+          <option value="revoked">لغوشده</option>
         </select>
       </div>
 
@@ -129,7 +132,7 @@ export function MembersSection() {
                 onClick={() => setDrawerUser(m.userId)}
                 className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.6fr)_minmax(0,1fr)_90px_70px_80px] gap-x-3 gap-y-1.5 px-4 py-2.5 items-center hover:bg-ink-50 cursor-pointer"
               >
-                <UserCell userId={m.userId} />
+                <UserCell userId={m.userId} sub={<UserStatusBadge userId={m.userId} />} />
                 <div className="flex items-center gap-1 md:hidden justify-end">
                   <StatusBadge m={m} />
                 </div>
@@ -175,7 +178,7 @@ export function MembersSection() {
 function StatusBadge({ m }: { m: Membership }) {
   return (
     <>
-      {m.status === "active" ? <Badge tone="success">فعال</Badge> : <Badge tone="warning">معلق</Badge>}
+      <Badge tone={m.status === "active" ? "success" : m.status === "revoked" ? "danger" : "warning"}>{membershipStatusLabel[m.status]}</Badge>
       {m.primary && <Star size={12} className="text-amber-500 fill-amber-400 shrink-0" aria-label="عضویت اصلی" />}
     </>
   );
@@ -201,8 +204,8 @@ function AddMembership({ scopes, onClose }: { scopes: ReturnType<typeof useSubtr
           <Field label="واحد" hint="فقط واحدهایی که اختیار مدیریت اعضایشان را دارید.">
             <ScopeSelect value={scopeId} onChange={setScopeId} nodes={scopes} />
           </Field>
-          <Field label="عنوان شغلی (اختیاری)">
-            <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: کارشناس ارشد" />
+          <Field label="سِمت (اختیاری)" hint="از فهرست سِمت‌های سازمان (اعضا ← سِمت‌ها)">
+            <TitleSelect value={title} onChange={setTitle} />
           </Field>
         </div>
         <Callout tone="neutral">عضویت به‌تنهایی دسترسی مدیریتی نمی‌دهد؛ کاربر محتوای این واحد و زیرمجموعه‌هایش را می‌بیند. برای اختیارات بیشتر از «تخصیص نقش» استفاده کنید.</Callout>
@@ -267,7 +270,7 @@ export function UserDrawer({ userId, onClose }: { userId: string | null; onClose
           <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-ink-100 px-3 py-2">
             <div className="min-w-0">
               <ScopeName id={m.scopeId} showPath />
-              {m.title && <p className="text-[11px] text-ink-400 mt-0.5">{m.title}</p>}
+              <MembershipTitle m={m} />
             </div>
             <span className="flex items-center gap-1 shrink-0">
               <StatusBadge m={m} />
@@ -365,5 +368,34 @@ function ImpersonateModal({ userId, onClose, onStarted }: { userId: string; onCl
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** انتخاب سِمت از فهرست مدیریت‌شده (سِمت فعلیِ خارج از فهرست هم نمایش داده می‌شود) */
+export function TitleSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const titles = usePositionTitles().filter((x) => x.active);
+  return (
+    <select className="input-field" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} aria-label="سِمت">
+      <option value="">— بدون سِمت —</option>
+      {value && !titles.some((x) => x.name === value) && <option value={value}>{value}</option>}
+      {titles.map((x) => (
+        <option key={x.id} value={x.name}>
+          {x.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** سِمت یک عضویت در کشوی عضو — قابل تغییر برای مدیر اعضای همان واحد */
+function MembershipTitle({ m }: { m: Membership }) {
+  const t = useTenancy();
+  const run = useRun();
+  const can = t.checkMembership(m.userId, m.scopeId).ok && !t.readOnly;
+  if (!can) return m.title ? <p className="text-[11px] text-ink-400 mt-0.5">{m.title}</p> : null;
+  return (
+    <div className="mt-1 max-w-[14rem] [&_select]:!py-1 [&_select]:!text-[12px]">
+      <TitleSelect value={m.title ?? ""} onChange={(v) => run(t.setMembershipTitle(m.id, v), "سِمت ثبت شد.")} />
+    </div>
   );
 }

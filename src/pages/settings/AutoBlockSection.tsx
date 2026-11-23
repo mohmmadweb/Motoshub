@@ -169,7 +169,7 @@ export function BlockedUsersList() {
       confirmLabel: "رفع مسدودی",
       onConfirm: () => {
         liftBlock(id, t.realActingUser.id, "رفع دستی توسط راهبر");
-        inbox.send([uname(userId)], "security", "مسدودی حساب شما برداشته شد.", `/dashboard/profile/${userId}?tab=security`, { system: true });
+        inbox.send([uname(userId)], "security", "مسدودی حساب شما برداشته شد.", `/profile/${userId}?tab=security`, { system: true });
         notify("مسدودی برداشته شد.", "success");
       },
     });

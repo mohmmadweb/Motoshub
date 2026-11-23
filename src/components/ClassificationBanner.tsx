@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useKnowledge } from "../context/KnowledgeContext";
+import { fromLegacyPath } from "./Sidebar";
 
 export type ClassLevel = "عادی" | "داخلی" | "محرمانه" | "خیلی محرمانه";
 export const classLevels: ClassLevel[] = ["عادی", "داخلی", "محرمانه", "خیلی محرمانه"];
@@ -33,8 +34,7 @@ const DEFAULTS: ClassificationConfig = {
   defaultLevel: "داخلی",
   autoKnowledge: true,
   overrides: [
-    { id: "r1", route: "/dashboard/settings", level: "محرمانه" },
-    { id: "r2", route: "/dashboard/funds", level: "محرمانه" },
+    { id: "r1", route: "/settings", level: "محرمانه" },
   ],
 };
 
@@ -42,7 +42,13 @@ const DEFAULTS: ClassificationConfig = {
 function readConfig(): ClassificationConfig {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<ClassificationConfig>) };
+    if (raw) {
+      const c = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<ClassificationConfig>) };
+      // مسیرهای ذخیره‌شده با نشانی قدیمی /dashboard/<x> به مسیر واقعی نگاشت می‌شوند؛
+      // مسیرهای بخش حذف‌شده‌ی «نوآوری و پژوهش» کنار گذاشته می‌شوند
+      const gone = /^(\/dashboard)?\/(research|contracts|funds|award|training)(\/|$)/;
+      return { ...c, overrides: c.overrides.filter((o) => !gone.test(o.route)).map((o) => ({ ...o, route: fromLegacyPath(o.route)?.split("?")[0] ?? o.route })) };
+    }
   } catch {
     /* بدون حافظه */
   }
@@ -112,7 +118,7 @@ export default function ClassificationBanner() {
   const { pathname } = useLocation();
   const [params] = useSearchParams();
   const km = useKnowledge();
-  const docId = pathname.startsWith("/dashboard/knowledge") ? params.get("doc") : null;
+  const docId = pathname.startsWith("/knowledge") ? params.get("doc") : null;
   const docLevel = useMemo(() => {
     if (!cfg.autoKnowledge || !docId) return null;
     const d = km.docs.find((x) => x.id === docId);

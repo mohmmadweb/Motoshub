@@ -159,7 +159,7 @@ export default function PortfolioTimeline({ projects }: { projects: ProjectState
                   const doneN = activeTasks(p).filter((t) => isDone(p, t)).length;
                   return (
                     <div key={p.meta.id} className="flex border-b border-ink-100 hover:bg-ink-50/50 group">
-                      <button onClick={() => navigate(`/dashboard/projects/${p.meta.id}`)} className="shrink-0 sticky right-0 z-10 bg-white group-hover:bg-ink-50 border-l border-ink-100 px-3 text-right flex items-center gap-2 min-w-0" style={{ width: LABEL_W, height: ROW }}>
+                      <button onClick={() => navigate(`/projects/${p.meta.id}`)} className="shrink-0 sticky right-0 z-10 bg-white group-hover:bg-ink-50 border-l border-ink-100 px-3 text-right flex items-center gap-2 min-w-0" style={{ width: LABEL_W, height: ROW }}>
                         <span style={{ color: p.meta.color }} className="shrink-0">
                           <ProjectIcon name={p.meta.icon} size={14} />
                         </span>
@@ -173,7 +173,7 @@ export default function PortfolioTimeline({ projects }: { projects: ProjectState
                       <div className="relative" style={{ width, height: ROW }}>
                         {s !== null && e !== null && (
                           <button
-                            onClick={() => navigate(`/dashboard/projects/${p.meta.id}?tab=gantt`)}
+                            onClick={() => navigate(`/projects/${p.meta.id}?tab=gantt`)}
                             title={`${p.meta.name}\n${p.meta.start} ← ${p.meta.deadline}\nپیشرفت ${fa(prog)}٪ · ${fa(doneN)} تسک انجام‌شده · مصرف بودجه ${fa(budgetUsage(p))}٪\nسلامت: ${p.meta.health}`}
                             className="absolute rounded-md overflow-hidden"
                             style={{ right: xr(s), width: Math.max(dw * 3, (e - s + 1) * dw), top: 10, height: ROW - 20, background: `color-mix(in srgb, ${p.meta.color} 22%, transparent)`, border: `2px solid ${healthColor[p.meta.health]}` }}

@@ -10,7 +10,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { useTenancy } from "./TenancyContext";
 import { eventByCode, recipientLabel, type EventCode } from "../pm/events";
 import { addDays, dayNum, fmtRial, fmtHours, nowClock, fa, weekdayOf } from "../pm/jalali";
-import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, nextProjectKey, seedExecutions, seedProjectGroups, seedProjects, seedTemplates } from "../pm/seed";
+import { DEMO_REF_DATE, SYSTEM_ACTOR, defaultAutomation, defaultColumns, nextProjectKey, seedExecutions, seedProjectGroups, seedProjects, seedTemplates, withMizito } from "../pm/seed";
+import { assigneesOf, controlOf, controlLabels, isProjectManager, moduleLabels, modulesOf } from "../pm/rules";
 import { projectTemplates as seedProjectTemplates, type ProjectTemplate } from "../pm/templates";
 import { accessForLegacyRole, compactMap, fullMatrix, isContributor, isOwner, materializeAccess, newMemberAccess } from "../pm/access";
 import { projectDefaultsStore } from "../pages/settings/projectDefaults";
@@ -52,10 +53,14 @@ import type {
   DecisionRecord,
   IntakeRequest,
   MeetingSettings,
+  ProjectControlSettings,
+  ProjectModules,
+  ProjectPhase,
+  TaskTemplate,
 } from "../pm/types";
 
 const STORAGE_KEY = "motoshub.pm.v1";
-const STORE_VERSION = 7;
+const STORE_VERSION = 8;
 
 type StoreState = {
   version: number;
@@ -500,6 +505,8 @@ function loadStore(): StoreState {
     if (raw) {
       const parsed = JSON.parse(raw) as StoreState;
       if (parsed.version === STORE_VERSION && Array.isArray(parsed.projects)) return withMeetingModel(withExplicitAccess(withMeetingLinks(withRecurringDemo(parsed))));
+      // مهاجرت تحمل‌پذیر ۷ ← ۸: داده‌ی کاربر حفظ می‌شود؛ ماژول‌ها/تنظیمات کنترلی/فازها/الگوها افزوده می‌شوند
+      if (parsed.version === 7 && Array.isArray(parsed.projects)) return withMeetingModel(withExplicitAccess(withMeetingLinks(withRecurringDemo({ ...parsed, version: STORE_VERSION, projects: parsed.projects.map(withMizito) }))));
     }
   } catch {
     /* ذخیره‌سازی مرورگر در دسترس نیست — از داده‌ی نمونه شروع می‌کنیم */
@@ -531,7 +538,22 @@ export type NewTaskInput = {
   /** نوع کار — پیش‌فرض «task» (زیرتسک اگر والد داشته باشد) */
   type?: TaskType;
   epicId?: string;
+  // ---- میزیتو («پیشنهادی») ----
+  coAssignees?: string[];
+  finalApprover?: string;
+  phaseId?: string;
+  weight?: number;
+  reminder?: string;
+  /** موارد چک‌لیست اولیه (مثلاً از الگوی وظیفه) */
+  checklist?: string[];
+  /** موارد تیک‌خورده‌ی چک‌لیست (ورود از ابزار دیگر) */
+  checklistDone?: string[];
+  /** شناسه‌ی از پیش تعیین‌شده (مثلاً مصوبه‌ی صورتجلسه‌ی سازمانی که باید به کارش پیوند بخورد) */
+  id?: string;
 };
+
+/** کپی پروژه (میزیتو): ستون‌ها، فازها و کارها — بدون تاریخچه */
+export type CopyProjectInput = { name: string; includeTasks: boolean; includeMembers: boolean; resetProgress: boolean };
 
 export type NewProjectInput = Omit<ProjectMeta, "id" | "health" | "phase" | "starred" | "archived" | "createdAt"> & {
   budget: number;
@@ -650,6 +672,21 @@ type Ctx = {
   startPlaybook: (templateId: string, pid: string) => void;
   setStepStatus: (execId: string, stepId: string, status: PlaybookStepStatus, notes?: string) => void;
   cancelExecution: (execId: string) => void;
+  // --- میزیتو: فاز، ماژول‌ها، تنظیمات کنترلی، الگوی وظیفه، کپی، حذف با تأیید مدیر، انتقال کار ---
+  savePhase: (pid: string, ph: { id?: string; title: string }) => void;
+  deletePhase: (pid: string, id: string) => void;
+  movePhase: (pid: string, id: string, dir: -1 | 1) => void;
+  setProjectModules: (pid: string, patch: Partial<ProjectModules>) => void;
+  setProjectControl: (pid: string, patch: Partial<ProjectControlSettings>) => void;
+  saveTaskTemplate: (pid: string, t: Omit<TaskTemplate, "id" | "createdBy"> & { id?: string }) => void;
+  removeTaskTemplate: (pid: string, id: string) => void;
+  copyProject: (pid: string, input: CopyProjectInput) => string;
+  requestRemoval: (pid: string, taskId: string, kind: "delete" | "archive", reason?: string) => void;
+  decideRemoval: (pid: string, taskId: string, approve: boolean) => void;
+  /** C6: انتقال کارهای باز (مسئول/مسئول هم‌زمان/تأییدکننده) و عضویت پروژه‌ها از یک نفر به نفر دیگر؛ تعداد کارهای منتقل‌شده */
+  reassignPrincipal: (from: string, to: string, include?: { tasks?: boolean; memberships?: boolean }) => number;
+  /** آیا کاربر جاری (یا نام داده‌شده) مدیر این پروژه است (مدیر، مالک یا دارنده‌ی «مدیریت» تنظیمات) */
+  isManager: (pid: string, name?: string) => boolean;
   // --- زمان دمو ---
   advanceDays: (n: number) => void;
   resetDemo: () => void;
@@ -671,8 +708,11 @@ function parseMentions(p: ProjectState, text: string): string[] {
 
 export function ProjectsProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<StoreState>(loadStore);
-  const { actingUser } = useTenancy();
+  const { actingUser, hasPermission } = useTenancy();
   const actor = actingUser.name;
+  /** مدیر پروژه یا مدیر سراسری پروژه‌ها (مجوز projects.members) */
+  const globalPm = hasPermission("projects.members");
+  const mgrOf = (p: ProjectState, name = actor) => (name === actor && globalPm) || isProjectManager(p, name);
 
   useEffect(() => {
     try {
@@ -698,8 +738,22 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const doMove = (p: ProjectState, emit: Emit, t: PMTask, to: string, s?: StoreState) => {
     const from = t.status;
     if (from === to) return;
+    // میزیتو: فقط مدیر پروژه کار انجام‌شده را به جریان برمی‌گرداند
+    if (kindOf(p, from) === "done" && kindOf(p, to) !== "done" && !mgrOf(p)) return;
+    // تأییدکننده‌ی نهایی: «انجام شد» کار را به بازبینی می‌برد تا او تأیید یا رد کند
+    if (kindOf(p, to) === "done" && t.finalApprover && clean(t.finalApprover) && t.finalApprover !== actor && !(t.approval?.approver === t.finalApprover && t.approval.status === "تأییدشده")) {
+      if (!(t.approval?.approver === t.finalApprover && t.approval.status === "در انتظار")) {
+        t.approval = { approver: t.finalApprover, requestedBy: actor, status: "در انتظار", at: `${s?.refDate ?? store.refDate} ${nowClock()}` };
+        emit("TASK_APPROVAL_REQUESTED", `کار «${t.title}» انجام شد و منتظر تأیید نهایی «${t.finalApprover}» است.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, approver: t.finalApprover }, meta: { approver: t.finalApprover, final: true } });
+      }
+      const review = p.columns.find((c) => c.kind === "review");
+      if (!review || review.id === from) return;
+      to = review.id;
+    }
+    if (kindOf(p, to) === "done" && t.finalApprover === actor && t.approval?.approver === actor && t.approval.status === "در انتظار") t.approval = { ...t.approval, status: "تأییدشده", at: `${s?.refDate ?? store.refDate} ${nowClock()}` };
     const fromKind = kindOf(p, from);
     const toKind = kindOf(p, to);
+    if (fromKind === "done" && toKind !== "done") emit("TASK_REOPENED", `کار «${t.title}» توسط «${actor}» از «${columnLabel(p, from)}» به «${columnLabel(p, to)}» برگشت.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id } });
     t.status = to;
     emit("TASK_STATUS_CHANGED", `تسک «${t.title}» از «${columnLabel(p, from)}» به «${columnLabel(p, to)}» منتقل شد.`, {
       entity: { type: "task", id: t.id },
@@ -727,6 +781,17 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           emit("AUTOMATION_TRIGGERED", `قاعده‌ی «Done ← تکمیل» روی تسک «${t.title}» اجرا شد: پیشرفت ۱۰۰٪ و چک‌لیست کامل.`, { entity: { type: "task", id: t.id }, meta: { rule: "a1" }, actor: SYSTEM_ACTOR });
         }
       }
+      // میزیتو: به مسئول کار بعدی خبر بده که یکی از پیش‌نیازهایش انجام شد (اگر «آزادشدن تسک» همان را نمی‌گوید)
+      successorsOf(p, t.id).forEach((succ) => {
+        if (isDone(p, succ) || succ.archived) return;
+        if (ruleOn(p, "a4") && openPredecessors(p, succ.id).length === 0) return;
+        emit("TASK_PREDECESSOR_DONE", `پیش‌نیاز «${t.title}» انجام شد؛ کار «${succ.title}» به آن وابسته است${openPredecessors(p, succ.id).length ? ` (${fa(openPredecessors(p, succ.id).length)} پیش‌نیاز دیگر باز است)` : ""}.`, {
+          entity: { type: "task", id: succ.id },
+          ctx: { taskId: succ.id, assignee: succ.assignee },
+          meta: { predecessor: t.id },
+          actor: SYSTEM_ACTOR,
+        });
+      });
       if (ruleOn(p, "a4")) {
         successorsOf(p, t.id).forEach((succ) => {
           if (!isDone(p, succ) && openPredecessors(p, succ.id).length === 0) {
@@ -906,7 +971,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
   const insertTask = (p: ProjectState, emit: Emit, s: StoreState, input: NewTaskInput): PMTask => {
     const t: PMTask = {
-      id: nid(s, "t"),
+      id: input.id && !p.tasks.some((x) => x.id === input.id) ? input.id : nid(s, "t"),
       key: nextKey(p),
       type: input.type ?? (input.parentId ? "subtask" : p.defaultTaskType && p.defaultTaskType !== "subtask" ? p.defaultTaskType : "task"),
       epicId: input.epicId,
@@ -930,12 +995,23 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       sprintId: input.sprintId,
       recurrence: input.recurrence,
       watchers: input.watchers,
+      ...(input.coAssignees?.length ? { coAssignees: input.coAssignees.filter((x) => x && x !== input.assignee) } : {}),
+      ...(input.finalApprover ? { finalApprover: input.finalApprover } : {}),
+      ...(input.phaseId ? { phaseId: input.phaseId } : {}),
+      ...(input.weight ? { weight: input.weight } : {}),
+      ...(input.reminder ? { reminder: input.reminder } : {}),
     };
+    if (input.checklist?.length) t.checklist = input.checklist.filter((x) => x.trim()).map((text) => ({ id: nid(s, "c"), text, done: !!input.checklistDone?.includes(text.trim()) }));
+    if (!t.phaseId && input.parentId) {
+      const par = p.tasks.find((x) => x.id === input.parentId);
+      if (par?.phaseId) t.phaseId = par.phaseId;
+    }
     p.tasks.unshift(t);
     const parent = t.parentId ? p.tasks.find((x) => x.id === t.parentId) : undefined;
     if (parent) emit("SUBTASK_CREATED", `زیرتسک «${t.title}» زیر تسک «${parent.title}» ایجاد شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id }, meta: { parent: parent.id } });
     else emit("TASK_CREATED", `تسک «${t.title}» ایجاد شد.`, { entity: { type: "task", id: t.id }, meta: { priority: t.priority, due_date: t.due, status: columnLabel(p, t.status) } });
     if (clean(t.assignee)) emit("TASK_ASSIGNED", `تسک «${t.title}» به «${t.assignee}» واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: t.assignee }, meta: { assigned_to: t.assignee } });
+    (t.coAssignees ?? []).forEach((co) => emit("TASK_ASSIGNED", `تسک «${t.title}» به «${co}» (مسئول هم‌زمان) واگذار شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id, assignee: co }, meta: { assigned_to: co, co_assignee: true } }));
     if (input.milestoneId) {
       const m = p.milestones.find((x) => x.id === input.milestoneId);
       if (m && !m.taskIds.includes(t.id)) m.taskIds.push(t.id);
@@ -995,9 +1071,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
             key: input.key && !prev.projects.some((x) => x.meta.key === input.key) ? input.key : nextProjectKey(prev.projects.map((x) => x.meta.key)),
             nextTaskNo: 1,
             scopeId: input.scopeId,
-            fundId: input.fundId,
-            contractId: input.contractId,
-            opportunityId: input.opportunityId,
+            modules: { ...modulesOf({ meta: {} } as ProjectState), ...defs.modules },
+            settings: { ...controlOf({ meta: {} } as ProjectState), ...defs.control },
             companyName: input.companyName,
             scope: input.scope,
             holdingId: input.holdingId,
@@ -1033,6 +1108,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           taskTypes: defs.taskTypes?.length ? [...defs.taskTypes] : undefined,
           defaultTaskType: defs.defaultTaskType,
           defaultTaskPriority: defs.defaultTaskPriority,
+          phases: [],
+          taskTemplates: [],
         };
         let s: StoreState = { ...prev, projects: [blank, ...prev.projects] };
         s = apply(s, id, actor, (p, emit, st) => {
@@ -1111,11 +1188,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           });
         }
         if (patch.archived !== undefined && patch.archived !== m.archived) emit(patch.archived ? "PROJECT_ARCHIVED" : "PROJECT_RESTORED", patch.archived ? "پروژه بایگانی شد؛ اطلاعات آن حذف نشده و قابل بازیابی است." : "پروژه از بایگانی بازیابی شد.", e);
-        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer", "groupId", "key", "scopeId", "fundId", "contractId", "opportunityId", "companyName"];
+        const settingKeys: (keyof ProjectMeta)[] = ["icon", "color", "visibility", "workspace", "category", "client", "sponsor", "financeOfficer", "groupId", "key", "scopeId", "companyName"];
         const changed = settingKeys.filter((k) => patch[k] !== undefined && patch[k] !== m[k]);
         if (patch.tags && patch.tags.join("،") !== m.tags.join("،")) changed.push("tags");
         if (changed.length) {
-          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها", groupId: "گروه پروژه", key: "کلید پروژه", scopeId: "واحد سازمانی", fundId: "صندوق", contractId: "قرارداد", opportunityId: "فرصت پژوهشی", companyName: "شرکت" };
+          const names: Partial<Record<keyof ProjectMeta, string>> = { icon: "آیکون", color: "رنگ", visibility: "سطح دسترسی", workspace: "فضای کاری", category: "دسته‌بندی", client: "کارفرما", sponsor: "حامی مالی", financeOfficer: "مسئول مالی", tags: "برچسب‌ها", groupId: "گروه پروژه", key: "کلید پروژه", scopeId: "واحد سازمانی", companyName: "شرکت" };
           emit("PROJECT_SETTINGS_UPDATED", `تنظیمات پروژه تغییر کرد: ${[...new Set(changed.map((k) => names[k]))].join("، ")}.`, { ...e, meta: Object.fromEntries(changed.map((k) => [k, String(patch[k] ?? "")])) });
         }
         // تغییر کلید پروژه: کلید تسک‌های موجود هم با پیشوند جدید بازنویسی می‌شود
@@ -1265,6 +1342,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         const t = p.tasks.find((x) => x.id === taskId);
         if (!t) return;
         const e = { entity: { type: "task", id: t.id } };
+        // میزیتو: اگر اعضا اجازه‌ی تمدید ندارند، عقب‌بردن سررسید/یادآوری فقط با مدیر پروژه است
+        if (!controlOf(p).members_extend_due && !mgrOf(p)) {
+          if (patch.due && (dayNum(patch.due) ?? 0) > (dayNum(t.due) ?? 0)) patch = { ...patch, due: undefined };
+          if (patch.reminder && t.reminder && (dayNum(patch.reminder) ?? 0) > (dayNum(t.reminder) ?? 0)) patch = { ...patch, reminder: undefined };
+        }
         if (patch.title !== undefined && patch.title.trim() && patch.title !== t.title) {
           emit("TASK_TITLE_UPDATED", `عنوان تسک از «${t.title}» به «${patch.title}» تغییر کرد.`, { ...e, ctx: { taskId }, meta: { old_title: t.title, new_title: patch.title } });
           t.title = patch.title;
@@ -1310,6 +1392,33 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         }
         // فیلدهای تکمیلی — بدون رویداد جداگانه، یک رویداد خلاصه
         const extra: string[] = [];
+        if (patch.coAssignees !== undefined) {
+          const next = [...new Set(patch.coAssignees.filter((x) => x && x !== t.assignee))];
+          const added = next.filter((x) => !(t.coAssignees ?? []).includes(x));
+          if (next.join("،") !== (t.coAssignees ?? []).join("،")) {
+            extra.push(next.length ? `مسئولان هم‌زمان ${next.map((x) => `«${x}»`).join("، ")}` : "بدون مسئول هم‌زمان");
+            t.coAssignees = next.length ? next : undefined;
+            added.forEach((co) => emit("TASK_ASSIGNED", `تسک «${t.title}» به «${co}» (مسئول هم‌زمان) واگذار شد.`, { ...e, ctx: { taskId, assignee: co }, meta: { assigned_to: co, co_assignee: true } }));
+          }
+        }
+        if (patch.finalApprover !== undefined && (patch.finalApprover || undefined) !== t.finalApprover) {
+          extra.push(patch.finalApprover ? `تأییدکننده‌ی نهایی «${patch.finalApprover}»` : "بدون تأییدکننده‌ی نهایی");
+          t.finalApprover = patch.finalApprover || undefined;
+        }
+        if (patch.phaseId !== undefined && (patch.phaseId || undefined) !== t.phaseId) {
+          const ph = (p.phases ?? []).find((x) => x.id === patch.phaseId);
+          extra.push(ph ? `فاز «${ph.title}»` : "بدون فاز");
+          t.phaseId = patch.phaseId || undefined;
+          p.tasks.filter((x) => x.parentId === t.id).forEach((x) => (x.phaseId = t.phaseId));
+        }
+        if (patch.weight !== undefined && (patch.weight || undefined) !== t.weight) {
+          extra.push(`وزن ${fa(patch.weight || 0)}`);
+          t.weight = patch.weight || undefined;
+        }
+        if (patch.reminder !== undefined && (patch.reminder || undefined) !== t.reminder) {
+          extra.push(patch.reminder ? `یادآوری ${patch.reminder}` : "بدون یادآوری");
+          t.reminder = patch.reminder || undefined;
+        }
         if (patch.storyPoints !== undefined && patch.storyPoints !== t.storyPoints) {
           extra.push(`امتیاز ${fa(patch.storyPoints || 0)}`);
           t.storyPoints = patch.storyPoints || undefined;
@@ -1450,6 +1559,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         if (!t?.approval) return;
         t.approval = { ...t.approval, status: approve ? "تأییدشده" : "ردشده", note: note || undefined, at: `${s.refDate} ${nowClock()}` };
         emit(approve ? "TASK_APPROVED" : "TASK_REJECTED", `تسک «${t.title}» توسط «${actor}» ${approve ? "تأیید شد" : "رد شد"}${note ? `: «${note}»` : ""}.`, { entity: { type: "task", id: taskId }, ctx: { taskId, requester: t.approval.requestedBy }, meta: { note: note ?? "" } });
+        // تأییدکننده‌ی نهایی: تأیید ← انجام‌شده · رد ← بازگشت به «در حال انجام»
+        if (t.finalApprover && t.approval.approver === t.finalApprover) {
+          const target = p.columns.find((c) => c.kind === (approve ? "done" : "doing")) ?? p.columns.find((c) => c.kind === "todo");
+          if (target && target.id !== t.status) doMove(p, emit, t, target.id, s);
+        }
       }),
     cancelApproval: (pid, taskId) =>
       on(pid, (p) => {
@@ -1536,7 +1650,12 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     importTasks: (pid, rows, source = "CSV") => {
       if (!rows.length) return 0;
       on(pid, (p, emit, s) => {
-        rows.forEach((r) => insertTask(p, emit, s, r));
+        rows.forEach((r) => {
+          const before = new Set(p.tasks.map((x) => x.id));
+          insertTask(p, emit, s, r);
+          const t = p.tasks.find((x) => !before.has(x.id));
+          if (t) emit("TASK_IMPORTED", `تسک «${t.title}» از ${source} وارد شد.`, { entity: { type: "task", id: t.id }, ctx: { taskId: t.id }, meta: { source } });
+        });
         emit("TASKS_IMPORTED", `${fa(rows.length)} تسک از فایل ${source} درون‌ریزی شد.`, { entity: { type: "project", id: pid }, meta: { count: rows.length, source } });
       });
       return rows.length;
@@ -2137,6 +2256,222 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       }),
 
     // ============================================================ زمان دمو
+    // ============================================================ میزیتو (پیشنهادی)
+    savePhase: (pid, ph) =>
+      on(pid, (p, emit, s) => {
+        const list = p.phases ?? [];
+        const ex = ph.id ? list.find((x) => x.id === ph.id) : undefined;
+        if (ex) {
+          if (ex.title === ph.title.trim()) return;
+          emit("PROJECT_SETTINGS_UPDATED", `فاز «${ex.title}» به «${ph.title.trim()}» تغییر نام داد.`, { entity: { type: "project", id: pid }, meta: { phase: ex.id } });
+          ex.title = ph.title.trim();
+        } else {
+          const n: ProjectPhase = { id: nid(s, "ph"), title: ph.title.trim(), order: Math.max(0, ...list.map((x) => x.order)) + 1, createdAt: s.refDate };
+          p.phases = [...list, n];
+          emit("PROJECT_SETTINGS_UPDATED", `فاز «${n.title}» به ساختار شکست کار (WBS) افزوده شد.`, { entity: { type: "project", id: pid }, meta: { phase: n.id } });
+        }
+      }),
+    deletePhase: (pid, id) =>
+      on(pid, (p, emit) => {
+        const ph = (p.phases ?? []).find((x) => x.id === id);
+        if (!ph) return;
+        p.phases = (p.phases ?? []).filter((x) => x.id !== id);
+        const n = p.tasks.filter((t) => t.phaseId === id).length;
+        p.tasks.forEach((t) => t.phaseId === id && (t.phaseId = undefined));
+        emit("PROJECT_SETTINGS_UPDATED", `فاز «${ph.title}» حذف شد${n ? ` و ${fa(n)} کار آن بدون فاز شد` : ""}.`, { entity: { type: "project", id: pid }, meta: { phase: id } });
+      }),
+    movePhase: (pid, id, dir) =>
+      on(pid, (p) => {
+        const list = [...(p.phases ?? [])].sort((a, b) => a.order - b.order);
+        const i = list.findIndex((x) => x.id === id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= list.length) return;
+        [list[i], list[j]] = [list[j], list[i]];
+        p.phases = list.map((x, k) => ({ ...x, order: k + 1 }));
+      }),
+    setProjectModules: (pid, patch) =>
+      on(pid, (p, emit) => {
+        const before = modulesOf(p);
+        const next = { ...before, ...patch };
+        const changed = (Object.keys(patch) as (keyof ProjectModules)[]).filter((k) => before[k] !== next[k]);
+        if (!changed.length) return;
+        p.meta.modules = next;
+        emit("PROJECT_SETTINGS_UPDATED", `ماژول‌های پروژه: ${changed.map((k) => `«${moduleLabels[k].label}» ${next[k] ? "فعال" : "غیرفعال"} شد`).join("، ")}.`, { entity: { type: "project", id: pid }, meta: { settings: "modules", ...Object.fromEntries(changed.map((k) => [k, next[k]])) } });
+      }),
+    setProjectControl: (pid, patch) =>
+      on(pid, (p, emit) => {
+        const before = controlOf(p);
+        const next = { ...before, ...patch };
+        const changed = (Object.keys(patch) as (keyof ProjectControlSettings)[]).filter((k) => before[k] !== next[k]);
+        if (!changed.length) return;
+        p.meta.settings = next;
+        emit("PROJECT_SETTINGS_UPDATED", `تنظیمات اعضا: ${changed.map((k) => `«${controlLabels[k].label}» ${next[k] ? "روشن" : "خاموش"} شد`).join("، ")}.`, { entity: { type: "project", id: pid }, meta: { settings: "control", ...Object.fromEntries(changed.map((k) => [k, next[k]])) } });
+      }),
+    saveTaskTemplate: (pid, t) =>
+      on(pid, (p, emit, s) => {
+        const list = p.taskTemplates ?? [];
+        const ex = t.id ? list.find((x) => x.id === t.id) : undefined;
+        if (ex) {
+          Object.assign(ex, { ...t, id: ex.id, createdBy: ex.createdBy });
+          emit("PROJECT_SETTINGS_UPDATED", `الگوی وظیفه‌ی «${ex.name}» ویرایش شد${ex.active ? "" : " (غیرفعال)"}.`, { entity: { type: "project", id: pid }, meta: { template: ex.id } });
+        } else {
+          const n: TaskTemplate = { ...t, id: nid(s, "tt"), createdBy: actor };
+          p.taskTemplates = [...list, n];
+          emit("PROJECT_SETTINGS_UPDATED", `الگوی وظیفه‌ی «${n.name}» ساخته شد.`, { entity: { type: "project", id: pid }, meta: { template: n.id } });
+        }
+      }),
+    removeTaskTemplate: (pid, id) =>
+      on(pid, (p, emit) => {
+        const ex = (p.taskTemplates ?? []).find((x) => x.id === id);
+        if (!ex) return;
+        p.taskTemplates = (p.taskTemplates ?? []).filter((x) => x.id !== id);
+        emit("PROJECT_SETTINGS_UPDATED", `الگوی وظیفه‌ی «${ex.name}» حذف شد.`, { entity: { type: "project", id: pid }, meta: { template: id } });
+      }),
+    copyProject: (pid, input) => {
+      const id = `pr-${Date.now()}`;
+      setStore((prev) => {
+        const src = prev.projects.find((x) => x.meta.id === pid);
+        if (!src) return prev;
+        const c: ProjectState = structuredClone(src);
+        const key = nextProjectKey(prev.projects.map((x) => x.meta.key));
+        // شناسه‌ی تازه برای فازها و کارها؛ بدون تاریخچه، گزارش، زمان، اعلان، جلسه و صورت‌جلسه
+        const phaseMap = new Map((c.phases ?? []).map((ph, i) => [ph.id, `ph${i + 1}`] as const));
+        const taskMap = new Map<string, string>();
+        let seq = prev.seq;
+        const tasks = input.includeTasks
+          ? c.tasks
+              .filter((t) => !t.archived)
+              .map((t) => {
+                const nidT = `t${++seq}`;
+                taskMap.set(t.id, nidT);
+                return t;
+              })
+              .map((t, i) => {
+                const reset = input.resetProgress;
+                const firstCol = c.columns.find((col) => col.kind === "todo") ?? c.columns[0];
+                return {
+                  ...t,
+                  id: taskMap.get(t.id)!,
+                  key: `${key}-${i + 1}`,
+                  parentId: t.parentId ? taskMap.get(t.parentId) : undefined,
+                  epicId: t.epicId ? taskMap.get(t.epicId) : undefined,
+                  phaseId: t.phaseId ? phaseMap.get(t.phaseId) : undefined,
+                  assignee: input.includeMembers ? t.assignee : "بدون مسئول",
+                  coAssignees: input.includeMembers ? t.coAssignees : undefined,
+                  finalApprover: input.includeMembers ? t.finalApprover : undefined,
+                  status: reset ? firstCol.id : t.status,
+                  progress: reset ? 0 : t.progress,
+                  checklist: t.checklist.map((x) => ({ ...x, done: reset ? false : x.done })),
+                  comments: [],
+                  approval: undefined,
+                  timer: undefined,
+                  removalRequest: undefined,
+                  watchers: input.includeMembers ? t.watchers : undefined,
+                  milestoneId: undefined,
+                  sprintId: undefined,
+                  createdAt: prev.refDate,
+                } as PMTask;
+              })
+          : [];
+        const copy: ProjectState = {
+          ...c,
+          meta: { ...c.meta, id, name: input.name, key, nextTaskNo: tasks.length + 1, starred: false, archived: false, createdAt: prev.refDate, health: "سبز", phase: "برنامه‌ریزی", chatIds: [] },
+          phases: (c.phases ?? []).map((ph) => ({ ...ph, id: phaseMap.get(ph.id)!, createdAt: prev.refDate })),
+          tasks,
+          deps: input.includeTasks ? c.deps.filter((d) => taskMap.has(d.predecessor) && taskMap.has(d.successor)).map((d, i) => ({ ...d, id: `dp${i + 1}`, predecessor: taskMap.get(d.predecessor)!, successor: taskMap.get(d.successor)!, createdAt: prev.refDate })) : [],
+          members: input.includeMembers ? c.members : c.members.filter((m) => m.name === c.meta.manager || isOwner(m)),
+          milestones: [],
+          risks: [],
+          issues: [],
+          expenses: [],
+          budget: { ...c.budget, firedThresholds: [] },
+          timeLogs: [],
+          meetings: [],
+          minutes: [],
+          documents: [],
+          logs: [],
+          firedReminders: [],
+          sprints: [],
+          savedViews: [],
+          stageGates: [],
+          closure: undefined,
+          decisions: [],
+          intake: [],
+        };
+        let s: StoreState = { ...prev, seq, projects: [copy, ...prev.projects] };
+        s = apply(s, id, actor, (p, emit) => {
+          emit("PROJECT_CREATED", `پروژه «${p.meta.name}» با کپی از «${src.meta.name}» ساخته شد (${input.includeTasks ? `${fa(p.tasks.length)} کار، ${fa(p.phases?.length ?? 0)} فاز` : "فقط ساختار بورد"}${input.includeMembers ? "، با اعضا" : ""}).`, { entity: { type: "project", id }, meta: { copied_from: pid, tasks: p.tasks.length } });
+        });
+        return s;
+      });
+      return id;
+    },
+    requestRemoval: (pid, taskId, kind, reason) =>
+      on(pid, (p, emit, s) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        if (!t) return;
+        t.removalRequest = { kind, by: actor, at: `${s.refDate} ${nowClock()}`, reason: reason || undefined };
+        emit("TASK_REMOVAL_REQUESTED", `«${actor}» ${kind === "delete" ? "حذف" : "بایگانی"} کار «${t.title}» از بورد را درخواست کرد${reason ? `: «${reason}»` : ""}.`, { entity: { type: "task", id: taskId }, ctx: { taskId }, meta: { kind } });
+      }),
+    decideRemoval: (pid, taskId, approve) =>
+      on(pid, (p, emit, s) => {
+        const t = p.tasks.find((x) => x.id === taskId);
+        const r = t?.removalRequest;
+        if (!t || !r) return;
+        t.removalRequest = undefined;
+        emit("TASK_REMOVAL_DECIDED", `درخواست ${r.kind === "delete" ? "حذف" : "بایگانی"} کار «${t.title}» (از «${r.by}») ${approve ? "تأیید" : "رد"} شد.`, { entity: { type: "task", id: taskId }, ctx: { taskId, requester: r.by }, meta: { kind: r.kind, approved: approve } });
+        if (!approve) return;
+        if (r.kind === "archive") {
+          const ids = new Set([taskId, ...p.tasks.filter((x) => x.parentId === taskId).map((x) => x.id)]);
+          p.tasks.filter((x) => ids.has(x.id)).forEach((x) => Object.assign(x, { archived: true, archivedAt: s.refDate, archivedBy: actor, timer: undefined }));
+          emit("TASK_ARCHIVED", `تسک «${t.title}» با تأیید مدیر پروژه بایگانی شد.`, { entity: { type: "task", id: taskId }, ctx: { taskId } });
+        } else {
+          const gone = new Set([taskId, ...p.tasks.filter((x) => x.parentId === taskId).map((x) => x.id)]);
+          p.tasks = p.tasks.filter((x) => !gone.has(x.id));
+          p.deps = p.deps.filter((d) => !gone.has(d.predecessor) && !gone.has(d.successor));
+          p.milestones.forEach((m) => (m.taskIds = m.taskIds.filter((x) => !gone.has(x))));
+          emit("TASK_DELETED", `تسک «${t.title}» با تأیید مدیر پروژه حذف شد.`, { entity: { type: "task", id: taskId }, ctx: { assignee: t.assignee } });
+        }
+      }),
+    reassignPrincipal: (from, to, include = { tasks: true, memberships: true }) => {
+      let moved = 0;
+      store.projects.forEach((proj) => {
+        if (include.tasks !== false) moved += proj.tasks.filter((t) => !t.archived && !isDone(proj, t) && (assigneesOf(t).includes(from) || t.finalApprover === from)).length;
+      });
+      setStore((prev) => {
+        let s = prev;
+        prev.projects.forEach((proj) => {
+          const hasTasks = include.tasks !== false && proj.tasks.some((t) => !t.archived && !isDone(proj, t) && (assigneesOf(t).includes(from) || t.finalApprover === from));
+          const hasMember = include.memberships !== false && proj.members.some((m) => m.name === from);
+          if (!hasTasks && !hasMember) return;
+          s = apply(s, proj.meta.id, actor, (p, emit) => {
+            let n = 0;
+            if (include.tasks !== false)
+              p.tasks.forEach((t) => {
+                if (t.archived || isDone(p, t)) return;
+                let hit = false;
+                if (t.assignee === from) ((t.assignee = to), (hit = true));
+                if (t.coAssignees?.includes(from)) ((t.coAssignees = [...new Set(t.coAssignees.map((x) => (x === from ? to : x)))].filter((x) => x !== t.assignee)), (hit = true));
+                if (t.finalApprover === from) ((t.finalApprover = to), (hit = true));
+                if (hit) n += 1;
+              });
+            if (include.memberships !== false) {
+              const m = p.members.find((x) => x.name === from);
+              if (m && !p.members.some((x) => x.name === to)) m.name = to;
+              if (p.meta.manager === from) p.meta.manager = to;
+            }
+            emit("TASK_REASSIGNED", `انتقال کار: ${fa(n)} کار باز${include.memberships !== false ? " و عضویت پروژه" : ""} از «${from}» به «${to}» منتقل شد.`, { entity: { type: "project", id: p.meta.id }, ctx: { assignee: to, previousAssignee: from }, meta: { from, to, tasks: n } });
+          });
+        });
+        return s;
+      });
+      return moved;
+    },
+    isManager: (pid, name = actor) => {
+      const p = store.projects.find((x) => x.meta.id === pid);
+      return !!p && mgrOf(p, name);
+    },
+
     advanceDays: (n) => setStore((prev) => runScheduler({ ...prev, refDate: addDays(prev.refDate, n) })),
     resetDemo: () => {
       try {

@@ -29,10 +29,6 @@ import {
   KeyRound,
   Network,
   History,
-  Rocket,
-  FileSignature,
-  FlaskConical,
-  PiggyBank,
   Clock,
   LifeBuoy,
   HelpCircle,
@@ -41,14 +37,15 @@ import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useKnowledge } from "../context/KnowledgeContext";
 import { useSocial } from "../context/SocialContext";
-import { users as allUsers, contracts, funds, researchOpportunities } from "../data/mock";
-import { nfProjects, nfStages } from "../data/mockInnovationFund";
+import { users as allUsers } from "../data/mock";
 import { activeTasks, columnLabel, isDone, isOverdue, kindOf, paidTotal, committedTotal, budgetUsage, projectProgress, taskKey, taskLoggedHours } from "../pm/selectors";
-import { dayNum, diffDays, parseRial, toEnDigits, weekDayNames, weekdayOf } from "../pm/jalali";
+import { dayNum, diffDays, toEnDigits, weekDayNames, weekdayOf } from "../pm/jalali";
 import { ancestorsOrSelf, descendantsOrSelf, bindingLive, isAdminRole, auditLabel, scopeTypeLabel, type IamState } from "../iam/model";
 import { normDate } from "./engine";
 import type { ColumnKind } from "../pm/types";
 import type { DataSource, Field, ReportModule, Row } from "./types";
+import type { ApiEventMemberStatus, ApiPrivacy } from "../social/types";
+import { kmDocHref, kmHref } from "../km/nav";
 
 // ----------------------------------------------------------------- سازنده‌های فیلد
 
@@ -401,6 +398,7 @@ const STATIC_SOURCES: DataSource[] = [
       num("capacity", "ظرفیت"),
       num("participants", "شرکت‌کننده"),
       num("invited", "دعوت‌شده‌ی بی‌پاسخ"),
+      num("pending", "درخواست عضویت در انتظار"),
       num("declined", "رد دعوت"),
       num("fillRate", "درصد پرشدن ظرفیت", "percent"),
       num("engagement", "تعامل (نظر + واکنش)"),
@@ -499,80 +497,6 @@ const STATIC_SOURCES: DataSource[] = [
     fields: [dim("event", "رویداد"), dim("actor", "انجام‌دهنده"), dim("scope", "واحد"), dim("targetType", "نوع موضوع"), dim("affected", "کاربر متأثر"), date("date", "تاریخ")],
   },
 
-  // ============================ نوآوری
-  {
-    id: "innovation.nf",
-    label: "طرح‌های صندوق نوآور",
-    module: "innovation",
-    icon: Rocket,
-    rowNoun: "طرح",
-    fields: [
-      dim("title", "طرح"),
-      dim("macroField", "کلان‌محور"),
-      dim("field", "زمینه"),
-      dim("motherProject", "رویداد/فراخوان مادر"),
-      dim("teamType", "نوع مجری"),
-      dim("city", "شهر"),
-      dim("stage", "مرحله", { order: [...nfStages] }),
-      flag("greenPath", "مسیر سبز"),
-      num("progress", "پیشرفت", "percent"),
-      num("budget", "مبلغ قرارداد", "rial"),
-      num("paid", "پرداخت‌شده", "rial"),
-      num("pending", "در انتظار پرداخت", "rial"),
-      num("remaining", "باقی‌مانده", "rial"),
-      num("share", "سهم بنیاد", "percent"),
-      num("duration", "مدت (ماه)"),
-      num("reports", "گزارش‌ها"),
-      num("pendingReports", "گزارش تأییدنشده"),
-      num("lateReports", "گزارش با تأخیر بررسی"),
-    ],
-  },
-  {
-    id: "innovation.contracts",
-    label: "قراردادهای فناورانه",
-    module: "innovation",
-    icon: FileSignature,
-    rowNoun: "قرارداد",
-    defaultDateField: "deadline",
-    fields: [
-      dim("title", "قرارداد"),
-      dim("vendor", "طرف قرارداد"),
-      dim("stage", "مرحله", { order: ["مذاکره", "فراخوان", "داوری", "در حال اجرا", "تسویه‌شده"] }),
-      dim("owner", "مسئول"),
-      num("value", "ارزش", "rial"),
-      date("deadline", "مهلت"),
-    ],
-  },
-  {
-    id: "innovation.research",
-    label: "فرصت‌های پژوهشی",
-    module: "innovation",
-    icon: FlaskConical,
-    rowNoun: "فراخوان",
-    defaultDateField: "deadline",
-    fields: [
-      dim("title", "فراخوان"),
-      dim("field", "حوزه"),
-      dim("stage", "مرحله", { order: ["فراخوان باز", "بررسی درخواست‌ها", "داوری", "در حال اجرا", "پایان‌یافته"] }),
-      num("applicants", "متقاضی"),
-      date("deadline", "مهلت"),
-    ],
-  },
-  {
-    id: "innovation.funds",
-    label: "طرح‌های صندوق اشتغال",
-    module: "innovation",
-    icon: PiggyBank,
-    rowNoun: "طرح",
-    fields: [
-      dim("title", "طرح"),
-      dim("applicant", "متقاضی"),
-      dim("stage", "مرحله", { order: ["ثبت‌شده", "انتخاب اولیه", "داوری", "تخصیص‌یافته", "در حال پایش"] }),
-      num("amount", "مبلغ", "rial"),
-      num("roi", "بازده", "percent"),
-    ],
-  },
-
   // ============================ منابعِ در حال ساخت (استورشان بعداً وصل می‌شود)
   {
     id: "timesheet.entries",
@@ -666,47 +590,29 @@ export function useSources(module?: ReportModule): DataSource[] {
 
 const str = (v: unknown) => (typeof v === "string" && v ? v : typeof v === "number" ? String(v) : undefined);
 const q = (v: unknown) => encodeURIComponent(String(v));
-const CONTENT_PATH: Record<string, string> = { وبلاگ: "blog", خبر: "news", مجله: "magazines" };
-const INNOV_LINK: Record<string, (id: string, r: Row) => string> = {
-  research: (id) => `/dashboard/research?open=${q(id)}`,
-  contracts: (id) => `/dashboard/contracts?open=${q(id)}`,
-  funds: (id) => `/dashboard/funds?focus=${q(id)}`,
-  nf: (id) => `/dashboard/funds?focus=${q(id)}`,
-  employment: (id) => `/dashboard/funds?tab=employment&focus=${q(id)}`,
-  award: () => `/dashboard/award`,
-  training: () => `/dashboard/training`,
-  ecosystem: (id) => `/dashboard/research?tab=bank&entity=${q(id)}`,
-};
+const CONTENT_PATH: Record<string, string> = { وبلاگ: "blogs", خبر: "news", مجله: "magazines" };
 
 /** پیوندهای پیش‌فرض منابع اصلی — وقتی خود منبع `link` ندارد (مثلاً منابعی که بیرونی ثبت می‌شوند) */
 const DEFAULT_LINKS: Record<string, (r: Row) => string | undefined> = {
-  "projects.tasks": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=board&focus=${q(str(r.key) ?? str(r.id) ?? "")}` : undefined),
-  "projects.projects": (r) => (str(r.pid ?? r.id) ? `/dashboard/projects/${q(r.pid ?? r.id)}` : undefined),
-  "projects.timeLogs": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=time` : undefined),
-  "projects.expenses": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=budget` : undefined),
-  "projects.risks": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=risks&focus=${q(r.id)}` : undefined),
-  "projects.milestones": (r) => (str(r.pid) ? `/dashboard/projects/${q(r.pid)}?tab=milestones&focus=${q(r.id)}` : undefined),
-  "knowledge.docs": (r) => (str(r.id) ? `/dashboard/knowledge?doc=${q(r.id)}` : undefined),
-  "knowledge.experiences": () => `/dashboard/knowledge?tab=experiences`,
-  "social.content": (r) => (str(r.id) && CONTENT_PATH[String(r.kind)] ? `/dashboard/${CONTENT_PATH[String(r.kind)]}/${q(r.id)}` : undefined),
-  "social.media": (r) => (str(r.id) ? `/dashboard/media/${q(r.id)}` : undefined),
-  "social.topics": (r) => (str(r.id) ? `/dashboard/forum/${q(r.id)}` : undefined),
-  "social.events": (r) => (str(r.id) ? `/dashboard/events/${q(r.id)}` : undefined),
-  "social.messages": () => `/dashboard/chat`,
-  "members.memberships": (r) => (str(r.uid) ? `/dashboard/profile/${q(r.uid)}` : undefined),
-  "members.bindings": (r) => (str(r.uid) ? `/dashboard/profile/${q(r.uid)}` : undefined),
-  "members.scopes": () => `/dashboard/settings?section=structure`,
-  "members.audits": () => `/dashboard/settings?section=audit`,
-  "innovation.nf": (r) => (str(r.id) ? INNOV_LINK.nf(String(r.id), r) : undefined),
-  "innovation.contracts": (r) => (str(r.id) ? INNOV_LINK.contracts(String(r.id), r) : undefined),
-  "innovation.research": (r) => (str(r.id) ? INNOV_LINK.research(String(r.id), r) : undefined),
-  "innovation.funds": (r) => (str(r.id) ? INNOV_LINK.employment(String(r.id), r) : undefined),
-  "innovation.entities": (r) => (str(r.id) ? INNOV_LINK.ecosystem(String(r.id), r) : undefined),
-  "innovation.decisions": (r) => (str(r.subjectId) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.subjectId), r) : undefined),
-  "innovation.outcomes": (r) => (str(r.subjectId) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.subjectId), r) : undefined),
-  "innovation.allocations": (r) => (str(r.id) && INNOV_LINK[String(r.mod)] ? INNOV_LINK[String(r.mod)](String(r.id), r) : undefined),
-  "tickets.tickets": (r) => (str(r.id) ? `/dashboard/tickets?id=${q(r.id)}` : undefined),
-  "timesheet.entries": () => `/dashboard/activity`,
+  "projects.tasks": (r) => (str(r.pid) ? `/projects/${q(r.pid)}?tab=board&focus=${q(str(r.key) ?? str(r.id) ?? "")}` : undefined),
+  "projects.projects": (r) => (str(r.pid ?? r.id) ? `/projects/${q(r.pid ?? r.id)}` : undefined),
+  "projects.timeLogs": (r) => (str(r.pid) ? `/projects/${q(r.pid)}?tab=time` : undefined),
+  "projects.expenses": (r) => (str(r.pid) ? `/projects/${q(r.pid)}?tab=budget` : undefined),
+  "projects.risks": (r) => (str(r.pid) ? `/projects/${q(r.pid)}?tab=risks&focus=${q(r.id)}` : undefined),
+  "projects.milestones": (r) => (str(r.pid) ? `/projects/${q(r.pid)}?tab=milestones&focus=${q(r.id)}` : undefined),
+  "knowledge.docs": (r) => (str(r.id) ? kmDocHref(String(r.id)) : undefined),
+  "knowledge.experiences": () => kmHref("experience"),
+  "social.content": (r) => (str(r.id) && CONTENT_PATH[String(r.kind)] ? `/${CONTENT_PATH[String(r.kind)]}/${q(r.id)}` : undefined),
+  "social.media": (r) => (str(r.id) ? `/media/${q(r.id)}` : undefined),
+  "social.topics": (r) => (str(r.id) ? `/forums/${q(r.id)}` : undefined),
+  "social.events": (r) => (str(r.id) ? `/events/${q(r.id)}` : undefined),
+  "social.messages": () => `/conversations`,
+  "members.memberships": (r) => (str(r.uid) ? `/profile/${q(r.uid)}` : undefined),
+  "members.bindings": (r) => (str(r.uid) ? `/profile/${q(r.uid)}` : undefined),
+  "members.scopes": () => `/settings?section=structure`,
+  "members.audits": () => `/settings?section=audit`,
+  "tickets.tickets": (r) => (str(r.id) ? `/tickets?id=${q(r.id)}` : undefined),
+  "timesheet.entries": () => `/activity-report`,
 };
 
 /** پیوند یک ردیف به رکورد اصلی‌اش (یا undefined) */
@@ -724,13 +630,6 @@ export const hasRowLinks = (source?: DataSource) => !!source && (!!source.link |
 
 const userName = (id?: string | null) => (id ? allUsers.find((u) => u.id === id)?.name ?? id : "");
 const userTitle = (id: string) => allUsers.find((u) => u.id === id)?.role ?? "";
-/** «۲٬۵۰۰ میلیون ریال» → 2500000000 */
-const money = (s: string) => {
-  const t = toEnDigits(s);
-  const n = parseFloat(t.replace(/[^\d.]/g, "")) || 0;
-  return t.includes("میلیارد") ? n * 1e9 : t.includes("میلیون") ? n * 1e6 : parseRial(s);
-};
-const pct = (s: string) => parseFloat(toEnDigits(s).replace(/[^\d.]/g, "")) || 0;
 const weekdayName = (d: string | null) => (d ? WEEKDAYS[weekdayOf(d)] : "");
 const clockHour = (s: string) => {
   const m = toEnDigits(s).match(/\s(\d{1,2}):/);
@@ -939,7 +838,8 @@ function useKnowledgeRows(id: string, today: string): Row[] | null {
 
 const CONTENT_KIND = { blogs: "وبلاگ", news: "خبر", magazines: "مجله" } as const;
 const CONTENT_ENTITY = { blogs: "blog", news: "news", magazines: "magazine" } as const;
-const PRIVACY = { ME: "فقط خودم", FRIENDS: "دوستان", EVERYONE: "همه" } as const;
+/** برچسب حریم انتشار — enum کامل API (`SCOPE` = داخل واحد سازمانی) تا انبار اجتماعی بتواند آن را بپذیرد */
+const PRIVACY: Record<ApiPrivacy, string> = { ME: "فقط خودم", FRIENDS: "دوستان", EVERYONE: "همه", SCOPE: "واحد سازمانی" };
 const CHAT_TYPE = { saved_messages: "پیام‌های ذخیره‌شده", direct_message: "گفتگوی خصوصی", group: "گروه", channel: "کانال", bot: "ربات" } as const;
 const EM_STATUS = { invited: "دعوت‌شده", accepted: "پذیرفته", declined: "رد کرده", joined: "حاضرشده" } as const;
 const EM_ROLE = { owner: "مالک", organizer: "برگزارکننده", member: "عضو" } as const;
@@ -951,8 +851,8 @@ function useSocialRows(id: string): Row[] | null {
   const { canAccessAdmin, visibleUserIds } = useTenancy();
   return useMemo(() => {
     if (!id.startsWith("social.")) return null;
-    const pubOk = (x: { user_id: string; privacy: "ME" | "FRIENDS" | "EVERYONE"; is_draft: boolean; deleted_at: string | null }) =>
-      !x.deleted_at && so.canView(x) && (!x.is_draft || x.user_id === so.me || canAccessAdmin);
+    const pubOk = (x: { user_id: string; privacy: ApiPrivacy; is_draft: boolean; deleted_at: string | null }) =>
+      !x.deleted_at && so.canView(x as Parameters<typeof so.canView>[0]) && (!x.is_draft || x.user_id === so.me || canAccessAdmin);
     const status = (x: { is_draft: boolean; is_public: boolean }) => (x.is_draft ? "پیش‌نویس" : x.is_public ? "منتشرشده" : "منتشرنشده");
     const cats = (ids: string[]) => ids.map((c) => so.categoryTitle(c)).filter(Boolean);
     const comments = (e: Parameters<typeof so.commentsFor>[0], eid: string) => so.commentsFor(e, eid).length;
@@ -970,7 +870,7 @@ function useSocialRows(id: string): Row[] | null {
             title: c.title,
             author: so.userName(c.user_id),
             status: status(c),
-            privacy: PRIVACY[c.privacy],
+            privacy: PRIVACY[c.privacy as ApiPrivacy] ?? String(c.privacy),
             categories: cats(c.category_ids),
             tags: c.tags,
             published: c.is_public && !c.is_draft,
@@ -1062,7 +962,8 @@ function useSocialRows(id: string): Row[] | null {
             published: e.is_public && !e.is_draft,
             capacity: e.capacity || null,
             participants,
-            invited: ms.filter((m) => m.status === "invited").length,
+            invited: ms.filter((m) => (m.status as ApiEventMemberStatus) === "invited").length,
+            pending: ms.filter((m) => (m.status as ApiEventMemberStatus) === "pending").length,
             declined: ms.filter((m) => m.status === "declined").length,
             fillRate: e.capacity ? Math.round((participants / e.capacity) * 1000) / 10 : null,
             engagement: cm + rc,
@@ -1123,7 +1024,7 @@ function useMemberRows(id: string): Row[] | null {
               scopeType: s ? scopeTypeLabel[s.type] : "—",
               holding: upType(iam, m.scopeId, "holding"),
               company: upType(iam, m.scopeId, "company"),
-              status: m.status === "active" ? "فعال" : "معلق",
+              status: m.status === "active" ? "فعال" : m.status === "revoked" ? "لغوشده" : "معلق",
               primary: m.primary,
               createdAt: normDate(m.createdAt),
             } satisfies Row;
@@ -1186,46 +1087,6 @@ function useMemberRows(id: string): Row[] | null {
   }, [id, iam, contextId, today, canAccessAdmin, actingUser.id]);
 }
 
-// ----------------------------------------------------------------- خانواده: نوآوری (داده‌ی نمونه‌ی ایستا + دامنه)
-
-function useInnovationRows(id: string): Row[] | null {
-  const { filterScoped } = useTenancy();
-  return useMemo(() => {
-    if (!id.startsWith("innovation.")) return null;
-    switch (id) {
-      case "innovation.nf":
-        return filterScoped(nfProjects).map((p) => ({
-          id: p.id,
-          title: p.titleFa,
-          macroField: p.macroField,
-          field: p.field,
-          motherProject: p.motherProject,
-          teamType: p.team.type,
-          city: p.team.city,
-          stage: p.stage,
-          greenPath: !!p.greenPath,
-          progress: p.progress,
-          budget: money(p.budget),
-          paid: money(p.finance.paid),
-          pending: money(p.finance.pending),
-          remaining: money(p.finance.remaining),
-          share: p.shareDaneshmand,
-          duration: p.durationMonths,
-          reports: p.reports.length,
-          pendingReports: p.reports.filter((r) => r.status !== "تایید نهایی").length,
-          lateReports: p.reports.filter((r) => r.chain.some((c) => c.late)).length,
-        }));
-      case "innovation.contracts":
-        return filterScoped(contracts).map((c) => ({ id: c.id, title: c.title, vendor: c.vendor, stage: c.stage, owner: c.owner, value: money(c.value), deadline: normDate(c.deadline) }));
-      case "innovation.research":
-        return filterScoped(researchOpportunities).map((r) => ({ id: r.id, title: r.title, field: r.field, stage: r.stage, applicants: r.applicants, deadline: normDate(r.deadline) }));
-      case "innovation.funds":
-        return filterScoped(funds).map((f) => ({ id: f.id, title: f.title, applicant: f.applicant, stage: f.stage, amount: money(f.amount), roi: pct(f.roi) }));
-    }
-    return [];
-  }, [id, filterScoped]);
-}
-
 // ----------------------------------------------------------------- هوک اصلی
 
 export type SourceRows = { rows: Row[]; available: boolean; today: string; source?: DataSource };
@@ -1243,16 +1104,15 @@ export function useSourceRows(sourceId: string): SourceRows {
   const kRows = useKnowledgeRows(sourceId, tn.today);
   const sRows = useSocialRows(sourceId);
   const mRows = useMemberRows(sourceId);
-  const iRows = useInnovationRows(sourceId);
   return useMemo(() => {
     const source = getSource(sourceId);
     const today = sourceId.startsWith("projects.") ? pm.refDate : sourceId.startsWith("social.") ? so.today : tn.today;
-    const live = pRows ?? kRows ?? sRows ?? mRows ?? iRows;
+    const live = pRows ?? kRows ?? sRows ?? mRows;
     if (live) return { rows: live, available: true, today, source };
     const ext = extRows.get(sourceId);
     if (ext) return { rows: ext, available: true, today, source };
     if (source?.rows && !source.placeholder) return { rows: source.rows(), available: true, today, source };
     return { rows: [], available: false, today, source };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceId, pRows, kRows, sRows, mRows, iRows, v, pm.refDate, so.today, tn.today]);
+  }, [sourceId, pRows, kRows, sRows, mRows, v, pm.refDate, so.today, tn.today]);
 }

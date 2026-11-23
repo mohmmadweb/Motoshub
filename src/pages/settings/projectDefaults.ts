@@ -13,7 +13,8 @@ import { diffKeys, emitSettingsChange } from "../../iam/settingsAudit";
 import { defaultAutomation, defaultColumns } from "../../pm/seed";
 import { defaultMeetingSettings, typeLabel } from "../../pm/selectors";
 import type { AccessTemplateId } from "../../pm/access";
-import type { BoardColumn, MeetingSettings, PMPriority, ProjectPriority, TaskType, Visibility } from "../../pm/types";
+import type { BoardColumn, MeetingSettings, PMPriority, ProjectControlSettings, ProjectModules, ProjectPriority, TaskType, Visibility } from "../../pm/types";
+import { DEFAULT_CONTROL, DEFAULT_MODULES } from "../../pm/rules";
 
 export type ProjectDefaults = {
   version: 1;
@@ -31,6 +32,10 @@ export type ProjectDefaults = {
   automation: Record<string, boolean>;
   /** دسترسی عضو تازه: قالب آماده یا «نمای کلی» (مشاهده‌ی وظایف، مایل‌ستون‌ها و جلسات) */
   memberAccess: AccessTemplateId | "overview";
+  /** ماژول‌های پیش‌فرض پروژه‌ی جدید (گانت، صورتجلسه‌ی سازمانی) */
+  modules?: ProjectModules;
+  /** تنظیمات کنترلی پیش‌فرض اعضا (ایجاد/ویرایش/تمدید/حذف با تأیید مدیر) */
+  control?: ProjectControlSettings;
   updatedAt?: string;
   updatedBy?: string;
 };
@@ -48,13 +53,15 @@ export const defaultProjectDefaults = (): ProjectDefaults => ({
   project: { visibility: "فقط اعضا", priority: "متوسط", budgetThresholds: [80, 100], intakeOpen: false },
   automation: Object.fromEntries(defaultAutomation().map((a) => [a.id, a.enabled])),
   memberAccess: "overview",
+  modules: { ...DEFAULT_MODULES },
+  control: { ...DEFAULT_CONTROL },
 });
 
 export const projectDefaultsStore = createLocalStore<ProjectDefaults>("motoshub.projectDefaults.v1", defaultProjectDefaults, (raw) => {
   const r = raw as Partial<ProjectDefaults> | null;
   if (!r || r.version !== 1) return null;
   const d = defaultProjectDefaults();
-  return { ...d, ...r, workHours: { ...d.workHours, ...r.workHours }, meeting: { ...d.meeting, ...r.meeting }, project: { ...d.project, ...r.project }, automation: { ...d.automation, ...r.automation } } as ProjectDefaults;
+  return { ...d, ...r, workHours: { ...d.workHours, ...r.workHours }, meeting: { ...d.meeting, ...r.meeting }, project: { ...d.project, ...r.project }, automation: { ...d.automation, ...r.automation }, modules: { ...DEFAULT_MODULES, ...r.modules }, control: { ...DEFAULT_CONTROL, ...r.control } } as ProjectDefaults;
 });
 
 /** پیش‌فرض‌های سراسری پروژه (زنده؛ با هر ذخیره به‌روز می‌شود) */
@@ -78,6 +85,8 @@ const sectionLabel: Record<string, string> = {
   defaultTaskType: "نوع پیش‌فرض تسک",
   defaultTaskPriority: "اولویت پیش‌فرض تسک",
   project: "مشخصات پروژه‌ی جدید",
+  modules: "ماژول‌های پروژه",
+  control: "کنترل اعضا",
   automation: "خودکارسازی",
   memberAccess: "دسترسی عضو تازه",
 };

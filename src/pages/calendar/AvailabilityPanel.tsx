@@ -3,7 +3,7 @@
 // جزئیات (چه کسی، کجا) با یک کلیک باز می‌شود تا فرم شلوغ نشود.
 // ---------------------------------------------------------------------------
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, CalendarSearch } from "lucide-react";
 import { fa } from "../../pm/jalali";
 import { busyKindLabel, conflictText, hasConflict, slotLabel, useAvailability, type Attendee, type Slot, type WorkPolicy } from "./availability";
 import { fmtRange } from "./model";
@@ -59,7 +59,7 @@ export default function AvailabilityPanel({
             </span>
           ))}
         <button type="button" onClick={find} className="text-[11.5px] text-brand-700 hover:underline flex items-center gap-1 shrink-0">
-          <Sparkles size={13} /> پیدا کردن زمان مشترک
+          <CalendarSearch size={13} /> پیدا کردن زمان مشترک
         </button>
       </div>
       {open && report && report.items.length > 0 && (

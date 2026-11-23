@@ -140,7 +140,7 @@ export default function ExpertsSection() {
               <RelationsEditor kind="expert" id={view.id} relations={view.relations} canEdit={canEdit} onOpen={page.openRelation} />
             </div>
             {view.userId && (
-              <Button size="sm" variant="secondary" icon={<MessageCircle size={13} />} onClick={() => navigate("/dashboard/chat")}>
+              <Button size="sm" variant="secondary" icon={<MessageCircle size={13} />} onClick={() => navigate("/conversations")}>
                 پرسش از این خبره در گفتگو
               </Button>
             )}

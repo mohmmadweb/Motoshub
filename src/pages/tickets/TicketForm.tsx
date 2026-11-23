@@ -28,6 +28,7 @@ import {
   type TicketType,
 } from "./model";
 import { Field, FilePicker, LabelsInput, type PickedFile } from "./parts";
+import { helpLink } from "../knowledge/helpArticles";
 
 export const typeIcon: Record<TicketType, typeof Bug> = {
   خطا: Bug,
@@ -157,7 +158,7 @@ export default function TicketForm({
               <ul className="space-y-0.5">
                 {helpHits.map((a) => (
                   <li key={a.id}>
-                    <Link to={`/dashboard/knowledge?tab=help&article=${encodeURIComponent(a.id)}`} target="_blank" className="text-[12px] text-brand-700 hover:underline">
+                    <Link to={helpLink(a.id)} target="_blank" className="text-[12px] text-brand-700 hover:underline">
                       {a.title}
                     </Link>
                   </li>

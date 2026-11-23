@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 import type { ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Link2, MessageSquare, UserMinus, Ban, Check, X, ShieldOff, UserPlus, Inbox, Send, Users, Sparkles } from "lucide-react";
+import { Link2, MessageSquare, UserMinus, Ban, Check, X, ShieldOff, UserPlus, Inbox, Send, Users, UserSearch } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Tabs from "../../components/ui/Tabs";
@@ -32,7 +32,7 @@ function Row({ id, sub, children }: { id: string; sub?: ReactNode; children: Rea
         <UserLine id={id} size={38} sub={sub} />
         {/* سازمان/واحد اصلی → صفحه‌ی سازمان */}
         {home ? (
-          <Link to={`/dashboard/org/${home.scopeId}`} className="block mr-[46px] text-[10.5px] text-ink-400 hover:text-brand-700 truncate">
+          <Link to={`/org/${home.scopeId}`} className="block mr-[46px] text-[10.5px] text-ink-400 hover:text-brand-700 truncate">
             {home.scope.name}
           </Link>
         ) : (
@@ -80,7 +80,7 @@ export default function Connections() {
     return u ? u.role : undefined;
   };
 
-  const dm = (id: string) => navigate(`/dashboard/chat/${s.openDirect(id)}`);
+  const dm = (id: string) => navigate(`/conversations/${s.openDirect(id)}`);
 
   const unfriend = (f: Friendship) =>
     confirm({
@@ -221,7 +221,7 @@ export default function Connections() {
             </Row>
           )),
         )
-      : empty(<Sparkles size={22} />, "پیشنهادی نداریم", "وقتی ارتباط‌های بیشتری بسازید، دوستانِ دوستانتان اینجا پیشنهاد می‌شوند.");
+      : empty(<UserSearch size={22} />, "پیشنهادی نداریم", "وقتی ارتباط‌های بیشتری بسازید، دوستانِ دوستانتان اینجا پیشنهاد می‌شوند.");
   }
 
   return (

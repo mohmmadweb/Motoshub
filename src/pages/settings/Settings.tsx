@@ -2,7 +2,8 @@
 // (ساختار در settingsConfig.tsx). هر بخش و زبانه مجوز جداگانه دارد؛ هر مدیر فقط بخش‌هایی را می‌بیند
 // که در کانتکست فعلی اختیارش را دارد. نشانی: ?section=<بخش>&tab=<زبانه>؛ شناسه‌های قدیمی نگاشت می‌شوند.
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import AdminOverview from "./AdminOverview";
 import { ChevronDown, ChevronLeft, Eye, Search, Settings as SettingsIcon, X } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Tabs from "../../components/ui/Tabs";
@@ -41,6 +42,7 @@ export default function Settings() {
     return descendantsOrSelf(t.iam, ROOT_ID).filter((n) => ids.has(n.id));
   }, [t]);
   const [params, setParams] = useSearchParams();
+  const { pathname } = useLocation();
   const [q, setQ] = useState("");
   const [collapsed, setCollapsed] = useState<string[]>(loadCollapsed);
 
@@ -117,7 +119,7 @@ export default function Settings() {
   }, [q, visible]);
 
   const badge = (n?: number, active?: boolean) =>
-    n ? <span className={`mr-auto text-[10px] rounded-full px-1.5 ${active ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"}`}>{n.toLocaleString("fa-IR")}</span> : null;
+    n ? <span className={`mr-auto text-[10px] rounded-full px-1.5 ${active ? "bg-teal-500 text-[var(--color-navy-900)]" : "bg-amber-50 text-amber-700"}`}>{n.toLocaleString("fa-IR")}</span> : null;
 
   const searchBox = (
     <div className="relative">
@@ -139,12 +141,12 @@ export default function Settings() {
           <button
             key={`${h.section.id}-${h.tab?.id ?? ""}`}
             onClick={() => go(h.section.id, h.tab?.id)}
-            className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md text-right ${active ? "bg-navy-900 text-white" : "text-ink-700 hover:bg-ink-50"}`}
+            className={`w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md text-right ${active ? "bg-teal-50 text-teal-700 font-bold" : "text-ink-700 hover:bg-ink-50"}`}
           >
             <h.section.icon size={15} className="shrink-0 mt-0.5" />
             <span className="min-w-0">
               <span className="block text-[13px] font-medium truncate">{h.tab ? `${h.section.label} › ${h.tab.label}` : h.section.label}</span>
-              <span className={`block text-[10.5px] ${active ? "text-white/70" : "text-ink-400"}`}>{h.group}</span>
+              <span className={`block text-[10.5px] ${active ? "text-teal-700/80" : "text-ink-400"}`}>{h.group}</span>
             </span>
           </button>
         );
@@ -153,12 +155,14 @@ export default function Settings() {
   );
 
   // «تنظیمات پروژه» از ۱۴۰۵/۰۷ صفحه‌ی مستقل در منوی «پروژه و فعالیت‌ها» است
-  if (rawSection === "projects") return <Navigate to="/dashboard/project-settings" replace />;
+  if (rawSection === "projects") return <Navigate to="/project-settings" replace />;
+  // «راهبری دسترسی ← نمای کلی»: صفحه‌ی شاخص‌ها و ورود به بخش‌ها (v6.8 10_admin)
+  if (pathname === "/admin" && !rawSection) return <AdminOverview />;
 
   return (
     <div>
       <PageHeader
-        title="مدیریت سامانه"
+        title={pathname.startsWith("/admin") ? "راهبری دسترسی" : "تنظیمات سامانه"}
         description={`در حال مدیریت: ${scopePath(contextId)} — هر بخش فقط برای کسانی دیده می‌شود که در این واحد اختیارش را دارند.`}
         icon={<SettingsIcon size={18} />}
         actions={
@@ -204,7 +208,7 @@ export default function Settings() {
                   const s = g.sections[0];
                   const active = current?.id === s.id;
                   return (
-                    <button key={g.id} onClick={() => go(s.id)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-right ${active ? "bg-navy-900 text-white" : "text-ink-600 hover:bg-ink-50"}`}>
+                    <button key={g.id} onClick={() => go(s.id)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-right ${active ? "bg-teal-50 text-teal-700 font-bold" : "text-ink-600 hover:bg-ink-50"}`}>
                       <s.icon size={15} className="shrink-0" />
                       <span className="truncate">{s.label}</span>
                       {badge(s.count?.(counts), active)}
@@ -222,7 +226,7 @@ export default function Settings() {
                       g.sections.map((s) => {
                         const active = current?.id === s.id;
                         return (
-                          <button key={s.id} onClick={() => go(s.id)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-right ${active ? "bg-navy-900 text-white" : "text-ink-600 hover:bg-ink-50"}`}>
+                          <button key={s.id} onClick={() => go(s.id)} className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-right ${active ? "bg-teal-50 text-teal-700 font-bold" : "text-ink-600 hover:bg-ink-50"}`}>
                             <s.icon size={15} className="shrink-0" />
                             <span className="truncate">{s.label}</span>
                             {badge(s.count?.(counts), active)}

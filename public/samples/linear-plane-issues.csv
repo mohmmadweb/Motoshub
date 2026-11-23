@@ -1,0 +1,5 @@
+ID,Title,Description,Status,Priority,Assignee,Labels,Created,Started,Completed,Canceled,Due Date,Parent issue,Estimate
+KRZ-11,راه‌اندازی داشبورد مصرف آب,,In Progress,High,negar@example.org,"داشبورد, داده",2026-06-01T08:00:00.000Z,2026-06-02T08:00:00.000Z,,,2026-06-18,,5
+KRZ-12,اتصال داده‌ی کنتورها,,Todo,Medium,reza@example.org,داده,2026-06-01T08:10:00.000Z,,,,2026-06-12,KRZ-11,3
+KRZ-13,نمودار مصرف ماهانه,,Done,Low,mahsa@example.org,داشبورد,2026-06-01T08:20:00.000Z,2026-06-03T08:00:00.000Z,2026-06-05T15:00:00.000Z,,2026-06-06,KRZ-11,2
+KRZ-14,خروجی PDF گزارش,,Canceled,No priority,,گزارش,2026-06-01T08:30:00.000Z,,,2026-06-04T10:00:00.000Z,,,1

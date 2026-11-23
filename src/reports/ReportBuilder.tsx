@@ -23,7 +23,7 @@ import {
   Download,
   Save,
   SlidersHorizontal,
-  Sparkles,
+  LayoutTemplate,
   FolderOpen,
   Plus,
   X,
@@ -616,7 +616,7 @@ function printPreview(el: HTMLElement | null, title: string, meta: string) {
 </style></head><body>
 <div class="rp-head"><h1>${esc(title)}</h1><p>${esc(meta)}</p></div>
 <div>${el.innerHTML}</div>
-<div class="rp-foot">تهیه‌شده با گزارش‌ساز موتوشاب</div>
+<div class="rp-foot">تهیه‌شده با گزارش‌ساز کاریز</div>
 </body></html>`);
   w.document.close();
   let done = false;
@@ -1080,7 +1080,7 @@ export function ReportBuilder({ module, defaultSourceId, initialReportId }: Repo
   const panel = <ConfigPanel spec={spec} up={up} sources={sources} source={source} rows={rows} today={today} onSource={onSource} />;
   const tabs = [
     { id: "build" as const, label: "ساخت گزارش", icon: SlidersHorizontal },
-    { id: "presets" as const, label: "قالب‌های آماده", icon: Sparkles, count: presets.length },
+    { id: "presets" as const, label: "قالب‌های آماده", icon: LayoutTemplate, count: presets.length },
     { id: "saved" as const, label: "ذخیره‌شده‌ها", icon: FolderOpen, count: saved.length },
   ];
 

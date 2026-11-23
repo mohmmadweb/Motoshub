@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
-// «هشتگ‌ها» — جدول برچسب‌ها مطابق نسخه‌ی اصلی موتوشاب (/core/tags/):
+// «هشتگ‌ها» — جدول برچسب‌ها مطابق نسخه‌ی اصلی موتوشاب (/social/tags/):
 //   برچسب (# + نام) · تاریخ ایجاد · عملیات (ویرایش/حذف — فقط با taxonomy.manage)
 // نوار ابزار: جستجو، مرتب‌سازی، «برچسب جدید»؛ پایین: شمار + صفحه‌بندی ۱۰تایی.
-// کلیک روی نام برچسب → جستجوی سراسری همان برچسب (/dashboard/search?q=%23tag).
+// کلیک روی نام برچسب → جستجوی سراسری همان برچسب (/globalsearch?q=%23tag).
 // پیوندهای قدیمی ?tag= هم به همان جستجو هدایت می‌شوند.
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState } from "react";
@@ -19,7 +19,7 @@ import { Pager, TableFooter } from "./Members";
 
 const PAGE = 10;
 type Sort = "newest" | "oldest" | "name";
-const searchLink = (name: string) => `/dashboard/search?q=${encodeURIComponent(`#${name}`)}`;
+const searchLink = (name: string) => `/globalsearch?q=${encodeURIComponent(`#${name}`)}`;
 
 export default function TopicsHub() {
   const [params] = useSearchParams();

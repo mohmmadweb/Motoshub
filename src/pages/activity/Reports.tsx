@@ -161,7 +161,7 @@ function ActivityFeed({ person, period }: { person: Person; period: Period }) {
             tone: completed ? "bg-emerald-50 text-emerald-700" : "bg-brand-50 text-brand-700",
             text: l.description,
             meta: p.meta.name,
-            link: `/dashboard/projects/${p.meta.id}`,
+            link: `/projects/${p.meta.id}`,
           });
         });
       p.meetings
@@ -170,7 +170,7 @@ function ActivityFeed({ person, period }: { person: Person; period: Period }) {
         .filter((m) => inP(m.date))
         .forEach((m) => {
           meetings++;
-          items.push({ date: m.date, time: m.time, icon: Video, tone: "bg-navy-50 text-navy-700", text: `جلسه: ${m.title}`, meta: `${p.meta.name} · ${fa(m.duration)} دقیقه`, link: `/dashboard/projects/${p.meta.id}?tab=minutes` });
+          items.push({ date: m.date, time: m.time, icon: Video, tone: "bg-navy-50 text-navy-700", text: `جلسه: ${m.title}`, meta: `${p.meta.name} · ${fa(m.duration)} دقیقه`, link: `/projects/${p.meta.id}?tab=minutes` });
         });
     });
     // مدیریت دانش
@@ -179,13 +179,13 @@ function ActivityFeed({ person, period }: { person: Person; period: Period }) {
       .filter((l) => l.actor === name && inP(l.at))
       .forEach((l) => {
         docs++;
-        items.push({ date: l.at.split(" ")[0], time: timeOf(l.at), icon: BookOpen, tone: "bg-amber-50 text-amber-700", text: `${l.action}: «${l.entity.title}»`, meta: "مدیریت دانش", link: "/dashboard/knowledge" });
+        items.push({ date: l.at.split(" ")[0], time: timeOf(l.at), icon: BookOpen, tone: "bg-amber-50 text-amber-700", text: `${l.action}: «${l.entity.title}»`, meta: "مدیریت دانش", link: "/knowledge" });
       });
     km.docs
       .filter((d) => (d.author === name || d.owner === name) && inP(d.updatedAt) && !km.logs.some((l) => l.actor === name && l.entity.id === d.id))
       .forEach((d) => {
         docs++;
-        items.push({ date: d.updatedAt, time: "", icon: FileText, tone: "bg-amber-50 text-amber-700", text: `سند «${d.title}» (نسخه‌ی ${fa(d.version)}) به‌روز شد`, meta: "مدیریت دانش", link: "/dashboard/knowledge" });
+        items.push({ date: d.updatedAt, time: "", icon: FileText, tone: "bg-amber-50 text-amber-700", text: `سند «${d.title}» (نسخه‌ی ${fa(d.version)}) به‌روز شد`, meta: "مدیریت دانش", link: "/knowledge" });
       });
     // شبکه‌ی اجتماعی
     let posts = 0;
@@ -226,7 +226,7 @@ function ActivityFeed({ person, period }: { person: Person; period: Period }) {
           const ev = social.events.find((e) => e.id === m.event_id);
           if (!ev || !inP(ev.start_date)) return;
           meetings++;
-          items.push({ date: ev.start_date, time: ev.start_time, icon: CalendarCheck, tone: "bg-navy-50 text-navy-700", text: `رویداد: ${ev.title}`, meta: ev.is_online ? "برخط" : ev.location, link: `/dashboard/events/${ev.id}` });
+          items.push({ date: ev.start_date, time: ev.start_time, icon: CalendarCheck, tone: "bg-navy-50 text-navy-700", text: `رویداد: ${ev.title}`, meta: ev.is_online ? "برخط" : ev.location, link: `/events/${ev.id}` });
         });
     }
     items.sort((a, b) => (dayNum(b.date) ?? 0) - (dayNum(a.date) ?? 0) || b.time.localeCompare(a.time));

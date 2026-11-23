@@ -5,7 +5,7 @@
 // + مدت نگهداری تاریخچه‌ی ورود (F07 — تنظیمات امنیت).
 // ---------------------------------------------------------------------------
 import { useState } from "react";
-import { Bot, History, RotateCcw, Save } from "lucide-react";
+import { ShieldQuestion, History, RotateCcw, Save } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -49,7 +49,7 @@ export default function CaptchaSection() {
   return (
     <div className="space-y-4">
       <SectionHead
-        icon={<Bot size={18} />}
+        icon={<ShieldQuestion size={18} />}
         title="کپچا در فرم‌های احراز هویت"
         description="جلوگیری از ورود خودکار بی‌آنکه کاربران عادی اذیت شوند. پیشنهاد: ورود «پس از ۳ تلاش ناموفق» (کپچا از تلاش چهارم)."
         actions={

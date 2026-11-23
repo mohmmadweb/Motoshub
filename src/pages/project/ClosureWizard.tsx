@@ -15,7 +15,6 @@ import { isContributor } from "../../pm/access";
 import { dayNum, fa, fmtRial, fromDayNum } from "../../pm/jalali";
 import type { MemberEvaluation, ProjectClosure, ProjectState } from "../../pm/types";
 import { Field, Progress, useProjectPage } from "./shared";
-import { fundTitle, contractTitle, opportunityTitle } from "./SettingsExtras";
 
 /** انحراف زمان و هزینه — خودکار از داده‌ی پروژه */
 export function computeVariance(p: ProjectState, refDate: string) {
@@ -233,7 +232,7 @@ function ReportBody({ p, refDate }: { p: ProjectState; refDate: string }) {
   const c = p.closure!;
   const done = activeTasks(p).filter((t) => isDone(p, t) && t.type !== "epic").length;
   const total = activeTasks(p).filter((t) => t.type !== "epic").length;
-  const links = [fundTitle(p.meta.fundId) && `صندوق: ${fundTitle(p.meta.fundId)}`, contractTitle(p.meta.contractId) && `قرارداد: ${contractTitle(p.meta.contractId)}`, opportunityTitle(p.meta.opportunityId) && `فرصت پژوهشی: ${opportunityTitle(p.meta.opportunityId)}`, p.meta.companyName && `مجری: ${p.meta.companyName}`].filter(Boolean);
+  const links = [p.meta.companyName && `مجری: ${p.meta.companyName}`].filter(Boolean);
   const avg = c.memberEvals.length ? c.memberEvals.reduce((s, e) => s + e.score, 0) / c.memberEvals.length : 0;
   return (
     <div className="space-y-4 text-ink-800" dir="rtl">
@@ -308,7 +307,7 @@ function ReportBody({ p, refDate }: { p: ProjectState; refDate: string }) {
           ))}
         </section>
       )}
-      <p className="text-[10px] text-ink-400 border-t border-ink-200 pt-2">تهیه‌شده در سامانه‌ی موتوشاب · {refDate}</p>
+      <p className="text-[10px] text-ink-400 border-t border-ink-200 pt-2">تهیه‌شده در سامانه‌ی کاریز · {refDate}</p>
     </div>
   );
 }

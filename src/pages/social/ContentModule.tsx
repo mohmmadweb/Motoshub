@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «مجلات» (مجله + بلاگ) و «اخبار سازمان» — /content/{magazines|blogs|news}/
+// «مجلات» (مجله + بلاگ) و «اخبار سازمان» — /social/{magazines|blogs|news}/
 // فهرست منتشرشده‌ها / پیش‌نویس‌ها، جستجو، فیلتر موضوع و فرم ساخت/ویرایش هم‌شکل
 // Blog/News/MagazineStoreRequest. ویرایشگر (ContentEditor) در صفحه‌ی جزئیات هم استفاده می‌شود.
 // ---------------------------------------------------------------------------
@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Newspaper, Plus, Search, Eye, Megaphone, Send, Save, Undo2, MoreVertical, Pencil, EyeOff, Trash2, User, CalendarDays, ChevronLeft, Settings, FolderTree, BarChart3 } from "lucide-react";
 import Button from "../../components/ui/Button";
-import Modal from "../../components/ui/Modal";
+import Sheet from "../../components/ui/Sheet";
 import EmptyState from "../../components/ui/EmptyState";
 import Toggle from "../../components/ui/Toggle";
 import JalaliDatePicker from "../../components/ui/JalaliDatePicker";
@@ -98,7 +98,7 @@ export function Segmented<T extends string>({ value, onChange, options }: { valu
 
 // ---------------------------------------------------------------- ویرایشگر
 /** مسیر صفحه‌ی جزئیات یک محتوا */
-export const contentPath = (x: Pick<ContentItem, "id" | "kind">) => `/dashboard/${x.kind === "news" ? "news" : x.kind === "blogs" ? "blog" : "magazines"}/${x.id}`;
+export const contentPath = (x: Pick<ContentItem, "id" | "kind">) => `/${x.kind}/${x.id}`;
 export const permPrefix = (k: ContentKind) => (k === "news" ? "news" : k === "blogs" ? "blog" : "magazines");
 
 function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: ContentItem; onDone: (id?: string) => void }) {
@@ -246,18 +246,19 @@ function ContentForm({ kind, item, onDone }: { kind: ContentKind; item?: Content
           انصراف
         </Button>
         <code dir="ltr" className="text-[10.5px] text-ink-400 mr-auto hidden sm:block">
-          {item ? `PATCH /content/${kind}/{id}/` : `POST /content/${kind}/`}
+          {item ? `PATCH /social/${kind}/{id}/` : `POST /social/${kind}/`}
         </code>
       </div>
     </div>
   );
 }
 
-/** مودال ساخت/ویرایش مجله، بلاگ یا خبر (Blog/News/MagazineStoreRequest) */
+/** برگه‌ی کناری ساخت/ویرایش مجله، بلاگ یا خبر (v6.8 08_content_dlg_new) — فیلدها = Blog/News/MagazineStoreRequest
+ *  + اطلاعیه‌ی رسمی «پیشنهادی»؛ بدون انتخابگر «دامنه‌ی انتشار» (به درخواست کاربر حذف شده) */
 export function ContentEditor({ open, onClose, kind, item, onSaved }: { open: boolean; onClose: () => void; kind: ContentKind; item?: ContentItem; onSaved?: (id: string) => void }) {
   const label = contentKindLabel[kind];
   return (
-    <Modal open={open} onClose={onClose} title={item ? `ویرایش ${label}` : `${label} جدید`} description={item ? item.title : undefined} width="max-w-3xl">
+    <Sheet open={open} onClose={onClose} eyebrow={`محتوا · ${label}`} title={item ? `ویرایش ${label}` : `${label} جدید`} width="max-w-[720px]">
       {open && (
         <ContentForm
           key={item?.id ?? "new"}
@@ -269,7 +270,7 @@ export function ContentEditor({ open, onClose, kind, item, onSaved }: { open: bo
           }}
         />
       )}
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -435,11 +436,11 @@ function GearMenu({ onReports }: { onReports: () => void }) {
         <>
           <span className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <span className="absolute z-40 top-full mt-1 right-0 w-56 bg-white border border-ink-200 rounded-lg shadow-lg py-1 block">
-            <Link to="/dashboard/categories" className={item} onClick={() => setOpen(false)}>
+            <Link to="/categories" className={item} onClick={() => setOpen(false)}>
               <FolderTree size={14} /> دسته‌بندی‌ها
             </Link>
             {socialSettings && (
-              <Link to="/dashboard/settings?section=social" className={item} onClick={() => setOpen(false)}>
+              <Link to="/settings?section=social" className={item} onClick={() => setOpen(false)}>
                 <Settings size={14} /> تنظیمات و بازبینی محتوا
               </Link>
             )}

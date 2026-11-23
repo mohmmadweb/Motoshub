@@ -5,7 +5,7 @@ import { DEMO_REF_DATE } from "../pm/seed";
 import { addDays } from "../pm/jalali";
 import { ROOT_ID, type AccessRequest, type Audit, type Binding, type IamState, type Membership, type Role, type ScopeNode, type ScopeType, type SodConfig } from "./model";
 
-export const IAM_VERSION = 3;
+export const IAM_VERSION = 5;
 const D = DEMO_REF_DATE;
 const at = (d: string, t = "۰۹:۰۰") => `${d} ${t}`;
 
@@ -55,10 +55,10 @@ function roles(): Role[] {
       permissions: [...without(["settings.", "tickets.vendor", "companies."], ["iam.impersonate"]), "settings.branding"],
       builtIn: true,
     }),
-    mk({ id: "r2", name: "مدیر محتوا", code: "content-manager", description: base("r2").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r2").permissions, "blog.list", "blog.create", "blog.manage", "calendar.view", "timesheet.log", "tickets.create", "award.list", "award.submit"], builtIn: true }),
-    mk({ id: "r3", name: "مدیر پروژه", code: "project-manager", description: base("r3").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r3").permissions, "blog.list", "blog.create", "calendar.view", "calendar.team", "timesheet.log", "timesheet.team", "timesheet.approve", "timesheet.integrations", "tickets.create", "award.list", "award.submit"], builtIn: true }),
-    mk({ id: "r5", name: "مدیر گروه", code: "group-manager", description: base("r5").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r5").permissions, "blog.list", "blog.create", "calendar.view", "timesheet.log", "tickets.create", "award.list", "award.submit"], builtIn: true }),
-    mk({ id: "r4", name: "کاربر عادی", code: "member", description: base("r4").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r4").permissions, "blog.list", "blog.create", "calendar.view", "timesheet.log", "timesheet.integrations", "tickets.create", "iam.structure.view", "award.list", "award.submit"], builtIn: true }),
+    mk({ id: "r2", name: "مدیر محتوا", code: "content-manager", description: base("r2").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r2").permissions, "blog.list", "blog.create", "blog.manage", "calendar.view", "timesheet.log", "tickets.create"], builtIn: true }),
+    mk({ id: "r3", name: "مدیر پروژه", code: "project-manager", description: base("r3").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r3").permissions, "blog.list", "blog.create", "calendar.view", "calendar.team", "timesheet.log", "timesheet.team", "timesheet.approve", "timesheet.integrations", "tickets.create"], builtIn: true }),
+    mk({ id: "r5", name: "مدیر گروه", code: "group-manager", description: base("r5").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r5").permissions, "blog.list", "blog.create", "calendar.view", "timesheet.log", "tickets.create"], builtIn: true }),
+    mk({ id: "r4", name: "کاربر عادی", code: "member", description: base("r4").description, createdIn: ROOT_ID, allowedTypes: ALL, permissions: [...base("r4").permissions, "blog.list", "blog.create", "calendar.view", "timesheet.log", "timesheet.integrations", "tickets.create", "iam.structure.view"], builtIn: true }),
     // نقش‌های سفارشی که مدیران لایه‌های پایین‌تر ساخته‌اند
     {
       id: "rh-sina-fin",
@@ -178,10 +178,6 @@ export function defaultSod(): SodConfig {
     exemptRoleIds: ["r1"],
     rules: [
       { id: "sod-exp", a: "projects.expenses", b: "projects.expenses.approve", title: "ثبت هزینه و تأیید/پرداخت همان هزینه", mode: "warn", active: true },
-      { id: "sod-contract", a: "contracts.create", b: "contracts.stage", title: "ثبت قرارداد و تغییر مرحله (تأیید) آن", mode: "warn", active: true },
-      { id: "sod-fund", a: "funds.submit", b: "funds.score", title: "ثبت طرح و داوری طرح‌های صندوق", mode: "block", active: true },
-      { id: "sod-fund-alloc", a: "funds.score", b: "funds.allocate", title: "داوری طرح و تخصیص منابع به آن", mode: "warn", active: true },
-      { id: "sod-award", a: "award.submit", b: "award.judge", title: "ارسال اثر به جایزه و داوری آثار", mode: "block", active: true },
       { id: "sod-payroll", a: "timesheet.approve", b: "timesheet.finance", title: "تأیید کارکرد و خروجی حقوق", mode: "warn", active: true },
     ],
   };
@@ -204,8 +200,26 @@ export function seedIam(): IamState {
 export function migrateIam(raw: unknown): IamState | null {
   const s = raw as Partial<IamState> | null;
   if (!s || typeof s !== "object" || !Array.isArray(s.scopes) || !Array.isArray(s.roles)) return null;
-  if (s.version !== 2 && s.version !== IAM_VERSION) return null;
+  if (s.version !== 2 && s.version !== 3 && s.version !== 4 && s.version !== IAM_VERSION) return null;
   const out = { ...s, version: IAM_VERSION, requests: Array.isArray(s.requests) ? s.requests : requests(), sod: s.sod && Array.isArray(s.sod.rules) ? s.sod : defaultSod() } as IamState;
   if (s.version === 2) out.roles = out.roles.map((r) => (r.id === "r7" && !r.permissions.includes("settings.branding") ? { ...r, permissions: [...r.permissions, "settings.branding"] } : r));
+  if ((s.version ?? 0) < 4) {
+    // نسخه‌ی ۴: مجوزهای ماژول‌های تازه (سوالات متداول، مانیتورینگ، دبیرخانه، پرونده مشتریان) به نقش‌های پایه
+    // اضافه و مجوزهایی که دیگر در کاتالوگ نیستند از همه‌ی نقش‌ها برداشته می‌شوند؛ تغییرات دیگر کاربر حفظ می‌شود.
+    const fresh = new Map(roles().map((r) => [r.id, r.permissions]));
+    const NEW = /^(faq|monitoring|secretariat|crm)\./;
+    const known = new Set(allPermissionIds);
+    out.roles = out.roles.map((r) => {
+      const add = r.builtIn ? (fresh.get(r.id) ?? []).filter((p) => NEW.test(p) && !r.permissions.includes(p)) : [];
+      return { ...r, permissions: [...r.permissions.filter((p) => known.has(p)), ...add] };
+    });
+  }
+  if ((s.version ?? 0) < 5) {
+    // نسخه‌ی ۵: بخش «نوآوری و پژوهش» حذف شد — مجوزهای research/contracts/funds/award/training از همه‌ی نقش‌ها
+    // و قواعد تفکیک وظایفی که به آن مجوزها اشاره دارند برداشته می‌شوند؛ تغییرات دیگر کاربر حفظ می‌شود.
+    const GONE = /^(research|contracts|funds|award|training)\./;
+    out.roles = out.roles.map((r) => (r.permissions.some((p) => GONE.test(p)) ? { ...r, permissions: r.permissions.filter((p) => !GONE.test(p)) } : r));
+    out.sod = { ...out.sod, rules: out.sod.rules.filter((x) => !GONE.test(x.a) && !GONE.test(x.b)) };
+  }
   return out;
 }

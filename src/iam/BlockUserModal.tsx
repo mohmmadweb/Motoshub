@@ -34,7 +34,7 @@ export function BlockUserModal({ userId, defaultReason = "", onClose }: { userId
     if (userId === t.realActingUser.id) return setErr("نمی‌توانید حساب خودتان را مسدود کنید.");
     const durationMinutes = kind === "permanent" ? null : dur;
     const b = blockUser({ userId, kind, durationMinutes, reason, by: t.realActingUser.id });
-    inbox.send([u.name], "security", `حساب شما ${blockKindShort[b.kind]} شد${b.until ? ` تا ${b.until}` : " (دائم)"}. دلیل: ${b.reason}`, `/dashboard/profile/${u.id}?tab=security`, { urgent: true, system: true });
+    inbox.send([u.name], "security", `حساب شما ${blockKindShort[b.kind]} شد${b.until ? ` تا ${b.until}` : " (دائم)"}. دلیل: ${b.reason}`, `/profile/${u.id}?tab=security`, { urgent: true, system: true });
     notify(`«${u.name}» ${blockKindShort[b.kind]} شد (${minutesLabel(durationMinutes)}).`, "success");
     onClose();
   };
@@ -105,7 +105,7 @@ export function BlockUserButton({ userId, defaultReason, extraPerm, size = "sm" 
             confirmLabel: "رفع مسدودی",
             onConfirm: () => {
               liftBlock(b.id, t.realActingUser.id);
-              inbox.send([name], "security", "مسدودی حساب شما برداشته شد.", `/dashboard/profile/${userId}?tab=security`, { system: true });
+              inbox.send([name], "security", "مسدودی حساب شما برداشته شد.", `/profile/${userId}?tab=security`, { system: true });
               notify(`مسدودی «${name}» برداشته شد.`, "success");
             },
           })

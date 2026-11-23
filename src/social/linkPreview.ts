@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // «پیشنهادی» — F02 پیش‌نمایش لینک (۱.۲.۶) و F05 تشخیص لینک آپارات (۱.۱۱.۲).
-// شبیه‌ساز GET /core/link-preview/?url=… : واکشی سمت سرور با کش ۲۴ ساعته، فقط http/https.
+// شبیه‌ساز GET /social/link-preview/?url=… : واکشی سمت سرور با کش ۲۴ ساعته، فقط http/https.
 // در دمو یک جدول نمونه‌ی URL → متادیتا (og:title / og:description / og:image) داریم؛
 // نشانی ناشناخته یک کارت حداقلی (دامنه) می‌گیرد و نشانی نامعتبر/در دسترس‌نبودنی «شکست» است.
 // ---------------------------------------------------------------------------
@@ -52,10 +52,13 @@ export function aparatMeta(hash: string): AparatVideo {
 
 // ------------------------------------------------------------------ لینک داخلی سامانه
 export type InternalRef = { kind: "news" | "blog" | "magazines" | "events" | "groups" | "channels" | "media" | "forum"; id: string };
-/** https://demo.shub.ir/#/dashboard/news/{id} و مسیرهای هم‌شکل ← نوع و شناسه‌ی محتوا */
+/** https://demo.shub.ir/#/news/{id} و مسیرهای هم‌شکل ← نوع و شناسه‌ی محتوا */
 export function internalRef(url: string): InternalRef | null {
-  const m = /^https?:\/\/[^/]*shub\.ir\/(?:#\/)?dashboard\/(news|blog|magazines|events|groups|channels|media|forum)\/([^/?#\s]+)/i.exec(url);
-  return m ? { kind: m[1].toLowerCase() as InternalRef["kind"], id: decodeURIComponent(m[2]) } : null;
+  // مسیرهای واقعی (/news، /blogs، /forums، …) و نشانی‌های قدیمی /dashboard/… هر دو شناخته می‌شوند
+  const m = /^https?:\/\/[^/]*shub\.ir\/(?:#\/)?(?:dashboard\/)?(news|blogs?|magazines|events|groups|channels|media|forums?)\/([^/?#\s]+)/i.exec(url);
+  if (!m) return null;
+  const k = m[1].toLowerCase();
+  return { kind: (k === "blogs" ? "blog" : k === "forums" ? "forum" : k) as InternalRef["kind"], id: decodeURIComponent(m[2]) };
 }
 
 // ------------------------------------------------------------------ جدول نمونه‌ی متادیتا

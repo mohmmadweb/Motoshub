@@ -18,7 +18,8 @@ function read(): ReportSpec[] {
   try {
     const raw = localStorage.getItem(KEY);
     const arr = raw ? (JSON.parse(raw) as ReportSpec[]) : [];
-    cache = Array.isArray(arr) ? arr : [];
+    // گزارش‌های بخش حذف‌شده‌ی «نوآوری و پژوهش» کنار گذاشته می‌شوند
+    cache = Array.isArray(arr) ? arr.filter((r) => r && (r.module as string) !== "innovation" && !String(r.sourceId ?? "").startsWith("innovation.")) : [];
   } catch {
     cache = [];
   }

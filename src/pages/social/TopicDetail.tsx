@@ -55,7 +55,7 @@ export default function TopicDetail() {
   /** اعلان «موضوع دنبال‌شده» به دنبال‌کنندگانی که اعلانشان روشن است (به‌جز exclude) */
   const notifyFollowers = (text: string, exclude: string[] = []) => {
     const names = topicFollowerNames(id, [s.me, ...exclude]);
-    if (names.length) inbox.send(names, "topic_follow", text, `/dashboard/forum/${id}`);
+    if (names.length) inbox.send(names, "topic_follow", text, `/forums/${id}`);
   };
 
   const [text, setText] = useState("");
@@ -97,12 +97,12 @@ export default function TopicDetail() {
     <PageHeader
       title={topic && !hidden ? topic.title : "پرسش"}
       icon={<MessagesSquare size={20} />}
-      breadcrumb={[{ label: "پرسش و پاسخ", to: "/dashboard/forum" }, { label: "جزئیات پرسش" }]}
+      breadcrumb={[{ label: "پرسش و پاسخ", to: "/forums" }, { label: "جزئیات پرسش" }]}
       actions={
         <span className="flex items-center gap-1.5 flex-wrap">
           <ApiChip
             items={[
-              { label: "جزئیات پرسش", ep: { method: "GET", path: `/forums/forums/topics/${id}/` } },
+              { label: "جزئیات پرسش", ep: { method: "GET", path: `/social/forums/topics/${id}/` } },
               { label: "پاسخ‌ها", ep: endpoints.topicPosts(id) },
               { label: "ثبت پاسخ", ep: endpoints.postCreate() },
               { label: "ویرایش پاسخ", ep: endpoints.postUpdate("{id}") },
@@ -113,7 +113,7 @@ export default function TopicDetail() {
               { label: "لغو انتشار", ep: endpoints.topicUnpublish(id) },
               { label: "ویرایش پرسش", ep: endpoints.topicUpdate(id) },
               { label: "حذف پرسش", ep: endpoints.topicDelete(id) },
-              { label: "واکنش پرسش", ep: endpoints.reactionToggle("topic") },
+              { label: "واکنش پرسش", ep: endpoints.reactionToggle("forum") },
               { label: "واکنش پاسخ", ep: endpoints.reactionToggle("post") },
               { label: "رأی به پرسش", ep: endpoints.topicVote(id) },
               { label: "رأی به پاسخ", ep: endpoints.postVote("{id}") },
@@ -164,7 +164,7 @@ export default function TopicDetail() {
                         onConfirm: () => {
                           s.deleteTopic(id);
                           notify("پرسش حذف شد.", "success");
-                          navigate("/dashboard/forum");
+                          navigate("/forums");
                         },
                       }),
                   },
@@ -345,7 +345,7 @@ export default function TopicDetail() {
           <Copy size={14} className="shrink-0" />
           <span>این پرسش تکراری است و قفل شده؛ پاسخ را در پرسش اصلی ببینید:</span>
           {dupTarget ? (
-            <Link to={`/dashboard/forum/${dupTarget.id}`} className="font-bold text-brand-700 hover:underline min-w-0 truncate">
+            <Link to={`/forums/${dupTarget.id}`} className="font-bold text-brand-700 hover:underline min-w-0 truncate">
               {dupTarget.title}
             </Link>
           ) : (
@@ -387,7 +387,7 @@ export default function TopicDetail() {
           <TagList tags={topic.tags} />
         </div>
         <div className="flex items-center justify-between gap-2 flex-wrap mt-4 pt-3 border-t border-ink-100">
-          <ReactionBar entity="topic" id={topic.id} />
+          <ReactionBar entity="forum" id={topic.id} />
           <span className="flex items-center gap-3 text-[11.5px] text-ink-500">
             <span className="flex items-center gap-1">
               <Eye size={13} /> {fa(topic.view_count)} بازدید
@@ -403,7 +403,7 @@ export default function TopicDetail() {
           <p className="text-[11.5px] text-ink-500 mt-3 flex items-center gap-1 flex-wrap">
             <Copy size={12} /> {fa(dupChildren.length)} پرسش تکراری به این پرسش پیوند شده:
             {dupChildren.map((d) => (
-              <Link key={d.id} to={`/dashboard/forum/${d.id}`} className="text-brand-700 hover:underline truncate max-w-[220px]">
+              <Link key={d.id} to={`/forums/${d.id}`} className="text-brand-700 hover:underline truncate max-w-[220px]">
                 {d.title}
               </Link>
             ))}

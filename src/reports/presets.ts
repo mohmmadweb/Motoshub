@@ -237,26 +237,6 @@ const members: ReportPreset[] = [
   }),
 ];
 
-const innovation: ReportPreset[] = [
-  P("in-stage", "innovation", "طرح‌های صندوق نوآور بر اساس مرحله", "قیف طرح‌ها از دریافت پروپوزال تا خروج", "innovation.nf", { dimensions: ["stage"], sort: { by: "label", dir: "asc" } }),
-  P("in-budget", "innovation", "مبلغ قراردادها به تفکیک کلان‌محور", "سهم هر کلان‌محور از منابع صندوق", "innovation.nf", { dimensions: ["macroField"], measures: [m("budget", "sum", "m1")], chart: "donut" }),
-  P("in-progress", "innovation", "پیشرفت و پرداخت طرح‌ها", "پیشرفت تأییدشده در برابر پرداخت انجام‌شده", "innovation.nf", {
-    dimensions: ["title"],
-    measures: [m("paid", "sum", "m1", "پرداخت‌شده"), m("remaining", "sum", "m2", "باقی‌مانده")],
-    chart: "stackedBar",
-  }),
-  P("in-contracts", "innovation", "قراردادهای فناورانه بر اساس مرحله", "تعداد و ارزش قراردادها در هر مرحله", "innovation.contracts", {
-    dimensions: ["stage"],
-    measures: [count(), m("value", "sum", "m2")],
-    sort: { by: "label", dir: "asc" },
-  }),
-  P("in-research", "innovation", "متقاضیان فرصت‌های پژوهشی به تفکیک حوزه", "استقبال از فراخوان‌ها", "innovation.research", { dimensions: ["field"], measures: [m("applicants", "sum", "m1")] }),
-  P("in-kpi", "innovation", "شاخص‌های کلیدی صندوق نوآور", "تعداد طرح، مبلغ قرارداد، پرداخت و میانگین پیشرفت", "innovation.nf", {
-    measures: [count(), m("budget", "sum", "m2"), m("paid", "sum", "m3"), m("progress", "avg", "m4")],
-    chart: "kpi",
-  }),
-];
-
 const timesheet: ReportPreset[] = [
   P("ts-project", "timesheet", "ساعات به تفکیک پروژه", "جمع ساعت ثبت‌شده روی هر پروژه", "projects.timeLogs", { dimensions: ["project"], measures: [m("hours", "sum", "m1")] }),
   P("ts-person", "timesheet", "ساعات به تفکیک فرد", "جمع ساعت ثبت‌شده‌ی هر نفر", "projects.timeLogs", { dimensions: ["member"], measures: [m("hours", "sum", "m1")], limit: 12, others: true }),
@@ -311,4 +291,4 @@ const tickets: ReportPreset[] = [
   }),
 ];
 
-export const PRESETS: Record<ReportModule, ReportPreset[]> = { projects, knowledge, social, content, events, members, innovation, timesheet, tickets };
+export const PRESETS: Record<ReportModule, ReportPreset[]> = { projects, knowledge, social, content, events, members, timesheet, tickets };

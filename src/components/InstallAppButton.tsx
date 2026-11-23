@@ -20,7 +20,7 @@ export default function InstallAppButton({ compact = false, className = "" }: { 
   const onClick = async () => {
     if (state.canPrompt) {
       const r = await promptInstall();
-      if (r === "accepted") notify("موتوشاب روی دستگاه شما نصب شد.", "success");
+      if (r === "accepted") notify("کاریز روی دستگاه شما نصب شد.", "success");
       return;
     }
     setHelp(true);
@@ -29,8 +29,8 @@ export default function InstallAppButton({ compact = false, className = "" }: { 
   return (
     <>
       {compact ? (
-        <button onClick={onClick} className={`inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand-700 hover:text-brand-800 ${className}`}>
-          <Download size={14} /> نصب اپلیکیشن
+        <button onClick={onClick} className={`flex items-center gap-2.5 text-[14px] text-ink-800 hover:bg-ink-50 text-start ${className}`}>
+          <Download size={18} className="text-ink-500" /> نصب اپلیکیشن
         </button>
       ) : (
         <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={onClick} className={className}>
@@ -38,7 +38,7 @@ export default function InstallAppButton({ compact = false, className = "" }: { 
         </Button>
       )}
 
-      <Modal open={help} onClose={() => setHelp(false)} title="نصب موتوشاب روی دستگاه" description="موتوشاب مثل یک اپلیکیشن روی صفحه‌ی اصلی می‌نشیند و تمام‌صفحه باز می‌شود.">
+      <Modal open={help} onClose={() => setHelp(false)} title="نصب کاریز روی دستگاه" description="کاریز مثل یک اپلیکیشن روی صفحه‌ی اصلی می‌نشیند و تمام‌صفحه باز می‌شود.">
         {state.ios ? (
           <ol className="space-y-3 text-[13px] text-ink-700 leading-6">
             <li className="flex items-start gap-2.5">
@@ -55,7 +55,7 @@ export default function InstallAppButton({ compact = false, className = "" }: { 
             </li>
             <li className="flex items-start gap-2.5">
               <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0 text-[12px] font-bold">۳</span>
-              <span>نام «موتوشاب» را تأیید کنید و «Add» را بزنید.</span>
+              <span>نام «کاریز» را تأیید کنید و «Add» را بزنید.</span>
             </li>
           </ol>
         ) : (
@@ -68,7 +68,7 @@ export default function InstallAppButton({ compact = false, className = "" }: { 
             </li>
             <li className="flex items-start gap-2.5">
               <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0 text-[12px] font-bold">۲</span>
-              <span>«نصب موتوشاب» یا «Install app / Add to Home screen» را انتخاب کنید.</span>
+              <span>«نصب کاریز» یا «Install app / Add to Home screen» را انتخاب کنید.</span>
             </li>
             <li className="text-[12px] text-ink-500">اگر این گزینه دیده نمی‌شود، مرورگر شما از نصب اپ وب پشتیبانی نمی‌کند (مثلاً Firefox دسکتاپ).</li>
           </ol>

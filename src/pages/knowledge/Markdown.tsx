@@ -3,7 +3,7 @@
 // جستجو و نمای مقایسه‌ی متنی نسخه‌ها.
 // ---------------------------------------------------------------------------
 import { Fragment, useRef, useState, type ReactNode } from "react";
-import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Table, Code, Quote, Eye, PenLine, Columns2 } from "lucide-react";
+import { Bold, Italic, Heading2, Heading3, List, ListOrdered, ListChecks, Link2, Table, Code, Quote, Info, Image, Eye, PenLine, Columns2, Square, SquareCheck } from "lucide-react";
 import { diffLines, matchRanges } from "../../km/text";
 import { fa } from "../../pm/jalali";
 import MentionTextarea from "../social/composer/MentionTextarea";
@@ -32,24 +32,27 @@ const safeHref = (u: string) => (/^(https?:\/\/|#|\/)/.test(u.trim()) ? u.trim()
 
 function inline(text: string, terms: string[], key = "i"): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\))/g;
+  const re = /(!\[([^\]]*)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\))/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let n = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(<Highlight key={`${key}t${n++}`} text={text.slice(last, m.index)} terms={terms} />);
-    if (m[2]) out.push(<strong key={`${key}b${n++}`} className="font-bold text-ink-900"><Highlight text={m[2]} terms={terms} /></strong>);
-    else if (m[3]) out.push(<em key={`${key}e${n++}`}><Highlight text={m[3]} terms={terms} /></em>);
-    else if (m[4]) out.push(<code key={`${key}c${n++}`} className="text-[0.85em] bg-ink-100 text-ink-800 rounded px-1 py-0.5" dir="ltr">{m[4]}</code>);
-    else if (m[5]) {
-      const href = safeHref(m[6]);
+    if (m[3] !== undefined && m[0].startsWith("!")) {
+      const src = safeHref(m[3]);
+      out.push(src ? <img key={`${key}g${n++}`} src={src} alt={m[2]} className="max-w-full rounded-[10px] border border-ink-100 my-1" loading="lazy" /> : <span key={`${key}g${n++}`}>{m[2]}</span>);
+    } else if (m[4]) out.push(<strong key={`${key}b${n++}`} className="font-bold text-ink-900"><Highlight text={m[4]} terms={terms} /></strong>);
+    else if (m[5]) out.push(<em key={`${key}e${n++}`}><Highlight text={m[5]} terms={terms} /></em>);
+    else if (m[6]) out.push(<code key={`${key}c${n++}`} className="text-[0.85em] bg-ink-100 text-ink-800 rounded px-1 py-0.5" dir="ltr">{m[6]}</code>);
+    else if (m[7]) {
+      const href = safeHref(m[8]);
       out.push(
         href ? (
           <a key={`${key}a${n++}`} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="text-brand-700 underline underline-offset-2 hover:text-brand-600">
-            <Highlight text={m[5]} terms={terms} />
+            <Highlight text={m[7]} terms={terms} />
           </a>
         ) : (
-          <span key={`${key}a${n++}`}>{m[5]}</span>
+          <span key={`${key}a${n++}`}>{m[7]}</span>
         )
       );
     }
@@ -160,12 +163,28 @@ export function MarkdownView({ md, terms = [], className = "" }: { md: string; t
             );
           case "p":
             return <p key={k}>{inline(b.text, terms, k)}</p>;
-          case "ul":
-            return (
+          case "ul": {
+            // چک‌لیست: «- [ ] مورد» / «- [x] مورد»
+            const checks = b.items.every((it) => /^\[( |x|X)\]\s/.test(it));
+            return checks ? (
+              <ul key={k} className="space-y-1">
+                {b.items.map((it, j) => {
+                  const done = /^\[(x|X)\]/.test(it);
+                  const Icon = done ? SquareCheck : Square;
+                  return (
+                    <li key={j} className="flex items-start gap-2">
+                      <Icon size={16} className={`shrink-0 mt-1.5 ${done ? "text-teal-700" : "text-ink-400"}`} aria-label={done ? "انجام‌شده" : "انجام‌نشده"} />
+                      <span className={done ? "line-through text-ink-500" : ""}>{inline(it.replace(/^\[( |x|X)\]\s/, ""), terms, `${k}-${j}`)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
               <ul key={k} className="list-disc pr-5 space-y-1">
                 {b.items.map((it, j) => <li key={j}>{inline(it, terms, `${k}-${j}`)}</li>)}
               </ul>
             );
+          }
           case "ol":
             return (
               <ol key={k} className="list-decimal pr-5 space-y-1">
@@ -195,8 +214,21 @@ export function MarkdownView({ md, terms = [], className = "" }: { md: string; t
                 <code>{b.text}</code>
               </pre>
             );
-          case "quote":
+          case "quote": {
+            // کادر نکته: «> [!عنوان] متن»
+            const co = /^\[!([^\]]+)\]\s*(.*)$/.exec(b.text);
+            if (co)
+              return (
+                <div key={k} className="flex gap-3 rounded-[10px] border border-info/40 bg-info-soft px-3.5 py-3 text-info-fg">
+                  <Info size={18} className="shrink-0 mt-1" />
+                  <div>
+                    <p className="font-bold">{co[1]}</p>
+                    <p className="text-ink-700">{inline(co[2], terms, k)}</p>
+                  </div>
+                </div>
+              );
             return <blockquote key={k} className="border-r-4 border-brand-300 bg-brand-50/50 rounded-l-lg px-3 py-2 text-ink-700">{inline(b.text, terms, k)}</blockquote>;
+          }
           case "hr":
             return <hr key={k} className="border-ink-200" />;
         }
@@ -208,17 +240,21 @@ export function MarkdownView({ md, terms = [], className = "" }: { md: string; t
 
 // ------------------------------------------------------------------ ویرایشگر
 type Tool = { icon: typeof Bold; label: string; run: (sel: string) => { text: string; block?: boolean } };
+// ترتیب نوار ابزار ویرایشگر v6.8: پررنگ، مورب، عنوان، فهرست، چک‌لیست، نقل‌قول، کادر نکته، جدول، پیوند، تصویر (+ کد)
 const tools: Tool[] = [
-  { icon: Heading2, label: "عنوان", run: (s) => ({ text: `## ${s || "عنوان بخش"}`, block: true }) },
-  { icon: Heading3, label: "زیرعنوان", run: (s) => ({ text: `### ${s || "زیرعنوان"}`, block: true }) },
   { icon: Bold, label: "پررنگ", run: (s) => ({ text: `**${s || "متن پررنگ"}**` }) },
   { icon: Italic, label: "مورب", run: (s) => ({ text: `*${s || "متن مورب"}*` }) },
+  { icon: Heading2, label: "عنوان", run: (s) => ({ text: `## ${s || "عنوان بخش"}`, block: true }) },
+  { icon: Heading3, label: "زیرعنوان", run: (s) => ({ text: `### ${s || "زیرعنوان"}`, block: true }) },
   { icon: List, label: "فهرست", run: (s) => ({ text: (s || "مورد اول\nمورد دوم").split("\n").map((l) => `- ${l}`).join("\n"), block: true }) },
   { icon: ListOrdered, label: "فهرست شماره‌دار", run: (s) => ({ text: (s || "گام اول\nگام دوم").split("\n").map((l, i) => `${i + 1}. ${l}`).join("\n"), block: true }) },
-  { icon: Link2, label: "پیوند", run: (s) => ({ text: `[${s || "متن پیوند"}](https://)` }) },
+  { icon: ListChecks, label: "چک‌لیست", run: (s) => ({ text: (s || "کار اول\nکار دوم").split("\n").map((l) => `- [ ] ${l}`).join("\n"), block: true }) },
+  { icon: Quote, label: "نقل‌قول", run: (s) => ({ text: `> ${s || "نقل‌قول"}`, block: true }) },
+  { icon: Info, label: "کادر نکته", run: (s) => ({ text: `> [!قاعده‌ی ساده] ${s || "متن نکته"}`, block: true }) },
   { icon: Table, label: "جدول", run: () => ({ text: "| ستون ۱ | ستون ۲ |\n|---|---|\n| مقدار | مقدار |", block: true }) },
+  { icon: Link2, label: "پیوند", run: (s) => ({ text: `[${s || "متن پیوند"}](https://)` }) },
+  { icon: Image, label: "تصویر", run: (s) => ({ text: `![${s || "توضیح تصویر"}](https://)` }) },
   { icon: Code, label: "کد", run: (s) => (s.includes("\n") || !s ? { text: `\`\`\`\n${s || "کد"}\n\`\`\``, block: true } : { text: `\`${s}\`` }) },
-  { icon: Quote, label: "نقل‌قول / نکته", run: (s) => ({ text: `> ${s || "نکته‌ی مهم"}`, block: true }) },
 ];
 
 /** ویرایشگر مقاله با نوار ابزار و پیش‌نمایش زنده */
@@ -284,7 +320,7 @@ export function MarkdownEditor({ value, onChange, minHeight = 260 }: { value: st
           </div>
         )}
       </div>
-      <p className="text-[10.5px] text-ink-400 px-3 py-1 border-t border-ink-100 bg-ink-50/60">{fa(words)} واژه · Markdown ساده (عنوان، فهرست، پررنگ، پیوند، جدول، کد)</p>
+      <p className="text-[10.5px] text-ink-400 px-3 py-1 border-t border-ink-100 bg-ink-50/60">{fa(words)} واژه · Markdown ساده (عنوان، فهرست، چک‌لیست، کادر نکته، پررنگ، پیوند، تصویر، جدول، کد)</p>
     </div>
   );
 }

@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
-// پیش‌نمایش فایل + تاریخچه‌ی نسخه‌ها + لینک اشتراک با انقضا («پیشنهادی» — در API فعلی نیست).
+// برگه‌ی کناری سند (v6.8 07_docs_sheet_doc): پیش‌نمایش + تاریخچه‌ی نسخه‌ها + لینک اشتراک با انقضا و رمز اختیاری
+// + لینک داخلی + فعالیت (الگوی Seafile؛ «پیشنهادی» — در API فعلی نیست).
 // در پروتوتایپ محتوای واقعی فایل وجود ندارد؛ پیش‌نمایش با جای‌نگهدار متناسب با نوع فایل رسم می‌شود.
 // ---------------------------------------------------------------------------
 import { useRef, useState } from "react";
-import { Download, Star, History, Link2, Eye, Copy, Upload, RotateCcw, Image as ImageIcon, FileText, FileSpreadsheet, Ban, Clock, Activity, Pencil, Check, X, Users } from "lucide-react";
-import Modal from "../../../components/ui/Modal";
+import { Download, Star, History, Link2, Eye, Copy, Upload, RotateCcw, Image as ImageIcon, FileText, FileSpreadsheet, Ban, Clock, Activity, Pencil, Check, X, Users, KeyRound, Link as LinkIcon } from "lucide-react";
+import Sheet from "../../../components/ui/Sheet";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
 import { useToast } from "../../../components/ui/ToastProvider";
@@ -54,6 +55,8 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   const [allowDl, setAllowDl] = useState(true);
   const [people, setPeople] = useState<string[]>([]);
   const [pickPeople, setPickPeople] = useState(false);
+  const [usePass, setUsePass] = useState(false);
+  const [password, setPassword] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState("");
   const verInput = useRef<HTMLInputElement>(null);
@@ -81,14 +84,17 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
     setRenaming(false);
     notify("نام فایل تغییر کرد.", "success");
   };
-  const copy = async () => {
+  const copyText = async (text: string, done = "لینک کپی شد.") => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      notify("لینک کپی شد.", "success");
+      await navigator.clipboard.writeText(text);
+      notify(done, "success");
     } catch {
-      notify(`لینک: ${shareUrl}`, "info");
+      notify(`لینک: ${text}`, "info");
     }
   };
+  const copy = () => copyText(shareUrl);
+  // لینک داخلی: فقط برای کاربرانِ واردشده‌ای که اجازه‌ی خواندن این درایو را دارند کار می‌کند
+  const internalUrl = `${window.location.origin}${window.location.pathname}#/files?${f.owner_type === "user" ? "" : `owner=${f.owner_type}:${f.owner_id}&`}file=${f.id}`;
 
   const tabs: { id: Tab; label: string; icon: typeof Eye }[] = [
     { id: "preview", label: "پیش‌نمایش", icon: Eye },
@@ -98,7 +104,7 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
   ];
 
   return (
-    <Modal open onClose={onClose} title={f.name} description={`${f.size} · نسخه‌ی ${fa(f.version ?? 1)} · ${s.userName(f.created_by_user_id)} · ${stamp(f.created_at)}`} width="max-w-3xl">
+    <Sheet open onClose={onClose} title={f.name} eyebrow={`سند · ${f.size} · نسخه‌ی ${fa(f.version ?? 1)} · ${s.userName(f.created_by_user_id)} · ${stamp(f.created_at)}`} width="max-w-[640px]">
       <div className="space-y-4">
         {canWrite && (
           renaming ? (
@@ -279,6 +285,13 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
         {/* ---------------------------------------------------- اشتراک لینک */}
         {tab === "share" && (
           <div className="space-y-3">
+            <div className="rounded-lg border border-ink-100 p-3 flex items-center gap-2 flex-wrap">
+              <LinkIcon size={14} className="text-ink-400 shrink-0" />
+              <span className="text-[12px] text-ink-600 flex-1 min-w-[12rem]">لینک داخلی — فقط همکارانی که به این درایو دسترسی دارند باز می‌کنند.</span>
+              <Button size="sm" variant="outline" icon={<Copy size={13} />} onClick={() => copyText(internalUrl, "لینک داخلی کپی شد.")} title={fmtEndpoint(endpoints.fileInternalLink(f.owner_type, f.owner_id, f.id))}>
+                کپی لینک داخلی
+              </Button>
+            </div>
             {f.share && alive ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-2.5">
                 <div className="flex items-center gap-2">
@@ -289,6 +302,11 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
                 </div>
                 <p className="text-[11.5px] text-ink-600 flex items-center gap-1 flex-wrap">
                   <Clock size={12} /> معتبر تا {f.share.expires_on} ({daysLeft > 0 ? `${fa(daysLeft)} روز مانده` : "امروز منقضی می‌شود"}) · {f.share.allow_download ? "مشاهده و دریافت" : "فقط مشاهده"}
+                  {f.share.has_password && (
+                    <span className="flex items-center gap-0.5">
+                      · <KeyRound size={12} /> رمزدار
+                    </span>
+                  )}
                 </p>
                 {!!f.share.shared_with?.length && (
                   <p className="text-[11.5px] text-ink-600 flex items-start gap-1">
@@ -329,12 +347,18 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
                   <input type="checkbox" checked={pickPeople} onChange={(e) => setPickPeople(e.target.checked)} className="accent-[var(--color-brand-600)]" /> اشتراک با افراد مشخص (در «اشتراک‌گذاشته با من» آن‌ها می‌آید و اعلان می‌گیرند)
                 </label>
                 {pickPeople && <UserPicker value={people} onChange={setPeople} exclude={[s.me]} placeholder="جستجوی همکار…" />}
+                <label className="flex items-center gap-2 text-xs text-ink-700">
+                  <input type="checkbox" checked={usePass} onChange={(e) => setUsePass(e.target.checked)} className="accent-[var(--color-brand-600)]" /> محافظت با رمز
+                </label>
+                {usePass && <input type="password" className="input-field !py-1.5 max-w-xs" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز لینک (حداقل ۴ نویسه)" aria-label="رمز لینک" autoComplete="new-password" />}
                 <Button
                   size="sm"
                   variant="primary"
                   icon={<Link2 size={13} />}
                   onClick={() => {
-                    const sh = s.createShare(f.id, days, allowDl, pickPeople ? people : []);
+                    if (usePass && password.trim().length < 4) return notify("رمز لینک باید دست‌کم ۴ نویسه باشد.", "warning");
+                    const sh = s.createShare(f.id, days, allowDl, pickPeople ? people : [], usePass ? password : undefined);
+                    setPassword("");
                     if (sh) notify(sh.shared_with?.length ? `با ${fa(sh.shared_with.length)} نفر تا ${sh.expires_on} به اشتراک گذاشته شد.` : `لینک تا ${sh.expires_on} ساخته شد.`, "success");
                   }}
                 >
@@ -370,6 +394,6 @@ export default function FilePreview({ fileId, canWrite, onClose }: { fileId: str
           </div>
         )}
       </div>
-    </Modal>
+    </Sheet>
   );
 }

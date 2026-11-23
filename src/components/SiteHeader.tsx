@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Users, Menu, X } from "lucide-react";
+import { MessagesSquare, NotebookPen, CalendarDays, Image as ImageIcon, BookOpen, Newspaper, Users, Menu, X, MessageCircleQuestion } from "lucide-react";
 import { useContent } from "../context/ContentContext";
+import { useSocial } from "../context/SocialContext";
 
 // ترتیب طبق بازبینی UX: صفحه اصلی | امکانات | امنیت | انجمن | بلاگ | پایگاه دانش | رویدادها | تصاویر و ویدیو | اخبار | گروه‌ها
 const pageLinks = [
@@ -18,6 +19,7 @@ const moduleLinks = [
   { section: "media", label: "تصاویر و ویدیو", icon: ImageIcon },
   { section: "news", label: "اخبار", icon: Newspaper },
   { section: "groups", label: "گروه‌ها", icon: Users },
+  { section: "faqs", label: "سوالات متداول", icon: MessageCircleQuestion },
 ] as const;
 
 export default function SiteHeader() {
@@ -25,6 +27,7 @@ export default function SiteHeader() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems, groups } = useContent();
+  const { faqs } = useSocial();
 
   const publicCounts: Record<(typeof moduleLinks)[number]["section"], number> = {
     forum: forumTopics.filter((t) => t.visibility === "عمومی").length,
@@ -34,6 +37,7 @@ export default function SiteHeader() {
     knowledge: knowledgeDocs.filter((d) => d.visibility === "عمومی").length,
     news: newsItems.filter((n) => n.visibility === "عمومی").length,
     groups: groups.filter((g) => g.privacy === "عمومی").length,
+    faqs: faqs.filter((f) => f.is_public && !f.is_draft && !f.deleted_at).length,
   };
 
   const goToSection = (id: string) => {
@@ -59,6 +63,8 @@ export default function SiteHeader() {
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
           <img src="/bonyad-logo.png" alt="بنیاد مستضعفان انقلاب اسلامی" className="h-9 w-auto" />
           <span className="font-bold text-ink-900 sr-only">بنیاد مستضعفان</span>
+          {/* نام محصول — برند سازمان (لوگو) حفظ می‌شود */}
+          <span className="hidden sm:inline border-r border-ink-200 pr-2.5 text-[15px] font-extrabold text-teal-700">کاریز</span>
         </Link>
 
         <nav className="hidden xl:flex items-center gap-0.5 flex-1 justify-center" aria-label="ناوبری اصلی">

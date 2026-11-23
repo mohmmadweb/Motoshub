@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// جزئیات پست رسانه — /media/media/posts/{id}/
+// جزئیات پست رسانه — /social/media/posts/{id}/
 // نمایشگر بزرگ (آلبوم با نوار بندانگشتی)، کپشن، واکنش‌ها، نظرها و اقدام‌های صاحب/مدیر.
 // ---------------------------------------------------------------------------
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Image as ImageIcon, Lock, Pencil, Trash2, Send, EyeOff, Play, ChevronRight, ChevronLeft } from "lucide-react";
+import { Image as ImageIcon, Lock, Pencil, Trash2, Send, EyeOff, Play, ChevronRight, ChevronLeft, RotateCcw } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -30,13 +30,14 @@ export default function MediaDetail() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [idx, setIdx] = useState(0);
+  const [speed, setSpeed] = useState(1);
 
   const m = s.media.find((x) => x.id === id);
   const manager = hasPermission("media.manage");
   const owner = !!m && m.user_id === s.me;
   const canEdit = owner || manager;
   const allowed = !!m && s.canView(m, manager) && ((m.is_public && !m.is_draft) || canEdit);
-  const crumbs = [{ label: "شبکه اجتماعی" }, { label: "رسانه", to: "/dashboard/media" }];
+  const crumbs = [{ label: "شبکه اجتماعی" }, { label: "رسانه", to: "/media" }];
   // «پیشنهادی» — ثبت بازدید هر کاربر برای آمار پست (یک بار در هر بار باز شدن)
   const viewed = useRef<string | null>(null);
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function MediaDetail() {
       onConfirm: () => {
         s.deleteMedia(m.id);
         notify("پست رسانه حذف شد.", "info");
-        navigate("/dashboard/media");
+        navigate("/media");
       },
     });
   const step = (d: number) => setIdx((i) => (i + d + files.length) % files.length);
@@ -92,7 +93,7 @@ export default function MediaDetail() {
           <>
             <ApiChip
               items={[
-                { label: "جزئیات پست", ep: { method: "GET", path: `/media/media/posts/${m.id}/` } },
+                { label: "جزئیات پست", ep: { method: "GET", path: `/social/media/posts/${m.id}/` } },
                 { label: "ویرایش", ep: endpoints.mediaUpdate(m.id) },
                 { label: "انتشار", ep: endpoints.mediaPublish(m.id) },
                 { label: "لغو انتشار", ep: endpoints.mediaUnpublish(m.id) },
@@ -170,6 +171,29 @@ export default function MediaDetail() {
                 )}
               </div>
             </Poster>
+            {showsVideo && (
+              // پخش ویدیو: سرعت و پخش از ابتدا (سمت کاربر — MATRIX §6–9)
+              <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--color-border)]">
+                <Button size="sm" variant="ghost" icon={<RotateCcw size={14} />} onClick={() => notify("ویدیو از ابتدا پخش می‌شود.", "info")}>
+                  از ابتدا
+                </Button>
+                <span className="text-[12px] text-ink-500 mr-auto">سرعت پخش:</span>
+                <span className="flex items-center gap-1" role="radiogroup" aria-label="سرعت پخش">
+                  {[0.5, 1, 1.25, 1.5, 2].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      role="radio"
+                      aria-checked={speed === r}
+                      onClick={() => setSpeed(r)}
+                      className={`h-7 px-2 rounded-full border text-[12px] tabular-nums ${speed === r ? "bg-teal-50 border-teal-700 text-teal-700 font-bold" : "border-ink-200 text-ink-600 hover:bg-ink-50"}`}
+                    >
+                      {r.toLocaleString("fa-IR")}×
+                    </button>
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
           )}
 

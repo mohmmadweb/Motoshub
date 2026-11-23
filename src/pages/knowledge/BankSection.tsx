@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
-import { FileText, Upload, FolderTree, Search, SlidersHorizontal, Paperclip, Eye, Star, X, Bell, BellOff } from "lucide-react";
+import { FileText, Upload, FolderTree, Search, SlidersHorizontal, Paperclip, Eye, Star, X, Bell, BellOff, List as ListIcon, LayoutGrid, Building2, Network, Layers, ChevronRight, ChevronLeft } from "lucide-react";
+import Pill from "../../components/ui/Pill";
+import { kmEndpoints, kmPage, scopeOf, visibilityLabel, visibilityOf, type KnowledgeScopeApi } from "../../km/api";
+import type { KDoc } from "../../km/types";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { useTenancy } from "../../context/TenancyContext";
@@ -23,6 +26,11 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
   const [cat, setCat] = useState("");
   const [sort, setSort] = useState<"recent" | "views" | "title" | "rating">("recent");
   const [logged, setLogged] = useState("");
+  const [view, setView] = useState<"list" | "spaces">("list");
+  const [space, setSpace] = useState("");
+  const [pageNo, setPageNo] = useState(1);
+  const { holdings, companies } = useTenancy();
+  const spaceOf = (d: KDoc) => scopeOf(d, { holdings, companies });
 
   const visible = filterScoped(km.docs).filter((d) => d.status !== "آرشیو" && km.canSee(d) && (d.status === "منتشرشده" || d.owner === km.me || d.author === km.me || km.isApprover(d)));
 
@@ -30,6 +38,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
     const catIds = cat ? [cat, ...km.categories.filter((c) => c.parentId === cat).map((c) => c.id)] : [];
     const q = f.q.trim();
     let ds = visible.filter((d) => {
+      if (space && spaceOf(d).id !== space) return false;
       if (catIds.length && !catIds.includes(d.categoryId)) return false;
       // نرمال‌سازی فارسی: ی/ي، ک/ك، نیم‌فاصله، ارقام و اعراب
       if (q && !matchesAll(docSearchText(d, f.content), queryTerms(q))) return false;
@@ -53,7 +62,22 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
     if (sort === "recent") ds = [...ds].sort((a, b) => (dayNum(b.updatedAt) ?? 0) - (dayNum(a.updatedAt) ?? 0));
     return ds;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, f, cat, sort]);
+  }, [visible, f, cat, sort, space]);
+  // فهرست به شکل پاسخ GET knowledge/documents/ (پاکت workspace، ۲۵ تایی)
+  const paged = kmPage(list, kmEndpoints.documents, { page: pageNo, page_size: 25 });
+  // «فضاها»: گروه‌بندی فقط‌خواندنی اسناد بر اساس scope واقعی (کل سازمان، هلدینگ، شرکت)
+  const spaces = useMemo(() => {
+    const m = new Map<string, { scope: KnowledgeScopeApi; docs: KDoc[] }>();
+    visible.forEach((d) => {
+      const sc = spaceOf(d);
+      const cur = m.get(sc.id) ?? { scope: sc, docs: [] };
+      cur.docs.push(d);
+      m.set(sc.id, cur);
+    });
+    return [...m.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, holdings, companies]);
+  const spaceName = spaces.find((x) => x.scope.id === space)?.scope.name;
 
   const activeCount = Object.entries(f).filter(([k, v]) => k !== "q" && k !== "content" && v).length;
   const roots = km.categories.filter((c) => !c.parentId);
@@ -103,8 +127,28 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
           <option value="rating">بیشترین امتیاز</option>
           <option value="title">عنوان</option>
         </select>
-        <span className="text-xs text-ink-400">{fa(list.length)} سند</span>
+        <select className="input-field !py-2 !text-xs !w-auto" value={space} onChange={(e) => { setSpace(e.target.value); setPageNo(1); }} aria-label="فضا">
+          <option value="">همه‌ی فضاها</option>
+          {spaces.map((x) => (
+            <option key={x.scope.id} value={x.scope.id}>
+              {x.scope.name}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-ink-500">{fa(list.length)} سند</span>
+        <span className="mr-auto flex items-center gap-1.5">
+          <Pill pressed={view === "list"} icon={<ListIcon size={14} />} onClick={() => setView("list")}>فهرست</Pill>
+          <Pill pressed={view === "spaces"} icon={<LayoutGrid size={14} />} count={spaces.length} onClick={() => setView("spaces")}>فضاها</Pill>
+        </span>
       </div>
+      {space && (
+        <p className="text-[12.5px] text-ink-500 mb-3 flex items-center gap-1.5">
+          فضای «{spaceName}»
+          <button onClick={() => setSpace("")} className="text-[var(--color-link)] hover:underline flex items-center gap-0.5">
+            <X size={12} /> همه‌ی فضاها
+          </button>
+        </p>
+      )}
 
       {showAdv && (
         <div className="card p-3 mb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -163,6 +207,9 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
         </div>
       )}
 
+      {view === "spaces" ? (
+        <SpacesView spaces={spaces} me={km.me} onOpen={(id) => { setSpace(id); setView("list"); setPageNo(1); }} />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
         <aside className="card p-3 self-start">
           <p className="text-xs font-bold text-ink-600 mb-2">دسته‌بندی‌ها</p>
@@ -203,7 +250,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
               </tr>
             </thead>
             <tbody>
-              {list.map((d) => {
+              {paged.data.map((d) => {
                 const t = km.docTypes.find((x) => x.name === d.type);
                 return (
                   <tr key={d.id} className="border-b border-ink-100 hover:bg-ink-50 cursor-pointer" onClick={() => page.openDoc(d.id)}>
@@ -224,7 +271,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
                     </td>
                     <td className="p-3">
                       <span className="inline-flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full" style={{ background: t?.color ?? "#94a3b8" }} /> {d.type}
+                        <span className="w-2 h-2 rounded-full" style={{ background: t?.color ?? "var(--color-ink-400)" }} /> {d.type}
                       </span>
                     </td>
                     <td className="p-3 text-ink-600">
@@ -236,7 +283,7 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
                       <Badge tone={statusTone[d.status]}>{d.status}</Badge>
                     </td>
                     <td className="p-3">
-                      <Badge tone={accessTone[d.access]}>{d.access}</Badge>
+                      <Badge tone={accessTone[d.access]} title={`visibility: ${visibilityOf(d.access)} (${visibilityLabel[visibilityOf(d.access)]}) · طبقه‌بندی «پیشنهادی»: ${d.access}`}>{d.access}</Badge>
                     </td>
                     <td className="p-3 text-ink-500">{d.updatedAt}</td>
                     <td className="p-3 text-ink-500">
@@ -250,8 +297,83 @@ export default function BankSection({ advanced = false }: { advanced?: boolean }
             </tbody>
           </table>
           {list.length === 0 && <p className="text-center text-xs text-ink-400 py-10">سندی با این شرایط پیدا نشد{f.q ? " — این جستجو برای تحلیل «کمبود دانش» ثبت شد" : ""}.</p>}
+          {paged.meta.last_page > 1 && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t border-ink-100 text-[12.5px] text-ink-500">
+              <span>
+                {fa(paged.meta.from ?? 0)}–{fa(paged.meta.to ?? 0)} از {fa(paged.meta.total)}
+              </span>
+              <span className="flex items-center gap-1">
+                <button disabled={!paged.links.prev} onClick={() => setPageNo(paged.meta.current_page - 1)} className="btn btn-outline btn-icon btn-sm disabled:opacity-40" aria-label="صفحه‌ی قبل">
+                  <ChevronRight size={16} />
+                </button>
+                <span className="px-1">
+                  صفحه‌ی {fa(paged.meta.current_page)} از {fa(paged.meta.last_page)}
+                </span>
+                <button disabled={!paged.links.next} onClick={() => setPageNo(paged.meta.current_page + 1)} className="btn btn-outline btn-icon btn-sm disabled:opacity-40" aria-label="صفحه‌ی بعد">
+                  <ChevronLeft size={16} />
+                </button>
+              </span>
+            </div>
+          )}
         </div>
       </div>
+      )}
+    </div>
+  );
+}
+
+const spaceGroups: { code: string; label: string; icon: typeof Building2 }[] = [
+  { code: "root", label: "کل سازمان", icon: Network },
+  { code: "holding", label: "هلدینگ‌ها", icon: Building2 },
+  { code: "company", label: "شرکت‌ها", icon: Layers },
+];
+
+/** «فضاها» (v6.8): کارت هر محدوده‌ی واقعی با شمار اسناد، نشان‌های سیاست دسترسی، مالکان و آخرین تغییر */
+function SpacesView({ spaces, me, onOpen }: { spaces: { scope: KnowledgeScopeApi; docs: KDoc[] }[]; me: string; onOpen: (id: string) => void }) {
+  return (
+    <div className="space-y-5">
+      {spaceGroups.map((g) => {
+        const items = spaces.filter((x) => x.scope.type_code === g.code);
+        if (!items.length) return null;
+        return (
+          <section key={g.code}>
+            <h3 className="t-card text-ink-900 mb-2.5">{g.label}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {items.map(({ scope, docs }) => {
+                const articles = docs.filter((d) => d.format === "article").length;
+                const owners = [...new Set(docs.map((d) => d.owner))].slice(0, 3);
+                const last = [...docs].sort((a, b) => (dayNum(b.updatedAt) ?? 0) - (dayNum(a.updatedAt) ?? 0))[0];
+                const restricted = docs.filter((d) => d.access !== "عمومی").length;
+                const review = docs.filter((d) => d.status === "در بررسی" || d.status === "تأییدشده").length;
+                const mine = docs.filter((d) => d.owner === me || d.author === me).length;
+                return (
+                  <button key={scope.id} onClick={() => onOpen(scope.id)} className="card p-5 text-right hover:border-teal-500 hover:-translate-y-0.5 transition-transform">
+                    <span className="w-11 h-11 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center">
+                      <g.icon size={22} strokeWidth={1.5} />
+                    </span>
+                    <span className="block t-card text-ink-900 mt-3">{scope.name}</span>
+                    <span className="block text-[12.5px] text-ink-500 mt-0.5" dir="ltr">
+                      scope · {scope.type_code} · {scope.code}
+                    </span>
+                    <span className="flex flex-wrap gap-1.5 mt-3">
+                      <Badge tone="neutral">{fa(docs.length)} سند</Badge>
+                      {articles > 0 && <Badge tone="neutral">{fa(articles)} مقاله</Badge>}
+                      {restricted > 0 && <Badge tone="brand">{fa(restricted)} محدود</Badge>}
+                      {docs.length - restricted > 0 && <Badge tone="success">{fa(docs.length - restricted)} عمومی</Badge>}
+                      {review > 0 && <Badge tone="warning" dot>{fa(review)} در انتظار تأیید</Badge>}
+                      {mine > 0 && <Badge tone="info">{fa(mine)} سند من</Badge>}
+                    </span>
+                    <span className="block text-[12.5px] text-ink-500 mt-3">
+                      مالک: {owners.join("، ")}
+                      {last && ` · آخرین تغییر: ${last.updatedAt}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

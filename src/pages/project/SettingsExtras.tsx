@@ -6,7 +6,6 @@ import Toggle from "../../components/ui/Toggle";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { contracts, funds, researchOpportunities } from "../../data/mock";
 import { defaultMeetingSettings } from "../../pm/selectors";
 import { fa } from "../../pm/jalali";
 import type { MeetingSettings, PMMeeting } from "../../pm/types";
@@ -32,10 +31,6 @@ export function ScopePicker({ value, onChange, className = "input-field" }: { va
   );
 }
 
-export const fundTitle = (id?: string) => funds.find((f) => f.id === id)?.title;
-export const contractTitle = (id?: string) => contracts.find((c) => c.id === id)?.title;
-export const opportunityTitle = (id?: string) => researchOpportunities.find((r) => r.id === id)?.title;
-
 /** برچسب‌های پروژه به‌صورت لینک به صفحه‌ی «هشتگ‌ها و موضوعات» */
 export function TagLinks({ tags }: { tags: string[] }) {
   return (
@@ -50,58 +45,28 @@ export function TagLinks({ tags }: { tags: string[] }) {
   );
 }
 
-/** کارت «پیوندهای نوآوری» در تنظیمات */
-export function InnovationLinksCard() {
+/** کارت «شرکت / مجری» در تنظیمات */
+export function CompanyLinkCard() {
   const { p, pid, canEdit } = useProjectPage();
   const pm = useProjectsPM();
   const { notify } = useToast();
-  const [d, setD] = useState({ fundId: p.meta.fundId ?? "", contractId: p.meta.contractId ?? "", opportunityId: p.meta.opportunityId ?? "", companyName: p.meta.companyName ?? "" });
-  useEffect(() => setD({ fundId: p.meta.fundId ?? "", contractId: p.meta.contractId ?? "", opportunityId: p.meta.opportunityId ?? "", companyName: p.meta.companyName ?? "" }), [p.meta]);
+  const [companyName, setCompanyName] = useState(p.meta.companyName ?? "");
+  useEffect(() => setCompanyName(p.meta.companyName ?? ""), [p.meta]);
   if (!canEdit) return null;
   const save = () => {
-    pm.updateMeta(pid, { fundId: d.fundId || undefined, contractId: d.contractId || undefined, opportunityId: d.opportunityId || undefined, companyName: d.companyName.trim() || undefined });
-    notify("پیوندهای پروژه ذخیره شد؛ در «مشخصات پروژه» دیده می‌شود.");
+    pm.updateMeta(pid, { companyName: companyName.trim() || undefined });
+    notify("شرکت مجری ذخیره شد؛ در «مشخصات پروژه» دیده می‌شود.");
   };
   return (
     <div className="card p-4">
-      <SectionTitle icon={<Link2 size={15} className="text-brand-600" />} title="پیوند به دانش و نوآوری" hint="اتصال پروژه به صندوق نوآوری، قرارداد فناورانه، فرصت پژوهشی و شرکت مجری — مبنای داده‌ی عملکرد واقعی برای ارزیابی‌ها." />
+      <SectionTitle icon={<Link2 size={15} className="text-brand-600" />} title="شرکت / مجری" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Field label="صندوق نوآوری / طرح">
-          <select className="input-field" value={d.fundId} onChange={(e) => setD({ ...d, fundId: e.target.value })}>
-            <option value="">—</option>
-            {funds.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.title} ({f.stage})
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="قرارداد فناورانه">
-          <select className="input-field" value={d.contractId} onChange={(e) => setD({ ...d, contractId: e.target.value })}>
-            <option value="">—</option>
-            {contracts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="فرصت پژوهشی">
-          <select className="input-field" value={d.opportunityId} onChange={(e) => setD({ ...d, opportunityId: e.target.value })}>
-            <option value="">—</option>
-            {researchOpportunities.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
-            ))}
-          </select>
-        </Field>
         <Field label="شرکت / مجری">
-          <input className="input-field" value={d.companyName} onChange={(e) => setD({ ...d, companyName: e.target.value })} placeholder="مثلاً: شرکت دانش‌بنیان …" />
+          <input className="input-field" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="مثلاً: شرکت عمران روستایی …" />
         </Field>
       </div>
       <Button className="mt-3" variant="primary" icon={<Save size={14} />} onClick={save}>
-        ذخیره‌ی پیوندها
+        ذخیره
       </Button>
     </div>
   );

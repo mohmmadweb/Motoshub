@@ -30,7 +30,7 @@ export function NotificationsSection() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const today = dayNum(km.today)!;
-  const items = inbox.mine.filter((i) => i.kind === "knowledge" || i.link.startsWith("/dashboard/knowledge"));
+  const items = inbox.mine.filter((i) => i.kind === "knowledge" || i.link.startsWith("/knowledge"));
   const shown = items.filter((i) => (filter === "unread" ? !inbox.isRead(i) : filter === "read" ? inbox.isRead(i) : true));
   const unread = items.filter((i) => !inbox.isRead(i)).length;
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CheckSquare, Clock, History, Link2, MessageSquare, Plus, Save, Trash2, Wallet, X, Paperclip, Eye, EyeOff, Play, Square, ListTree, CornerDownLeft, ShieldCheck, Repeat, Archive, ArchiveRestore, Zap, GitBranch } from "lucide-react";
 import { useTenancy } from "../../context/TenancyContext";
-import Modal from "../../components/ui/Modal";
 import TaskCostItems from "./TaskCostItems";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -20,6 +19,9 @@ import { CustomFieldInputs } from "./CustomFieldsCard";
 import DevSection from "./DevSection";
 import { useTimesheet } from "../../context/TimesheetContext";
 import { gitActivity } from "../../pm/git";
+import Sheet from "../../components/ui/Sheet";
+import { phasesOf } from "../../pm/rules";
+import { EXTEND_BLOCKED, REOPEN_BLOCKED, useProjectRules } from "./useRules";
 
 type Section = "details" | "subtasks" | "checklist" | "deps" | "cost" | "dev" | "comments" | "history";
 
@@ -58,6 +60,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const { actingUser } = useTenancy();
   const ts = useTimesheet();
   const me = actingUser.name;
+  const rules = useProjectRules(p);
   const running = !!t?.timer;
   useEffect(() => {
     if (!running) return;
@@ -104,6 +107,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const save = () => {
     if (!draft.title.trim()) return notify("عنوان تسک الزامی است.", "warning");
     if (diffDays(draft.start, draft.due) < 0) return notify("سررسید نمی‌تواند قبل از تاریخ شروع باشد.", "warning");
+    if (!rules.canExtend && ((dayNum(draft.due) ?? 0) > (dayNum(t.due) ?? 0) || (t.reminder && draft.reminder && (dayNum(draft.reminder) ?? 0) > (dayNum(t.reminder) ?? 0)))) return notify(EXTEND_BLOCKED, "warning");
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { checklist: _c, comments: _m, status: _s, watchers: _w, approval: _a, timer: _t, ...patch } = draft;
     pm.updateTask(pid, t.id, patch);
@@ -113,6 +117,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   const move = (status: string) => {
     const k = kindOf(p, status);
     const fromK = kindOf(p, t.status);
+    if (fromK === "done" && k !== "done" && !rules.canReopen) return notify(REOPEN_BLOCKED, "warning");
     const run = () => {
       pm.moveTask(pid, t.id, status);
       notify(`تسک به «${columnLabel(p, status)}» منتقل شد.`, "info");
@@ -207,7 +212,7 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
   );
 
   return (
-    <Modal open onClose={onClose} title={t.title} width="max-w-4xl">
+    <Sheet open onClose={onClose} title={t.title} eyebrow={`کار · ${p.meta.name}`} width="max-w-[880px]">
       <div className="space-y-4">
         <div className="-mt-2 flex items-center gap-2 text-[11.5px] text-ink-500 flex-wrap">
           <TypeIcon type={t.type} size={13} />
@@ -226,6 +231,23 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               <Button size="sm" variant="secondary" className="mr-auto" icon={<ArchiveRestore size={13} />} onClick={() => { pm.archiveTasks(pid, [t.id], false); notify("تسک از بایگانی بازیابی شد."); }}>
                 بازیابی
               </Button>
+            )}
+          </div>
+        )}
+        {t.removalRequest && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs p-2.5 flex items-center gap-2 flex-wrap">
+            <Trash2 size={14} /> «{t.removalRequest.by}» در {t.removalRequest.at} {t.removalRequest.kind === "delete" ? "حذف" : "بایگانی"} این کار را درخواست کرده است{t.removalRequest.reason ? `: «${t.removalRequest.reason}»` : ""}.
+            {rules.isMgr ? (
+              <span className="mr-auto flex gap-2">
+                <Button size="sm" variant="danger" onClick={() => { pm.decideRemoval(pid, t.id, true); onClose(); notify("درخواست تأیید و اجرا شد.", "info"); }}>
+                  تأیید {t.removalRequest.kind === "delete" ? "حذف" : "بایگانی"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { pm.decideRemoval(pid, t.id, false); notify("درخواست رد شد."); }}>
+                  رد درخواست
+                </Button>
+              </span>
+            ) : (
+              <span className="mr-auto">منتظر تصمیم مدیر پروژه</span>
             )}
           </div>
         )}
@@ -427,6 +449,36 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               <Field label="مسئول">
                 <MemberSelect p={p} value={draft.assignee} onChange={(v) => setDraft({ ...draft, assignee: v })} />
               </Field>
+              <Field label="مسئولان هم‌زمان" hint="با «انجام شد» هر یک، کار برای همه بسته می‌شود.">
+                <div className="flex flex-wrap gap-1">
+                  {p.members
+                    .map((m) => m.name)
+                    .filter((n) => n !== draft.assignee)
+                    .map((n) => {
+                      const on = (draft.coAssignees ?? []).includes(n);
+                      return (
+                        <button key={n} type="button" disabled={!canEdit} onClick={() => setDraft({ ...draft, coAssignees: on ? (draft.coAssignees ?? []).filter((x) => x !== n) : [...(draft.coAssignees ?? []), n] })} aria-pressed={on} className={`text-[11.5px] px-2 py-0.5 rounded-full border ${on ? "bg-teal-50 border-teal-500 text-teal-700 font-bold" : "border-ink-200 text-ink-600"}`}>
+                          {n}
+                        </button>
+                      );
+                    })}
+                </div>
+              </Field>
+              <Field label="تأییدکننده‌ی نهایی" hint="«انجام شد» کار را به بازبینی می‌برد تا او تأیید یا رد کند.">
+                <MemberSelect p={p} value={draft.finalApprover ?? ""} onChange={(v) => setDraft({ ...draft, finalApprover: v || undefined })} />
+              </Field>
+              {phasesOf(p).length > 0 && (
+                <Field label="فاز (WBS)">
+                  <select className="input-field" value={draft.phaseId ?? ""} disabled={!canEdit || !!parent} onChange={(e) => setDraft({ ...draft, phaseId: e.target.value || undefined })}>
+                    <option value="">بدون فاز</option>
+                    {phasesOf(p).map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.title}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               <Field label="اولویت">
                 <select className="input-field" value={draft.priority} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, priority: e.target.value as PMTask["priority"] })}>
                   {priorities.map((x) => (
@@ -437,8 +489,23 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
               <Field label="تاریخ شروع">
                 <JalaliDatePicker value={draft.start} onChange={(v) => setDraft({ ...draft, start: v })} />
               </Field>
-              <Field label="سررسید">
+              <Field label="سررسید (مهلت)" hint={rules.canExtend ? undefined : EXTEND_BLOCKED}>
                 <JalaliDatePicker value={draft.due} onChange={(v) => setDraft({ ...draft, due: v })} />
+              </Field>
+              <Field label="یادآوری" hint="روز دیده‌شدن کار در «امروز»؛ تأخیر فقط از سررسید حساب می‌شود.">
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <JalaliDatePicker value={draft.reminder ?? ""} onChange={(v) => setDraft({ ...draft, reminder: v })} placeholder="بدون یادآوری" />
+                  </div>
+                  {draft.reminder && canEdit && (
+                    <button type="button" onClick={() => setDraft({ ...draft, reminder: "" })} className="btn btn-ghost btn-icon btn-sm" aria-label="حذف یادآوری">
+                      ×
+                    </button>
+                  )}
+                </div>
+              </Field>
+              <Field label="وزن (چگالی)">
+                <input className="input-field" inputMode="numeric" value={draft.weight ? fa(draft.weight) : ""} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, weight: numIn(e.target.value) || undefined })} placeholder="—" />
               </Field>
               <Field label={`پیشرفت: ${fa(draft.progress)}٪`}>
                 <input type="range" min={0} max={100} step={5} value={draft.progress} disabled={!canEdit} onChange={(e) => setDraft({ ...draft, progress: Number(e.target.value) })} className="w-full accent-[var(--color-brand-600)]" dir="ltr" />
@@ -504,6 +571,18 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                     بازگردانی
                   </Button>
                 )}
+                {rules.isMgr && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      pm.saveTaskTemplate(pid, { name: t.title, active: true, title: t.title, description: t.description, priority: t.priority, type: t.type, labels: t.labels, checklist: t.checklist.map((c) => c.text), estHours: t.estHours, weight: t.weight, durationDays: Math.max(1, diffDays(t.start, t.due) + 1) });
+                      notify(`الگوی وظیفه‌ی «${t.title}» ساخته شد (تنظیمات پروژه ← الگوهای وظیفه).`);
+                    }}
+                  >
+                    ذخیره به‌عنوان الگو
+                  </Button>
+                )}
                 {!t.archived && (
                   <Button
                     variant="ghost"
@@ -511,6 +590,10 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                     className="mr-auto"
                     icon={<Archive size={13} />}
                     onClick={() => {
+                      if (rules.removalNeedsApproval) {
+                        pm.requestRemoval(pid, t.id, "archive");
+                        return notify("درخواست بایگانی برای مدیر پروژه فرستاده شد.", "info");
+                      }
                       pm.archiveTasks(pid, [t.id], true);
                       onClose();
                       notify(`«${t.title}» بایگانی شد؛ از فیلتر «بایگانی‌شده‌ها» در بورد قابل بازیابی است.`, "info");
@@ -525,7 +608,9 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
                   className={`${t.archived ? "mr-auto " : ""}text-rose-600`}
                   icon={<Trash2 size={13} />}
                   onClick={() =>
-                    confirm({
+                    rules.removalNeedsApproval
+                      ? (pm.requestRemoval(pid, t.id, "delete"), notify("درخواست حذف برای مدیر پروژه فرستاده شد.", "info"))
+                      : confirm({
                       title: `حذف تسک «${t.title}»؟`,
                       message: `${succs.length ? `${fa(succs.length)} تسک به این تسک وابسته‌اند و وابستگی‌شان برداشته می‌شود. ` : ""}این رویداد در تاریخچه ثبت می‌شود.`,
                       onConfirm: () => {
@@ -876,6 +961,6 @@ export default function TaskDrawer({ taskId, onClose }: { taskId: string | null;
         )}
 
       </div>
-    </Modal>
+    </Sheet>
   );
 }

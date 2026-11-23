@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Ban, Eye, EyeOff, MailCheck } from "lucide-react";
 import { useEffectiveBranding } from "../iam/hooks";
+import { KarizLogo, PRODUCT_NAME } from "../components/Sidebar";
 import { ROOT_ID } from "../iam/model";
 import { demoPersonas, users } from "../data/mock";
 import { useTenancy } from "../context/TenancyContext";
@@ -67,7 +68,7 @@ export default function Login() {
       const r = registerLoginFailure(id);
       if (r.locked) {
         const name = users.find((u) => u.id === id)?.name ?? "";
-        inbox.send([name], "security", `حساب شما پس از ${r.max.toLocaleString("fa-IR")} تلاش ناموفق ورود تا ${r.locked.until ?? "اطلاع بعدی"} قفل شد. اگر کار شما نبوده، پس از ورود گذرواژه را عوض کنید.`, `/dashboard/profile/${id}?tab=security`, { urgent: true, system: true });
+        inbox.send([name], "security", `حساب شما پس از ${r.max.toLocaleString("fa-IR")} تلاش ناموفق ورود تا ${r.locked.until ?? "اطلاع بعدی"} قفل شد. اگر کار شما نبوده، پس از ورود گذرواژه را عوض کنید.`, `/profile/${id}?tab=security`, { urgent: true, system: true });
         return setErrors({ form: blockMessage(r.locked), blocked: true });
       }
       const left = r.max ? r.max - r.count : 0;
@@ -90,24 +91,23 @@ export default function Login() {
     setResetSent(true);
   };
 
-  const title = mode === "login" ? "ورود به سامانه" : "بازیابی گذرواژه";
-  // عنوان سامانه و لوگو از «مدیریت سامانه ← برند و ظاهر» (لایه‌ی سامانه)
+  // ورود با برند محصول «کاریز» (v6.8)؛ لوگوی سازمان (لایه‌ی سامانه در «تنظیمات سازمان») اگر باشد کنارش می‌آید
+  const title = mode === "login" ? `ورود به ${PRODUCT_NAME}` : "بازیابی گذرواژه";
   const brand = useEffectiveBranding(ROOT_ID);
   useEffect(() => {
-    document.title = `${title} | ${brand.name}`;
-  }, [title, brand.name]);
+    document.title = `${title} | ${PRODUCT_NAME}`;
+  }, [title]);
 
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-navy-900 px-4">
-      <div className="w-full max-w-sm card p-8">
-        <div className="flex flex-col items-center text-center mb-7">
-          {brand.logo && (
-            <span className="bg-white rounded-xl px-3 py-2 mb-4 border border-ink-100">
-              <img src={brand.logo} alt={brand.name} className="h-9 w-auto" />
-            </span>
-          )}
-          <h1 className="font-bold text-base text-ink-900">{title}</h1>
-          <p className="text-xs text-ink-500 mt-1">{brand.name}</p>
+    <div dir="rtl" className="min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-[25rem] card !p-7 shadow-md animate-rise">
+        <div className="mb-7">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <KarizLogo size={34} />
+            {brand.logo && <img src={brand.logo} alt={brand.name} className="h-9 w-auto max-w-[45%] object-contain" />}
+          </div>
+          <h1 className="text-[24px] leading-9 font-bold text-ink-900">{title}</h1>
+          <p className="text-[14px] text-ink-500 mt-1">{mode === "login" ? "با حساب سازمانی خود وارد شوید." : "نام کاربری یا شماره‌ی همراه خود را وارد کنید."}</p>
         </div>
 
         {otpFor ? (
@@ -154,33 +154,33 @@ export default function Login() {
           )
         ) : (
         <form
-          className="space-y-3"
+          className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
             submit();
           }}
         >
           <div>
+            <label htmlFor="login-user" className="block text-[13px] font-medium text-ink-800 mb-1.5">نام کاربری</label>
             <input
+              id="login-user"
               value={username}
               onChange={(e) => { setUsername(e.target.value); setErrors((p) => ({ ...p, u: undefined, form: undefined })); }}
               className={`input-field ${errors.u ? "input-error" : ""}`}
-              placeholder="نام کاربری"
-              aria-label="نام کاربری"
               autoComplete="username"
               autoFocus
             />
             {errors.u && <p className="field-error">{errors.u}</p>}
           </div>
           <div>
+            <label htmlFor="login-pass" className="block text-[13px] font-medium text-ink-800 mb-1.5">گذرواژه</label>
             <div className="relative">
               <input
+                id="login-pass"
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, p: undefined, form: undefined })); }}
                 className={`input-field pl-10 ${errors.p ? "input-error" : ""}`}
-                placeholder="گذرواژه"
-                aria-label="گذرواژه"
                 autoComplete="current-password"
               />
               <button
@@ -204,10 +204,10 @@ export default function Login() {
             </p>
           )}
 
-          <Button type="submit" variant="primary" className="w-full justify-center !mt-5">
+          <Button type="submit" variant="primary" size="lg" className="w-full justify-center !mt-6">
             ورود
           </Button>
-          <button type="button" onClick={() => (setMode("password_reset"), setErrors({}))} className="w-full text-[12px] text-ink-500 hover:text-brand-700">
+          <button type="button" onClick={() => (setMode("password_reset"), setErrors({}))} className="w-full text-[13px] text-ink-500 hover:text-teal-700">
             گذرواژه را فراموش کرده‌اید؟
           </button>
         </form>

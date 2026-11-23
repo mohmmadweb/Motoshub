@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// جزئیات رویداد — /dashboard/events/:id
+// جزئیات رویداد — /events/:id
 // EventDetail + اعضا (members / invitations / invite / rsvp / join / leave / promote / demote).
 // ---------------------------------------------------------------------------
 import { useState, type ReactNode } from "react";
@@ -41,7 +41,7 @@ export default function EventDetail() {
   if (!ev || !visible(ev))
     return (
       <div>
-        <PageHeader title="رویداد" breadcrumb={[{ label: "شبکه اجتماعی" }, { label: "رویدادها و جلسات", to: "/dashboard/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
+        <PageHeader title="رویداد" breadcrumb={[{ label: "شبکه اجتماعی" }, { label: "رویدادها و جلسات", to: "/events" }, { label: "رویداد" }]} icon={<CalendarDays size={18} />} />
         <EmptyState icon={<CalendarDays size={22} />} title="رویداد پیدا نشد" description="این رویداد حذف شده یا اجازه‌ی دیدن آن را ندارید (privacy)." />
       </div>
     );
@@ -57,7 +57,7 @@ export default function EventDetail() {
   const past = (dayNum(ev.end_date || ev.start_date) ?? 0) < (dayNum(s.today) ?? 0) && !ev.is_repeat;
 
   const ep = {
-    detail: { label: "جزئیات رویداد", ep: { method: "GET" as const, path: `/events/events/${ev.id}/published/` } },
+    detail: { label: "جزئیات رویداد", ep: { method: "GET" as const, path: `/social/events/${ev.id}/published/` } },
   };
 
   const togglePublish = () => {
@@ -76,7 +76,7 @@ export default function EventDetail() {
       onConfirm: () => {
         s.deleteEvent(ev.id);
         notify("رویداد حذف شد.", "success");
-        navigate("/dashboard/events");
+        navigate("/events");
       },
     });
 
@@ -85,7 +85,7 @@ export default function EventDetail() {
       <PageHeader
         title={ev.title}
         icon={<CalendarDays size={18} />}
-        breadcrumb={[{ label: "شبکه اجتماعی" }, { label: "رویدادها و جلسات", to: "/dashboard/events" }, { label: ev.title }]}
+        breadcrumb={[{ label: "شبکه اجتماعی" }, { label: "رویدادها و جلسات", to: "/events" }, { label: ev.title }]}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <ApiChip
@@ -480,7 +480,7 @@ function MembersTab({ ev, members, canManage }: { ev: SocialEvent; members: Even
           setPicked([]);
         }}
         title={picker === "invite" ? "دعوت به رویداد" : "افزودن مستقیم عضو"}
-        description={picker === "invite" ? `POST /events/events/${ev.id}/invite/ — وضعیت «دعوت‌شده» و اعلان برای هر نفر` : `POST /events/events/${ev.id}/members/ — بدون نیاز به پذیرش، وضعیت «عضو شده»`}
+        description={picker === "invite" ? `POST /social/events/${ev.id}/invite/ — وضعیت «دعوت‌شده» و اعلان برای هر نفر` : `POST /social/events/${ev.id}/members/ — بدون نیاز به پذیرش، وضعیت «عضو شده»`}
       >
         <UserPicker value={picked} onChange={setPicked} exclude={members.map((m) => m.user_id)} />
         <div className="flex justify-end gap-2 mt-4">

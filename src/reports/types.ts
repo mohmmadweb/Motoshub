@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 import type { LucideIcon } from "lucide-react";
 
-export type ReportModule = "projects" | "knowledge" | "social" | "content" | "events" | "members" | "innovation" | "timesheet" | "tickets";
+export type ReportModule = "projects" | "knowledge" | "social" | "content" | "events" | "members" | "timesheet" | "tickets";
 
 export const moduleLabel: Record<ReportModule, string> = {
   projects: "پروژه‌ها",
@@ -16,7 +16,6 @@ export const moduleLabel: Record<ReportModule, string> = {
   content: "محتوا",
   events: "رویدادها و جلسات",
   members: "اعضا و دسترسی",
-  innovation: "دانش و نوآوری",
   timesheet: "کارکرد و ساعات",
   tickets: "تیکت پشتیبانی",
 };

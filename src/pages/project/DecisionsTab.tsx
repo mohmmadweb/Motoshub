@@ -11,7 +11,6 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { dayNum, fa } from "../../pm/jalali";
 import type { DecisionLink, DecisionRecord } from "../../pm/types";
-import { contracts, funds, researchOpportunities } from "../../data/mock";
 import { Field, MemberSelect, downloadText, toCsv, useProjectPage, type TabId } from "./shared";
 import { gateTone } from "./StageGateCard";
 
@@ -34,7 +33,9 @@ type Row = {
 };
 
 const sourceLabel: Record<Source, string> = { minute: "مصوبه‌ی جلسه", manual: "تصمیم ثبت‌شده", gate: "بازبینی دوره‌ای" };
-const linkTypeLabel: Record<DecisionLink["type"], string> = { task: "تسک", risk: "ریسک", milestone: "مایل‌ستون", meeting: "جلسه", issue: "مشکل", fund: "صندوق", contract: "قرارداد", opportunity: "فرصت پژوهشی" };
+const linkTypeLabel: Record<DecisionLink["type"], string> = { task: "تسک", risk: "ریسک", milestone: "مایل‌ستون", meeting: "جلسه", issue: "مشکل" };
+/** پیوندِ تصمیم به نوعی که دیگر وجود ندارد (بخش حذف‌شده‌ی نوآوری) نادیده گرفته می‌شود */
+const liveLink = (l?: DecisionLink) => (l && l.type in linkTypeLabel ? l : undefined);
 const linkTab: Partial<Record<DecisionLink["type"], TabId>> = { task: "board", risk: "risks", milestone: "milestones", meeting: "minutes", issue: "issues" };
 
 type Draft = Omit<DecisionRecord, "id" | "createdBy"> & { id?: string };
@@ -67,7 +68,7 @@ export default function DecisionsTab() {
           owner: r?.owner ?? p.meta.manager,
           date: m.date,
           alternatives: r?.alternatives,
-          link: r?.link ?? (m.meetingId ? { type: "meeting" as const, id: m.meetingId, label: m.title } : undefined),
+          link: liveLink(r?.link) ?? (m.meetingId ? { type: "meeting" as const, id: m.meetingId, label: m.title } : undefined),
           minuteId: m.id,
           minuteIndex: i,
           minuteTitle: m.title,
@@ -75,7 +76,7 @@ export default function DecisionsTab() {
         };
       })
     );
-    const manual: Row[] = recs.filter((r) => !r.minuteId).map((r) => ({ key: `dc:${r.id}`, source: "manual" as const, title: r.title, reason: r.reason, owner: r.owner, date: r.date, alternatives: r.alternatives, link: r.link, record: r }));
+    const manual: Row[] = recs.filter((r) => !r.minuteId).map((r) => ({ key: `dc:${r.id}`, source: "manual" as const, title: r.title, reason: r.reason, owner: r.owner, date: r.date, alternatives: r.alternatives, link: liveLink(r.link), record: r }));
     const gates: Row[] = (p.stageGates ?? []).map((g) => ({ key: `sg:${g.id}`, source: "gate" as const, title: `بازبینی دوره‌ای: «${g.decision}»`, reason: `${g.reason}${g.actions ? ` — اقدام اصلاحی: ${g.actions}` : ""}`, owner: g.by, date: g.date, gateDecision: g.decision }));
     return [...fromMinutes, ...manual, ...gates].sort((a, b) => (dayNum(b.date) ?? 0) - (dayNum(a.date) ?? 0));
   }, [p]);
@@ -89,17 +90,12 @@ export default function DecisionsTab() {
     ...p.risks.map((r) => ({ type: "risk" as const, id: r.id, label: r.title })),
     ...p.issues.map((i) => ({ type: "issue" as const, id: i.id, label: i.title })),
     ...p.meetings.map((m) => ({ type: "meeting" as const, id: m.id, label: m.title })),
-    ...funds.map((f) => ({ type: "fund" as const, id: f.id, label: f.title })),
-    ...contracts.map((c) => ({ type: "contract" as const, id: c.id, label: c.title })),
-    ...researchOpportunities.map((r) => ({ type: "opportunity" as const, id: r.id, label: r.title })),
   ];
 
   const openLink = (l: DecisionLink) => {
     if (l.type === "task") return openTask(l.id);
     const tab = linkTab[l.type];
     if (tab) return goTab(tab, l.id);
-    const base = l.type === "fund" ? "funds" : l.type === "contract" ? "contracts" : "research";
-    window.location.hash = `#/dashboard/${base}?focus=${l.id}`;
   };
 
   const save = () => {

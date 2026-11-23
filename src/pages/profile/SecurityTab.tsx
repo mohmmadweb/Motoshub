@@ -154,7 +154,7 @@ function NotMeModal({ userId, suspect, onClose }: { userId: string; suspect?: Lo
               onClick={() => {
                 const n = reportNotMe(userId, suspect?.id);
                 setClosed(n);
-                inbox.send([name], "security", `گزارش «این من نبودم» ثبت شد؛ ${n.toLocaleString("fa-IR")} نشست دیگر بسته شد. گذرواژه را عوض کنید.`, `/dashboard/profile/${userId}?tab=security`, { urgent: true, system: true });
+                inbox.send([name], "security", `گزارش «این من نبودم» ثبت شد؛ ${n.toLocaleString("fa-IR")} نشست دیگر بسته شد. گذرواژه را عوض کنید.`, `/profile/${userId}?tab=security`, { urgent: true, system: true });
                 setStep("password");
               }}
             >
@@ -270,6 +270,105 @@ export function UserSecurityPanel({ userId }: { userId: string }) {
         <BlockUserButton userId={userId} />
       </div>
       <LoginHistoryCard userId={userId} compact />
+    </div>
+  );
+}
+
+/**
+ * کارت «گذرواژه و نشست‌ها» (v6.8 `12_profile_security`) — اقدام‌های واقعی:
+ * `POST identity/me/change-password/` `{ current_password, new_password }` و
+ * `POST identity/me/revoke-sessions/` (خروج از همه‌ی نشست‌ها؛ فهرست نشست «پیشنهادی» است).
+ */
+export function PasswordAndSessionsCard({ userId }: { userId: string }) {
+  const st = useLoginHistory();
+  const t = useTenancy();
+  const policy = useLoginPolicy();
+  const { notify } = useToast();
+  const confirm = useConfirm();
+  const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [err, setErr] = useState("");
+  const name = users.find((u) => u.id === userId)?.name ?? "";
+  const rules = policy.password;
+  const pwError = (v: string) =>
+    v.length < rules.minLength ? `دست‌کم ${rules.minLength.toLocaleString("fa-IR")} نویسه` : rules.requireDigits && !/\d|[۰-۹]/.test(v) ? "دست‌کم یک رقم" : rules.requireMixedCase && !(/[a-z]/.test(v) && /[A-Z]/.test(v)) ? "حروف کوچک و بزرگ لاتین" : rules.requireSymbols && !/[^\w\s]/.test(v) ? "دست‌کم یک نماد" : "";
+  const others = activeSessionsOf(st, userId).filter((e) => e.session_id !== st.current[userId]);
+  const ro = t.readOnly || userId !== t.actingUser.id;
+  const close = () => (setOpen(false), setCur(""), setPw(""), setPw2(""), setErr(""));
+  const save = () => {
+    if (!cur) return setErr("گذرواژه‌ی فعلی را بنویسید.");
+    const pe = pwError(pw);
+    if (pe) return setErr(`گذرواژه‌ی تازه: ${pe}.`);
+    if (pw !== pw2) return setErr("تکرار گذرواژه یکسان نیست.");
+    emitSecurityAudit({ event: "security.password_changed", affectedUserId: userId, actorId: userId, summary: `«${name}» گذرواژه‌ی خود را تغییر داد.` });
+    notify("گذرواژه تغییر کرد.", "success");
+    close();
+  };
+  return (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+          <KeyRound size={20} strokeWidth={1.5} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="t-card text-ink-900">گذرواژه</p>
+          <p className="text-[13px] text-ink-500">طبق سیاست سازمان: دست‌کم {rules.minLength.toLocaleString("fa-IR")} نویسه</p>
+        </div>
+        {!ro && (
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            تغییر گذرواژه
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-3 flex-wrap border-t border-[var(--color-border)] pt-4">
+        <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+          <LogOut size={20} strokeWidth={1.5} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="t-card text-ink-900">خروج از همه‌ی نشست‌ها</p>
+          <p className="text-[13px] text-ink-500">همه‌ی دستگاه‌های دیگر ({others.length.toLocaleString("fa-IR")} نشست) فوراً خارج می‌شوند؛ همین مرورگر باز می‌ماند.</p>
+        </div>
+        {!ro && (
+          <Button
+            variant="danger-outline"
+            size="sm"
+            disabled={!others.length}
+            onClick={() =>
+              confirm({
+                title: "خروج از همه‌ی نشست‌های دیگر؟",
+                message: "برای ورود دوباره در آن دستگاه‌ها باید گذرواژه را وارد کنید.",
+                confirmLabel: "خروج از همه",
+                tone: "danger",
+                onConfirm: () => {
+                  others.forEach((x) => endSession(x.session_id, t.realActingUser.id));
+                  emitSecurityAudit({ event: "security.session_ended", affectedUserId: userId, actorId: userId, summary: `«${name}» از همه‌ی نشست‌های دیگر خارج شد (${others.length.toLocaleString("fa-IR")} نشست) — revoke-sessions.` });
+                  notify("از همه‌ی نشست‌های دیگر خارج شدید.", "success");
+                },
+              })
+            }
+          >
+            خروج از همه‌ی نشست‌ها
+          </Button>
+        )}
+      </div>
+      <Modal open={open} onClose={close} title="تغییر گذرواژه" width="max-w-md">
+        <div className="space-y-2.5">
+          <input type="password" className="input-field" value={cur} onChange={(e) => (setCur(e.target.value), setErr(""))} placeholder="گذرواژه‌ی فعلی" aria-label="گذرواژه‌ی فعلی" autoComplete="current-password" autoFocus />
+          <input type="password" className="input-field" value={pw} onChange={(e) => (setPw(e.target.value), setErr(""))} placeholder="گذرواژه‌ی تازه" aria-label="گذرواژه‌ی تازه" autoComplete="new-password" />
+          <input type="password" className="input-field" value={pw2} onChange={(e) => (setPw2(e.target.value), setErr(""))} placeholder="تکرار گذرواژه‌ی تازه" aria-label="تکرار گذرواژه" autoComplete="new-password" />
+          {err && <p className="text-[12.5px] text-rose-600">{err}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={close}>
+              انصراف
+            </Button>
+            <Button variant="primary" onClick={save}>
+              ثبت گذرواژه
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

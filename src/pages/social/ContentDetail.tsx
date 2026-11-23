@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// جزئیات مجله / بلاگ / خبر — /content/{kind}/{id}/
+// جزئیات مجله / بلاگ / خبر — /social/{kind}/{id}/
 // متن کامل، پیوست‌ها (…/attachments/)، واکنش‌ها، نظرها و اقدام‌های صاحب/مدیر.
 // ---------------------------------------------------------------------------
 import { useEffect, useRef, useState } from "react";
@@ -45,7 +45,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
   }, [id, !!item]);
 
   const listTitle = section === "news" ? "اخبار سازمان" : section === "blogs" ? "وبلاگ‌ها" : "مجلات";
-  const listPath = section === "news" ? "/dashboard/news" : section === "blogs" ? "/dashboard/blog" : "/dashboard/magazines";
+  const listPath = section === "news" ? "/news" : section === "blogs" ? "/blogs" : "/magazines";
   const crumbs = [{ label: "دانش و محتوا" }, { label: listTitle, to: listPath }];
 
   const manager = item ? hasPermission(`${permPrefix(item.kind)}.manage`) : false;
@@ -107,7 +107,7 @@ export default function ContentDetail({ section }: { section: "magazines" | "new
           <>
             <ApiChip
               items={[
-                { label: `جزئیات ${label}`, ep: { method: "GET", path: `/content/${kind}/${item.id}/` } },
+                { label: `جزئیات ${label}`, ep: { method: "GET", path: `/social/${kind}/${item.id}/` } },
                 { label: "ویرایش", ep: endpoints.contentUpdate(kind, item.id) },
                 { label: "انتشار", ep: endpoints.contentPublish(kind, item.id) },
                 { label: "لغو انتشار", ep: endpoints.contentUnpublish(kind, item.id) },

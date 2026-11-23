@@ -32,10 +32,9 @@ export const personalData: Record<string, PersonalBundle> = {
   // راهبر پلتفرم — کارهای سطح سیستم
   u1: {
     tasks: [
-      { id: "u1-t1", text: "درخواستِ نقشِ سفارشیِ «کارشناس مالی» از هلدینگ سینا در صف تایید است", to: "/dashboard/settings?section=bindings&tab=requests", late: true },
-      { id: "u1-t2", text: "۲ گزارش رخداد امنیتی (افتا) منتظر بازبینی شماست", to: "/dashboard/settings?section=security" },
-      { id: "u1-t3", text: "به‌روزرسانی پارامترهای گردش‌کار صندوق نوآور", to: "/dashboard/settings?section=innovation&tab=funds" },
-      { id: "u1-t4", text: "تایید نهاییِ برندسازی سازمانِ هلدینگ صبا", to: "/dashboard/settings?section=brand&tab=org" },
+      { id: "u1-t1", text: "درخواستِ نقشِ سفارشیِ «کارشناس مالی» از هلدینگ سینا در صف تایید است", to: "/settings?section=bindings&tab=requests", late: true },
+      { id: "u1-t2", text: "۲ گزارش رخداد امنیتی (افتا) منتظر بازبینی شماست", to: "/settings?section=security" },
+      { id: "u1-t4", text: "تایید نهاییِ برندسازی سازمانِ هلدینگ صبا", to: "/settings?section=brand&tab=org" },
     ],
     groupIds: ["g4", "g5", "g7", "g1"],
     mentions: 4,
@@ -45,9 +44,7 @@ export const personalData: Record<string, PersonalBundle> = {
     ],
     notifications: [
       n("u1-n1", "درخواست نقش جدید از هلدینگ سینا برای تایید ارسال شد", "۱۰ دقیقه پیش", false, "task"),
-      n("u1-n2", "۲ بررسی گزارش صندوق از مهلت ۱۵ روزه عبور کرد", "۱ ساعت پیش", false, "system"),
       n("u1-n3", "به‌روزرسانی امنیتی روی همه سازمان‌های سامانه اعمال شد", "دیروز", false, "system"),
-      n("u1-n4", "مدیر هلدینگ فردوس یک فراخوان پژوهشی جدید ثبت کرد", "دیروز", true, "system"),
       n("u1-n5", "گزارش ماهانه‌ی مصرف فضای ذخیره‌سازی آماده شد", "۲ روز پیش", true, "system"),
     ],
     friends: ["u2", "u4", "u5", "u7"],
@@ -60,9 +57,8 @@ export const personalData: Record<string, PersonalBundle> = {
   // مدیر هلدینگ صنایع غذایی سینا
   u2: {
     tasks: [
-      { id: "u2-t1", text: "تایید خبر شرکتیِ «برنامه تعمیرات خط ۲» بهنوش", to: "/dashboard/news", late: true },
-      { id: "u2-t2", text: "بازبینی گزارش پیشرفت پروژه استقرار سامانه دانش", to: "/dashboard/projects" },
-      { id: "u2-t3", text: "امضای قرارداد تأمین اقلام حمایتی زمزم", to: "/dashboard/contracts" },
+      { id: "u2-t1", text: "تایید خبر شرکتیِ «برنامه تعمیرات خط ۲» بهنوش", to: "/news", late: true },
+      { id: "u2-t2", text: "بازبینی گزارش پیشرفت پروژه استقرار سامانه دانش", to: "/projects" },
     ],
     groupIds: ["g2", "g5", "g9", "g6"],
     mentions: 2,
@@ -74,7 +70,6 @@ export const personalData: Record<string, PersonalBundle> = {
       n("u2-n1", "خبر شرکتیِ بهنوش منتظر تایید شماست", "۱۵ دقیقه پیش", false, "task"),
       n("u2-n2", "گزارش پیشرفت پروژه‌ی مدیریت دانش به‌روزرسانی شد", "۲ ساعت پیش", false, "system"),
       n("u2-n3", "محسن مردعلی شما را در یک مبحث انجمن منشن کرد", "۳ ساعت پیش", false, "mention"),
-      n("u2-n4", "قرارداد «تأمین اقلام حمایتی» وارد مرحله‌ی امضا شد", "دیروز", true, "system"),
     ],
     friends: ["u1", "u12", "u11"],
     incoming: ["u3"],
@@ -86,9 +81,8 @@ export const personalData: Record<string, PersonalBundle> = {
   // عضو عادی — شرکت بهنوش (همان چیدمانِ آشنای قبلی حفظ شده)
   u3: {
     tasks: [
-      { id: "u3-t1", text: "پاسخ به منشنِ حسین دهقان در پستِ سنجاق‌شده", to: "/dashboard/forum", late: true },
-      { id: "u3-t2", text: "تکمیل پروفایل و مهارت‌های شما (۷۰٪ کامل)", to: "/dashboard/profile/u3" },
-      { id: "u3-t3", text: "ثبت‌نام در کارگاه «هوش مصنوعی کاربردی در صنعت»", to: "/dashboard/training" },
+      { id: "u3-t1", text: "پاسخ به منشنِ حسین دهقان در پستِ سنجاق‌شده", to: "/forums", late: true },
+      { id: "u3-t2", text: "تکمیل پروفایل و مهارت‌های شما (۷۰٪ کامل)", to: "/profile/u3" },
     ],
     groupIds: ["g1", "g2", "g3", "g4"],
     mentions: 6,
@@ -112,9 +106,7 @@ export const personalData: Record<string, PersonalBundle> = {
   // مدیر هلدینگ کشاورزی فردوس پارس
   u4: {
     tasks: [
-      { id: "u4-t1", text: "تایید فراخوان پژوهشیِ «بهینه‌سازی کشت کم‌آب»", to: "/dashboard/research", late: true },
-      { id: "u4-t2", text: "بازبینی بودجه‌ی پروژه‌ی آبادانی قلعه‌گنج", to: "/dashboard/projects" },
-      { id: "u4-t3", text: "معرفی داورِ صنعت برای طرح‌های اشتغال‌زایی", to: "/dashboard/funds" },
+      { id: "u4-t2", text: "بازبینی بودجه‌ی پروژه‌ی آبادانی قلعه‌گنج", to: "/projects" },
     ],
     groupIds: ["g9", "g10", "g2", "g5"],
     mentions: 1,
@@ -122,7 +114,6 @@ export const personalData: Record<string, PersonalBundle> = {
       { id: "u4-c1", with: "موسسه تحقیقات کشاورزی", lastMessage: "نتایج فاز اول کشت را ثبت کردیم.", unread: 2 },
     ],
     notifications: [
-      n("u4-n1", "فراخوان پژوهشی جدید منتظر تایید شماست", "۲۰ دقیقه پیش", false, "task"),
       n("u4-n2", "گزارش بودجه‌ی پروژه‌ی قلعه‌گنج به‌روزرسانی شد", "۴ ساعت پیش", false, "system"),
       n("u4-n3", "پارسا یگانه یک سند در گروه پل دانشگاه و صنعت بارگذاری کرد", "دیروز", true, "system"),
     ],
@@ -133,23 +124,13 @@ export const personalData: Record<string, PersonalBundle> = {
     following: ["u1", "u10"],
   },
 
-  // کارشناس داوری صندوق — نیروگاه‌های صبا
+  // کارشناس — نیروگاه‌های صبا
   u5: {
-    tasks: [
-      { id: "u5-t1", text: "امتیازدهیِ داوریِ طرح NF-1404-1051 — مهلت امروز", to: "/dashboard/funds", late: true },
-      { id: "u5-t2", text: "بررسی گزارش مرحله‌ایِ پروژه‌ی LPS مستقل از GPS", to: "/dashboard/funds" },
-      { id: "u5-t3", text: "ارجاع طرح «کیت تشخیص سریع» به کمیته سرمایه‌گذاری", to: "/dashboard/funds" },
-    ],
+    tasks: [],
     groupIds: ["g8", "g10", "g12", "g3"],
     mentions: 0,
-    chats: [
-      { id: "u5-c1", with: "دبیر صندوق نوآور", lastMessage: "فرم امتیازدهی داوری را برایتان باز کردم.", unread: 4 },
-    ],
-    notifications: [
-      n("u5-n1", "طرح NF-1404-1051 به شما برای داوری ارجاع شد", "۳۰ دقیقه پیش", false, "task"),
-      n("u5-n2", "گزارش مرحله‌ای جدیدی در صف بررسی شما قرار گرفت", "۲ ساعت پیش", false, "task"),
-      n("u5-n3", "مهلت بررسی طرح NF-1404-1047 تا ۲ روز دیگر است", "دیروز", true, "system"),
-    ],
+    chats: [],
+    notifications: [],
     friends: ["u1", "u9"],
     incoming: ["u1"],
     outgoing: [],
@@ -160,9 +141,9 @@ export const personalData: Record<string, PersonalBundle> = {
   // ناظم گروه — ستاد محرومیت‌زدایی
   u7: {
     tasks: [
-      { id: "u7-t1", text: "بررسی ۳ پستِ گزارش‌شده در «ستاد محرومیت‌زدایی»", to: "/dashboard/groups/g1", late: true },
-      { id: "u7-t2", text: "تایید عضویت ۲ کاربر جدید در گروه", to: "/dashboard/groups/g1" },
-      { id: "u7-t3", text: "سنجاق‌کردن جمع‌بندی جلسه‌ی هفتگی گروه", to: "/dashboard/groups/g1" },
+      { id: "u7-t1", text: "بررسی ۳ پستِ گزارش‌شده در «ستاد محرومیت‌زدایی»", to: "/groups/g1", late: true },
+      { id: "u7-t2", text: "تایید عضویت ۲ کاربر جدید در گروه", to: "/groups/g1" },
+      { id: "u7-t3", text: "سنجاق‌کردن جمع‌بندی جلسه‌ی هفتگی گروه", to: "/groups/g1" },
     ],
     groupIds: ["g1", "g6", "g2", "g4"],
     mentions: 5,
@@ -185,9 +166,8 @@ export const personalData: Record<string, PersonalBundle> = {
   // مدیر شرکت — بانک سینا
   u13: {
     tasks: [
-      { id: "u13-t1", text: "بازبینی قرارداد «ارزیابی امنیتی سامانه‌های بانک»", to: "/dashboard/contracts", late: true },
-      { id: "u13-t2", text: "تایید یادداشت بلاگِ یکی از کارکنان بانک سینا", to: "/dashboard/blog" },
-      { id: "u13-t3", text: "دعوت و واردسازیِ ۳ کاربر جدیدِ شرکت", to: "/dashboard/settings?section=members&tab=invite" },
+      { id: "u13-t2", text: "تایید یادداشت بلاگِ یکی از کارکنان بانک سینا", to: "/blogs" },
+      { id: "u13-t3", text: "دعوت و واردسازیِ ۳ کاربر جدیدِ شرکت", to: "/settings?section=members&tab=invite" },
     ],
     groupIds: ["g3", "g5", "g2", "g6"],
     mentions: 2,
@@ -196,7 +176,6 @@ export const personalData: Record<string, PersonalBundle> = {
       { id: "u13-c2", with: "واحد منابع انسانی", lastMessage: "لیست کاربران جدید را فرستادم.", unread: 1 },
     ],
     notifications: [
-      n("u13-n1", "قرارداد «ارزیابی امنیتی» منتظر بازبینی شماست", "۱۵ دقیقه پیش", false, "task"),
       n("u13-n2", "یک یادداشت بلاگِ کارمند برای تایید ارسال شد", "۲ ساعت پیش", false, "task"),
       n("u13-n3", "۳ کاربر جدید در انتظار تخصیص نقش هستند", "دیروز", true, "system"),
     ],
@@ -210,8 +189,8 @@ export const personalData: Record<string, PersonalBundle> = {
 
 const fallback: PersonalBundle = {
   tasks: [
-    { id: "fb-t1", text: "تکمیل پروفایل و مهارت‌های شما", to: "/dashboard/profile/u1" },
-    { id: "fb-t2", text: "مطالعه‌ی آخرین اطلاعیه‌ی سازمانی", to: "/dashboard/news" },
+    { id: "fb-t1", text: "تکمیل پروفایل و مهارت‌های شما", to: "/profile/u1" },
+    { id: "fb-t2", text: "مطالعه‌ی آخرین اطلاعیه‌ی سازمانی", to: "/news" },
   ],
   groupIds: ["g4", "g1", "g10"],
   mentions: 1,

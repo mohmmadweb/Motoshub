@@ -1,6 +1,6 @@
 // «بازبینی دسترسی‌ها» — مرور دوره‌ای تخصیص‌های زنده (مانند Access Reviews در Entra).
 import { useMemo, useState } from "react";
-import { AlarmClock, Ban, ClipboardCheck, History, Lightbulb, Scale, ShieldAlert, Sparkles, UserX } from "lucide-react";
+import { AlarmClock, Ban, ClipboardCheck, History, Lightbulb, Scale, ShieldAlert, UserX } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import Badge from "../../../components/ui/Badge";
 import EmptyState from "../../../components/ui/EmptyState";
@@ -123,7 +123,7 @@ export function AccessReviewSection() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap mb-3">
-        <Button size="sm" icon={<Sparkles size={13} />} onClick={suggest} disabled={!flagged.length} className="disabled:opacity-45">
+        <Button size="sm" icon={<Lightbulb size={13} />} onClick={suggest} disabled={!flagged.length} className="disabled:opacity-45">
           اعمال پیشنهادها ({fmtN(flagged.length)})
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setDecisions({})} disabled={!revokedIds.length} className="disabled:opacity-45">

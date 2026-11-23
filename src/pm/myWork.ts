@@ -5,6 +5,7 @@
 import { dayNum } from "./jalali";
 import { isDone, kindOf } from "./selectors";
 import type { PMTask, ProjectState } from "./types";
+import { isAssignedTo } from "./rules";
 
 export type WorkItem = { p: ProjectState; t: PMTask };
 export type Bucket = "overdue" | "today" | "week" | "later" | "nodate";
@@ -31,12 +32,12 @@ const byDue = (a: WorkItem, b: WorkItem) => (dayNum(a.t.due) ?? 9e9) - (dayNum(b
 export function myWork(projects: ProjectState[], me: string) {
   const live = projects.filter((p) => !p.meta.archived);
   const all: WorkItem[] = live.flatMap((p) => p.tasks.filter((t) => !t.archived).map((t) => ({ p, t })));
-  const assigned = all.filter((x) => x.t.assignee === me).sort(byDue);
+  const assigned = all.filter((x) => isAssignedTo(x.t, me)).sort(byDue);
   return {
     assigned,
     open: assigned.filter((x) => !isDone(x.p, x.t)),
     done: assigned.filter((x) => isDone(x.p, x.t)),
-    watching: all.filter((x) => (x.t.watchers ?? []).includes(me) && x.t.assignee !== me && !isDone(x.p, x.t)).sort(byDue),
+    watching: all.filter((x) => (x.t.watchers ?? []).includes(me) && !isAssignedTo(x.t, me) && !isDone(x.p, x.t)).sort(byDue),
     approvals: all.filter((x) => x.t.approval?.status === "در انتظار" && x.t.approval.approver === me),
     requested: all.filter((x) => x.t.approval && x.t.approval.requestedBy === me),
     timers: all.filter((x) => x.t.timer?.by === me),

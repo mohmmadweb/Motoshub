@@ -18,7 +18,7 @@ export function useAbuseRules(reports: AbuseReport[]) {
       const times = (rs: AbuseReport[]) => rs.map((r) => msFromStamp(r.resolved_at ?? r.created_at)).filter((x): x is number => x !== null);
       const b = evaluateRule("abuse_reports", uid, times(list)) ?? evaluateRule("spam", uid, times(list.filter((r) => r.reason === "spam")));
       const name = users.find((u) => u.id === uid)?.name;
-      if (b && name) inbox.send([name], "security", `حساب شما ${blockKindShort[b.kind]} شد${b.until ? ` تا ${b.until}` : " (دائم)"}. دلیل: ${b.reason}`, `/dashboard/profile/${uid}?tab=security`, { urgent: true, system: true });
+      if (b && name) inbox.send([name], "security", `حساب شما ${blockKindShort[b.kind]} شد${b.until ? ` تا ${b.until}` : " (دائم)"}. دلیل: ${b.reason}`, `/profile/${uid}?tab=security`, { urgent: true, system: true });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reports]);

@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // پیام‌رسان — یک صفحه برای سه مسیر:
-//   /dashboard/chat(/:id)      گفتگوها  ← direct-messages ، saved-messages ، bots
-//   /dashboard/groups(/:id)    گروه‌ها  ← groups (+ topics)
-//   /dashboard/channels(/:id)  کانال‌ها ← channels (+ sub-channels)
+//   /conversations(/:id)      گفتگوها  ← direct-messages ، saved-messages ، bots
+//   /groups(/:id)    گروه‌ها  ← groups (+ topics)
+//   /channels(/:id)  کانال‌ها ← channels (+ sub-channels)
 // همه‌ی اقدام‌ها از useSocial() (شبیه‌ساز ماژول messaging در Motoshub Social API) می‌آیند.
 // ---------------------------------------------------------------------------
 import { useEffect, useState } from "react";
@@ -79,7 +79,7 @@ export default function Messenger({ mode }: { mode: MessengerMode }) {
 
   const preview = (c: Chat, m: Message | undefined) => {
     if (!m) return c.description || "بدون پیام";
-    const body = m.type === "sticker" ? `برچسب ${m.content}` : m.content || (m.attachments.length ? "📎 پیوست" : "");
+    const body = m.type === "sticker" ? `برچسب ${m.content}` : m.type === "audio" ? "پیام صوتی" : m.content || (m.attachments.length ? "📎 پیوست" : "");
     if (m.user_id === me && c.chat_type !== "saved_messages") return `شما: ${body}`;
     if (isRoomMode) return `${s.userName(m.user_id).split(" ")[0]}: ${body}`;
     return body;
@@ -132,7 +132,8 @@ export default function Messenger({ mode }: { mode: MessengerMode }) {
           { label: `حذف ${conf.noun}`, ep: endpoints.chatDelete(mode, pid) },
         ]),
     { label: "پیام‌های گفتگو", ep: endpoints.chatMessages(seg, pid) },
-    { label: "ارسال پیام", ep: endpoints.chatSend(seg, pid) },
+    { label: "ارسال پیام (متن، برچسب، پیام صوتی type: audio)", ep: endpoints.chatSend(seg, pid) },
+    ...(mode === "chat" ? [{ label: "سقف پیام صوتی (audio_max_size_mb ، audio_max_duration_seconds)", ep: endpoints.chatSettings("direct-messages") }] : []),
     { label: "خوانده‌شدن", ep: endpoints.chatMarkRead(seg, pid) },
     { label: "بی‌صدا", ep: endpoints.chatMute(seg, pid) },
     { label: "ویرایش پیام", ep: endpoints.messageUpdate("{id}") },
@@ -143,6 +144,7 @@ export default function Messenger({ mode }: { mode: MessengerMode }) {
     { label: "واکنش اموجی به پیام", ep: endpoints.messageReact("{id}") },
     { label: "رشته‌ی گفتگو (thread)", ep: endpoints.messageThread("{id}") },
     { label: "سنجاق پیام (حداکثر ۵)", ep: endpoints.messagePin("{id}") },
+    { label: "برداشتن سنجاق", ep: endpoints.messageUnpin("{id}") },
     { label: "پیام‌های سنجاق‌شده", ep: endpoints.chatPinned(seg, pid) },
     { label: "جستجو داخل گفتگو", ep: endpoints.chatSearch(seg, pid) },
     // «پیشنهادی» — اقلام F01 تا F04

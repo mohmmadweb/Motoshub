@@ -12,8 +12,9 @@ import { Field, MemberSelect, SectionTitle, useProjectPage } from "./shared";
 import { phases } from "./OverviewTab";
 import CustomFieldsCard from "./CustomFieldsCard";
 import { ProjectIcon, projectColors, projectIconNames } from "./projectIcons";
-import { InnovationLinksCard, MeetingSettingsCard, ScopePicker } from "./SettingsExtras";
+import { CompanyLinkCard, MeetingSettingsCard, ScopePicker } from "./SettingsExtras";
 import ClosureWizard from "./ClosureWizard";
+import ProjectControlCard from "./ProjectControlCard";
 
 export default function SettingsTab() {
   const { p, pid, canEdit, canManage, hasPerm, refDate, goTab } = useProjectPage();
@@ -174,7 +175,8 @@ export default function SettingsTab() {
         </button>
       </div>
 
-      <InnovationLinksCard />
+      <ProjectControlCard />
+      <CompanyLinkCard />
       <MeetingSettingsCard />
       <CustomFieldsCard />
 
@@ -207,7 +209,7 @@ export default function SettingsTab() {
                 message: `${fa(p.tasks.length)} تسک، ${fa(p.logs.length)} رکورد تاریخچه و همه‌ی اسناد و هزینه‌ها حذف می‌شود. به‌جای حذف، بایگانی را در نظر بگیرید.`,
                 onConfirm: () => {
                   pm.deleteProject(pid);
-                  navigate("/dashboard/projects");
+                  navigate("/projects");
                 },
               })
             }

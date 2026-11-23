@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { GraduationCap, Network, BarChart3, Bot, Settings, Send, ExternalLink, RotateCcw, Download, Search, Info } from "lucide-react";
+import { GraduationCap, Network, BarChart3, Settings, RotateCcw, Download, Info } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import StatCard from "../../components/ui/StatCard";
@@ -10,7 +9,6 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useTenancy } from "../../context/TenancyContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
-import { trainingCourses } from "../../data/mockDaneshmand";
 import { dayNum, fa, monthNames, parseJalali } from "../../pm/jalali";
 import { accessLevels } from "../../km/types";
 import { Field, SectionHead, avg } from "./shared";
@@ -20,11 +18,10 @@ import { MarkdownEditor } from "./Markdown";
 import { defaultTemplates, retentionOf, templateForType } from "../../km/templates";
 import { useKPage } from "./ctx";
 
-/** بند ۲۳: آموزش و یادگیری — از ماژول «آموزش و توانمندسازی» استفاده می‌شود */
+/** بند ۲۳: آموزش و یادگیری — اسناد آموزشی و شناسنامه‌ی شغل‌ها */
 export function TrainingSection() {
   const km = useKnowledge();
   const page = useKPage();
-  const navigate = useNavigate();
   const trainingDocs = km.docs.filter((d) => d.type === "آموزشی" && d.status !== "آرشیو");
   const jobs = km.registry.filter((r) => r.typeId === "rt-job");
   return (
@@ -32,24 +29,9 @@ export function TrainingSection() {
       <SectionHead
         icon={<GraduationCap size={17} className="text-brand-600" />}
         title="آموزش و یادگیری"
-        hint="دوره‌ها، آزمون‌ها و مسیرهای یادگیری در ماژول «آموزش و توانمندسازی» مدیریت می‌شوند؛ این بخش آن‌ها را به اسناد آموزشی و شناسنامه‌ی شغل‌ها وصل می‌کند."
-        action={
-          <Button variant="primary" icon={<ExternalLink size={14} />} onClick={() => navigate("/dashboard/training")}>
-            رفتن به آموزش و توانمندسازی
-          </Button>
-        }
+        hint="اسناد آموزشی و آموزش‌های مرتبط با هر شغل/سمت از شناسنامه‌ی شغل‌ها."
       />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-4">
-          <p className="text-xs font-bold text-ink-900 mb-2">دوره‌ها و آموزش‌ها</p>
-          {trainingCourses.map((c) => (
-            <button key={c.id} onClick={() => navigate("/dashboard/training")} className="w-full flex items-center gap-2 py-1.5 text-right text-xs hover:text-brand-700">
-              <span className="flex-1 truncate text-ink-800">{c.title}</span>
-              <Badge tone={c.status === "ثبت‌نام باز" ? "success" : c.status === "در حال برگزاری" ? "brand" : "neutral"}>{c.status}</Badge>
-              <span className="text-ink-400 w-16 text-left">{fa(c.hours)} ساعت</span>
-            </button>
-          ))}
-        </div>
         <div className="card p-4">
           <p className="text-xs font-bold text-ink-900 mb-2">فایل‌ها و مستندات آموزشی</p>
           {trainingDocs.map((d) => (
@@ -358,84 +340,6 @@ export function ReportsSection() {
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-brand-500 rounded-sm" /> تولید (سند و تجربه)</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-400 rounded-sm" /> مصرف (مشاهده، جستجو، دانلود)</span>
           </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------ دستیار
-type Msg = { from: "me" | "bot"; text: string; sources?: { title: string; open: () => void }[] };
-
-/** بند ۲۵: دستیار هوشمند سازمانی (نمای نمونه‌ی فاز ۴) — پاسخ همراه با منبع و با رعایت سطح دسترسی */
-export function AssistantSection() {
-  const km = useKnowledge();
-  const page = useKPage();
-  const [msgs, setMsgs] = useState<Msg[]>([{ from: "bot", text: "سلام؛ پرسش خود را درباره‌ی اسناد، فرآیندها، تجربیات یا واژه‌های سازمان بپرسید. پاسخ‌ها فقط از منابعی ساخته می‌شوند که شما اجازه‌ی دیدنشان را دارید." }]);
-  const [q, setQ] = useState("");
-  const ask = (question: string) => {
-    const words = question.replace(/[؟?.,،]/g, " ").split(/\s+/).filter((w) => w.length > 2);
-    const score = (text: string) => words.reduce((s, w) => s + (text.includes(w) ? 1 : 0), 0);
-    const cands = [
-      ...km.docs.filter((d) => d.status !== "آرشیو" && km.canSee(d)).map((d) => ({ title: d.title, text: `${d.title} ${d.description} ${d.tags.join(" ")}`, summary: d.description, meta: `نسخه‌ی ${fa(d.version)} · ${d.updatedAt}`, open: () => page.openDoc(d.id) })),
-      ...km.experiences.filter((e) => e.status === "منتشرشده").map((e) => ({ title: `${e.kind}: ${e.title}`, text: `${e.title} ${e.body} ${e.problem ?? ""} ${e.future ?? ""}`, summary: e.future ? `توصیه: ${e.future}` : e.body, meta: e.author, open: () => page.go("experience", e.id) })),
-      ...km.glossary.map((g) => ({ title: `واژه: ${g.term}`, text: `${g.term} ${g.abbr ?? ""} ${g.definition}`, summary: g.definition, meta: g.unit, open: () => page.go("glossary", g.id) })),
-      ...km.processes.map((p) => ({ title: `فرآیند: ${p.name}`, text: `${p.name} ${p.description} ${p.steps.join(" ")}`, summary: `${p.description} گام‌ها: ${p.steps.join(" ← ")}`, meta: p.owner, open: () => page.go("processes", p.id) })),
-    ]
-      .map((c) => ({ ...c, s: score(c.text) }))
-      .filter((c) => c.s > 0)
-      .sort((a, b) => b.s - a.s)
-      .slice(0, 3);
-    km.logSearch(question, cands.length);
-    const answer: Msg = cands.length
-      ? { from: "bot", text: `بر اساس ${fa(cands.length)} منبع:\n\n${cands.map((c, i) => `${fa(i + 1)}) ${c.summary} (${c.meta})`).join("\n\n")}`, sources: cands.map((c) => ({ title: c.title, open: c.open })) }
-      : { from: "bot", text: "در منابعی که به آن‌ها دسترسی دارید پاسخی پیدا نکردم. این پرسش به‌عنوان «کمبود دانش» ثبت شد تا مالکان دانش آن را پوشش دهند." };
-    setMsgs((m) => [...m, { from: "me", text: question }, answer]);
-  };
-  return (
-    <div>
-      <SectionHead icon={<Bot size={17} className="text-brand-600" />} title="دستیار هوشمند دانش" hint="پرسش به زبان طبیعی، جستجو و بازیابی از اسناد، خلاصه‌سازی و پیدا کردن آخرین نسخه — پاسخ همراه با منبع و لینک و با رعایت سطح دسترسی کاربر. (نمای نمونه‌ی فاز ۴)" />
-      <div className="card flex flex-col h-[520px]">
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 chat-surface">
-          {msgs.map((m, i) => (
-            <div key={i} className={`max-w-[80%] rounded-xl p-3 text-sm leading-7 whitespace-pre-wrap ${m.from === "me" ? "bg-brand-600 text-white mr-auto" : "bg-white border border-ink-100 text-ink-800"}`}>
-              {m.text}
-              {m.sources && (
-                <div className="mt-2 pt-2 border-t border-ink-100 flex flex-wrap gap-1.5">
-                  {m.sources.map((s) => (
-                    <button key={s.title} onClick={s.open} className="text-[11px] bg-brand-50 text-brand-700 rounded px-2 py-0.5 hover:underline">
-                      منبع: {s.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-ink-100 p-3">
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {["آخرین نسخه‌ی شیوه‌نامه‌ی طرح‌های اشتغال", "TRL چیست؟", "درس‌آموخته‌های تأمین تجهیزات", "فرآیند انتشار سند"].map((s) => (
-              <button key={s} onClick={() => ask(s)} className="text-[11px] px-2 py-1 rounded-full border border-ink-200 text-ink-600 hover:bg-ink-50">
-                {s}
-              </button>
-            ))}
-          </div>
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (q.trim()) ask(q.trim());
-              setQ("");
-            }}
-          >
-            <div className="relative flex-1">
-              <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400" />
-              <input className="input-field !pr-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder="پرسش خود را بنویسید…" />
-            </div>
-            <Button variant="primary" type="submit" icon={<Send size={14} />}>
-              پرسیدن
-            </Button>
-          </form>
         </div>
       </div>
     </div>

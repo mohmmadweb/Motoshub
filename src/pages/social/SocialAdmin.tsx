@@ -31,12 +31,12 @@ import { useAbuseRules } from "../../iam/useAbuseRules";
 type Tab = "dash" | "review" | "reports" | "comments" | "reactions" | "settings";
 
 const modules: { id: SocialModule; label: string; path: Parameters<typeof endpoints.dashboard>[0]; icon: typeof FileText; to: string }[] = [
-  { id: "content", label: "محتوا (مجله، خبر، بلاگ)", path: "content/content", icon: FileText, to: "/dashboard/magazines" },
-  { id: "media", label: "رسانه", path: "media/media", icon: ImageIcon, to: "/dashboard/media" },
-  { id: "events", label: "رویدادها", path: "events/events", icon: CalendarDays, to: "/dashboard/events" },
-  { id: "forums", label: "پرسش و پاسخ", path: "forums/forums", icon: MessagesSquare, to: "/dashboard/forum" },
-  { id: "messaging", label: "پیام‌رسان", path: "messaging/messaging", icon: MessageCircle, to: "/dashboard/chat" },
-  { id: "relations", label: "ارتباطات", path: "relations/relations", icon: UserPlus, to: "/dashboard/connections" },
+  { id: "content", label: "محتوا (مجله، خبر، بلاگ)", path: "content/content", icon: FileText, to: "/magazines" },
+  { id: "media", label: "رسانه", path: "media/media", icon: ImageIcon, to: "/media" },
+  { id: "events", label: "رویدادها", path: "events/events", icon: CalendarDays, to: "/events" },
+  { id: "forums", label: "پرسش و پاسخ", path: "forums/forums", icon: MessagesSquare, to: "/forums" },
+  { id: "messaging", label: "پیام‌رسان", path: "messaging/messaging", icon: MessageCircle, to: "/conversations" },
+  { id: "relations", label: "ارتباطات", path: "relations/relations", icon: UserPlus, to: "/friends" },
 ];
 
 const appLabel: Record<string, string> = { content: "محتوا", core: "هسته (core)", media: "رسانه", events: "رویدادها", forums: "پرسش و پاسخ", messaging: "پیام‌رسان", relations: "ارتباطات" };
@@ -46,21 +46,23 @@ const appOrder = ["content", "core", "media", "events", "forums", "messaging", "
 function settingEndpoint(key: string): Ep | null {
   const [app, sub] = key.split(".");
   const p = (base: string): Ep => ({ method: "PATCH", path: `${base}/setting/${key}/` });
+  // تنظیمات صوتی پیام‌رسان (settings_catalog واقعی) کلید نقطه‌دار ندارند
+  if (key.startsWith("audio_")) return p("/social/messaging/direct-messages");
   switch (app) {
     case "content":
-      return p(`/content/${sub === "blog" ? "blogs" : sub === "magazine" ? "magazines" : "news"}`);
+      return p(`/social/${sub === "blog" ? "blogs" : sub === "magazine" ? "magazines" : "news"}`);
     case "media":
-      return p("/media/media/posts");
+      return p("/social/media/posts");
     case "events":
-      return p("/events/events");
+      return p("/social/events");
     case "forums":
-      return p("/forums/forums/topics");
+      return p("/social/forums/topics");
     case "messaging":
-      return p(`/messaging/messaging/${["groups", "channels", "direct-messages", "saved-messages", "bots"].includes(sub) ? sub : "groups"}`);
+      return p(`/social/messaging/${["groups", "channels", "direct-messages", "saved-messages", "bots"].includes(sub) ? sub : "groups"}`);
     case "relations":
-      return p("/relations/relations/friendships");
+      return p("/social/relations/friendships");
     default:
-      return null; // core: فقط GET /core/settings/all/
+      return null; // core: فقط GET /social/settings/all/
   }
 }
 
@@ -100,36 +102,42 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
       case "news":
       case "magazine": {
         const x = s.content.find((i) => i.id === id);
-        return { title: x?.title ?? "مطلب حذف‌شده", to: x ? `/dashboard/${x.kind === "news" ? "news" : x.kind === "blogs" ? "blog" : "magazines"}/${x.id}` : null };
+        return { title: x?.title ?? "مطلب حذف‌شده", to: x ? `/${x.kind}/${x.id}` : null };
       }
       case "media": {
         const x = s.media.find((i) => i.id === id);
-        return { title: x?.caption ?? "رسانه‌ی حذف‌شده", to: x ? `/dashboard/media/${id}` : null };
+        return { title: x?.caption ?? "رسانه‌ی حذف‌شده", to: x ? `/media/${id}` : null };
       }
       case "event": {
         const x = s.events.find((i) => i.id === id);
-        return { title: x?.title ?? "رویداد حذف‌شده", to: x ? `/dashboard/events/${id}` : null };
+        return { title: x?.title ?? "رویداد حذف‌شده", to: x ? `/events/${id}` : null };
       }
-      case "topic": {
+      case "forum": {
         const x = s.topics.find((i) => i.id === id);
-        return { title: x?.title ?? "پرسش حذف‌شده", to: x ? `/dashboard/forum/${id}` : null };
+        return { title: x?.title ?? "پرسش حذف‌شده", to: x ? `/forums/${id}` : null };
       }
       case "post": {
         const x = s.posts.find((i) => i.id === id);
         const t = x ? s.topics.find((i) => i.id === x.topic_id) : undefined;
-        return { title: t ? `پاسخی در «${t.title}»` : "پاسخ حذف‌شده", to: t ? `/dashboard/forum/${t.id}` : null };
+        return { title: t ? `پاسخی در «${t.title}»` : "پاسخ حذف‌شده", to: t ? `/forums/${t.id}` : null };
       }
-      case "group":
-      case "channel": {
+      case "messaging_group":
+      case "messaging_channel": {
         const x = s.chats.find((i) => i.id === id);
-        return { title: x?.title ?? "گفتگوی حذف‌شده", to: x ? `/dashboard/${e === "group" ? "groups" : "channels"}/${id}` : null };
+        return { title: x?.title ?? "گفتگوی حذف‌شده", to: x ? `/${e === "messaging_group" ? "groups" : "channels"}/${id}` : null };
       }
       // «پیشنهادی» — F01: نظر روی نظرسنجی ← گروه/کانالِ همان نظرسنجی
       case "poll": {
         const p = s.polls.find((i) => i.id === id);
         const ch = p ? s.chats.find((i) => i.id === p.entity_id) : undefined;
-        return { title: p ? `نظرسنجی «${p.question}»` : "نظرسنجی حذف‌شده", to: ch ? `/dashboard/${ch.chat_type === "channel" ? "channels" : "groups"}/${ch.parent ?? ch.id}` : null };
+        return { title: p ? `نظرسنجی «${p.question}»` : "نظرسنجی حذف‌شده", to: ch ? `/${ch.chat_type === "channel" ? "channels" : "groups"}/${ch.parent ?? ch.id}` : null };
       }
+      case "faq": {
+        const f = s.faqs.find((i) => i.id === id);
+        return { title: f?.question ?? "سؤال حذف‌شده", to: f ? `/faqs?q=${id}` : null };
+      }
+      default:
+        return { title: `${c.entity_name} ${id}`, to: null };
     }
   };
 
@@ -158,7 +166,7 @@ export default function SocialAdmin({ embedded = false }: { embedded?: boolean }
         : active === "reactions"
           ? [
               { label: "همه‌ی واکنش‌های مجاز", ep: endpoints.allowedReactions() },
-              { label: "واکنش‌های فعال", ep: { method: "GET", path: "/core/allowed-reactions/" } },
+              { label: "واکنش‌های فعال", ep: { method: "GET", path: "/social/allowed-reactions/" } },
             ]
           : [
               { label: "همه‌ی تنظیمات", ep: endpoints.settings() },
@@ -435,7 +443,7 @@ function ReactionsTab() {
         <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={add}>
           افزودن
         </Button>
-        <p className="text-[10.5px] text-ink-400 leading-5">API فعلی فقط خواندن واکنش‌های مجاز را دارد (GET /core/allowed-reactions/all/)؛ افزودن و فعال/غیرفعال کردن از پنل مدیریت بک‌اند انجام می‌شود.</p>
+        <p className="text-[10.5px] text-ink-400 leading-5">API فعلی فقط خواندن واکنش‌های مجاز را دارد (GET /social/allowed-reactions/all/)؛ افزودن و فعال/غیرفعال کردن از پنل مدیریت بک‌اند انجام می‌شود.</p>
       </div>
     </div>
   );
@@ -488,7 +496,7 @@ function SettingsTab() {
                         {st.key}
                       </code>
                       <span dir="ltr" className="text-[10px] text-ink-400 font-mono break-all">
-                        {ep ? fmtEndpoint(ep) : "GET /core/settings/all/ (بدون PATCH در API)"}
+                        {ep ? fmtEndpoint(ep) : "GET /social/settings/all/ (بدون PATCH در API)"}
                       </span>
                     </p>
                   </div>
@@ -671,13 +679,13 @@ function ReportsTab() {
       const x = s.content.find((c) => c.id === r.target_id);
       return x ? contentPath(x) : null;
     }
-    if (r.target_type === "media") return s.media.some((m) => m.id === r.target_id) ? `/dashboard/media/${r.target_id}` : null;
+    if (r.target_type === "media") return s.media.some((m) => m.id === r.target_id) ? `/media/${r.target_id}` : null;
     if (r.target_type === "message") {
       const m = s.messages.find((x) => x.id === r.target_id);
       const c = m ? s.chats.find((x) => x.id === m.chat_id) : undefined;
       if (!c) return null;
       const root = c.parent ?? c.id;
-      return c.chat_type === "group" ? `/dashboard/groups/${root}` : c.chat_type === "channel" ? `/dashboard/channels/${root}` : `/dashboard/chat/${c.id}`;
+      return c.chat_type === "group" ? `/groups/${root}` : c.chat_type === "channel" ? `/channels/${root}` : `/conversations/${c.id}`;
     }
     const cm = s.comments.find((x) => x.id === r.target_id);
     if (!cm) return null;
@@ -685,7 +693,7 @@ function ReportsTab() {
       const x = s.content.find((c) => c.id === cm.entity_id);
       return x ? contentPath(x) : null;
     }
-    return cm.entity_name === "media" ? `/dashboard/media/${cm.entity_id}` : cm.entity_name === "event" ? `/dashboard/events/${cm.entity_id}` : cm.entity_name === "topic" ? `/dashboard/forum/${cm.entity_id}` : null;
+    return cm.entity_name === "media" ? `/media/${cm.entity_id}` : cm.entity_name === "event" ? `/events/${cm.entity_id}` : cm.entity_name === "forum" ? `/forums/${cm.entity_id}` : null;
   };
   const decisionLabel = { dismiss: "رد گزارش", hide: "پنهان‌سازی", remove_warn: "حذف و اخطار" } as const;
   const run = () => {

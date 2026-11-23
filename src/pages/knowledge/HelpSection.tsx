@@ -12,9 +12,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ArrowRight,
-  PiggyBank,
   Megaphone,
-  GraduationCap,
   KeyRound,
   MessageCircleQuestion,
   Search,
@@ -22,10 +20,10 @@ import {
   KanbanSquare,
   BookOpen,
   Users,
-  FileSignature,
   Settings,
   LifeBuoy,
-  Sparkles,
+  Newspaper,
+  ExternalLink,
   ThumbsUp,
   ThumbsDown,
   Layers,
@@ -35,7 +33,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
 import { useSettings } from "../../context/SettingsContext";
-import { buildArticles, type CatId, type Article } from "./helpArticles";
+import { buildArticles, helpLink, HELP_CENTER_PATH, FAQ_PATH, type CatId, type Article } from "./helpArticles";
 import { useTicketsMaybe } from "../../context/TicketsContext";
 import { releases, APP_VERSION } from "../tickets/model";
 import { SectionHead } from "./shared";
@@ -46,15 +44,12 @@ const cats: Cat[] = [
   { id: "start", label: "شروع کار", icon: Rocket, hint: "ورود، منوها، جستجو و ایستادن در یک سازمان" },
   { id: "roles", label: "نقش‌ها و دسترسی", icon: KeyRound, hint: "ساختار پیازی سیستم ← هلدینگ ← شرکت و نقش‌های چندگانه" },
   { id: "projects", label: "پروژه و فعالیت‌ها", icon: KanbanSquare, hint: "پروژه‌ها، بُرد، وظایف من و زمان کاری" },
-  { id: "knowledge", label: "دانش، محتوا و دستیار", icon: BookOpen, hint: "مخزن دانش، درس‌آموخته‌ها، انتشار محتوا و دستیار هوشمند" },
+  { id: "knowledge", label: "دانش و محتوا", icon: BookOpen, hint: "مخزن دانش، درس‌آموخته‌ها و انتشار محتوا" },
   { id: "collab", label: "شبکه اجتماعی", icon: Users, hint: "تقویم، رویدادها، گفتگو، گروه‌ها و فایل‌ها" },
-  { id: "innovation", label: "صندوق‌ها و نوآوری", icon: PiggyBank, hint: "صندوق نوآور، شبکه‌ی صندوق‌ها و جایزه" },
-  { id: "contracts", label: "قراردادها و فراخوان‌ها", icon: FileSignature, hint: "تبادل فناوری، امضای الکترونیک و RFP" },
-  { id: "research", label: "پژوهش و آموزش", icon: GraduationCap, hint: "فرصت مطالعاتی و دوره‌های آموزشی" },
   { id: "admin", label: "مدیریت سامانه", icon: Settings, hint: "پارامترهای گردش کار و تنظیمات" },
   { id: "support", label: "پشتیبانی و تیکت", icon: LifeBuoy, hint: "گزارش مشکل به تیم سازنده و SLA" },
   { id: "faq", label: "پرسش‌های متداول", icon: MessageCircleQuestion, hint: "پاسخ کوتاه به پرسش‌های پرتکرار" },
-  { id: "news", label: "تازه‌ها", icon: Sparkles, hint: "یادداشت انتشار نسخه‌ها" },
+  { id: "news", label: "تازه‌ها", icon: Newspaper, hint: "یادداشت انتشار نسخه‌ها" },
 ];
 const catById = (id: CatId) => cats.find((c) => c.id === id)!;
 
@@ -68,7 +63,7 @@ const readFeedback = (): Record<string, "up" | "down"> => {
 };
 /** شمار نمایشیِ «مفید بود» برای هر مقاله (ثابت و قطعی) */
 const baseHelpful = (id: string) => 6 + ([...id].reduce((s, c) => s + c.charCodeAt(0), 0) % 37);
-const ticketLink = (from: string) => `/dashboard/tickets?new=1&from=${encodeURIComponent(from)}`;
+const ticketLink = (from: string) => `/tickets?new=1&from=${encodeURIComponent(from)}`;
 
 export function HelpSection() {
   const { settings } = useSettings();
@@ -105,7 +100,7 @@ export function HelpSection() {
       ? []
       : articles.filter((a) => a.cat === cat);
 
-  const helpPath = "/dashboard/knowledge?tab=help";
+  const helpPath = HELP_CENTER_PATH;
 
   // ------------------------------------------------------------ نمای مقاله
   if (article) {
@@ -186,7 +181,7 @@ export function HelpSection() {
           </div>
         </article>
 
-        <StillNeedHelp to={ticketLink(`${helpPath}&article=${article.id}`)} strong={fb === "down"} />
+        <StillNeedHelp to={ticketLink(helpLink(article.id))} strong={fb === "down"} />
 
         {related.length > 0 && (
           <div className="mt-5">
@@ -261,7 +256,7 @@ export function HelpSection() {
         <>
           <button onClick={() => setCat("news")} className="w-full card p-4 mb-4 flex items-center gap-3 text-right hover:border-brand-300">
             <span className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
-              <Sparkles size={18} />
+              <Newspaper size={18} />
             </span>
             <span className="flex-1 min-w-0">
               <span className="block text-[11px] text-ink-500">تازه‌ها · نسخه‌ی {latest.version}</span>
@@ -272,6 +267,8 @@ export function HelpSection() {
 
           {/* F16 — تورهای تعاملی (اجرای دوباره/ادامه) */}
           <TourLauncherCard />
+
+          <FaqPageCard />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {cats
@@ -337,6 +334,7 @@ function FaqList({ items }: { items: Article[] }) {
   const [open, setOpen] = useState<string | null>(items[0]?.id ?? null);
   return (
     <div className="space-y-2">
+      <FaqPageCard />
       {items.map((a) => {
         const on = open === a.id;
         return (
@@ -357,7 +355,7 @@ function FaqList({ items }: { items: Article[] }) {
           </div>
         );
       })}
-      <StillNeedHelp to={ticketLink("/dashboard/knowledge?tab=help")} />
+      <StillNeedHelp to={ticketLink(HELP_CENTER_PATH)} />
     </div>
   );
 }
@@ -388,7 +386,7 @@ function ReleaseNotes({ fixedBy }: { fixedBy: (v: string) => { id: string; title
                 <p className="text-[11.5px] text-ink-500 mb-1">تیکت‌های کاربران که در این نسخه رفع {r.upcoming ? "می‌شوند" : "شدند"}:</p>
                 <div className="flex flex-col gap-1">
                   {fixed.map((t) => (
-                    <Link key={t.id} to={`/dashboard/tickets?id=${t.id}`} className="text-[12px] text-brand-700 hover:underline truncate">
+                    <Link key={t.id} to={`/tickets?id=${t.id}`} className="text-[12px] text-brand-700 hover:underline truncate">
                       <span className="font-mono" dir="ltr">
                         {t.id}
                       </span>{" "}
@@ -413,11 +411,29 @@ function StillNeedHelp({ to, strong }: { to: string; strong?: boolean }) {
       </span>
       <div className="flex-1 min-w-[180px]">
         <p className="text-[13px] font-bold text-ink-900">هنوز مشکل دارید؟</p>
-        <p className="text-[12px] text-ink-500 mt-0.5 leading-5">از «دستیار هوشمند» به زبان فارسی بپرسید یا برای تیم سازنده‌ی موتوشاب تیکت پشتیبانی ثبت کنید.</p>
+        <p className="text-[12px] text-ink-500 mt-0.5 leading-5">
+          <Link to={FAQ_PATH} className="text-[var(--color-link)] hover:underline underline-offset-4">سوالات متداول سازمان</Link> را ببینید یا برای تیم سازنده‌ی کاریز تیکت پشتیبانی ثبت کنید.
+        </p>
       </div>
       <Link to={to} className="btn bg-brand-600 text-white hover:bg-brand-700 px-3.5 py-2 text-[13px]">
         <Megaphone size={14} /> ثبت تیکت
       </Link>
     </div>
+  );
+}
+
+/** پیوند به صفحه‌ی «سوالات متداول» سازمان (/faqs — داده‌ی واقعی social/faqs) */
+function FaqPageCard() {
+  return (
+    <Link to={FAQ_PATH} className="card p-3.5 mb-4 flex items-center gap-3 text-right hover:border-teal-500">
+      <span className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+        <MessageCircleQuestion size={17} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[13.5px] font-bold text-ink-900">سوالات متداول سازمان</span>
+        <span className="block text-[12px] text-ink-500 mt-0.5 leading-5">پرسش‌های پرتکرار همکاران و پاسخ کوتاه آن‌ها که مدیران محتوا منتشر کرده‌اند.</span>
+      </span>
+      <ExternalLink size={15} className="text-ink-400 shrink-0" />
+    </Link>
   );
 }

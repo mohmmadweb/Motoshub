@@ -50,6 +50,7 @@ import type {
   RssFeed,
   AparatChannelLink,
   FeatureEvent,
+  Faq,
 } from "./types";
 import { FEED_CATALOG } from "./feedCatalog";
 import { APARAT_SAMPLES } from "./linkPreview";
@@ -86,15 +87,17 @@ export function seedCategories(): Category[] {
   const blog = cats("blog", ["تجربه‌نگاری", "فناوری و نوآوری", "مدیریت و رهبری"], "cb");
   const media = cats("media", [...new Set(mediaItems.map((m) => m.album))], "cmd");
   const event = cats("event", eventCategories, "ce");
-  const topic = cats("topic", [...new Set(forumTopics.map((t) => t.category))], "ct");
-  const group = cats("group", [...new Set(legacyGroups.map((g) => g.category))], "cg");
-  const channel = cats("channel", ["اطلاع‌رسانی", "هماهنگی واحدها", "فناوری و پژوهش"], "cc");
+  // entity_name = EntityNameChoices واقعی API (forum، messaging_group، messaging_channel، faq)
+  const topic = cats("forum", [...new Set(forumTopics.map((t) => t.category))], "ct");
+  const group = cats("messaging_group", [...new Set(legacyGroups.map((g) => g.category))], "cg");
+  const channel = cats("messaging_channel", ["اطلاع‌رسانی", "هماهنگی واحدها", "فناوری و پژوهش"], "cc");
+  const faq = cats("faq", FAQ_CATEGORIES, "cq");
   // زیرموضوع نمونه (parent_id)
   const sub: Category[] = [
     { id: "cn-sub1", title: "اشتغال‌زایی", entity_name: "news", parent_id: news[1]?.id ?? null, created_at: at("۱۴۰۵/۰۲/۰۱"), updated_at: at("۱۴۰۵/۰۲/۰۱") },
-    { id: "ct-sub1", title: "هوش مصنوعی", entity_name: "topic", parent_id: topic[0]?.id ?? null, created_at: at("۱۴۰۵/۰۲/۰۱"), updated_at: at("۱۴۰۵/۰۲/۰۱") },
+    { id: "ct-sub1", title: "هوش مصنوعی", entity_name: "forum", parent_id: topic[0]?.id ?? null, created_at: at("۱۴۰۵/۰۲/۰۱"), updated_at: at("۱۴۰۵/۰۲/۰۱") },
   ];
-  return [...news, ...sub, ...magazine, ...blog, ...media, ...event, ...topic, ...group, ...channel];
+  return [...news, ...sub, ...magazine, ...blog, ...media, ...event, ...topic, ...group, ...channel, ...faq];
 }
 const catId = (all: Category[], entity: EntityName, title?: string) => (title ? all.find((c) => c.entity_name === entity && c.title === title)?.id : undefined);
 
@@ -386,7 +389,7 @@ export function seedForum(all: Category[]): { topics: import("./types").Topic[];
       is_public: true,
       is_draft: false,
       privacy: priv(t.visibility),
-      category_ids: [catId(all, "topic", t.category) ?? "ct1"],
+      category_ids: [catId(all, "forum", t.category) ?? "ct1"],
       tags: i % 3 === 0 ? ["نوآوری"] : i % 3 === 1 ? ["محرومیت‌زدایی"] : ["تحول‌دیجیتال"],
       // «پیشنهادی» — رأی و پاسخ پذیرفته‌شده
       votes: Object.fromEntries(["u2", "u4", "u5", "u6", "u7", "u9", "u12"].filter((u, k) => u !== author && k < (t.views % 5) + 1).map((u, k) => [u, (k === 3 ? -1 : 1) as 1 | -1])),
@@ -472,7 +475,7 @@ export function seedMessaging(all: Category[]): { chats: Chat[]; messages: Messa
         owner_id: owner,
         is_private: g.privacy === "خصوصی",
         members: memberIds.map((u, k) => ({ user_id: u, role: u === owner || (k === 1 && g.id === "g1") ? "admin" : "member", joined_at: at("۱۴۰۵/۰۱/۲۰") })),
-        category_ids: [catId(all, "group", g.category) ?? "cg1"],
+        category_ids: [catId(all, "messaging_group", g.category) ?? "cg1"],
         tags: [],
         profile_photos: [g.color],
         created_at: at(dateOr(g.createdAt, "۱۴۰۵/۰۱/۲۰")),
@@ -522,6 +525,10 @@ export function seedMessaging(all: Category[]): { chats: Chat[]; messages: Messa
   // پیام‌های ذخیره‌شده و بات
   chats.push(baseChat({ id: "saved-u1", chat_type: "saved_messages", title: "پیام‌های ذخیره‌شده", owner_id: "u1", is_private: true, is_public: false, members: [{ user_id: "u1", role: "admin", joined_at: at("۱۴۰۵/۰۱/۲۰") }] }));
   pushMsg("saved-u1", "u1", "یادآوری: ارسال گزارش هفتگی به کارفرما تا پنجشنبه.", "۰۸:۰۰");
+  // پیام صوتی نمونه در اولین گفتگوی دو نفره (type: audio + audio_duration — MZ «پیام صوتی در گفتگوی دو نفره»)
+  const firstDm = chats.find((c) => c.chat_type === "direct_message");
+  if (firstDm?.receiver)
+    pushMsg(firstDm.id, firstDm.receiver, "", "۱۱:۰۵", SOCIAL_TODAY, { id: "msg-voice1", type: "audio", audio_duration: 23, attachments: [att("att-voice1", "پیام-صوتی.webm", "۴۲ کیلوبایت", "audio/webm")] });
   chats.push(baseChat({ id: "bot-system", chat_type: "bot", title: "بات اعلان‌های سامانه", description: "اعلان‌های خودکار سامانه", owner_id: "u1", is_private: true, is_public: false, members: pool.map((u) => ({ user_id: u, role: u === "u1" ? "admin" : "member", joined_at: at("۱۴۰۵/۰۱/۲۰") })) }));
   pushMsg("bot-system", "u1", "🤖 به‌روزرسانی امنیتی سامانه امشب ساعت ۲۳ انجام می‌شود.", "۰۷:۳۰");
 
@@ -604,7 +611,7 @@ export function seedReactions(): ReactionRecord[] {
   add("magazine", "mag-1", [["u3", "insight"], ["u4", "love"], ["u9", "like"]]);
   add("blog", "blog-b1", [["u1", "like"], ["u5", "insight"]]);
   add("media", "media-album1", [["u2", "love"], ["u5", "celebrate"], ["u7", "love"]]);
-  add("topic", "tp-f1", [["u2", "insight"], ["u6", "like"]]);
+  add("forum", "tp-f1", [["u2", "insight"], ["u6", "like"]]);
   add("event", "ev-x2", [["u3", "like"]]);
   return r;
 }
@@ -650,7 +657,7 @@ export function seedFiles(): { folders: FileFolder[]; files: FileItem[]; trash: 
   return { folders, files, trash };
 }
 
-// ------------------------------------------------------------------ تنظیمات (کلیدها هم‌شکل /core/settings/all/)
+// ------------------------------------------------------------------ تنظیمات (کلیدها هم‌شکل /social/settings/all/)
 export function seedSettings(): Setting[] {
   const s = (app: string, key: string, value: Setting["value"], value_type: Setting["value_type"], label: string): Setting => ({ id: key, app_name: app, scope: "global", key, value, value_type, label, updated_at: at("۱۴۰۵/۰۲/۰۱") });
   return [
@@ -667,6 +674,10 @@ export function seedSettings(): Setting[] {
     s("messaging", "messaging.groups.max_members", 500, "int", "حداکثر اعضای گروه"),
     s("messaging", "messaging.channels.max_members", 5000, "int", "حداکثر اعضای کانال"),
     s("messaging", "messaging.direct-messages.allow_non_friends", true, "bool", "پیام مستقیم به غیر دوستان"),
+    // تنظیمات واقعی پیام صوتی (social/apps/messaging/settings_catalog.py)
+    s("messaging", "audio_max_size_mb", 25, "int", "حداکثر حجم پیام صوتی (مگابایت)"),
+    s("messaging", "audio_max_duration_seconds", 300, "int", "حداکثر مدت پیام صوتی (ثانیه)"),
+    s("messaging", "audio_allowed_content_types", "audio/ogg, audio/mpeg, audio/mp3, audio/mp4, audio/webm", "str", "نوع‌های مجاز فایل صوتی"),
     s("relations", "relations.friendships.max_friends", 1000, "int", "حداکثر تعداد دوستان"),
     // «پیشنهادی» — اقلام F01 تا F05
     s("core", "core.polls.enabled", true, "bool", "نظرسنجی در گروه، کانال و پست (روشن/خاموش)"),
@@ -854,7 +865,7 @@ export function seedLinkMessages(messages: Message[]): Message[] {
     ...messages,
     m("msg-lp1", "g1", "u4", "گزارش ایرنا درباره‌ی طرح‌های محرومیت‌زدایی را ببینید: https://www.irna.ir/news/85123456", "۱۱:۰۵"),
     m("msg-lp2", "ch3", "u1", "مستند «آبادانی» در آپارات منتشر شد: https://www.aparat.com/v/Zx81k", "۱۱:۲۰"),
-    m("msg-lp3", "g12", "u9", "برای آشنایی با ORC این مدخل خوب است: https://fa.wikipedia.org/wiki/چرخه_رانکین_آلی — جلسه‌اش هم ثبت شده: https://demo.shub.ir/#/dashboard/events/ev-e1", "۱۶:۲۰", addDays(SOCIAL_TODAY, -1)),
+    m("msg-lp3", "g12", "u9", "برای آشنایی با ORC این مدخل خوب است: https://fa.wikipedia.org/wiki/چرخه_رانکین_آلی — جلسه‌اش هم ثبت شده: https://demo.shub.ir/#/events/ev-e1", "۱۶:۲۰", addDays(SOCIAL_TODAY, -1)),
   ];
 }
 
@@ -907,5 +918,41 @@ export function seedFeatureLog(): FeatureEvent[] {
     { id: "fx1", at: at(addDays(SOCIAL_TODAY, -2), "۱۸:۰۰:۰۰"), actor_id: "u1", area: "poll", action: "بستن نظرسنجی (پایان مهلت)", target: "از سامانه‌ی جدید شبکه‌ی اجتماعی چقدر راضی هستید؟" },
     { id: "fx2", at: at(addDays(SOCIAL_TODAY, -2), "۱۳:۰۰:۰۰"), actor_id: "u1", area: "aparat", action: "همگام‌سازی کانال آپارات", target: "bonyad_tv", note: "۲ ویدیو وارد رسانه شد" },
     { id: "fx3", at: at(SOCIAL_TODAY, "۰۸:۱۵:۰۰"), actor_id: "u1", area: "poll", action: "ایجاد نظرسنجی", target: "زمان مناسب برگزاری همایش سالانه‌ی شبکه‌ی دانشمندان؟", note: "کانال همگانی" },
+  ];
+}
+
+// ------------------------------------------------------------------ سوالات متداول (/social/faqs/)
+export const FAQ_CATEGORIES = ["کار با سامانه", "حساب کاربری و دسترسی", "پروژه و جلسه", "اسناد و دانش"];
+/** نمونه‌ی سوالات متداول — دسته‌ها از /social/categories/faq/ (cq1…cq4) */
+export function seedFaqs(): Faq[] {
+  const d = (n: number) => at(addDays(SOCIAL_TODAY, -n), "۱۰:۰۰:۰۰");
+  const q = (id: string, cat: number, question: string, answer: string, ago: number, extra: Partial<Faq> = {}): Faq => ({
+    id,
+    user_id: "u1",
+    question,
+    answer,
+    is_active: true,
+    is_public: true,
+    is_draft: false,
+    published_at: d(ago),
+    view_count: 0,
+    category_ids: [`cq${cat}`],
+    tags: [],
+    attachments: [],
+    created_at: d(ago),
+    updated_at: d(ago),
+    deleted_at: null,
+    scope: "سراسری",
+    ...extra,
+  });
+  return [
+    q("faq1", 1, "تفاوت «مدیریت فایل‌های من» و «مدیریت دانش» چیست؟", "«مدیریت فایل‌های من» فضای فایل شخصی و فایل‌های گروه‌ها و کانال‌های شماست. «مدیریت دانش» برای اسناد رسمی سازمان با گردش تأیید، نسخه و دسته‌بندی است؛ سندی که باید بماند و دیگران پیدایش کنند را در مدیریت دانش ثبت کنید.", 40, { view_count: 37, tags: ["اسناد"] }),
+    q("faq2", 4, "فایل لوگو و قالب نامه‌ی سازمان را کجا پیدا کنم؟", "در «مدیریت دانش» بخش اسناد سازمانی، دسته‌ی «قالب‌ها و هویت بصری» را باز کنید. اگر دسترسی ندارید از مدیر واحدتان بخواهید شما را به واحد مربوط اضافه کند.", 35, { view_count: 22 }),
+    q("faq3", 3, "چطور برای جلسه‌ی جدید زمان ثبت کنم؟", "از دکمه‌ی «+» بالای صفحه گزینه‌ی «جلسه» را بزنید یا در «رویدادها و جلسات» دکمه‌ی ساخت را انتخاب و نوع «جلسه» را برگزینید. تاریخ، ساعت شروع و پایان و شرکت‌کنندگان را وارد کنید؛ دعوت‌نامه برای همه فرستاده می‌شود.", 30, { view_count: 51 }),
+    q("faq4", 3, "صورتجلسه و مصوبات یک جلسه کجا ثبت می‌شود؟", "در صفحه‌ی همان جلسه بخش «صورت‌جلسه» و «مصوبات و کارها» را پر کنید. هر مصوبه را می‌توان به کار تبدیل و به مسئولش واگذار کرد.", 26, { view_count: 18 }),
+    q("faq5", 2, "چرا بعضی بخش‌های منو را نمی‌بینم؟", "منو بر اساس نقش و دسترسی شما در واحدهایی که عضوشان هستید ساخته می‌شود. در «نقش و دسترسی من» می‌بینید چه مجوزهایی دارید و می‌توانید درخواست دسترسی ثبت کنید.", 21, { view_count: 64 }),
+    q("faq6", 2, "اگر عضو دو شرکت باشم، چطور بین آن‌ها جابه‌جا شوم؟", "از انتخابگر سازمان در نوار بالا، شرکت یا واحد موردنظر را انتخاب کنید. منو، لوگو و عنوان سامانه مطابق همان سازمان عوض می‌شود.", 14, { view_count: 12 }),
+    q("faq7", 1, "پیام صوتی را چطور بفرستم؟", "در گفتگوی دو نفره روی دکمه‌ی میکروفون بزنید، صحبت کنید و سپس «ارسال» را بزنید. حداکثر مدت و حجم پیام صوتی در تنظیمات پیام‌رسان تعیین شده است.", 3, { view_count: 4, tags: ["گفتگو"] }),
+    q("faq8", 4, "هر چند وقت یک بار اسناد دانش باید بازبینی شوند؟", "موعد بازبینی هر سند را مالک آن تعیین می‌کند؛ نزدیک موعد، اعلان یادآوری برای مالک ارسال می‌شود.", 1, { is_draft: true, is_public: false, published_at: null, user_id: "u1" }),
   ];
 }

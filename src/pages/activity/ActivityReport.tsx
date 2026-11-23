@@ -17,9 +17,10 @@ import Integrations from "./Integrations";
 import TeamGrid from "./TeamGrid";
 import FinanceSummary from "./FinanceSummary";
 import Reports from "./Reports";
+import DailyDone from "./DailyDone";
 
-type Tab = "mine" | "integrations" | "team" | "finance" | "reports";
-const ALL_TABS: readonly Tab[] = ["mine", "integrations", "team", "finance", "reports"];
+type Tab = "mine" | "done" | "integrations" | "team" | "finance" | "reports";
+const ALL_TABS: readonly Tab[] = ["mine", "done", "integrations", "team", "finance", "reports"];
 
 export default function ActivityReport() {
   const { ts, ten, me, teamPeople } = useTs();
@@ -32,13 +33,14 @@ export default function ActivityReport() {
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "mine", label: "کارکرد من" },
+    { id: "done", label: "انجام‌شده روزانه" },
     ...(can("timesheet.integrations") || pending ? [{ id: "integrations" as Tab, label: "اتصال ابزارها", count: pending || undefined }] : []),
     ...(can("timesheet.team") ? [{ id: "team" as Tab, label: "تیم من", count: submitted || undefined }] : []),
     ...(can("timesheet.finance") ? [{ id: "finance" as Tab, label: "خلاصه برای مالی" }] : []),
     { id: "reports", label: "گزارش‌ها" },
   ];
   const active: Tab = tabs.some((t) => t.id === tab) ? tab : "mine";
-  const showPeriod = active !== "integrations";
+  const showPeriod = active !== "integrations" && active !== "done";
 
   return (
     <div>
@@ -55,6 +57,7 @@ export default function ActivityReport() {
       />
       <Tabs tabs={tabs} active={active} onChange={setTab} />
       {active === "mine" && <MyTimesheet period={period} onReview={() => setTab("integrations")} />}
+      {active === "done" && <DailyDone />}
       {active === "integrations" && <Integrations />}
       {active === "team" && <TeamGrid period={period} />}
       {active === "finance" && <FinanceSummary period={period} />}

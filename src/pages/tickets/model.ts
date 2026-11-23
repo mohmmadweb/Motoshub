@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// مدل «تیکت پشتیبانی» — گزارش خطا و درخواست از هر کاربرِ سامانه به تیم سازنده‌ی موتوشاب.
+// مدل «تیکت پشتیبانی» — گزارش خطا و درخواست از هر کاربرِ سامانه به تیم سازنده‌ی کاریز.
 // هر تغییر یک رویداد تغییرناپذیر در تاریخچه‌ی تیکت است (وضعیت، پیام، یادداشت داخلی،
 // ارجاع، اولویت، پیوست و …). زمان‌ها «دقیقه‌ی دمو» هستند: روزِ مرجع دمو + ساعت واقعی.
 // ---------------------------------------------------------------------------
@@ -71,7 +71,6 @@ export const slaTargets: Record<TicketPriority, { first: number; resolve: number
 
 export const modules = [
   "داشبورد",
-  "دستیار هوشمند",
   "اعضای سازمان و ارتباطات",
   "وبلاگ و مجلات",
   "اخبار سازمان",
@@ -86,11 +85,6 @@ export const modules = [
   "فعالیت و وظایف",
   "گزارش فعالیت و زمان کاری",
   "مدیریت دانش",
-  "فرصت‌های پژوهشی",
-  "قراردادهای فناورانه",
-  "صندوق نوآوری",
-  "جایزه",
-  "آموزش",
   "گزارش‌گیری",
   "جستجو",
   "اعلان‌ها",
@@ -102,41 +96,38 @@ export const modules = [
 export type TicketModule = (typeof modules)[number];
 
 const routeModules: [string, TicketModule][] = [
-  ["/dashboard/projects", "مدیریت پروژه"],
-  ["/dashboard/project-teams", "مدیریت پروژه"],
-  ["/dashboard/my-work", "فعالیت و وظایف"],
-  ["/dashboard/activity", "گزارش فعالیت و زمان کاری"],
-  ["/dashboard/knowledge", "مدیریت دانش"],
-  ["/dashboard/blog", "وبلاگ و مجلات"],
-  ["/dashboard/magazines", "وبلاگ و مجلات"],
-  ["/dashboard/news", "اخبار سازمان"],
-  ["/dashboard/media", "رسانه"],
-  ["/dashboard/forum", "پرسش و پاسخ"],
-  ["/dashboard/topics", "هشتگ‌ها و موضوعات"],
-  ["/dashboard/files", "مدیریت فایل‌های من"],
-  ["/dashboard/calendar", "تقویم"],
-  ["/dashboard/chat", "گفتگو، گروه‌ها و کانال‌ها"],
-  ["/dashboard/groups", "گفتگو، گروه‌ها و کانال‌ها"],
-  ["/dashboard/channels", "گفتگو، گروه‌ها و کانال‌ها"],
-  ["/dashboard/events", "رویداد و جلسات"],
-  ["/dashboard/members", "اعضای سازمان و ارتباطات"],
-  ["/dashboard/connections", "اعضای سازمان و ارتباطات"],
-  ["/dashboard/friends", "اعضای سازمان و ارتباطات"],
-  ["/dashboard/research", "فرصت‌های پژوهشی"],
-  ["/dashboard/contracts", "قراردادهای فناورانه"],
-  ["/dashboard/funds", "صندوق نوآوری"],
-  ["/dashboard/award", "جایزه"],
-  ["/dashboard/training", "آموزش"],
-  ["/dashboard/reports", "گزارش‌گیری"],
-  ["/dashboard/search", "جستجو"],
-  ["/dashboard/notifications", "اعلان‌ها"],
-  ["/dashboard/assistant", "دستیار هوشمند"],
-  ["/dashboard/settings", "مدیریت سامانه"],
-  ["/dashboard/admin", "مدیریت سامانه"],
-  ["/dashboard/appearance", "مدیریت سامانه"],
-  ["/dashboard/access", "نقش و دسترسی"],
-  ["/dashboard/profile", "ورود و حساب کاربری"],
+  ["/projects", "مدیریت پروژه"],
+  ["/project-settings", "مدیریت پروژه"],
+  ["/monitoring", "مدیریت پروژه"],
+  ["/activities", "فعالیت و وظایف"],
+  ["/activity-report", "گزارش فعالیت و زمان کاری"],
+  ["/knowledge", "مدیریت دانش"],
+  ["/blogs", "وبلاگ و مجلات"],
+  ["/magazines", "وبلاگ و مجلات"],
+  ["/news", "اخبار سازمان"],
+  ["/media", "رسانه"],
+  ["/forums", "پرسش و پاسخ"],
+  ["/faqs", "پرسش و پاسخ"],
+  ["/hashtags", "هشتگ‌ها و موضوعات"],
+  ["/categories", "هشتگ‌ها و موضوعات"],
+  ["/files", "مدیریت فایل‌های من"],
+  ["/calendar", "تقویم"],
+  ["/conversations", "گفتگو، گروه‌ها و کانال‌ها"],
+  ["/groups", "گفتگو، گروه‌ها و کانال‌ها"],
+  ["/channels", "گفتگو، گروه‌ها و کانال‌ها"],
+  ["/events", "رویداد و جلسات"],
+  ["/meetings", "رویداد و جلسات"],
+  ["/members", "اعضای سازمان و ارتباطات"],
+  ["/friends", "اعضای سازمان و ارتباطات"],
+  ["/globalsearch", "جستجو"],
+  ["/notifications", "اعلان‌ها"],
+  ["/settings", "مدیریت سامانه"],
+  ["/sms-providers", "مدیریت سامانه"],
+  ["/admin", "مدیریت سامانه"],
+  ["/my-access", "نقش و دسترسی"],
+  ["/profile", "ورود و حساب کاربری"],
   ["/login", "ورود و حساب کاربری"],
+  ["/dashboard", "داشبورد"],
 ];
 export function moduleFromPath(path: string): TicketModule {
   const p = path.split("?")[0];
@@ -274,6 +265,45 @@ export type Ticket = {
   /** کاربرانی که «من هم این مشکل را دارم» زده‌اند یا تیکت تکراری‌شان به این تیکت پیوند شده (به‌جز گزارش‌دهنده) */
   affected?: string[];
 };
+
+// ------------------------------------------------------------------ شکل API («پیشنهادی» `support/tickets/`)
+// DATA_ALIGNMENT §10: کلید نوع و اولویت عددی در API؛ برچسب فارسی فقط در نمایش.
+export type TicketTypeKey = "bug" | "feature" | "question" | "access" | "performance" | "suggestion";
+export const ticketTypeKey: Record<TicketType, TicketTypeKey> = { خطا: "bug", "درخواست قابلیت": "feature", سؤال: "question", "مشکل دسترسی": "access", "کندی و کارایی": "performance", پیشنهاد: "suggestion" };
+export const priorityKey: Record<TicketPriority, 1 | 2 | 3 | 4> = { کم: 1, متوسط: 2, زیاد: 3, بحرانی: 4 };
+export type TicketApi = {
+  id: string;
+  title: string;
+  description: string;
+  type: TicketTypeKey;
+  module: string;
+  priority: 1 | 2 | 3 | 4;
+  status: TicketStatus;
+  reporter_id: string;
+  assignee_id: string | null;
+  labels: string[];
+  created_at: string;
+  updated_at: string;
+};
+export const toTicketApi = (t: Ticket): TicketApi => ({
+  id: t.id,
+  title: t.title,
+  description: t.description,
+  type: ticketTypeKey[t.type] ?? "question",
+  module: t.module,
+  priority: priorityKey[t.priority] ?? 2,
+  status: t.status,
+  reporter_id: t.reporterId,
+  assignee_id: t.assigneeId ?? null,
+  labels: t.labels,
+  created_at: new Date(t.createdAt).toISOString(),
+  updated_at: new Date(t.updatedAt).toISOString(),
+});
+export const ticketEndpoints = {
+  list: { method: "GET", path: "/support/tickets/", proposed: true },
+  create: { method: "POST", path: "/support/tickets/", proposed: true },
+  events: { method: "GET", path: "/support/tickets/{id}/events/", proposed: true },
+} as const;
 
 /** تعداد کاربران درگیر = گزارش‌دهنده + «من هم»ها */
 export const affectedCount = (t: Ticket) => 1 + (t.affected?.length ?? 0);

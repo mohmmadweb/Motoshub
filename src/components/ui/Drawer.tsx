@@ -1,42 +1,30 @@
-import { useEffect, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import type { ReactNode } from "react";
+import Sheet from "./Sheet";
 
+/**
+ * نام قدیمی برگه‌ی کناری — برای سازگاری با صفحه‌های موجود؛ همان `Sheet` v6.8 را رندر می‌کند.
+ * فراخوانی‌های جدید مستقیم از `Sheet` استفاده کنند.
+ */
 export default function Drawer({
   open,
   onClose,
   title,
   children,
-  width = "max-w-md",
+  width,
+  eyebrow,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   width?: string;
+  eyebrow?: ReactNode;
+  footer?: ReactNode;
 }) {
-  // بستن با کلید Esc
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-  if (!open) return null;
-  // پورتال به body تا پوشش تیره کل صفحه (از جمله منوی کناری) را بگیرد
-  return createPortal(
-    <div className="fixed inset-0 z-40 flex justify-end" dir="rtl">
-      <div className="absolute inset-0 bg-ink-900/30" onClick={onClose} />
-      <div className={`relative w-full ${width} bg-white h-full shadow-2xl flex flex-col animate-in`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
-          <h2 className="font-bold text-sm">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-ink-100 flex items-center justify-center">
-            <X size={16} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
-      </div>
-    </div>
-    ,document.body
+  return (
+    <Sheet open={open} onClose={onClose} title={title} width={width} eyebrow={eyebrow} footer={footer}>
+      {children}
+    </Sheet>
   );
 }

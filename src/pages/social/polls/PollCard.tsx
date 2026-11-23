@@ -18,7 +18,7 @@ import { CommentsPanel, ReactionBar, UserLine, fa, stamp } from "../kit";
 import { RichText, chatTitle } from "../messenger/shared";
 import type { Poll } from "../../../social/types";
 
-/** خروجی اکسل (CSV با BOM تا Excel فارسی را درست باز کند) — GET /core/polls/{id}/export/ */
+/** خروجی اکسل (CSV با BOM تا Excel فارسی را درست باز کند) — GET /social/polls/{id}/export/ */
 export function exportPollCsv(poll: Poll, counts: Record<string, number>, voters: { user_id: string; option_ids: string[]; voted_at: string }[], userName: (id: string) => string) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const esc = (x: string | number) => `"${String(x).replace(/"/g, '""')}"`;
@@ -126,7 +126,7 @@ export default function PollCard({ pollId, showSource = false }: { pollId: strin
             )}
           </div>
           {showSource && chat && (
-            <Link to={`/dashboard/${chat.chat_type === "channel" ? "channels" : "groups"}/${chat.parent ?? chat.id}`} className="block text-[10.5px] text-brand-700 hover:underline truncate">
+            <Link to={`/${chat.chat_type === "channel" ? "channels" : "groups"}/${chat.parent ?? chat.id}`} className="block text-[10.5px] text-brand-700 hover:underline truncate">
               در «{chatTitle(chat, s.me)}» · {s.userName(poll.owner)}
             </Link>
           )}
@@ -255,7 +255,7 @@ export default function PollCard({ pollId, showSource = false }: { pollId: strin
         </div>
       )}
 
-      <Modal open={votersOpen} onClose={() => setVotersOpen(false)} title="رأی‌دهندگان" description={`GET /core/polls/${poll.id}/voters/?option={id} («پیشنهادی»)`}>
+      <Modal open={votersOpen} onClose={() => setVotersOpen(false)} title="رأی‌دهندگان" description={`GET /social/polls/${poll.id}/voters/?option={id} («پیشنهادی»)`}>
         <VotersList pollId={poll.id} />
       </Modal>
     </div>

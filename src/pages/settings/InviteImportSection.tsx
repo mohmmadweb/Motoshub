@@ -18,8 +18,8 @@ import { emitSettingsChange } from "../../iam/settingsAudit";
 import { nowClock } from "../../pm/jalali";
 import { Callout, Field, ScopeName, ScopeSelect, SectionHead, fmtN, useSubtree } from "./iam/shared";
 
-type Invite = { id: string; name: string; contact: string; scopeId: string; title?: string; roleId?: string; at: string; by: string; status: "pending" | "cancelled" };
-const inviteStore = createLocalStore<Invite[]>("motoshub.invites.v1", () => [], (raw) => (Array.isArray(raw) ? (raw as Invite[]) : null));
+export type Invite = { id: string; name: string; contact: string; scopeId: string; title?: string; roleId?: string; at: string; by: string; status: "pending" | "cancelled" };
+export const inviteStore = createLocalStore<Invite[]>("motoshub.invites.v1", () => [], (raw) => (Array.isArray(raw) ? (raw as Invite[]) : null));
 
 const MOBILE = /^(\+98|0)?9\d{9}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

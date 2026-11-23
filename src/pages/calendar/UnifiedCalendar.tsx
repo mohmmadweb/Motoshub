@@ -5,8 +5,13 @@
 // تقویم تیم (آزاد/مشغول کنار هم) و «یافتن زمان مشترک»، خروجی .ics.
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { CalendarRange, ChevronLeft, ChevronRight, Download, Plus, Search, Users, Sparkles, Eye, EyeOff } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, Download, Plus, Search, Users, CalendarSearch, Eye, EyeOff } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
+import Tabs from "../../components/ui/Tabs";
+import { useMeetings } from "../../context/MeetingsContext";
+import { meetingHref } from "../../meetings/types";
+import { isProjectManager } from "../../pm/rules";
+import TeamTasks from "./TeamTasks";
 import Button from "../../components/ui/Button";
 import Toggle from "../../components/ui/Toggle";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -55,8 +60,12 @@ export default function UnifiedCalendar() {
   const canEvent = hasPermission("events.create");
   const canTeam = hasPermission("calendar.team");
 
-  const view = cal.prefs.view;
-  const layers = cal.prefs.layers;
+  const meetingsStore = useMeetings();
+  // زبانه‌ها: «تقویم من» · «تقویم سازمان» (همه‌ی رویدادهای منتشرشده) · «تقویم تیم» (کارهای فعال همکاران، فقط مدیران)
+  const [mode, setMode] = useState<"mine" | "org" | "team">("mine");
+  const canTeamTasks = hasPermission("monitoring.view") || pm.projects.some((p) => !p.meta.archived && isProjectManager(p, actingUser.name));
+  const view = mode === "team" && (cal.prefs.view === "day" || cal.prefs.view === "week") ? "month" : cal.prefs.view;
+  const layers = mode === "org" ? ({ ...Object.fromEntries(layerOrder.map((l) => [l, false])), events: true, holidays: true } as Record<Layer, boolean>) : cal.prefs.layers;
   const [cursor, setCursor] = useState(todayN);
   const [pop, setPop] = useState<PopState>(null);
   const [quick, setQuick] = useState<QuickInit | null>(null);
@@ -80,11 +89,14 @@ export default function UnifiedCalendar() {
     view === "day" ? [cursor, cursor] : view === "week" ? [weekStart, weekStart + 6] : view === "month" ? [monthStart, monthStart + monthLength(jy, jm) - 1] : [cursor, cursor + 29];
 
   const canEditMeeting = (p: ProjectState) => hasPermission("projects.meetings") && !p.meta.archived && (p.meta.manager === meName || p.members.some((m) => (m.userId === meId || m.name === meName) && isContributor(m)));
-  const base = { meId, meName, events: social.events, eventMembers: social.eventMembers, visibleEvent, projects: pm.projects, personal: cal.items, canEditMeeting };
+  const orgMeetings = meetingsStore.views
+    .filter((v) => v.source === "org" && (v.organizer === meName || v.participants.some((x) => x.principal_id === meId || x.name === meName)))
+    .map((v) => ({ id: v.mid, title: v.title, date: v.date, time: v.time, duration: v.duration, sub: v.project_name ?? "صورتجلسه‌ی سازمانی", href: meetingHref(v), cancelled: v.status === 3, online: v.meeting_type === 2, location: v.location }));
+  const base = { meId, meName, events: social.events, eventMembers: social.eventMembers, visibleEvent, projects: pm.projects, personal: cal.items, canEditMeeting, orgMeetings, allEvents: mode === "org" };
   const items = useMemo(
     () => collectItems({ ...base, from: range[0], to: range[1], layers }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [range[0], range[1], layers, social.events, social.eventMembers, pm.projects, cal.items, meId, meName],
+    [range[0], range[1], layers, social.events, social.eventMembers, pm.projects, cal.items, meId, meName, mode, meetingsStore.views],
   );
   const counts = useMemo(() => {
     const all = collectItems({ ...base, from: range[0], to: range[1], layers: Object.fromEntries(layerOrder.map((l) => [l, true])) as Record<Layer, boolean> });
@@ -400,7 +412,19 @@ export default function UnifiedCalendar() {
         title="تقویم کاری من"
         description="رویدادها، جلسات، سررسیدها و یادآورهای شما در یک تقویم — به‌همراه زمان آزاد همکاران"
         icon={<CalendarRange size={18} />}
-        breadcrumb={[{ label: "داشبورد", to: "/dashboard" }, { label: "تقویم کاری من" }]}
+        breadcrumb={[{ label: "میزکار من", to: "/dashboard" }, { label: "تقویم کاری من" }]}
+        tabs={
+          <Tabs
+            className=""
+            active={mode}
+            onChange={setMode}
+            tabs={[
+              { id: "mine" as const, label: "تقویم من" },
+              { id: "org" as const, label: "تقویم سازمان" },
+              ...(canTeamTasks ? [{ id: "team" as const, label: "تقویم تیم" }] : []),
+            ]}
+          />
+        }
         actions={
           <div className="flex items-center gap-2">
             <Button size="sm" icon={<Download size={14} />} onClick={exportIcs} title="خروجی ‎.ics‎ از بازه‌ی دیده‌شده">
@@ -457,7 +481,8 @@ export default function UnifiedCalendar() {
           )}
           {teamOn && teamIds.length > 0 && (view === "month" || view === "list") && <p className="text-[11.5px] text-ink-500 mb-3 rounded-lg bg-ink-50 px-3 py-2">تقویم همکاران در نمای «روز» (کنار هم) و «هفته» (آزاد/مشغول) نمایش داده می‌شود.</p>}
 
-          {(view === "day" || view === "week") && (
+          {mode === "team" && <TeamTasks jy={jy} jm={jm} todayN={todayN} from={range[0]} to={range[1]} view={view === "list" ? "list" : "month"} />}
+          {mode !== "team" && (view === "day" || view === "week") && (
             <TimeGrid
               columns={columns}
               nowMin={nowMin}
@@ -465,8 +490,8 @@ export default function UnifiedCalendar() {
               onSlot={(col, min) => openQuick(fromDayNum(col.day), min, teamOn && teamIds.length && canEvent ? { mode: "event", invite: teamIds } : {})}
             />
           )}
-          {view === "month" && <MonthView jy={jy} jm={jm} todayN={todayN} items={items} onItem={openItem} onPick={(d) => openQuick(fromDayNum(d))} />}
-          {view === "list" && <AgendaView from={range[0]} to={range[1]} todayN={todayN} items={items} onItem={openItem} />}
+          {mode !== "team" && view === "month" && <MonthView jy={jy} jm={jm} todayN={todayN} items={items} onItem={openItem} onPick={(d) => openQuick(fromDayNum(d))} />}
+          {mode !== "team" && view === "list" && <AgendaView from={range[0]} to={range[1]} todayN={todayN} items={items} onItem={openItem} />}
         </section>
 
         {/* ---------------------------------------------------------- ستون کناری */}
@@ -560,7 +585,7 @@ export default function UnifiedCalendar() {
 
                   <div className="rounded-lg border border-ink-100 p-3 space-y-2">
                     <p className="text-xs font-bold text-ink-700 flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-amber-600" /> یافتن زمان مشترک
+                      <CalendarSearch size={13} className="text-teal-700" /> یافتن زمان مشترک
                     </p>
                     <div className="flex items-center gap-2">
                       <select className="input-field !py-1.5 text-xs flex-1" value={duration} onChange={(e) => {

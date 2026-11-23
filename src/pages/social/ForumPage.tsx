@@ -1,14 +1,15 @@
 // ---------------------------------------------------------------------------
-// «پرسش و پاسخ» — فهرست پرسش‌ها (Topic) مطابق /forums/forums/topics/
+// «پرسش و پاسخ» — فهرست پرسش‌ها (Topic) مطابق /social/forums/topics/
 // ---------------------------------------------------------------------------
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { MessagesSquare, Pin, Lock, Plus, Search, Eye, MessageCircle, Clock, Hash, CheckCircle2, ThumbsUp, MoreHorizontal, Bell, BellOff, BellRing, Users } from "lucide-react";
+import { MessagesSquare, Pin, Lock, Plus, Eye, MessageCircle, Clock, Hash, CheckCircle2, ThumbsUp, MoreHorizontal, Bell, BellOff, BellRing, Users } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import EmptyState from "../../components/ui/EmptyState";
+import FilterBar from "../../components/ui/FilterBar";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useSocial, voteScore } from "../../context/SocialContext";
 import { useTenancy } from "../../context/TenancyContext";
@@ -75,7 +76,7 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
   };
 
   return (
-    <Modal open onClose={onClose} title={topic ? "ویرایش پرسش" : "پرسش جدید"} description={topic ? "PATCH /forums/forums/topics/{id}/" : "POST /forums/forums/topics/"} width="max-w-2xl">
+    <Modal open onClose={onClose} title={topic ? "ویرایش پرسش" : "پرسش جدید"} description={topic ? "PATCH /social/forums/topics/{id}/" : "POST /social/forums/topics/"} width="max-w-2xl">
       <div className="space-y-4">
         <Field label="عنوان (title)">
           <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="پرسش خود را کوتاه و روشن بنویسید" />
@@ -90,7 +91,7 @@ function TopicForm({ onClose, topic, onSaved }: { onClose: () => void; topic: To
           </Field>
         )}
         <AttachmentPicker value={files} onChange={setFiles} label={topic ? "افزودن پیوست (uploaded_files)" : undefined} />
-        <PublishOptions entity="topic" value={pub} onChange={setPub} comments={false} notifyOption={!topic} />
+        <PublishOptions entity="forum" value={pub} onChange={setPub} comments={false} notifyOption={!topic} />
         {!topic && guard.block ? <WriteBlockNotice block={guard.block} /> : error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex items-center gap-2 justify-end">
           <Button variant="secondary" onClick={onClose}>
@@ -154,14 +155,27 @@ export default function ForumPage() {
   const moderator = hasPermission("forum.moderate");
   const fol = useTopicFollows();
   const canFollow = useCanFollowTopic();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("");
   const [sort, setSort] = useState<Sort>("activity");
   const [scope, setScope] = useState<Scope>(params.get("scope") === "followed" ? "followed" : "all");
-  const [editorOpen, setEditorOpen] = useState(false);
+  // قرارداد C3: /forums?new=question فرم پرسش جدید را باز می‌کند
+  const [editorOpen, setEditorOpen] = useState(() => params.get("new") === "question" && hasPermission("forum.create"));
+  const closeEditor = () => {
+    setEditorOpen(false);
+    if (params.has("new")) {
+      const next = new URLSearchParams(params);
+      next.delete("new");
+      setParams(next, { replace: true });
+    }
+  };
+  useEffect(() => {
+    if (params.get("new") === "question" && hasPermission("forum.create")) setEditorOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
-  const cats = s.categoriesOf("topic");
+  const cats = s.categoriesOf("forum");
   const roots = cats.filter((c) => !c.parent_id || !cats.some((x) => x.id === c.parent_id));
 
   const answers = useMemo(() => {
@@ -211,7 +225,7 @@ export default function ForumPage() {
             <ApiChip
               items={[
                 { label: "فهرست پرسش‌ها", ep: endpoints.topicList() },
-                { label: "موضوع‌ها", ep: endpoints.categories("topic") },
+                { label: "موضوع‌ها", ep: endpoints.categories("forum") },
                 { label: "ثبت پرسش", ep: endpoints.topicCreate() },
                 { label: "ویرایش پرسش", ep: endpoints.topicUpdate("{id}") },
                 { label: "پرسش‌های مشابه هنگام نوشتن", ep: endpoints.topicSimilar() },
@@ -229,39 +243,39 @@ export default function ForumPage() {
         }
       />
 
-      <div className="card p-3 mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
-          <input className="input-field !pr-8" value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو در عنوان، متن یا هشتگ…" />
-        </div>
-        <select className="input-field !w-auto min-w-[140px]" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="موضوع">
-          <option value="">همه‌ی موضوع‌ها</option>
-          {roots.flatMap((r) => [
-            <option key={r.id} value={r.id}>
-              {r.title}
-            </option>,
-            ...cats
-              .filter((c) => c.parent_id === r.id)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {"↳ "}
-                  {c.title}
-                </option>
-              )),
-          ])}
-        </select>
-        <select className="input-field !w-auto min-w-[140px]" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="مرتب‌سازی">
-          <option value="activity">تازه‌ترین فعالیت</option>
-          <option value="votes">بیشترین رأی</option>
-          <option value="views">بیشترین بازدید</option>
-        </select>
-        <div className="flex rounded-lg border border-ink-200 p-0.5 bg-ink-50 max-w-full overflow-x-auto">
-          {scopes.map((x) => (
-            <button key={x.id} onClick={() => setScope(x.id)} className={`text-xs px-3 py-1.5 rounded-md whitespace-nowrap ${scope === x.id ? "bg-white shadow-sm text-brand-700 font-medium" : "text-ink-500 hover:text-ink-800"}`}>
-              {x.label}
-            </button>
-          ))}
-        </div>
+      {/* نوار فیلتر v6.8: وضعیت (قرص‌ها) + جستجو + موضوع + مرتب‌سازی */}
+      <div className="card mb-4">
+        <FilterBar<Scope>
+          pills={scopes.map((x) => ({ id: x.id, label: x.label, count: x.id === "unanswered" ? visible.filter((t) => !answers[t.id]).length : undefined }))}
+          active={scope}
+          onPill={setScope}
+          search={q}
+          onSearch={setQ}
+          searchPlaceholder="جستجو در عنوان، متن یا هشتگ…"
+          activeCount={(cat ? 1 : 0) + (sort !== "activity" ? 1 : 0)}
+        >
+          <select className="input-field !w-auto min-w-[140px]" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="موضوع">
+            <option value="">همه‌ی موضوع‌ها</option>
+            {roots.flatMap((r) => [
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>,
+              ...cats
+                .filter((c) => c.parent_id === r.id)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {"↳ "}
+                    {c.title}
+                  </option>
+                )),
+            ])}
+          </select>
+          <select className="input-field !w-auto min-w-[140px]" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="مرتب‌سازی">
+            <option value="activity">تازه‌ترین فعالیت</option>
+            <option value="votes">بیشترین رأی</option>
+            <option value="views">بیشترین بازدید</option>
+          </select>
+        </FilterBar>
       </div>
 
       {list.length === 0 ? (
@@ -271,7 +285,7 @@ export default function ForumPage() {
           {list.map((t) => {
             const n = answers[t.id] ?? 0;
             return (
-              <Link key={t.id} to={`/dashboard/forum/${t.id}`} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-ink-50/60">
+              <Link key={t.id} to={`/forums/${t.id}`} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-ink-50/60">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     {t.is_pinned && <Pin size={13} className="text-brand-600 shrink-0" aria-label="سنجاق‌شده" />}
@@ -319,7 +333,7 @@ export default function ForumPage() {
         </div>
       )}
 
-      <TopicEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+      <TopicEditor open={editorOpen} onClose={closeEditor} />
     </div>
   );
 }

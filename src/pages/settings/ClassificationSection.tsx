@@ -14,14 +14,11 @@ import { Callout, Field, SectionHead } from "./iam/shared";
 import { diffKeys, emitSettingsChange } from "../../iam/settingsAudit";
 
 const ROUTE_HINTS = [
-  { route: "/dashboard/knowledge", label: "مدیریت دانش" },
-  { route: "/dashboard/projects", label: "پروژه‌ها" },
-  { route: "/dashboard/contracts", label: "قراردادها" },
-  { route: "/dashboard/funds", label: "صندوق نوآوری" },
-  { route: "/dashboard/research", label: "فرصت‌های پژوهشی" },
-  { route: "/dashboard/settings", label: "مدیریت سامانه" },
-  { route: "/dashboard/files", label: "مدیریت فایل‌های من" },
-  { route: "/dashboard/chat", label: "گفتگوها" },
+  { route: "/knowledge", label: "مدیریت دانش" },
+  { route: "/projects", label: "پروژه‌ها" },
+  { route: "/settings", label: "مدیریت سامانه" },
+  { route: "/files", label: "مدیریت فایل‌های من" },
+  { route: "/conversations", label: "گفتگوها" },
 ];
 
 export default function ClassificationSection() {
@@ -40,7 +37,7 @@ export default function ClassificationSection() {
 
   const add = () => {
     const r = route.trim();
-    if (!r.startsWith("/")) return notify("مسیر باید با «/» شروع شود؛ مثلاً /dashboard/funds", "warning");
+    if (!r.startsWith("/")) return notify("مسیر باید با «/» شروع شود؛ مثلاً /projects", "warning");
     if (config.overrides.some((o) => o.route === r)) return notify("برای این مسیر قبلاً سطح تعیین شده است.", "warning");
     setConfig({ overrides: [...config.overrides, { id: `r${Date.now()}`, route: r, level }] });
     setRoute("");
@@ -91,7 +88,7 @@ export default function ClassificationSection() {
         <p className="text-[12px] text-ink-500 mb-3">طولانی‌ترین مسیرِ منطبق اعمال می‌شود؛ صفحه یا سند می‌تواند سطح را بالاتر ببرد اما پایین‌تر نمی‌آورد.</p>
         {canEdit && (
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <input className="input-field flex-1 min-w-0" dir="ltr" list="class-routes" value={route} onChange={(e) => setRoute(e.target.value)} placeholder="/dashboard/funds" aria-label="مسیر" />
+            <input className="input-field flex-1 min-w-0" dir="ltr" list="class-routes" value={route} onChange={(e) => setRoute(e.target.value)} placeholder="/projects" aria-label="مسیر" />
             <datalist id="class-routes">
               {ROUTE_HINTS.map((h) => (
                 <option key={h.route} value={h.route}>
@@ -146,7 +143,7 @@ export default function ClassificationSection() {
           </ul>
         )}
         <p className="text-[11.5px] text-ink-400 mt-3">
-          نمونه: «/dashboard/settings» ← {routeLevel(config, "/dashboard/settings")} · «/dashboard/blog» ← {routeLevel(config, "/dashboard/blog")}
+          نمونه: «/settings» ← {routeLevel(config, "/settings")} · «/blogs» ← {routeLevel(config, "/blogs")}
         </p>
       </div>
 

@@ -87,25 +87,25 @@ export function usePublicFeed(): PublicFeedItem[] {
     const items: PublicFeedItem[] = [];
     forumTopics
       .filter((t) => t.visibility === "عمومی")
-      .forEach((t) => items.push({ id: `forum-${t.id}`, module: "انجمن", icon: MessagesSquare, title: t.title, meta: `توسط ${t.author} · دسته: ${t.category}`, to: `/dashboard/forum/${t.id}` }));
+      .forEach((t) => items.push({ id: `forum-${t.id}`, module: "انجمن", icon: MessagesSquare, title: t.title, meta: `توسط ${t.author} · دسته: ${t.category}`, to: `/forums/${t.id}` }));
     blogPosts
       .filter((b) => b.visibility === "عمومی")
-      .forEach((b) => items.push({ id: `blog-${b.id}`, module: "بلاگ", icon: NotebookPen, title: b.title, meta: `${b.author} · ${b.date}`, to: "/dashboard/blog" }));
+      .forEach((b) => items.push({ id: `blog-${b.id}`, module: "بلاگ", icon: NotebookPen, title: b.title, meta: `${b.author} · ${b.date}`, to: "/blogs" }));
     events
       .filter((e) => e.visibility === "عمومی")
-      .forEach((e) => items.push({ id: `event-${e.id}`, module: "رویداد", icon: CalendarDays, title: e.title, meta: `${e.jalaliDate} · ${e.location}`, to: "/dashboard/events" }));
+      .forEach((e) => items.push({ id: `event-${e.id}`, module: "رویداد", icon: CalendarDays, title: e.title, meta: `${e.jalaliDate} · ${e.location}`, to: "/events" }));
     mediaItems
       .filter((m) => m.visibility === "عمومی")
-      .forEach((m) => items.push({ id: `media-${m.id}`, module: "رسانه", icon: Image, title: m.title, meta: `${m.album} · ${m.uploadedBy}`, to: "/dashboard/media" }));
+      .forEach((m) => items.push({ id: `media-${m.id}`, module: "رسانه", icon: Image, title: m.title, meta: `${m.album} · ${m.uploadedBy}`, to: "/media" }));
     knowledgeDocs
       .filter((d) => d.visibility === "عمومی")
-      .forEach((d) => items.push({ id: `doc-${d.id}`, module: "دانش", icon: BookOpen, title: d.title, meta: `${d.owner} · ${d.updatedAt}`, to: "/dashboard/knowledge" }));
+      .forEach((d) => items.push({ id: `doc-${d.id}`, module: "دانش", icon: BookOpen, title: d.title, meta: `${d.owner} · ${d.updatedAt}`, to: "/knowledge" }));
     newsItems
       .filter((n) => n.visibility === "عمومی")
-      .forEach((n) => items.push({ id: `news-${n.id}`, module: "اخبار", icon: Newspaper, title: n.title, meta: n.date, to: "/dashboard/news" }));
+      .forEach((n) => items.push({ id: `news-${n.id}`, module: "اخبار", icon: Newspaper, title: n.title, meta: n.date, to: "/news" }));
     groups
       .filter((g) => g.privacy === "عمومی")
-      .forEach((g) => items.push({ id: `group-${g.id}`, module: "گروه‌ها", icon: Users, title: g.name, meta: `${g.members.toLocaleString("fa-IR")} عضو · ${g.category}`, to: "/dashboard/groups" }));
+      .forEach((g) => items.push({ id: `group-${g.id}`, module: "گروه‌ها", icon: Users, title: g.name, meta: `${g.members.toLocaleString("fa-IR")} عضو · ${g.category}`, to: "/groups" }));
     return items;
   }, [forumTopics, blogPosts, events, mediaItems, knowledgeDocs, newsItems, groups]);
 }

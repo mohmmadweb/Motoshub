@@ -78,12 +78,12 @@ function InternalCard({ r }: { r: InternalRef }) {
   if (!title) return null;
   const M = internalMeta[r.kind];
   return (
-    <Link to={`/dashboard/${r.kind}/${r.id}`} className="mt-1.5 flex items-stretch gap-0 rounded-xl border border-ink-200 bg-white overflow-hidden hover:border-brand-300 max-w-md">
+    <Link to={`/${({ news: "news", blog: "blogs", magazines: "magazines", events: "events", groups: "groups", channels: "channels", media: "media", forum: "forums" } as const)[r.kind]}/${r.id}`} className="mt-1.5 flex items-stretch gap-0 rounded-xl border border-ink-200 bg-white overflow-hidden hover:border-brand-300 max-w-md">
       <span className="w-14 shrink-0 flex items-center justify-center text-white" style={isImagePoster(color) ? { backgroundImage: `url(${posterUrl(color)})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: grad(color ?? "#1f4f99") }}>
         <M.icon size={18} />
       </span>
       <span className="min-w-0 px-2.5 py-1.5">
-        <span className="text-[10px] text-brand-700 font-medium">موتوشاب · {M.label}</span>
+        <span className="text-[10px] text-brand-700 font-medium">کاریز · {M.label}</span>
         <span className="block text-[12.5px] font-medium text-ink-800 line-clamp-1">{title}</span>
         {sub && <span className="block text-[11px] text-ink-500 line-clamp-2 leading-5">{sub}</span>}
       </span>

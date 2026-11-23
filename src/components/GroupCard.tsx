@@ -22,7 +22,7 @@ export default function GroupCard({
     fn ? () => fn() : undefined;
 
   return (
-    <Link to={`/dashboard/groups/${group.id}`} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
+    <Link to={`/groups/${group.id}`} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
       <div className="flex items-center justify-between">
         <span
           className="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold text-base"

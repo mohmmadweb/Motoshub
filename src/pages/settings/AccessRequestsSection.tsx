@@ -126,7 +126,7 @@ function DecideModal({ r, mode, onClose }: { r: AccessRequest; mode: "approve" |
       mode === "approve"
         ? `درخواست شما برای نقش «${role?.name}» در «${t.scopeLabel(r.scopeId)}» تأیید شد${validUntil ? ` (تا ${validUntil})` : ""}.${note.trim() ? ` یادداشت مدیر: ${note.trim()}` : ""}`
         : `درخواست شما برای نقش «${role?.name}» در «${t.scopeLabel(r.scopeId)}» رد شد. دلیل: ${note.trim()}`;
-    inbox.send([userName(r.userId)], "access", text, "/dashboard/access");
+    inbox.send([userName(r.userId)], "access", text, "/my-access");
     notify(mode === "approve" ? `نقش «${role?.name}» به «${userName(r.userId)}» داده شد.` : "درخواست رد شد و به درخواست‌دهنده اطلاع داده شد.", "success");
     onClose();
   };

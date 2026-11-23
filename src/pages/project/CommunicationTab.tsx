@@ -16,7 +16,7 @@ export function projectUserIds(p: ProjectState): string[] {
   const byName = (n: string) => users.find((u) => u.name === n)?.id;
   return [...new Set([byName(p.meta.manager), ...p.members.map((m) => m.userId ?? byName(m.name))].filter((x): x is string => !!x))];
 }
-const chatPath = (type: string, id: string) => (type === "channel" ? `/dashboard/channels/${id}` : `/dashboard/groups/${id}`);
+const chatPath = (type: string, id: string) => (type === "channel" ? `/channels/${id}` : `/groups/${id}`);
 
 /**
  * «کانال‌ها و گفتگو»ی پروژه = گروه‌ها/کانال‌های واقعی پیام‌رسان سامانه (گروه‌ها و کانال‌ها)،

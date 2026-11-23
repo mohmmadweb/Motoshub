@@ -92,7 +92,7 @@ export default function InfoPanel({ mode, chat, open, onClose, onGone }: { mode:
           <TagList tags={chat.tags} />
         </div>
         {conf.owner && (
-          <Link to={`/dashboard/files?owner=${conf.owner}:${chat.id}`} className="mt-3 inline-flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
+          <Link to={`/files?owner=${conf.owner}:${chat.id}`} className="mt-3 inline-flex items-center gap-1.5 text-xs text-brand-700 hover:underline">
             <FolderOpen size={13} /> فایل‌های {conf.noun}
           </Link>
         )}

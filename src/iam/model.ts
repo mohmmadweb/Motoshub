@@ -65,8 +65,22 @@ export type Binding = {
   note?: string;
 };
 
-export type MembershipStatus = "active" | "suspended";
-export type Membership = { id: string; userId: string; scopeId: string; status: MembershipStatus; primary: boolean; createdAt: string; title?: string };
+/** وضعیت عضویت — همان enum واقعی `Membership.status` (active, suspended, revoked) */
+export type MembershipStatus = "active" | "suspended" | "revoked";
+export const membershipStatusLabel: Record<MembershipStatus, string> = { active: "فعال", suspended: "معلق", revoked: "لغوشده" };
+export type Membership = {
+  id: string;
+  userId: string;
+  scopeId: string;
+  status: MembershipStatus;
+  primary: boolean;
+  createdAt: string;
+  /** سِمت سازمانی — «پیشنهادی» (Membership واقعی عنوان ندارد)؛ از فهرست مدیریت‌شده‌ی سِمت‌ها انتخاب می‌شود */
+  title?: string;
+  /** بازه‌ی اعتبار عضویت (real `valid_from` / `valid_until`) */
+  validFrom?: string;
+  validUntil?: string;
+};
 
 export type AuditEvent =
   | "scope.created"
@@ -100,7 +114,12 @@ export type AuditEvent =
   | "security.blocked"
   | "security.unblocked"
   | "security.locked"
-  | "security.rate_limited";
+  | "security.rate_limited"
+  // --- «سایر امکانات» (میزیتو): انتقال کار، سِمت‌ها، دسترسی به اشیا
+  | "principal.handover"
+  | "membership.title_changed"
+  | "titles.updated"
+  | "object_access.changed";
 
 export const auditLabel: Record<AuditEvent, string> = {
   "scope.created": "ایجاد واحد",
@@ -133,6 +152,10 @@ export const auditLabel: Record<AuditEvent, string> = {
   "security.unblocked": "رفع مسدودی کاربر",
   "security.locked": "قفل خودکار حساب",
   "security.rate_limited": "محدودسازی نرخ درخواست",
+  "principal.handover": "انتقال کار به کاربر دیگر",
+  "membership.title_changed": "تغییر سِمت",
+  "titles.updated": "به‌روزرسانی فهرست سِمت‌ها",
+  "object_access.changed": "تغییر دسترسی به پروژه/پرونده/گفتگو",
 };
 
 export type Audit = {

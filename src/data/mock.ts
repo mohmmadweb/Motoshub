@@ -76,6 +76,15 @@ export type UserProfile = {
   joinedAt?: string;
   /** آخرین فعالیت «۱۴۰۵/۰۳/۰۸ ۰۹:۴۰» */
   lastActivity?: string;
+  /** شناسه‌ی عددی کاربر (identity `User.id`) — سرویس اجتماعی و اعلان با این ارجاع می‌دهند */
+  user_id?: number;
+  /** شناسه‌ی UUID (identity `principal_id`) — workspace و IAM با این ارجاع می‌دهند */
+  principal_id?: string;
+  /**
+   * تاریخ تولد شمسی «۱۳۶۵/۰۳/۰۸» — فیلد واقعی identity `UserProfile.birth_day` (در سریالایزرهای
+   * MemberDirectoryUser / MyColleagueProfile به‌صورت رشته‌ی شمسی YYYY/MM/DD برمی‌گردد).
+   */
+  birth_day?: string | null;
 };
 
 export const currentUser: UserProfile = {
@@ -97,6 +106,7 @@ export const users: UserProfile[] = [
   currentUser,
   {
     id: "u2",
+    birth_day: "۱۳۴۵/۰۳/۰۸",
     name: "حسین دهقان",
     role: "رئیس بنیاد مستضعفان",
     org: "بنیاد مستضعفان انقلاب اسلامی",
@@ -111,6 +121,7 @@ export const users: UserProfile[] = [
   },
   {
     id: "u3",
+    birth_day: "۱۳۴۰/۰۷/۲۲",
     name: "محمد سعیدی‌کیا",
     role: "رئیس پیشین بنیاد",
     org: "بنیاد مستضعفان انقلاب اسلامی",
@@ -126,6 +137,7 @@ export const users: UserProfile[] = [
   },
   {
     id: "u4",
+    birth_day: "۱۳۴۹/۱۱/۰۵",
     name: "وحید خاوئی",
     role: "مدیرعامل بنیاد علوی",
     org: "بنیاد علوی",
@@ -141,6 +153,7 @@ export const users: UserProfile[] = [
   },
   {
     id: "u5",
+    birth_day: "۱۳۵۲/۰۳/۱۰",
     name: "محسن مردعلی",
     role: "قائم‌مقام بنیاد علوی",
     org: "بنیاد علوی",
@@ -155,14 +168,14 @@ export const users: UserProfile[] = [
     companyIds: ["c-saba-niru"],
   },
   // --- نخبگان و فناوران شبکه (شخصیت‌های نمایشی) ---
-  { id: "u6", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], username: "a.sadra", mobile: "۰۹۳۵۱۴۸۶۰۲۷", email: "arian.sadra@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۰:۱۵", online: true, companyIds: ["c-behnoush"] },
-  { id: "u7", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], username: "m.nikandish", mobile: "۰۹۱۳۲۰۹۸۴۵۶", email: "nikandish.mahsa@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۷ ۱۴:۳۰", online: true, companyIds: ["c-ferdows-agri"] },
-  { id: "u8", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], username: "k.rastin", mobile: "۰۹۰۱۳۳۶۷۲۱۸", email: "kian.rastin@gmail.com", joinedAt: "۱۴۰۵/۰۱/۱۸", lastActivity: "۱۴۰۵/۰۳/۰۴ ۱۶:۴۸", online: false, companyIds: ["c-sina-rail"] },
-  { id: "u9", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], username: "n.farahmand", mobile: "۰۹۱۲۵۵۴۰۳۸۹", email: "farahmand@ut.ac.ir", joinedAt: "۱۴۰۵/۰۱/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۸ ۰۷:۵۰", online: true, companyIds: ["c-energy-sina", "c-saba-niru"] },
-  { id: "u10", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], username: "p.yeganeh", mobile: "۰۹۱۷۴۱۰۲۶۶۳", email: "parsa@keshtyar.ir", joinedAt: "۱۴۰۵/۰۲/۰۲", lastActivity: "۱۴۰۵/۰۳/۰۵ ۱۲:۱۰", online: true, companyIds: ["c-dashtnaz"] },
-  { id: "u11", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], username: "sh.mehrvarz", mobile: "۰۹۱۲۶۸۸۳۰۴۷", email: "mehrvarz.sh@gmail.com", joinedAt: "۱۴۰۵/۰۲/۰۹", lastActivity: "۱۴۰۵/۰۲/۳۰ ۰۹:۲۵", online: false, companyIds: ["c-zamzam"] },
-  { id: "u12", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], username: "y.roshan", mobile: "۰۹۱۰۲۴۷۵۹۱۸", email: "y.roshan@motoshub.ir", joinedAt: "۱۴۰۵/۰۲/۱۴", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۱:۰۲", online: true, companyIds: ["c-pak", "c-behnoush", "c-zamzam"] },
-  { id: "u13", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], username: "b.koosha", mobile: "۰۹۳۹۸۱۲۵۶۰۴", email: "bardia.koosha@gmail.com", joinedAt: "۱۴۰۵/۰۲/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۷ ۲۰:۳۵", online: true, companyIds: ["c-bank-sina"] },
+  { id: "u6", birth_day: "۱۳۶۵/۰۳/۱۱", name: "دکتر آرین صدرا", role: "پژوهشگر هوش مصنوعی — برگزیده بنیاد ملی نخبگان", org: "دانشگاه صنعتی شریف", avatarColor: "#dc2626", skills: ["بینایی ماشین", "یادگیری عمیق", "MLOps"], username: "a.sadra", mobile: "۰۹۳۵۱۴۸۶۰۲۷", email: "arian.sadra@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۰:۱۵", online: true, companyIds: ["c-behnoush"] },
+  { id: "u7", birth_day: "۱۳۶۸/۰۳/۰۸", name: "دکتر مهسا نیک‌اندیش", role: "متخصص زیست‌فناوری و بنیان‌گذار استارتاپ", org: "پارک فناوری پردیس", avatarColor: "#0d9488", skills: ["زیست‌فناوری", "کیت تشخیصی", "تجاری‌سازی"], username: "m.nikandish", mobile: "۰۹۱۳۲۰۹۸۴۵۶", email: "nikandish.mahsa@gmail.com", joinedAt: "۱۴۰۵/۰۱/۰۵", lastActivity: "۱۴۰۵/۰۳/۰۷ ۱۴:۳۰", online: true, companyIds: ["c-ferdows-agri"] },
+  { id: "u8", birth_day: "۱۳۷۴/۰۱/۲۷", name: "مهندس کیان راستین", role: "طراح سیستم‌های نهفته — مدال‌آور المپیاد", org: "تیم فناور چکاوکی", avatarColor: "#1f4f99", skills: ["الکترونیک", "IoT", "موقعیت‌یابی"], username: "k.rastin", mobile: "۰۹۰۱۳۳۶۷۲۱۸", email: "kian.rastin@gmail.com", joinedAt: "۱۴۰۵/۰۱/۱۸", lastActivity: "۱۴۰۵/۰۳/۰۴ ۱۶:۴۸", online: false, companyIds: ["c-sina-rail"] },
+  { id: "u9", birth_day: "۱۳۵۸/۰۳/۰۹", name: "دکتر نگین فرهمند", role: "استاد مهندسی انرژی و مشاور صنعت", org: "دانشگاه تهران", avatarColor: "#b45309", skills: ["بهینه‌سازی انرژی", "نیروگاه", "ممیزی انرژی"], username: "n.farahmand", mobile: "۰۹۱۲۵۵۴۰۳۸۹", email: "farahmand@ut.ac.ir", joinedAt: "۱۴۰۵/۰۱/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۸ ۰۷:۵۰", online: true, companyIds: ["c-energy-sina", "c-saba-niru"] },
+  { id: "u10", birth_day: "۱۳۶۶/۰۵/۰۳", name: "مهندس پارسا یگانه", role: "کارآفرین حوزه کشاورزی دقیق", org: "استارتاپ کشت‌یار", avatarColor: "#7c3aed", skills: ["سنجش از دور", "پهپاد", "کشاورزی دقیق"], username: "p.yeganeh", mobile: "۰۹۱۷۴۱۰۲۶۶۳", email: "parsa@keshtyar.ir", joinedAt: "۱۴۰۵/۰۲/۰۲", lastActivity: "۱۴۰۵/۰۳/۰۵ ۱۲:۱۰", online: true, companyIds: ["c-dashtnaz"] },
+  { id: "u11", birth_day: "۱۳۶۰/۰۲/۱۹", name: "دکتر شایان مهرورز", role: "پژوهشگر مواد پیشرفته و کامپوزیت", org: "پژوهشگاه پلیمر", avatarColor: "#0f172a", skills: ["کامپوزیت", "CFRP", "متالورژی"], username: "sh.mehrvarz", mobile: "۰۹۱۲۶۸۸۳۰۴۷", email: "mehrvarz.sh@gmail.com", joinedAt: "۱۴۰۵/۰۲/۰۹", lastActivity: "۱۴۰۵/۰۲/۳۰ ۰۹:۲۵", online: false, companyIds: ["c-zamzam"] },
+  { id: "u12", birth_day: "۱۳۶۲/۰۳/۱۳", name: "دکتر یاسمن روشن", role: "متخصص اقتصاد نوآوری و ارزش‌گذاری", org: "موسسه تحقیق و توسعه بنیاد", avatarColor: "#0d9488", skills: ["ارزش‌گذاری استارتاپ", "TRL", "سرمایه خطرپذیر"], username: "y.roshan", mobile: "۰۹۱۰۲۴۷۵۹۱۸", email: "y.roshan@motoshub.ir", joinedAt: "۱۴۰۵/۰۲/۱۴", lastActivity: "۱۴۰۵/۰۳/۰۸ ۱۱:۰۲", online: true, companyIds: ["c-pak", "c-behnoush", "c-zamzam"] },
+  { id: "u13", birth_day: "۱۳۷۰/۰۳/۱۴", name: "مهندس بردیا کوشا", role: "توسعه‌دهنده ارشد نرم‌افزار صنعتی", org: "سیگنال امید", avatarColor: "#dc2626", skills: ["پردازش تصویر", "YOLO", "استقرار لبه"], username: "b.koosha", mobile: "۰۹۳۹۸۱۲۵۶۰۴", email: "bardia.koosha@gmail.com", joinedAt: "۱۴۰۵/۰۲/۲۰", lastActivity: "۱۴۰۵/۰۳/۰۷ ۲۰:۳۵", online: true, companyIds: ["c-bank-sina"] },
 ];
 
 export type Group = {
@@ -836,7 +849,7 @@ export const chatThreads: ChatThread[] = [
     online: true,
     messages: [
       { from: "them", text: "پروپوزال فاز دوم کیت تشخیصی را در سامانه ثبت کردم، کد NF جدید گرفت", time: "دیروز" },
-      { from: "me", text: "عالی! ارزیابی اولیه هوشمند تا فردا انجام می‌شود و نتیجه اطلاع‌رسانی خواهد شد", time: "دیروز", read: true },
+      { from: "me", text: "عالی! ارزیابی اولیه تا فردا انجام می‌شود و نتیجه اطلاع‌رسانی خواهد شد", time: "دیروز", read: true },
     ],
   },
 ];
@@ -1213,56 +1226,6 @@ export const activeSessions: SessionItem[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Phase 3 — project/contract/fund/research registries
-// ---------------------------------------------------------------------------
-export type ContractRecord = {
-  id: string;
-  title: string;
-  vendor: string;
-  stage: "مذاکره" | "فراخوان" | "داوری" | "در حال اجرا" | "تسویه‌شده";
-  value: string;
-  deadline: string;
-  owner: string;
-} & Scoped;
-
-export const contracts: ContractRecord[] = [
-  { id: "ct1", title: "توسعه زیرساخت برق‌رسانی روستاهای مناطق هدف", vendor: "هلدینگ برق و انرژی صبا", stage: "در حال اجرا", value: "۴٬۲۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۶/۱۵", owner: "وحید خاوئی" },
-  { id: "ct2", title: "حمل‌ونقل و لجستیک اقلام حمایتی مناطق محروم", vendor: "هلدینگ پایا ترابر سینا", stage: "داوری", value: "۱٬۸۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۵/۰۱", owner: "محسن مردعلی" },
-  { id: "ct3", title: "ارزیابی امنیتی سامانه‌های اطلاعاتی بنیاد", vendor: "فراخوان عمومی", stage: "فراخوان", value: "—", deadline: "۱۴۰۵/۰۵/۲۰", owner: "کمیته امنیت اطلاعات" },
-  { id: "ct4", title: "تأمین بذر و نهاده طرح‌های کشاورزی قلعه‌گنج", vendor: "هلدینگ کشاورزی فردوس پارس", stage: "تسویه‌شده", value: "۲٬۵۰۰٬۰۰۰٬۰۰۰ ریال", deadline: "۱۴۰۵/۰۲/۰۱", owner: "حسین دهقان" },
-];
-
-export type FundRecord = {
-  id: string;
-  title: string;
-  applicant: string;
-  stage: "ثبت‌شده" | "انتخاب اولیه" | "داوری" | "تخصیص‌یافته" | "در حال پایش";
-  amount: string;
-  roi: string;
-} & Scoped;
-
-export const funds: FundRecord[] = [
-  { id: "fn1", title: "پرورش دام سبک — روستاهای قلعه‌گنج", applicant: "تعاونی دامداران محلی", stage: "در حال پایش", amount: "۸۰۰٬۰۰۰٬۰۰۰ ریال", roi: "۱۸٪" },
-  { id: "fn2", title: "کارگاه تولید پوشاک — شهرستان لنده", applicant: "تعاونی بانوان کارآفرین", stage: "تخصیص‌یافته", amount: "۵۵۰٬۰۰۰٬۰۰۰ ریال", roi: "۱۲٪" },
-  { id: "fn3", title: "گلخانه صیفی‌جات — شهرستان چالدران", applicant: "گروه کشاورزان جوان", stage: "داوری", amount: "—", roi: "—" },
-];
-
-export type ResearchOpportunity = {
-  id: string;
-  title: string;
-  field: string;
-  stage: "فراخوان باز" | "بررسی درخواست‌ها" | "داوری" | "در حال اجرا" | "پایان‌یافته";
-  applicants: number;
-  deadline: string;
-} & Scoped;
-
-export const researchOpportunities: ResearchOpportunity[] = [
-  { id: "rs1", title: "سنجش اثر اجتماعی طرح‌های محرومیت‌زدایی در مناطق هدف", field: "مطالعات اجتماعی", stage: "بررسی درخواست‌ها", applicants: 9, deadline: "۱۴۰۵/۰۵/۱۰" },
-  { id: "rs2", title: "بهینه‌سازی الگوی کشت در اراضی کم‌آب جنوب کرمان", field: "کشاورزی", stage: "فراخوان باز", applicants: 3, deadline: "۱۴۰۵/۰۶/۰۱" },
-  { id: "rs3", title: "مدل‌های پایداری اشتغال در طرح‌های خرد روستایی", field: "اقتصاد", stage: "در حال اجرا", applicants: 5, deadline: "۱۴۰۵/۰۴/۲۵" },
-];
-
-// ---------------------------------------------------------------------------
 // Reports
 // ---------------------------------------------------------------------------
 export const reportByDepartment = [
@@ -1307,13 +1270,7 @@ export const moduleCatalog: ModuleDef[] = [
   { id: "media", name: "تصاویر و ویدیو", description: "آلبوم، اتصال آپارات، حریم خصوصی محتوا", category: "اجتماعی" },
   { id: "knowledge", name: "مدیریت دانش", description: "آرشیو اسناد، قراردادها، مصوبات، جستجوی پیشرفته", category: "دانش و پروژه" },
   { id: "projects", name: "مدیریت پروژه", description: "بورد، گانت چارت، بودجه، تسک", category: "دانش و پروژه" },
-  { id: "contracts", name: "قراردادها و واگذاری‌ها", description: "مذاکره، داوری، زمان‌بندی تعهدات", category: "دانش و پروژه" },
-  { id: "funds", name: "طرح‌های اشتغال‌زایی", description: "ثبت طرح، داوری، تخصیص منابع، گزارش اثربخشی", category: "دانش و پروژه" },
-  { id: "research", name: "فرصت‌های پژوهشی", description: "فراخوان، داوری، پیگیری اجرای پژوهش", category: "دانش و پروژه" },
   { id: "reports", name: "گزارش‌گیری پیشرفته", description: "داشبورد مدیریتی و گزارش تجمیعی", category: "دانش و پروژه" },
-  { id: "training", name: "آموزش و توانمندسازی", description: "دوره‌ها، تقویم آموزشی، حضور و غیاب، ارزشیابی، گواهینامه", category: "دانش و پروژه" },
-  { id: "assistant", name: "دستیار هوشمند (AI)", description: "پرسش‌وپاسخ فارسی از داده‌ها، ارزیابی هوشمند پروپوزال، چت‌بات", category: "دانش و پروژه" },
-  { id: "award", name: "جایزه نوآوری", description: "ثبت‌نام سه محور، صحت‌سنجی هلدینگ، داوری و امتیازدهی", category: "اجتماعی" },
   { id: "sms", name: "اعلان پیامکی", description: "اتصال به درگاه‌های پیامک (کاوه‌نگار، فراپیامک و ...)", category: "زیرساخت" },
   { id: "sso", name: "ورود سازمانی (SSO/LDAP)", description: "اتصال به Active Directory یا OIDC سازمان", category: "امنیت" },
   { id: "waf", name: "فایروال و ضدویروس", description: "محدودسازی نرخ درخواست، اسکن ClamAV، کپچا", category: "امنیت" },
@@ -1343,7 +1300,8 @@ export const adminMenus: AdminMenuDef[] = [
 export type PermissionGroup = {
   id: string;
   label: string;
-  actions: { id: string; label: string }[];
+  /** `code` = کد واقعی مجوز در بک‌اند (DATA_ALIGNMENT §0.5)؛ نبودِ آن یعنی کد از iam/backendCodes.ts یا «پیشنهادی» است */
+  actions: { id: string; label: string; code?: string }[];
 };
 
 export const permissionCatalog: PermissionGroup[] = [
@@ -1388,98 +1346,98 @@ export const permissionCatalog: PermissionGroup[] = [
     label: "همکاران",
     actions: [
       { id: "members.view", label: "مشاهده‌ی اعضای سازمان" },
-      { id: "relations.use", label: "ارتباطات من (درخواست، پذیرش، مسدودسازی)" },
+      { id: "relations.use", label: "ارتباطات من (درخواست، پذیرش، مسدودسازی)", code: "social.relations.friendship.list" },
     ],
   },
   {
     id: "magazines",
     label: "مجلات و بلاگ",
     actions: [
-      { id: "magazines.list", label: "مشاهده‌ی مجلات و بلاگ" },
-      { id: "magazines.create", label: "نوشتن مجله و بلاگ" },
-      { id: "magazines.manage", label: "ویرایش، انتشار و حذف مطالب دیگران" },
+      { id: "magazines.list", label: "مشاهده‌ی مجلات و بلاگ", code: "social.content.magazine.list" },
+      { id: "magazines.create", label: "نوشتن مجله و بلاگ", code: "social.content.magazine.create" },
+      { id: "magazines.manage", label: "ویرایش، انتشار و حذف مطالب دیگران", code: "social.content.magazine.publish" },
     ],
   },
   {
     id: "news",
     label: "اخبار سازمان",
     actions: [
-      { id: "news.list", label: "مشاهده‌ی اخبار" },
-      { id: "news.create", label: "نوشتن خبر" },
-      { id: "news.manage", label: "ویرایش، انتشار و حذف اخبار دیگران" },
+      { id: "news.list", label: "مشاهده‌ی اخبار", code: "social.content.news.list" },
+      { id: "news.create", label: "نوشتن خبر", code: "social.content.news.create" },
+      { id: "news.manage", label: "ویرایش، انتشار و حذف اخبار دیگران", code: "social.content.news.publish" },
     ],
   },
   {
     id: "media",
     label: "رسانه",
     actions: [
-      { id: "media.list", label: "مشاهده‌ی رسانه‌ها" },
-      { id: "media.upload", label: "بارگذاری تصویر، ویدیو و آلبوم" },
-      { id: "media.manage", label: "ویرایش، انتشار و حذف رسانه‌ی دیگران" },
+      { id: "media.list", label: "مشاهده‌ی رسانه‌ها", code: "social.media.post.list" },
+      { id: "media.upload", label: "بارگذاری تصویر، ویدیو و آلبوم", code: "social.media.post.create" },
+      { id: "media.manage", label: "ویرایش، انتشار و حذف رسانه‌ی دیگران", code: "social.media.post.publish" },
     ],
   },
   {
     id: "forum",
     label: "پرسش و پاسخ",
     actions: [
-      { id: "forum.list", label: "مشاهده‌ی پرسش‌ها" },
+      { id: "forum.list", label: "مشاهده‌ی پرسش‌ها", code: "social.forums.topic.list" },
       { id: "forum.follow", label: "دنبال‌کردن موضوعات پرسش و پاسخ" },
-      { id: "forum.create", label: "طرح پرسش" },
-      { id: "forum.reply", label: "پاسخ‌دادن" },
-      { id: "forum.moderate", label: "سنجاق، قفل و حذف پرسش‌ها" },
+      { id: "forum.create", label: "طرح پرسش", code: "social.forums.topic.create" },
+      { id: "forum.reply", label: "پاسخ‌دادن", code: "social.forums.post.create" },
+      { id: "forum.moderate", label: "سنجاق، قفل و حذف پرسش‌ها", code: "social.forums.topic.lock" },
     ],
   },
   {
     id: "taxonomy",
     label: "هشتگ‌ها، موضوعات و نظرها",
     actions: [
-      { id: "taxonomy.manage", label: "مدیریت هشتگ‌ها و موضوعات" },
-      { id: "comments.moderate", label: "تأیید و حذف نظرها" },
+      { id: "taxonomy.manage", label: "مدیریت هشتگ‌ها و موضوعات", code: "social.core.tag.update" },
+      { id: "comments.moderate", label: "تأیید و حذف نظرها", code: "social.core.comment.approve" },
     ],
   },
   {
     id: "chat",
     label: "گفتگوها",
-    actions: [{ id: "chat.view", label: "پیام مستقیم و پیام‌های ذخیره‌شده" }],
+    actions: [{ id: "chat.view", label: "پیام مستقیم و پیام‌های ذخیره‌شده", code: "social.messaging.dm.list" }],
   },
   {
     id: "groups",
     label: "گروه‌ها",
     actions: [
-      { id: "groups.list", label: "مشاهده و عضویت در گروه‌ها" },
-      { id: "groups.create", label: "ساخت گروه" },
-      { id: "groups.manage", label: "مدیریت همه‌ی گروه‌ها" },
+      { id: "groups.list", label: "مشاهده و عضویت در گروه‌ها", code: "social.messaging.group.list" },
+      { id: "groups.create", label: "ایجاد گروه", code: "social.messaging.group.create" },
+      { id: "groups.manage", label: "مدیریت همه‌ی گروه‌ها", code: "social.messaging.group.update" },
     ],
   },
   {
     id: "channels",
     label: "کانال‌ها",
     actions: [
-      { id: "channels.list", label: "مشاهده و عضویت در کانال‌ها" },
-      { id: "channels.create", label: "ساخت کانال" },
-      { id: "channels.manage", label: "مدیریت همه‌ی کانال‌ها" },
+      { id: "channels.list", label: "مشاهده و عضویت در کانال‌ها", code: "social.messaging.channel.list" },
+      { id: "channels.create", label: "ایجاد کانال", code: "social.messaging.channel.create" },
+      { id: "channels.manage", label: "مدیریت همه‌ی کانال‌ها", code: "social.messaging.channel.update" },
     ],
   },
   {
     id: "events",
     label: "رویدادها و جلسات",
     actions: [
-      { id: "events.list", label: "مشاهده‌ی تقویم و شرکت در رویداد" },
-      { id: "events.create", label: "ساخت رویداد و دعوت" },
-      { id: "events.manage", label: "مدیریت همه‌ی رویدادها" },
+      { id: "events.list", label: "مشاهده‌ی تقویم و شرکت در رویداد", code: "social.events.event.list" },
+      { id: "events.create", label: "ساخت رویداد و دعوت", code: "social.events.event.create" },
+      { id: "events.manage", label: "مدیریت همه‌ی رویدادها", code: "social.events.event.update" },
     ],
   },
   {
     id: "files",
     label: "اسناد و فایل‌ها",
-    actions: [{ id: "files.use", label: "مدیر فایل شخصی و گروهی" }],
+    actions: [{ id: "files.use", label: "مدیر فایل شخصی و گروهی", code: "social.core.user_file_manager.file_list" }],
   },
   {
     id: "social",
     label: "مدیریت شبکه",
     actions: [
-      { id: "social.dashboards", label: "داشبورد مدیریتی ماژول‌ها" },
-      { id: "social.settings", label: "تنظیمات ماژول‌ها و واکنش‌های مجاز" },
+      { id: "social.dashboards", label: "داشبورد مدیریتی ماژول‌ها", code: "social.content.dashboard.admin" },
+      { id: "social.settings", label: "تنظیمات ماژول‌ها و واکنش‌های مجاز", code: "social.content.news.update_setting" },
     ],
   },
   {
@@ -1535,55 +1493,11 @@ export const permissionCatalog: PermissionGroup[] = [
     ],
   },
   {
-    id: "contracts",
-    label: "قراردادها",
-    actions: [
-      { id: "contracts.list", label: "مشاهده قراردادها" },
-      { id: "contracts.create", label: "ثبت قرارداد" },
-      { id: "contracts.edit", label: "ویرایش قرارداد" },
-      { id: "contracts.delete", label: "حذف قرارداد" },
-      { id: "contracts.stage", label: "تغییر مرحله قرارداد" },
-    ],
-  },
-  {
-    id: "funds",
-    label: "صندوق نوآوری و شتاب‌دهی",
-    actions: [
-      { id: "funds.list", label: "مشاهده طرح‌ها" },
-      { id: "funds.submit", label: "ثبت طرح جدید" },
-      { id: "funds.refer", label: "ارجاع طرح به داوری" },
-      { id: "funds.score", label: "امتیازدهی و داوری طرح" },
-      { id: "funds.allocate", label: "تخصیص منابع و اقساط" },
-      { id: "funds.monitor", label: "پایش و ثبت KPI طرح" },
-    ],
-  },
-  {
-    id: "research",
-    label: "فرصت‌های پژوهشی",
-    actions: [
-      { id: "research.list", label: "مشاهده فراخوان‌ها" },
-      { id: "research.create", label: "ایجاد فراخوان" },
-      { id: "research.edit", label: "ویرایش فراخوان" },
-      { id: "research.close", label: "بستن فراخوان" },
-    ],
-  },
-  {
     id: "reports",
     label: "گزارش‌گیری",
     actions: [
       { id: "reports.view", label: "مشاهده داشبورد گزارش‌ها" },
       { id: "reports.export", label: "دریافت خروجی گزارش" },
-    ],
-  },
-  {
-    id: "training",
-    label: "آموزش و توانمندسازی",
-    actions: [
-      { id: "training.list", label: "مشاهده دوره‌ها" },
-      { id: "training.create", label: "تعریف دوره جدید" },
-      { id: "training.enroll", label: "ثبت‌نام در دوره" },
-      { id: "training.evaluate", label: "ارزشیابی و سنجش اثربخشی" },
-      { id: "training.certificate", label: "صدور گواهینامه" },
     ],
   },
   {
@@ -1597,12 +1511,37 @@ export const permissionCatalog: PermissionGroup[] = [
     ],
   },
   {
-    id: "assistant",
-    label: "دستیار هوشمند",
+    id: "faq",
+    label: "سوالات متداول",
     actions: [
-      { id: "assistant.chat", label: "پرسش‌وپاسخ از دستیار مدیریتی" },
-      { id: "assistant.evaluate", label: "اجرای ارزیابی هوشمند پروپوزال" },
-      { id: "assistant.configure", label: "پیکربندی چت‌بات‌ها" },
+      { id: "faq.list", label: "مشاهده‌ی سوالات متداول", code: "social.faq.faq.list" },
+      { id: "faq.create", label: "افزودن سؤال متداول", code: "social.faq.faq.create" },
+      { id: "faq.manage", label: "ویرایش، انتشار و حذف سوالات متداول", code: "social.faq.faq.publish" },
+    ],
+  },
+  {
+    id: "monitoring",
+    label: "مانیتورینگ",
+    actions: [{ id: "monitoring.view", label: "مشاهده‌ی مانیتورینگ پروژه‌ها، وظایف، صورتجلسات و اعضا" }],
+  },
+  {
+    id: "secretariat",
+    label: "دبیرخانه",
+    actions: [
+      { id: "secretariat.view", label: "کارتابل نامه‌ها (نوشتن، ارجاع، پاراف)" },
+      { id: "secretariat.register", label: "ثبت نامه‌های وارده و صادره در دبیرخانه" },
+      { id: "secretariat.series.manage", label: "مدیریت سری‌های شماره‌ی نامه" },
+    ],
+  },
+  {
+    id: "crm",
+    label: "پرونده مشتریان",
+    actions: [
+      { id: "crm.view", label: "مشاهده‌ی پرونده‌های مشتری و فرصت‌های فروش" },
+      { id: "crm.manage", label: "ایجاد و ویرایش پرونده و فرصت فروش" },
+      { id: "crm.finance.view", label: "مشاهده‌ی اسناد مالی پرونده‌ها" },
+      { id: "crm.finance.manage", label: "ثبت و ویرایش اسناد مالی" },
+      { id: "crm.import", label: "واردسازی مشتریان از فایل" },
     ],
   },
   {
@@ -1621,9 +1560,9 @@ export const permissionCatalog: PermissionGroup[] = [
     id: "blog",
     label: "وبلاگ",
     actions: [
-      { id: "blog.list", label: "مشاهده‌ی وبلاگ" },
-      { id: "blog.create", label: "نوشتن پست وبلاگ" },
-      { id: "blog.manage", label: "ویرایش، انتشار و حذف پست‌های دیگران" },
+      { id: "blog.list", label: "مشاهده‌ی وبلاگ", code: "social.content.blog.list" },
+      { id: "blog.create", label: "نوشتن پست وبلاگ", code: "social.content.blog.create" },
+      { id: "blog.manage", label: "ویرایش، انتشار و حذف پست‌های دیگران", code: "social.content.blog.publish" },
     ],
   },
   {
@@ -1652,16 +1591,6 @@ export const permissionCatalog: PermissionGroup[] = [
       { id: "tickets.create", label: "ثبت تیکت و پیگیری تیکت‌های خود" },
       { id: "tickets.view-org", label: "مشاهده‌ی تیکت‌های همه‌ی اعضای زیرمجموعه" },
       { id: "tickets.vendor", label: "پاسخ‌گویی به‌عنوان تیم سازنده (پشتیبانی)" },
-    ],
-  },
-  {
-    id: "award",
-    label: "جایزه نوآوری و فناوری",
-    actions: [
-      { id: "award.list", label: "مشاهده‌ی دوره‌ها و آثار جایزه" },
-      { id: "award.submit", label: "ارسال اثر به جایزه" },
-      { id: "award.judge", label: "داوری آثار" },
-      { id: "award.manage", label: "مدیریت دوره‌ها، داوران و نتایج" },
     ],
   },
 ];
@@ -1699,11 +1628,12 @@ export const roles: RoleDef[] = [
     description: "انتشار و مدیریت مجلات، اخبار، رسانه و دانش؛ تأیید نظرها؛ مدیریت هشتگ‌ها، موضوعات و پرسش و پاسخ",
     permissions: [
       "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
-      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view",
       "magazines.manage", "news.create", "news.manage", "media.manage", "forum.moderate", "taxonomy.manage", "comments.moderate",
       "channels.create", "events.create", "social.dashboards",
       "knowledge.edit", "knowledge.delete", "knowledge.categories", "knowledge.approve", "knowledge.archive", "knowledge.glossary", "knowledge.experiences", "knowledge.reports", "knowledge.audit",
-      "training.create", "reports.export",
+      "reports.export",
+      "faq.list", "faq.create", "faq.manage", "secretariat.view",
     ],
     system: true,
   },
@@ -1715,11 +1645,12 @@ export const roles: RoleDef[] = [
     description: "ساخت و مدیریت کامل پروژه‌ها، تیم، بودجه و اسناد پروژه؛ ساخت رویداد و گروه برای تیم",
     permissions: [
       "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
-      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view",
       "groups.create", "events.create",
       "projects.create", "projects.edit", "projects.archive", "projects.tasks.delete", "projects.members", "projects.budget", "projects.expenses", "projects.expenses.approve",
       "projects.risks", "projects.meetings", "projects.documents", "projects.templates", "projects.groups", "projects.playbooks", "projects.notifications", "projects.reports", "projects.history",
       "knowledge.experiences", "reports.export",
+      "faq.list", "monitoring.view", "secretariat.view",
     ],
     system: true,
   },
@@ -1731,8 +1662,9 @@ export const roles: RoleDef[] = [
     description: "ساخت و اداره‌ی گروه‌ها و کانال‌ها (اعضا، تاپیک‌ها، فایل‌ها) و برگزاری رویداد برای اعضا",
     permissions: [
       "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
-      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view",
       "groups.create", "channels.create", "events.create", "forum.moderate",
+      "faq.list", "secretariat.view",
     ],
     system: true,
   },
@@ -1744,7 +1676,8 @@ export const roles: RoleDef[] = [
     description: "مشاهده و مشارکت: ارتباط با همکاران، گفتگو، عضویت در گروه و کانال، پرسش و پاسخ، رسانه، شرکت در رویداد و کار روی تسک‌های خود",
     permissions: [
       "members.view", "relations.use", "magazines.list", "magazines.create", "news.list", "media.list", "media.upload", "forum.list", "forum.create", "forum.reply", "chat.view", "groups.list", "channels.list", "events.list", "files.use",
-      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view", "training.list", "training.enroll", "assistant.chat",
+      "knowledge.list", "knowledge.upload", "projects.list", "projects.tasks", "projects.progress", "reports.view",
+      "faq.list", "secretariat.view",
     ],
     system: true,
   },

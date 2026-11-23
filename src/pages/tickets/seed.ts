@@ -67,7 +67,7 @@ function seedTicketsRaw(): Ticket[] {
         actual: "پیام «Request Entity Too Large (413)» و ثبت نشدن سند.",
         labels: ["بارگذاری", "زیرساخت"],
         attachments: [{ name: "screenshot-413.png", size: 284000, at: ago(26), by: "مهندس بردیا کوشا" }],
-        context: ctx("/dashboard/knowledge?tab=bank", "مدیریت دانش", "بنیاد مستضعفان › هلدینگ مالی و سرمایه‌گذاری سینا › بانک سینا › واحد اعتبارسنجی", "مدیر شرکت، کارشناس اعتبارسنجی", 26),
+        context: ctx("/knowledge?tab=bank", "مدیریت دانش", "بنیاد مستضعفان › هلدینگ مالی و سرمایه‌گذاری سینا › بانک سینا › واحد اعتبارسنجی", "مدیر شرکت، کارشناس اعتبارسنجی", 26),
       },
       26,
       [
@@ -94,7 +94,7 @@ function seedTicketsRaw(): Ticket[] {
         assigneeId: "v1",
         firstResponseAt: ago(44),
         labels: ["گزارش", "خروجی"],
-        context: ctx("/dashboard/activity", "گزارش فعالیت‌های من", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › لبنیات پاک", "کاربر عادی، کارشناس مالی هلدینگ", 46, "Firefox 130 · Windows"),
+        context: ctx("/activity-report", "گزارش فعالیت‌های من", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › لبنیات پاک", "کاربر عادی، کارشناس مالی هلدینگ", 46, "Firefox 130 · Windows"),
       },
       46,
       [
@@ -120,7 +120,7 @@ function seedTicketsRaw(): Ticket[] {
         assigneeId: "v1",
         firstResponseAt: ago(5.5),
         labels: ["دسترسی"],
-        context: ctx("/dashboard/settings?section=roles", "تنظیمات سامانه", "بنیاد مستضعفان › هلدینگ مالی و سرمایه‌گذاری سینا › بانک سینا", "مدیر شرکت", 6),
+        context: ctx("/settings?section=roles", "تنظیمات سامانه", "بنیاد مستضعفان › هلدینگ مالی و سرمایه‌گذاری سینا › بانک سینا", "مدیر شرکت", 6),
       },
       6,
       [
@@ -148,7 +148,7 @@ function seedTicketsRaw(): Ticket[] {
         actual: "حدود ۲۰ ثانیه صفحه سفید می‌ماند.",
         labels: ["کارایی"],
         attachments: [{ name: "performance-trace.json", size: 1830000, at: ago(0.6), by: "محسن مردعلی" }],
-        context: ctx("/dashboard/projects/p-saba-2?tab=board", "پروژه‌های من", "بنیاد مستضعفان › هلدینگ برق و انرژی صبا › نیروگاه‌های صبا", "مدیر پروژه، کاربر عادی", 0.7, "Edge 128 · Windows"),
+        context: ctx("/projects/p-saba-2?tab=board", "پروژه‌های من", "بنیاد مستضعفان › هلدینگ برق و انرژی صبا › نیروگاه‌های صبا", "مدیر پروژه، کاربر عادی", 0.7, "Edge 128 · Windows"),
       },
       0.7,
       [ev(0.6, "attachment", "محسن مردعلی", "reporter", { files: ["performance-trace.json"] })],
@@ -172,7 +172,7 @@ function seedTicketsRaw(): Ticket[] {
         fixedIn: "۳.۸.۲",
         labels: ["حالت تاریک", "ظاهر"],
         attachments: [{ name: "calendar-dark.png", size: 412000, at: ago(72), by: "دکتر آرین صدرا" }],
-        context: ctx("/dashboard/events?view=calendar", "رویداد و جلسات", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › بهنوش ایران › معاونت تولید", "کاربر عادی، سرپرست تولید", 72, "Safari 17 · macOS", "۱۲۸۰×۷۲۰ (صفحه‌نمایش ۱۴۴۰×۹۰۰)"),
+        context: ctx("/events?view=calendar", "رویداد و جلسات", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › بهنوش ایران › معاونت تولید", "کاربر عادی، سرپرست تولید", 72, "Safari 17 · macOS", "۱۲۸۰×۷۲۰ (صفحه‌نمایش ۱۴۴۰×۹۰۰)"),
       },
       72,
       [
@@ -202,7 +202,7 @@ function seedTicketsRaw(): Ticket[] {
         firstResponseAt: ago(118),
         resolvedAt: ago(117),
         rating: { score: 5, comment: "پاسخ دقیق و سریع بود.", at: ago(110) },
-        context: ctx("/dashboard/access", "نقش و دسترسی من", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا", "مدیر محتوا، مدیر هلدینگ", 120),
+        context: ctx("/my-access", "نقش و دسترسی من", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا", "مدیر محتوا، مدیر هلدینگ", 120),
       },
       120,
       [
@@ -229,7 +229,7 @@ function seedTicketsRaw(): Ticket[] {
         assigneeId: "v1",
         firstResponseAt: ago(90),
         resolvedAt: ago(89),
-        context: ctx("/dashboard/my-work", "فعالیت‌ها و وظایف", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › بهنوش ایران", "کاربر عادی", 96, "Chrome 127 · Android", "۳۹۰×۸۴۴ (صفحه‌نمایش ۳۹۰×۸۴۴)"),
+        context: ctx("/activities", "فعالیت‌ها و وظایف", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا › بهنوش ایران", "کاربر عادی", 96, "Chrome 127 · Android", "۳۹۰×۸۴۴ (صفحه‌نمایش ۳۹۰×۸۴۴)"),
       },
       96,
       [
@@ -256,7 +256,7 @@ function seedTicketsRaw(): Ticket[] {
         fixedIn: "۳.۸.۱",
         rating: { score: 4, at: ago(230) },
         labels: ["زمان کاری"],
-        context: ctx("/dashboard/activity", "گزارش فعالیت‌های من", "بنیاد مستضعفان › هلدینگ برق و انرژی صبا › انرژی گستر سینا", "کاربر عادی", 268, "Chrome 126 · Windows", "۱۳۶۶×۶۵۰ (صفحه‌نمایش ۱۳۶۶×۷۶۸)", "۳.۸.۰"),
+        context: ctx("/activity-report", "گزارش فعالیت‌های من", "بنیاد مستضعفان › هلدینگ برق و انرژی صبا › انرژی گستر سینا", "کاربر عادی", 268, "Chrome 126 · Windows", "۱۳۶۶×۶۵۰ (صفحه‌نمایش ۱۳۶۶×۷۶۸)", "۳.۸.۰"),
       },
       268,
       [
@@ -283,7 +283,7 @@ function seedTicketsRaw(): Ticket[] {
         reporterId: "u10",
         reporterName: "مهندس پارسا یگانه",
         reporterScopeId: "c-dashtnaz",
-        context: ctx("/dashboard/forum/q12", "پرسش و پاسخ", "بنیاد مستضعفان › هلدینگ کشاورزی فردوس پارس › کشت و صنعت دشت ناز ساری", "کاربر عادی", 3, "Chrome 128 · Android", "۴۱۲×۸۹۲ (صفحه‌نمایش ۴۱۲×۸۹۲)"),
+        context: ctx("/forums/q12", "پرسش و پاسخ", "بنیاد مستضعفان › هلدینگ کشاورزی فردوس پارس › کشت و صنعت دشت ناز ساری", "کاربر عادی", 3, "Chrome 128 · Android", "۴۱۲×۸۹۲ (صفحه‌نمایش ۴۱۲×۸۹۲)"),
       },
       3,
       [],
@@ -305,7 +305,7 @@ function seedTicketsRaw(): Ticket[] {
         firstResponseAt: ago(20),
         resolvedAt: ago(20),
         links: [{ id: "MSH-1024", kind: "duplicate-of" }],
-        context: ctx("/dashboard/knowledge?tab=bank", "مدیریت دانش", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا", "کاربر عادی، کارشناس مالی هلدینگ", 22, "Firefox 130 · Windows"),
+        context: ctx("/knowledge?tab=bank", "مدیریت دانش", "بنیاد مستضعفان › هلدینگ صنایع غذایی سینا", "کاربر عادی، کارشناس مالی هلدینگ", 22, "Firefox 130 · Windows"),
       },
       22,
       [
@@ -317,7 +317,7 @@ function seedTicketsRaw(): Ticket[] {
       {
         id: "MSH-1034",
         title: "ورود یکپارچه (SSO) با حساب سازمانی بنیاد",
-        description: "کاربران می‌خواهند با همان حساب سازمانی (Active Directory) وارد موتوشاب شوند تا رمز جداگانه نداشته باشند.",
+        description: "کاربران می‌خواهند با همان حساب سازمانی (Active Directory) وارد کاریز شوند تا رمز جداگانه نداشته باشند.",
         type: "درخواست قابلیت",
         module: "ورود و حساب کاربری",
         priority: "زیاد",
@@ -330,7 +330,7 @@ function seedTicketsRaw(): Ticket[] {
         firstResponseAt: ago(140),
         fixedIn: "۳.۹.۰",
         labels: ["امنیت", "یکپارچه‌سازی"],
-        context: ctx("/dashboard/settings?section=security", "تنظیمات سامانه", "بنیاد مستضعفان", "مدیر سامانه", 144),
+        context: ctx("/settings?section=security", "تنظیمات سامانه", "بنیاد مستضعفان", "مدیر سامانه", 144),
       },
       144,
       [
@@ -364,7 +364,7 @@ function seedTicketsRaw(): Ticket[] {
         fixedIn: "۳.۸.۱",
         rating: { score: 3, comment: "رفع شد ولی کمی طول کشید.", at: ago(220) },
         labels: ["جستجو", "فارسی"],
-        context: ctx("/dashboard/search?q=کیت", "جستجو", "بنیاد مستضعفان › هلدینگ کشاورزی فردوس پارس › موسسه تحقیقات کشاورزی بنیاد", "مدیر گروه", 310, "Chrome 126 · Windows", "۱۹۲۰×۹۴۰ (صفحه‌نمایش ۱۹۲۰×۱۰۸۰)", "۳.۸.۰"),
+        context: ctx("/globalsearch?q=کیت", "جستجو", "بنیاد مستضعفان › هلدینگ کشاورزی فردوس پارس › موسسه تحقیقات کشاورزی بنیاد", "مدیر گروه", 310, "Chrome 126 · Windows", "۱۹۲۰×۹۴۰ (صفحه‌نمایش ۱۹۲۰×۱۰۸۰)", "۳.۸.۰"),
       },
       310,
       [
@@ -420,7 +420,7 @@ function seedTicketsRaw(): Ticket[] {
         firstResponseAt: ago(47),
         resolvedAt: ago(2),
         fixedIn: "۳.۸.۲",
-        context: ctx("/dashboard/my-work", "فعالیت‌ها و وظایف", "بنیاد مستضعفان", "مدیر سامانه", 48, "Firefox 130 · Linux"),
+        context: ctx("/activities", "فعالیت‌ها و وظایف", "بنیاد مستضعفان", "مدیر سامانه", 48, "Firefox 130 · Linux"),
       },
       48,
       [

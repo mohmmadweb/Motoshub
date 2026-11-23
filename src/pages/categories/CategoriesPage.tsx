@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // «دسته‌بندی‌ها» (منوی دانش و محتوا) — مدیریت درخت دسته‌بندی هر بخش، دقیقاً مطابق Motoshub Social API:
-//   GET/POST  /core/categories/{entity_name}/          ← فهرست / ساخت ({"title": "…", "parent_id": …})
-//   GET/PATCH/DELETE /core/categories/{entity_name}/{id}/
+//   GET/POST  /social/categories/{entity_name}/          ← فهرست / ساخت ({"title": "…", "parent_id": …})
+//   GET/PATCH/DELETE /social/categories/{entity_name}/{id}/
 //   فیلدها: id, title, entity_name, parent_id, parent, created_at, updated_at
 // خواندن: دارندگان هر مجوز مدیریتی (*.manage) · ساخت/تغییر نام/جابه‌جایی/حذف: taxonomy.manage
 // حذفِ دسته‌ی در حال استفاده مسدود است (اول مطالب به دسته‌ی دیگری منتقل شوند)؛ زیرشاخه‌ها به والد بالاتر می‌روند.
@@ -32,7 +32,8 @@ const ENTITIES: { id: EntityName; label: string }[] = [
   { id: "magazine", label: "مجله" },
   { id: "media", label: "رسانه" },
   { id: "event", label: "رویداد" },
-  { id: "topic", label: "پرسش و پاسخ" },
+  { id: "forum", label: "پرسش و پاسخ" },
+  { id: "faq", label: "سوالات متداول" },
 ];
 type Use = { id: string; title: string; to: string; category_ids: string[] };
 
@@ -46,19 +47,21 @@ function useEntityItems(entity: EntityName): Use[] {
       case "blog":
       case "magazine": {
         const kind = entity === "news" ? "news" : entity === "blog" ? "blogs" : "magazines";
-        const base = entity === "news" ? "news" : entity === "blog" ? "blog" : "magazines";
-        return live(s.content.filter((c) => c.kind === kind)).map((c) => ({ id: c.id, title: c.title, to: `/dashboard/${base}/${c.id}`, category_ids: c.category_ids }));
+        const base = kind;
+        return live(s.content.filter((c) => c.kind === kind)).map((c) => ({ id: c.id, title: c.title, to: `/${base}/${c.id}`, category_ids: c.category_ids }));
       }
       case "media":
-        return live(s.media).map((m) => ({ id: m.id, title: m.caption || "رسانه", to: `/dashboard/media/${m.id}`, category_ids: m.category_ids }));
+        return live(s.media).map((m) => ({ id: m.id, title: m.caption || "رسانه", to: `/media/${m.id}`, category_ids: m.category_ids }));
       case "event":
-        return live(s.events).map((e) => ({ id: e.id, title: e.title, to: `/dashboard/events/${e.id}`, category_ids: e.category_ids }));
-      case "topic":
-        return live(s.topics).map((t) => ({ id: t.id, title: t.title, to: `/dashboard/forum/${t.id}`, category_ids: t.category_ids }));
+        return live(s.events).map((e) => ({ id: e.id, title: e.title, to: `/events/${e.id}`, category_ids: e.category_ids }));
+      case "faq":
+        return live(s.faqs).map((f) => ({ id: f.id, title: f.question, to: `/faqs?q=${f.id}`, category_ids: f.category_ids }));
+      case "forum":
+        return live(s.topics).map((t) => ({ id: t.id, title: t.title, to: `/forums/${t.id}`, category_ids: t.category_ids }));
       default:
         return [];
     }
-  }, [s.content, s.media, s.events, s.topics, entity]);
+  }, [s.content, s.media, s.events, s.topics, s.faqs, entity]);
 }
 
 export default function CategoriesPage() {
@@ -204,7 +207,7 @@ export default function CategoriesPage() {
   const parentOptions = form?.cat ? cats.filter((c) => c.id !== form.cat!.id && !descendants(form.cat!.id).includes(c.id)) : cats;
   const apiItems = [
     { label: "فهرست دسته‌بندی‌های بخش", ep: endpoints.categories(entity) },
-    { label: "جزئیات یک دسته‌بندی", ep: { method: "GET" as const, path: `/core/categories/${entity}/{id}/` } },
+    { label: "جزئیات یک دسته‌بندی", ep: { method: "GET" as const, path: `/social/categories/${entity}/{id}/` } },
     ...(manage
       ? [
           { label: "ساخت دسته‌بندی", ep: endpoints.categoryCreate(entity) },
@@ -263,7 +266,7 @@ export default function CategoriesPage() {
         open={!!form}
         onClose={() => setForm(null)}
         title={form?.mode === "create" ? "دسته‌بندی جدید" : form?.mode === "rename" ? "تغییر نام دسته‌بندی" : "جابه‌جایی دسته‌بندی"}
-        description={form?.mode === "create" ? `POST /core/categories/${entity}/` : `PATCH /core/categories/${entity}/${form?.cat?.id}/`}
+        description={form?.mode === "create" ? `POST /social/categories/${entity}/` : `PATCH /social/categories/${entity}/${form?.cat?.id}/`}
       >
         {form && (
           <div className="space-y-3">
@@ -350,7 +353,7 @@ export default function CategoriesPage() {
         )}
       </Modal>
 
-      {/* جزئیات (همان پاسخ GET /core/categories/{entity}/{id}/) */}
+      {/* جزئیات (همان پاسخ GET /social/categories/{entity}/{id}/) */}
       <Drawer open={!!detail} onClose={() => setDetail(null)} title={detail?.title ?? ""}>
         {detail && (
           <div className="space-y-4">

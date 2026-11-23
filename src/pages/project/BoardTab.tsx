@@ -17,6 +17,7 @@ import type { ColumnKind, PMTask, SavedView, TaskType, ViewFilters } from "../..
 import { Field, Progress, TaskFlags, downloadText, kindColor, kindTone, priorities, priorityTone, toCsv, useProjectPage } from "./shared";
 import { TaskKey, TypeIcon, taskTypes } from "./taskTypes";
 import CsvImportModal from "./CsvImportModal";
+import { REOPEN_BLOCKED, useProjectRules } from "./useRules";
 
 type SortId = "manual" | "priority" | "due" | "title" | "key";
 type LaneId = "none" | "assignee" | "priority" | "sprint" | "epic";
@@ -53,6 +54,8 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   const { notify } = useToast();
   const { actingUser } = useTenancy();
   const me = actingUser.name;
+  const rules = useProjectRules(p);
+  const removalRequests = p.tasks.filter((t) => t.removalRequest);
   const sprints = p.sprints ?? [];
   const fields = p.customFields ?? [];
   const activeSprint = sprints.find((x) => x.status === "فعال");
@@ -191,7 +194,11 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
     setOverCol(null);
     if (!t) return;
     const toKind = kindOf(p, status);
-    const run = () => pm.moveTask(pid, t.id, status, beforeId ?? "");
+    if (isDone(p, t) && toKind !== "done" && !rules.canReopen) return notify(REOPEN_BLOCKED, "warning");
+    const run = () => {
+      pm.moveTask(pid, t.id, status, beforeId ?? "");
+      if (toKind === "done" && t.finalApprover && t.finalApprover !== me && !isDone(p, t)) notify(`«${t.title}» به بازبینی رفت و منتظر تأیید نهایی «${t.finalApprover}» است.`, "info");
+    };
     const open = openPredecessors(p, t.id);
     if (t.status !== status && open.length && ["doing", "review", "done"].includes(toKind) && ["backlog", "todo"].includes(kindOf(p, t.status))) {
       confirm({
@@ -204,7 +211,17 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
   };
 
   const removeTask = (t: PMTask) =>
-    confirm({
+    rules.removalNeedsApproval
+      ? confirm({
+          title: `درخواست حذف «${t.title}»؟`,
+          message: "در این پروژه حذف کار از بورد با تأیید مدیر پروژه است؛ درخواست شما برای مدیر فرستاده می‌شود.",
+          confirmLabel: "ارسال درخواست",
+          onConfirm: () => {
+            pm.requestRemoval(pid, t.id, "delete");
+            notify("درخواست حذف برای مدیر پروژه فرستاده شد.", "info");
+          },
+        })
+      : confirm({
       title: `حذف تسک «${t.title}»؟`,
       message: "تسک از بورد، گانت و گراف وابستگی حذف و رویداد TASK_DELETED ثبت می‌شود. (پیشنهاد: به‌جای حذف، بایگانی کنید.)",
       onConfirm: () => {
@@ -349,6 +366,16 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
 
   return (
     <div>
+      {rules.isMgr && removalRequests.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-xs p-2.5 flex items-center gap-2 flex-wrap">
+          <Trash2 size={14} /> {fa(removalRequests.length)} درخواست حذف/بایگانی منتظر تأیید شماست:
+          {removalRequests.map((t) => (
+            <button key={t.id} onClick={() => openTask(t.id)} className="underline">
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
       {/* نماهای ذخیره‌شده */}
       <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1" aria-label="نماهای بورد">
         <Bookmark size={13} className="text-ink-400 shrink-0" />
@@ -452,7 +479,7 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
               <div className="absolute z-30 top-full mt-1 left-0 w-56 bg-white border border-ink-200 rounded-xl shadow-lg py-1.5">
                 {canEdit && (
                   <button onClick={() => { setMenuOpen(false); setImportOpen(true); }} className="w-full text-right px-3 py-2 text-[13px] text-ink-700 hover:bg-ink-50 flex items-center gap-2">
-                    <Upload size={14} /> درون‌ریزی تسک‌ها از CSV
+                    <Upload size={14} /> ورود کارها از ترلو، میزیتو، Jira، اکسل و …
                   </button>
                 )}
                 <button onClick={() => { setMenuOpen(false); exportCsv(); }} className="w-full text-right px-3 py-2 text-[13px] text-ink-700 hover:bg-ink-50 flex items-center gap-2">
@@ -661,6 +688,11 @@ export default function BoardTab({ onNewTask }: { onNewTask: (status?: string) =
                 icon={f.archived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
                 onClick={() => {
                   const n = visibleSel.length;
+                  if (!f.archived && rules.removalNeedsApproval) {
+                    visibleSel.forEach((id) => pm.requestRemoval(pid, id, "archive"));
+                    setSelected([]);
+                    return notify(`درخواست بایگانی ${fa(n)} کار برای مدیر پروژه فرستاده شد.`, "info");
+                  }
                   pm.archiveTasks(pid, visibleSel, !f.archived);
                   setSelected([]);
                   notify(f.archived ? `${fa(n)} تسک از بایگانی بازیابی شد.` : `${fa(n)} تسک بایگانی شد؛ از فیلتر «بایگانی‌شده‌ها» قابل بازیابی است.`, "info");

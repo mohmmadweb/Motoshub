@@ -36,7 +36,7 @@ export function TaskKey({ t, pid, copy = false, className = "" }: { t: PMTask; p
       title="کپی لینک مستقیم تسک"
       onClick={(e) => {
         e.stopPropagation();
-        const url = `${location.origin}${location.pathname}#/dashboard/projects/${pid}?tab=board&focus=${t.key}`;
+        const url = `${location.origin}${location.pathname}#/projects/${pid}?tab=board&focus=${t.key}`;
         navigator.clipboard?.writeText(url).then(
           () => notify(`لینک ${t.key} کپی شد.`, "info"),
           () => notify(url, "info")

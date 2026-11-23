@@ -4,7 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 export default function RowActions({
   onEdit,
   onDelete,
-  size = 14,
+  size = 16,
 }: {
   onEdit?: () => void;
   onDelete?: () => void;
@@ -18,7 +18,8 @@ export default function RowActions({
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1.5 rounded-md text-ink-400 hover:text-brand-600 hover:bg-brand-50"
+          className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-ink-500 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+          aria-label="ویرایش"
           title="ویرایش"
         >
           <Pencil size={size} />
@@ -30,7 +31,8 @@ export default function RowActions({
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1.5 rounded-md text-ink-400 hover:text-rose-600 hover:bg-rose-50"
+          className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-ink-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+          aria-label="حذف"
           title="حذف"
         >
           <Trash2 size={size} />

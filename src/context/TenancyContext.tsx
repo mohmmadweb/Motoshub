@@ -41,6 +41,7 @@ import {
   type ScopeType,
 } from "../iam/model";
 import { migrateIam, seedIam } from "../iam/seed";
+import { buildAccessProfile, type AccessProfile } from "../iam/api";
 import { loginPolicyStore, otpRequiredFor } from "../iam/loginPolicy";
 import { onSettingsChange } from "../iam/settingsAudit";
 import { onSecurityAudit } from "../iam/securityAudit";
@@ -97,6 +98,8 @@ type TenancyValue = {
   // --- دسترسی ---
   canAccessAdmin: boolean;
   hasPermission: (id: string) => boolean;
+  /** شکل واقعی `iam/tenant/access-profile/` برای کاربر و کانتکست فعلی — hasPermission از effective_permissions آن می‌خواند */
+  accessProfile: AccessProfile;
   canManageHoldings: boolean;
   canModerateGroup: (group: { id: string; scope?: string; holdingId?: string; companyId?: string }) => boolean;
   canManageItem: (item: Scoped, editPerm?: string) => boolean;
@@ -158,6 +161,10 @@ type TenancyValue = {
   addMembership: (userId: string, scopeId: string, title?: string) => Check;
   setMembershipStatus: (id: string, status: MembershipStatus) => Check;
   removeMembership: (id: string) => Check;
+  /** تعیین سِمت سازمانی یک عضویت (از فهرست مدیریت‌شده‌ی سِمت‌ها) */
+  setMembershipTitle: (id: string, title: string) => Check;
+  /** ثبت رویداد دلخواه در تاریخچه‌ی تغییرناپذیر (انتقال کار، سِمت‌ها، دسترسی به اشیا) */
+  recordAudit: (a: { event: AuditEvent; scopeId?: string; targetType: Audit["targetType"]; targetId: string; summary: string; affectedUserId?: string; before?: Record<string, unknown>; after?: Record<string, unknown> }) => void;
   completeReview: (scopeId: string, revokedIds: string[]) => void;
   resetIam: () => void;
 
@@ -326,7 +333,9 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
     const node = (id?: string | null) => byId(iam, id);
     const roleById = (id: string) => iam.roles.find((r) => r.id === id);
     const effective = effectiveIn(iam, me, contextId, today);
-    const hasPermission = (p: string) => effective.has(p);
+    const accessProfile = buildAccessProfile(iam, me, contextId, effective.keys(), ADMIN_PERMS);
+    const effSet = new Set(accessProfile.effective_permissions);
+    const hasPermission = (p: string) => effSet.has(p);
     const effectiveOf = (userId: string, scopeId: string) => effectiveIn(iam, userId, scopeId, today);
     const permsAt = (scopeId: string) => new Set(effectiveIn(iam, me, scopeId, today).keys());
     const canAdmin = (scopeId: string, perm: string) => permsAt(scopeId).has(perm);
@@ -567,7 +576,26 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
         targetType: "membership",
         targetId: id,
         affectedUserId: m.userId,
-        summary: `عضویت «${uname(m.userId)}» در «${node(m.scopeId)?.name}» ${status === "active" ? "فعال" : "معلق"} شد${status === "suspended" ? "؛ نقش‌های این واحد تا رفع تعلیق اعمال نمی‌شوند" : ""}.`,
+        summary: `عضویت «${uname(m.userId)}» در «${node(m.scopeId)?.name}» ${status === "active" ? "فعال" : status === "revoked" ? "لغو" : "معلق"} شد${status === "suspended" ? "؛ نقش‌های این واحد تا رفع تعلیق اعمال نمی‌شوند" : ""}.`,
+      });
+      return ok;
+    };
+    const setMembershipTitle: TenancyValue["setMembershipTitle"] = (id, title) => {
+      const m = iam.memberships.find((x) => x.id === id);
+      if (!m) return no("عضویت پیدا نشد.");
+      const c = checkMembership(m.userId, m.scopeId);
+      if (!c.ok) return c;
+      const next = title.trim() || undefined;
+      if (next === m.title) return ok;
+      commit((s) => ({ ...s, memberships: s.memberships.map((x) => (x.id === id ? { ...x, title: next } : x)) }), {
+        event: "membership.title_changed",
+        scopeId: m.scopeId,
+        targetType: "membership",
+        targetId: id,
+        affectedUserId: m.userId,
+        summary: `سِمت «${uname(m.userId)}» در «${node(m.scopeId)?.name}» ${next ? `«${next}» شد` : "برداشته شد"}.`,
+        before: { title: m.title ?? null },
+        after: { title: next ?? null },
       });
       return ok;
     };
@@ -963,6 +991,11 @@ export function TenancyProvider({ children }: { children: ReactNode }) {
       addMembership: guard(addMembership),
       setMembershipStatus: guard(setMembershipStatus),
       removeMembership: guard(removeMembership),
+      setMembershipTitle: guard(setMembershipTitle),
+      recordAudit: (a) => {
+        if (!readOnly) commit((st) => st, { ...a, scopeId: a.scopeId ?? contextId });
+      },
+      accessProfile,
       completeReview: (scopeId, revokedIds) => {
         if (!readOnly) completeReview(scopeId, revokedIds);
       },

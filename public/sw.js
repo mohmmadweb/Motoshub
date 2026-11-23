@@ -1,12 +1,12 @@
 /* ---------------------------------------------------------------------------
- * سرویس‌ورکر حداقلی موتوشاب
+ * سرویس‌ورکر حداقلی کاریز
  *  - صفحه (index.html / ناوبری): اول شبکه، در قطعی اتصال نسخه‌ی ذخیره‌شده
  *  - فایل‌های ساخته‌شده (assets/، فونت، آیکن، تصویر): اول کش (نام فایل‌ها hash دارند)
  *  - HashRouter است؛ همه‌ی مسیرها همان index.html‌اند و نیازی به fallback SPA نیست.
  *  - درخواست‌های توسعه‌ی Vite (/@vite، /src/، node_modules، HMR) هرگز کش نمی‌شوند.
  *    ثبت این فایل فقط در بیلد تولید انجام می‌شود (src/pwa.ts).
  * ------------------------------------------------------------------------- */
-const VERSION = "motoshub-v1";
+const VERSION = "kariz-v1";
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const SCOPE = new URL(self.registration ? self.registration.scope : "./", self.location.href).pathname;

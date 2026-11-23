@@ -83,7 +83,7 @@ export default function TicketDetail({ ticket: t, onOpen }: { ticket: Ticket; on
   const [rateOpen, setRateOpen] = useState<"confirm" | "rate" | null>(null);
 
   const notifyReporter = (msg: string) => {
-    if (!isReporter) inbox.send([t.reporterName], "reply", `تیکت ${t.id}: ${msg}`, `/dashboard/tickets?id=${t.id}`);
+    if (!isReporter) inbox.send([t.reporterName], "reply", `تیکت ${t.id}: ${msg}`, `/tickets?id=${t.id}`);
   };
 
   const send = () => {

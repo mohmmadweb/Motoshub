@@ -18,11 +18,12 @@ const scale = (v: Record<number, string>): Record<string, string> =>
   Object.fromEntries(Object.entries(v).map(([k, val]) => [`--color-brand-${k}`, val]));
 
 export const accentPresets: AccentPreset[] = [
+  // پیش‌تنظیم پیش‌فرض کاریز: هیچ متغیری روی <html> نمی‌نویسد تا مقدارهای توکن index.css (سرمه‌ای v6.8) اعمال شوند
   {
     id: "blue",
     label: "آبی سازمانی",
-    swatch: "#1f4f99",
-    vars: scale({ 50: "#eef4fc", 100: "#d9e7f8", 200: "#b3cef1", 300: "#82aee6", 400: "#4d87d6", 500: "#2a66bd", 600: "#1f4f99", 700: "#1b4079", 800: "#17325f", 900: "#112442" }),
+    swatch: "#114167",
+    vars: {},
   },
   {
     id: "teal",
@@ -56,6 +57,8 @@ export const accentPresets: AccentPreset[] = [
   },
 ];
 
+const BRAND_KEYS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((k) => `--color-brand-${k}`);
+
 type ThemeValue = {
   mode: ThemeMode;
   resolved: "light" | "dark";
@@ -79,6 +82,10 @@ function applyTheme(mode: ThemeMode, accentId: string, fontScale: FontScale) {
   root.dataset.font = fontScale;
   root.style.colorScheme = resolved;
   const preset = accentPresets.find((p) => p.id === accentId) ?? accentPresets[0];
+  // بازگشت به پیش‌فرض: متغیرهای برندِ پیش‌تنظیم قبلی پاک می‌شوند
+  BRAND_KEYS.forEach((k) => {
+    if (!(k in preset.vars)) root.style.removeProperty(k);
+  });
   Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
   return resolved;
 }

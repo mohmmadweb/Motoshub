@@ -1,5 +1,11 @@
 import { useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Diamond, MousePointer2, SlidersHorizontal, Info } from "lucide-react";
+import { Diamond, MousePointer2, SlidersHorizontal, Info, Printer, Layers, Eye, ChevronUp, ChevronDown, Trash2, Plus } from "lucide-react";
+import Modal from "../../components/ui/Modal";
+import Button from "../../components/ui/Button";
+import { ganttIndex, ganttResponse } from "../../pm/api";
+import { phaseSpan, phasesOf } from "../../pm/rules";
+import { printNode } from "../../pm/print";
+import type { PMTask, ProjectPhase } from "../../pm/types";
 import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useProjectsPM } from "../../context/ProjectsContext";
@@ -11,14 +17,16 @@ import { TypeIcon } from "./taskTypes";
 
 const ROW = 38;
 const LABEL_W = 230;
-const scales = { روز: 30, هفته: 12, ماه: 5 } as const;
+const scales = { روز: 30, هفته: 12, ماه: 5, فصل: 2 } as const;
 type Scale = keyof typeof scales;
 
 type BarDrag = { id: string; mode: "move" | "start" | "end"; x0: number; dd: number; moved: boolean };
 type LinkDrag = { from: string; sx: number; sy: number; x: number; y: number; over?: string };
 
 export default function GanttTab() {
-  const { p, pid, can, refDate, openTask } = useProjectPage();
+  const { p, pid, can, refDate, openTask, access } = useProjectPage();
+  const printRef = useRef<HTMLDivElement>(null);
+  const [phasesOpen, setPhasesOpen] = useState(false);
   const pm = useProjectsPM();
   const { notify } = useToast();
   const confirm = useConfirm();
@@ -34,16 +42,42 @@ export default function GanttTab() {
   const [scale, setScale] = useState<Scale>(() => {
     const ds = p.tasks.flatMap((t) => [dayNum(t.start), dayNum(t.due)]).filter((x): x is number => x !== null);
     const span = ds.length ? Math.max(...ds) - Math.min(...ds) : 0;
-    return span > 75 ? "ماه" : span > 30 ? "هفته" : "روز";
+    return span > 200 ? "فصل" : span > 75 ? "ماه" : span > 30 ? "هفته" : "روز";
   });
   const [showDeps, setShowDeps] = useState(true);
   const [order, setOrder] = useState<"start" | "board">("start");
   const dw = scales[scale];
 
-  const tasks = useMemo(() => {
-    const ts = p.tasks.filter((t) => !t.archived && dayNum(t.start) !== null && dayNum(t.due) !== null);
-    return order === "start" ? [...ts].sort((a, b) => dayNum(a.start)! - dayNum(b.start)!) : ts;
+  // ردیف‌ها از پاسخ واقعی گانت (ProjectGanttSerializer) ساخته می‌شوند؛ WBS: فاز ← کار ← زیرکار
+  const phases = phasesOf(p);
+  type Row = { kind: "phase"; ph: ProjectPhase | null; span: [number, number] | null } | { kind: "task"; t: PMTask; depth: number };
+  const { tasks, rowsList } = useMemo(() => {
+    const g = ganttResponse(p);
+    const idx = ganttIndex(p);
+    const ts = g.tasks.map((x) => idx.get(x.task_id)).filter((t): t is PMTask => !!t);
+    const sorted = order === "start" ? [...ts].sort((a, b) => dayNum(a.start)! - dayNum(b.start)!) : ts;
+    const inSet = new Set(sorted.map((t) => t.id));
+    const rows: Row[] = [];
+    const pushTask = (t: PMTask) => {
+      rows.push({ kind: "task", t, depth: 0 });
+      sorted.filter((c) => c.parentId === t.id).forEach((c) => rows.push({ kind: "task", t: c, depth: 1 }));
+    };
+    const tops = sorted.filter((t) => !t.parentId || !inSet.has(t.parentId));
+    if (phases.length) {
+      phases.forEach((ph) => {
+        rows.push({ kind: "phase", ph, span: phaseSpan(p, ph.id) });
+        tops.filter((t) => t.phaseId === ph.id).forEach(pushTask);
+      });
+      const rest = tops.filter((t) => !t.phaseId || !phases.some((ph) => ph.id === t.phaseId));
+      if (rest.length) {
+        rows.push({ kind: "phase", ph: null, span: null });
+        rest.forEach(pushTask);
+      }
+    } else tops.forEach(pushTask);
+    return { tasks: rows.filter((r): r is Extract<Row, { kind: "task" }> => r.kind === "task").map((r) => r.t), rowsList: rows };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p, order]);
+  const readOnly = !canMove && access.can("gantt");
 
   const ref = dayNum(refDate)!;
   const all = [...tasks.flatMap((t) => [dayNum(t.start)!, dayNum(t.due)!]), ...p.milestones.map((m) => dayNum(m.due) ?? ref), dayNum(p.meta.start) ?? ref, dayNum(p.meta.deadline) ?? ref, ref];
@@ -172,9 +206,10 @@ export default function GanttTab() {
     else months.push({ label, from: d, to: d });
   }
 
-  const rowOf = new Map(tasks.map((t, i) => [t.id, i]));
+  const rowOf = new Map<string, number>();
+  rowsList.forEach((r, i) => r.kind === "task" && rowOf.set(r.t.id, i));
   const msTop = 1; // ردیف مایل‌ستون‌ها
-  const bodyH = (tasks.length + msTop) * ROW;
+  const bodyH = (rowsList.length + msTop) * ROW;
 
   return (
     <div className="space-y-3">
@@ -209,6 +244,19 @@ export default function GanttTab() {
             </>
           )}
         </div>
+        {canMove && (
+          <button onClick={() => setPhasesOpen(true)} className="text-xs px-2.5 py-1.5 rounded-lg border bg-white border-ink-200 text-ink-600 flex items-center gap-1" title="فازهای ساختار شکست کار (WBS)">
+            <Layers size={13} /> فازها ({fa(phases.length)})
+          </button>
+        )}
+        <button onClick={() => printNode(printRef.current, `گانت — ${p.meta.name}`, { landscape: true })} className="text-xs px-2.5 py-1.5 rounded-lg border bg-white border-ink-200 text-ink-600 flex items-center gap-1">
+          <Printer size={13} /> چاپ
+        </button>
+        {readOnly && (
+          <span className="text-[11.5px] text-ink-500 flex items-center gap-1" title="دسترسی «گانت چارت» شما در نقشه‌ی دسترسی این پروژه «مشاهده» است">
+            <Eye size={13} /> فقط مشاهده
+          </span>
+        )}
         <div className="relative mr-auto">
           <button onClick={() => setPop(pop === "legend" ? null : "legend")} aria-expanded={pop === "legend"} className="text-xs px-2.5 py-1.5 rounded-lg border bg-white border-ink-200 text-ink-600 flex items-center gap-1" title="راهنمای رنگ‌ها">
             <Info size={13} /> راهنما
@@ -229,6 +277,12 @@ export default function GanttTab() {
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-0 border-t-2 border-dashed border-navy-400" /> مهلت پروژه
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0 border-t-2 border-rose-600" /> وابستگی نامعتبر (هم‌پوشانی با پیش‌نیاز)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-1.5 rounded-sm bg-navy-700" /> بازه‌ی فاز (از کارهایش)
+                </span>
                 <span className="font-mono text-[10px] block pt-1 border-t border-ink-100" dir="ltr" title="پیکان بدون برچسب = پایان‌به‌شروع (FS) بدون تأخیر">
                   FS · SS · FF · SF ±lag
                 </span>
@@ -238,7 +292,8 @@ export default function GanttTab() {
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto" ref={printRef}>
+        <p className="print-only hidden px-3 py-2 text-sm font-bold">گانت چارت — {p.meta.name} · {refDate}</p>
         <div className="flex" style={{ minWidth: LABEL_W + width }}>
           {/* ستون عنوان‌ها */}
           <div className="shrink-0 border-l border-ink-100 bg-white sticky right-0 z-10" style={{ width: LABEL_W }}>
@@ -246,15 +301,22 @@ export default function GanttTab() {
             <div style={{ height: ROW }} className="flex items-center px-3 text-[11px] text-ink-500 border-b border-ink-100 bg-ink-50/60">
               <Diamond size={11} className="ml-1 text-brand-600" /> مایل‌ستون‌ها
             </div>
-            {tasks.map((t) => (
-              <button key={t.id} onClick={() => openTask(t.id)} style={{ height: ROW }} className="w-full text-right px-3 border-b border-ink-100 hover:bg-ink-50 flex flex-col justify-center">
-                <span className="text-xs font-medium text-ink-800 truncate flex items-center gap-1">
-                  <TypeIcon type={t.type} size={11} />
-                  {t.title}
-                </span>
-                <span className="text-[10.5px] text-ink-400 truncate">{t.assignee}</span>
-              </button>
-            ))}
+            {rowsList.map((r, ri) =>
+              r.kind === "phase" ? (
+                <div key={`ph-${r.ph?.id ?? "none"}-${ri}`} style={{ height: ROW }} className="px-3 border-b border-ink-100 bg-ink-50 flex items-center gap-1.5 text-xs font-bold text-ink-800">
+                  <Layers size={12} className="text-navy-700" /> {r.ph ? r.ph.title : "بدون فاز"}
+                  {r.span && <span className="text-[10.5px] font-normal text-ink-500 mr-auto">{fromDayNum(r.span[0]).slice(5)} تا {fromDayNum(r.span[1]).slice(5)}</span>}
+                </div>
+              ) : (
+                <button key={r.t.id} onClick={() => openTask(r.t.id)} style={{ height: ROW, paddingInlineStart: 12 + r.depth * 16 }} className="w-full text-right pe-3 border-b border-ink-100 hover:bg-ink-50 flex flex-col justify-center">
+                  <span className="text-xs font-medium text-ink-800 truncate flex items-center gap-1">
+                    <TypeIcon type={r.t.type} size={11} />
+                    {r.t.title}
+                  </span>
+                  <span className="text-[10.5px] text-ink-400 truncate">{r.t.assignee}</span>
+                </button>
+              ),
+            )}
           </div>
 
           {/* خط زمان */}
@@ -282,7 +344,13 @@ export default function GanttTab() {
                 .map((d) => (
                   <span key={d} className="absolute top-0 bottom-0 border-r border-ink-100" style={{ right: xr(d) }} />
                 ))}
-              {Array.from({ length: tasks.length + msTop }, (_, i) => (
+              {/* بازه‌ی فازها (مشتق از کارهایشان) */}
+              {rowsList.map((r, ri) =>
+                r.kind === "phase" && r.span ? (
+                  <span key={`phb-${ri}`} className="absolute rounded-sm bg-navy-700/80 z-[4]" title={`${r.ph?.title}: ${fromDayNum(r.span[0])} تا ${fromDayNum(r.span[1])}`} style={{ right: xr(r.span[0]), width: (r.span[1] - r.span[0] + 1) * dw, top: (ri + msTop) * ROW + ROW / 2 - 4, height: 8 }} />
+                ) : null,
+              )}
+              {Array.from({ length: rowsList.length + msTop }, (_, i) => (
                 <span key={i} className="absolute left-0 right-0 border-b border-ink-100" style={{ top: (i + 1) * ROW - 1 }} />
               ))}
               {/* امروز */}
@@ -352,7 +420,8 @@ export default function GanttTab() {
               )}
 
               {/* نوار تسک‌ها */}
-              {tasks.map((t, i) => {
+              {tasks.map((t) => {
+                const i = rowOf.get(t.id) ?? 0;
                 const [s, e] = span(t);
                 const k = kindOf(p, t.status);
                 const prog = isDone(p, t) ? 100 : t.progress;
@@ -404,6 +473,7 @@ export default function GanttTab() {
           </div>
         </div>
       </div>
+      {phasesOpen && <PhasesDialog pid={pid} phases={phases} onClose={() => setPhasesOpen(false)} />}
       <p className="text-[11px] text-ink-400 flex items-center gap-1.5 flex-wrap">
         {canMove && (
           <span className="inline-flex items-center gap-1">
@@ -413,5 +483,45 @@ export default function GanttTab() {
         برای دیدن نسبت زمان صرف‌شده، نشانگر را روی نوار هر تسک نگه دارید.
       </p>
     </div>
+  );
+}
+
+/** مدیریت فازهای WBS: افزودن، تغییر نام، ترتیب («نمایش بعد از»)، حذف — بازه‌ی هر فاز از کارهایش مشتق می‌شود */
+function PhasesDialog({ pid, phases, onClose }: { pid: string; phases: ProjectPhase[]; onClose: () => void }) {
+  const pm = useProjectsPM();
+  const { p } = useProjectPage();
+  const [title, setTitle] = useState("");
+  return (
+    <Modal open onClose={onClose} title="فازهای پروژه (WBS)" description="ساختار شکست کار: فاز ← کار ← زیرکار. بازه‌ی هر فاز خودکار از زودترین شروع تا دیرترین سررسید کارهایش است.">
+      <div className="space-y-2">
+        {phases.map((ph, i) => {
+          const span = phaseSpan(p, ph.id);
+          const n = p.tasks.filter((t) => !t.archived && t.phaseId === ph.id).length;
+          return (
+            <div key={ph.id} className="flex items-center gap-2 rounded-lg border border-ink-200 px-2 py-1.5">
+              <input defaultValue={ph.title} onBlur={(e) => e.target.value.trim() && pm.savePhase(pid, { id: ph.id, title: e.target.value })} className="input-field !h-9 flex-1" aria-label="عنوان فاز" />
+              <span className="text-[11.5px] text-ink-500 whitespace-nowrap">{fa(n)} کار{span ? ` · ${fromDayNum(span[0]).slice(5)}–${fromDayNum(span[1]).slice(5)}` : ""}</span>
+              <button className="btn btn-ghost btn-icon btn-sm" disabled={i === 0} onClick={() => pm.movePhase(pid, ph.id, -1)} aria-label="بالاتر">
+                <ChevronUp size={14} />
+              </button>
+              <button className="btn btn-ghost btn-icon btn-sm" disabled={i === phases.length - 1} onClick={() => pm.movePhase(pid, ph.id, 1)} aria-label="پایین‌تر">
+                <ChevronDown size={14} />
+              </button>
+              <button className="btn btn-ghost btn-icon btn-sm text-rose-600" onClick={() => pm.deletePhase(pid, ph.id)} aria-label="حذف فاز">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          );
+        })}
+        {phases.length === 0 && <p className="text-[13px] text-ink-500">هنوز فازی تعریف نشده است.</p>}
+        <div className="flex gap-2 pt-2">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان فاز تازه…" className="input-field flex-1" onKeyDown={(e) => e.key === "Enter" && title.trim() && (pm.savePhase(pid, { title }), setTitle(""))} />
+          <Button variant="tonal" icon={<Plus size={14} />} disabled={!title.trim()} onClick={() => (pm.savePhase(pid, { title }), setTitle(""))}>
+            افزودن
+          </Button>
+        </div>
+        <p className="text-[12px] text-ink-500">فاز هر کار را در جزئیات کار تعیین کنید؛ زیرکارها فاز کار والد را می‌گیرند.</p>
+      </div>
+    </Modal>
   );
 }

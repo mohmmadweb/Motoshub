@@ -5,32 +5,7 @@ import { useProjectsPM } from "../../context/ProjectsContext";
 import type { KFile, KRelation, RelationType } from "../../km/types";
 import { useScannedUpload, ScanStatusList } from "../social/composer/AvScan";
 
-export type KSection =
-  | "dashboard"
-  | "bank"
-  | "search"
-  | "workflow"
-  | "review"
-  | "archive"
-  | "retention"
-  | "registry"
-  | "processes"
-  | "rnd"
-  | "glossary"
-  | "experience"
-  | "experts"
-  | "projects"
-  | "training"
-  | "map"
-  | "reports"
-  | "assistant"
-  | "settings"
-  | "help"
-  | "notifications"
-  | "feedback"
-  | "relations"
-  | "versions"
-  | "audit";
+export type { KSection } from "../../km/nav";
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (

@@ -1,8 +1,10 @@
 // ---------------------------------------------------------------------------
 // «مدیریت فایل‌های من» — مدیر فایل Motoshub Social API (core/file-manager).
 // هر «درایو» یک مالک دارد: کاربر (user)، گروه (group) یا کانال (channel).
-// درایو شخصی: /core/file-manager/user/folders|files
-// درایو گروه/کانال: /core/file-manager/{owner_type}/{owner_id}/folders|files
+// درایو شخصی: /social/file-manager/user/folders|files
+// درایو گروه/کانال: /social/file-manager/{owner_type}/{owner_id}/folders|files
+// چیدمان v6.8 (07_docs_all): دسترسی سریع (کاشی ستاره‌دارها)، نوار فیلتر (نوع، بارگذارنده، مرتب‌سازی)،
+// جدول نام · بارگذارنده · تغییر · حجم و برگه‌ی کناری سند (پیش‌نمایش، نسخه‌ها، اشتراک، فعالیت).
 // ---------------------------------------------------------------------------
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -16,7 +18,8 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { useConfirm } from "../../components/ui/ConfirmProvider";
 import { useSocial, parseSize, TRASH_DAYS } from "../../context/SocialContext";
 import { dayNum } from "../../pm/jalali";
-import FilePreview, { shareAlive } from "./files/FilePreview";
+import FilePreview, { kindOf, shareAlive } from "./files/FilePreview";
+import FilterBar from "../../components/ui/FilterBar";
 import { useTenancy } from "../../context/TenancyContext";
 import { endpoints, fmtEndpoint } from "../../social/endpoints";
 import type { Chat, FileFolder, FileItem, OwnerType } from "../../social/types";
@@ -27,6 +30,9 @@ type Drive = { type: OwnerType; id: string; title: string; chat?: Chat };
 const driveKey = (d: { type: OwnerType; id: string }) => `${d.type}:${d.id}`;
 /** نمای صفحه: درایو، دسترسی سریع (اخیر/ستاره‌دار) یا سطل بازیافت — «پیشنهادی» */
 type View = "drive" | "recent" | "starred" | "shared" | "trash";
+type TypeFilter = "all" | "image" | "pdf" | "doc" | "sheet" | "text" | "other";
+const typeLabel: Record<TypeFilter, string> = { all: "همه", image: "تصویر", pdf: "PDF", doc: "سند متنی", sheet: "جدول", text: "متن", other: "سایر" };
+type FileSort = "newest" | "oldest" | "name" | "size";
 /** سهمیه‌ی نمایشی هر درایو */
 const QUOTA: Record<OwnerType, number> = { user: 2 * 1024 ** 3, group: 10 * 1024 ** 3, channel: 10 * 1024 ** 3 };
 const fmtBytes = (b: number) =>
@@ -59,10 +65,14 @@ export default function FilesPage() {
     else next.set("view", v);
     setParams(next, { replace: true });
   };
-  const [previewId, setPreviewId] = useState<string | null>(null);
+  // لینک داخلی ?file=<id> برگه‌ی همان سند را باز می‌کند
+  const [previewId, setPreviewId] = useState<string | null>(() => params.get("file"));
   const drive = drives.find((d) => driveKey(d) === ownerParam) ?? drives[0];
   const [folderId, setFolderId] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [typeF, setTypeF] = useState<TypeFilter>("all");
+  const [uploaderF, setUploaderF] = useState("");
+  const [sortF, setSortF] = useState<FileSort>("newest");
   const selectDrive = (d: Drive) => {
     setFolderId(null);
     setQ("");
@@ -157,9 +167,14 @@ export default function FilesPage() {
   // ------------------------------------------------------------ فهرست فعلی
   const term = q.trim();
   const shownFolders = term ? folders.filter((f) => f.name.includes(term)) : folders.filter((f) => (f.parent_id ?? null) === cwd);
-  const shownFiles = term ? files.filter((f) => f.name.includes(term)) : files.filter((f) => (f.folder_id ?? null) === cwd);
+  const filtered = (term ? files.filter((f) => f.name.includes(term)) : files.filter((f) => (f.folder_id ?? null) === cwd)).filter((f) => (typeF === "all" || kindOf(f) === typeF) && (!uploaderF || f.created_by_user_id === uploaderF));
+  const shownFiles = filtered.sort((a, b) =>
+    sortF === "name" ? a.name.localeCompare(b.name, "fa") : sortF === "size" ? parseSize(b.size) - parseSize(a.size) : sortF === "oldest" ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at)
+  );
   shownFolders.sort((a, b) => a.name.localeCompare(b.name, "fa"));
-  shownFiles.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const filtersOn = typeF !== "all" || !!uploaderF || sortF !== "newest";
+  const uploaders = [...new Set(files.map((f) => f.created_by_user_id))];
+  const typeCounts = files.filter((f) => term ? f.name.includes(term) : (f.folder_id ?? null) === cwd).reduce<Record<string, number>>((a, f) => ((a[kindOf(f)] = (a[kindOf(f)] ?? 0) + 1), a), {});
 
   // ------------------------------------------------------------ اکشن‌ها
   const [nameModal, setNameModal] = useState<{ mode: "new" | "rename"; folder?: FileFolder } | null>(null);
@@ -310,7 +325,8 @@ export default function FilesPage() {
               { label: "ساخت پوشه", ep: endpoints.folderCreate(drive.type, drive.id) },
               { label: "تغییر نام / انتقال پوشه (name, parent_id)", ep: endpoints.folderUpdate(drive.type, drive.id, "{id}") },
               { label: "حذف پوشه (با محتوا)", ep: endpoints.folderDelete(drive.type, drive.id, "{id}") },
-              { label: "فهرست فایل‌ها", ep: { method: "GET", path: endpoints.fileUpload(drive.type, drive.id).path } },
+              { label: "فهرست فایل‌ها", ep: endpoints.files(drive.type, drive.id) },
+              { label: "حذف گروهی / دریافت گروهی", ep: endpoints.fileBulkDelete(drive.type, drive.id) },
               { label: "بارگذاری فایل", ep: endpoints.fileUpload(drive.type, drive.id) },
               { label: "حذف فایل", ep: endpoints.fileDelete(drive.type, drive.id, "{id}") },
               { label: "دریافت فایل", ep: endpoints.fileDownload(drive.type, drive.id, "{id}") },
@@ -318,7 +334,8 @@ export default function FilesPage() {
               { label: "تاریخچه‌ی نسخه‌ها", ep: endpoints.fileVersions(drive.type, drive.id, "{id}") },
               { label: "بارگذاری نسخه‌ی جدید", ep: endpoints.fileVersionUpload(drive.type, drive.id, "{id}") },
               { label: "بازگردانی نسخه", ep: endpoints.fileVersionRestore(drive.type, drive.id, "{id}", "{version}") },
-              { label: "لینک اشتراک با انقضا", ep: endpoints.fileShare(drive.type, drive.id, "{id}") },
+              { label: "لینک اشتراک (انقضا، رمز اختیاری)", ep: endpoints.fileShare(drive.type, drive.id, "{id}") },
+              { label: "لینک داخلی", ep: endpoints.fileInternalLink(drive.type, drive.id, "{id}") },
               { label: "لغو لینک اشتراک", ep: endpoints.fileShareRevoke(drive.type, drive.id, "{id}") },
               { label: "ستاره‌دار کردن", ep: endpoints.fileStar("{id}") },
               { label: "ستاره‌دارها", ep: endpoints.fileStarred() },
@@ -393,7 +410,7 @@ export default function FilesPage() {
               {fmtBytes(used)} از {fmtBytes(quota)} · نسخه‌های قبلی و سطل بازیافت هم حساب می‌شوند
             </p>
           </div>
-          <Link to="/dashboard/project-teams" className="card p-3 flex items-center gap-2.5 hover:border-brand-300 group">
+          <Link to="/projects" className="card p-3 flex items-center gap-2.5 hover:border-brand-300 group">
             <span className="w-8 h-8 rounded-lg bg-navy-50 text-navy-700 flex items-center justify-center shrink-0">
               <Briefcase size={15} />
             </span>
@@ -594,6 +611,53 @@ export default function FilesPage() {
             )}
           </div>
 
+          {/* نوار فیلتر v6.8 — فقط فیلدهایی که در داده هست (نوع فایل، بارگذارنده) */}
+          <FilterBar<TypeFilter>
+            pills={(Object.keys(typeLabel) as TypeFilter[]).filter((t) => t === "all" || typeCounts[t]).map((t) => ({ id: t, label: typeLabel[t], count: t === "all" ? undefined : typeCounts[t] }))}
+            active={typeF}
+            onPill={setTypeF}
+            activeCount={(uploaderF ? 1 : 0) + (sortF !== "newest" ? 1 : 0)}
+            onClear={filtersOn ? () => (setTypeF("all"), setUploaderF(""), setSortF("newest")) : undefined}
+          >
+            <select className="input-field !w-auto" value={uploaderF} onChange={(e) => setUploaderF(e.target.value)} aria-label="بارگذارنده">
+              <option value="">همه‌ی بارگذارنده‌ها</option>
+              {uploaders.map((u) => (
+                <option key={u} value={u}>
+                  {s.userName(u)}
+                </option>
+              ))}
+            </select>
+            <select className="input-field !w-auto" value={sortF} onChange={(e) => setSortF(e.target.value as FileSort)} aria-label="مرتب‌سازی">
+              <option value="newest">تازه‌ترین</option>
+              <option value="oldest">قدیمی‌ترین</option>
+              <option value="name">نام</option>
+              <option value="size">حجم</option>
+            </select>
+          </FilterBar>
+          {/* دسترسی سریع — فایل‌های ستاره‌دار (v6.8) */}
+          {!cwd && !term && starredFiles.length > 0 && (
+            <div className="px-4 pt-3">
+              <p className="text-[11.5px] font-bold text-ink-500 mb-2">دسترسی سریع</p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                {starredFiles.slice(0, 4).map((f) => {
+                  const I = fileIcon(f.mime);
+                  return (
+                    <button key={f.id} type="button" onClick={() => openPreview(f)} className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-[var(--color-card)] px-3 py-2.5 text-right hover:border-teal-300 min-w-0">
+                      <span className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                        <I size={17} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] font-medium text-ink-800 truncate">{f.name}</span>
+                        <span className="block text-[10.5px] text-ink-400 truncate">
+                          {driveTitle(f)} · {f.size}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {avScan.notice("mx-4 mt-3")}
           <ScanStatusList jobs={avScan.jobs} onDismiss={avScan.dismiss} className="px-4 pt-3" />
           {/* فهرست — با کشیدن و رها کردن */}
@@ -623,9 +687,9 @@ export default function FilesPage() {
                   <thead>
                     <tr className="text-[11px] text-ink-400 border-b border-ink-100">
                       <th className="text-right font-medium px-4 py-2">نام</th>
+                      <th className="text-right font-medium px-2 py-2 w-44">بارگذارنده</th>
+                      <th className="text-right font-medium px-2 py-2 w-32">آخرین تغییر</th>
                       <th className="text-right font-medium px-2 py-2 w-24">حجم</th>
-                      <th className="text-right font-medium px-2 py-2 w-44">بارگذاری/ایجاد</th>
-                      <th className="text-right font-medium px-2 py-2 w-32">تاریخ</th>
                       <th className="w-28" />
                     </tr>
                   </thead>
@@ -643,11 +707,11 @@ export default function FilesPage() {
                               </span>
                             </span>
                           </td>
-                          <td className="px-2 py-2 text-ink-400">{c.files ? `${fa(c.files)} فایل` : "—"}</td>
                           <td className="px-2 py-2">
                             <UserLine id={f.created_by_user_id} size={20} />
                           </td>
                           <td className="px-2 py-2 text-ink-500">{stamp(f.updated_at)}</td>
+                          <td className="px-2 py-2 text-ink-400">{c.files ? `${fa(c.files)} فایل` : "—"}</td>
                           <td className="px-2 py-2">{folderActions(f)}</td>
                         </tr>
                       );
@@ -669,11 +733,11 @@ export default function FilesPage() {
                               </span>
                             </button>
                           </td>
-                          <td className="px-2 py-2 text-ink-500 whitespace-nowrap">{f.size}</td>
                           <td className="px-2 py-2">
                             <UserLine id={f.created_by_user_id} size={20} />
                           </td>
                           <td className="px-2 py-2 text-ink-500">{stamp(f.created_at)}</td>
+                          <td className="px-2 py-2 text-ink-500 whitespace-nowrap">{f.size}</td>
                           <td className="px-2 py-2">{fileActions(f)}</td>
                         </tr>
                       );

@@ -15,9 +15,9 @@ export const modeConf: Record<
   MessengerMode,
   { base: string; title: string; types: ChatType[]; listPerm: string; createPerm: string; managePerm: string; entity: EntityName | null; owner: OwnerType | null; noun: string; subNoun: string; rootChip: string }
 > = {
-  chat: { base: "/dashboard/chat", title: "گفتگوها", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
-  groups: { base: "/dashboard/groups", title: "گروه‌ها", types: ["group"], listPerm: "groups.list", createPerm: "groups.create", managePerm: "groups.manage", entity: "group", owner: "group", noun: "گروه", subNoun: "تاپیک", rootChip: "عمومی" },
-  channels: { base: "/dashboard/channels", title: "کانال‌ها", types: ["channel"], listPerm: "channels.list", createPerm: "channels.create", managePerm: "channels.manage", entity: "channel", owner: "channel", noun: "کانال", subNoun: "زیرکانال", rootChip: "کانال اصلی" },
+  chat: { base: "/conversations", title: "گفتگوها", types: ["direct_message", "saved_messages", "bot"], listPerm: "chat.view", createPerm: "chat.view", managePerm: "chat.view", entity: null, owner: null, noun: "گفتگو", subNoun: "", rootChip: "" },
+  groups: { base: "/groups", title: "گروه‌ها", types: ["group"], listPerm: "groups.list", createPerm: "groups.create", managePerm: "groups.manage", entity: "messaging_group", owner: "group", noun: "گروه", subNoun: "تاپیک", rootChip: "عمومی" },
+  channels: { base: "/channels", title: "کانال‌ها", types: ["channel"], listPerm: "channels.list", createPerm: "channels.create", managePerm: "channels.manage", entity: "messaging_channel", owner: "channel", noun: "کانال", subNoun: "زیرکانال", rootChip: "کانال اصلی" },
 };
 
 /** بخش مسیر API برای هر نوع گفتگو */
@@ -122,7 +122,7 @@ export function RichText({ text, highlight }: { text: string; highlight?: string
           const name = p.slice(1).replace(/_/g, " ");
           const u = users.find((x) => x.name === name);
           return u ? (
-            <Link key={i} to={`/dashboard/profile/${u.id}`} className="text-brand-700 font-medium bg-brand-50 rounded px-0.5 hover:underline">
+            <Link key={i} to={`/profile/${u.id}`} className="text-brand-700 font-medium bg-brand-50 rounded px-0.5 hover:underline">
               @{name}
             </Link>
           ) : (
@@ -133,7 +133,7 @@ export function RichText({ text, highlight }: { text: string; highlight?: string
         }
         if (p.startsWith("#") && p.length > 1)
           return (
-            <Link key={i} to={`/dashboard/topics?tag=${encodeURIComponent(p.slice(1))}`} className="text-brand-700 hover:underline">
+            <Link key={i} to={`/hashtags?tag=${encodeURIComponent(p.slice(1))}`} className="text-brand-700 hover:underline">
               {p}
             </Link>
           );

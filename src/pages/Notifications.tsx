@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AtSign, Heart, MessageCircle, Settings, CheckSquare, Bell, CheckCheck, Circle, CheckCircle2, Trash2, KanbanSquare, Mail, Smartphone, MessageSquareText, MonitorSmartphone, Moon, Radio, SlidersHorizontal, Users, Newspaper, ChevronDown, Siren } from "lucide-react";
 import { type Notification } from "../data/mock";
 import { personalFor } from "../data/personal";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
-import { useInbox, inboxKindLabel, digestKinds, urgentKinds, type InboxItem, type InboxKind } from "../context/InboxContext";
-import { UserPlus, Megaphone, Mail as MailIcon, CalendarPlus, Reply, Hash, BookOpen, UserCheck, UserX, Clock3, BarChart3, KeyRound, BellRing, ShieldAlert } from "lucide-react";
+import { useInbox, inboxKindLabel, digestKinds, urgentKinds, actionKinds, mentionKinds, type InboxItem, type InboxKind } from "../context/InboxContext";
+import { UserPlus, Megaphone, Mail as MailIcon, CalendarPlus, Reply, Hash, BookOpen, UserCheck, UserX, Clock3, BarChart3, KeyRound, BellRing, ShieldAlert, FileText, Forward, PenLine, FolderOpen, ArrowLeftRight } from "lucide-react";
 import { categoryLabel, channelLabel, eventByCode, type EventCategory } from "../pm/events";
 import type { NotifChannel, PMNotification } from "../pm/types";
 import PageHeader from "../components/ui/PageHeader";
@@ -29,7 +30,13 @@ const typeIcon: Record<Notification["type"], typeof AtSign> = {
 const chIcon: Record<NotifChannel, typeof Mail> = { inapp: MonitorSmartphone, email: Mail, sms: MessageSquareText, push: Smartphone };
 const prTone = { کم: "neutral", عادی: "neutral", مهم: "warning", فوری: "danger" } as const;
 
-type FilterId = "all" | "unread" | "projects" | "outbox" | "prefs";
+type FilterId = "all" | "unread" | "action" | "mention" | "projects" | "outbox" | "prefs";
+/** زبانه‌های v6.8 روی فهرست یکپارچه */
+type ListTab = "all" | "unread" | "action" | "mention";
+const isListTab = (f: FilterId): f is ListTab => f === "all" || f === "unread" || f === "action" || f === "mention";
+/** رویدادهای پروژه که اقدام می‌خواهند / اشاره‌اند */
+const PM_ACTION = new Set(["TASK_ASSIGNED", "TASK_REASSIGNED", "TASK_APPROVAL_REQUESTED", "TASK_REMOVAL_REQUESTED", "TASK_OVERDUE", "TASK_DUE_SOON", "INTAKE_ACCEPTED"]);
+const PM_MENTION = new Set(["USER_MENTIONED"]);
 const kindIcon: Record<InboxKind, typeof AtSign> = {
   friend_request: UserPlus,
   friend_accept: UserCheck,
@@ -49,6 +56,11 @@ const kindIcon: Record<InboxKind, typeof AtSign> = {
   access: KeyRound,
   topic_follow: BellRing,
   security: ShieldAlert,
+  letter_received: FileText,
+  letter_referred: Forward,
+  letter_paraph: PenLine,
+  crm_shared: FolderOpen,
+  handover: ArrowLeftRight,
 };
 
 /** «۲۲:۰۰» یا «22:00» → دقیقه از نیمه‌شب */
@@ -84,7 +96,15 @@ function loadPrefs(uid: string): Prefs {
 }
 
 export default function Notifications() {
-  const [filter, setFilter] = useState<FilterId>("all");
+  const [params, setParams] = useSearchParams();
+  const TABS: FilterId[] = ["all", "unread", "action", "mention", "projects", "outbox", "prefs"];
+  const filter: FilterId = TABS.includes(params.get("tab") as FilterId) ? (params.get("tab") as FilterId) : "all";
+  const setFilter = (f: FilterId) => {
+    const n = new URLSearchParams(params);
+    if (f === "all") n.delete("tab");
+    else n.set("tab", f);
+    setParams(n, { replace: true });
+  };
   const { actingUser, canAccessAdmin } = useTenancy();
   const pm = useProjectsPM();
   const inbox = useInbox();
@@ -132,7 +152,8 @@ export default function Notifications() {
     [pm.store.notifications, actingUser.name, prefs]
   );
   const pmUnread = mine.filter((n) => !n.read).length;
-  const inboxAll = filter === "unread" ? inbox.mine.filter((i) => !inbox.isRead(i)) : inbox.mine;
+  const inTab = (i: InboxItem) => (filter === "unread" ? !inbox.isRead(i) : filter === "action" ? actionKinds.includes(i.kind) : filter === "mention" ? mentionKinds.includes(i.kind) : true);
+  const inboxAll = inbox.mine.filter(inTab);
   const inboxQuiet = (i: InboxItem) => !inbox.isUrgent(i) && prefs.quiet && inWindow(toMin(i.time), qFrom, qTo);
   // خلاصه‌ی روزانه: اعلان‌های کم‌اهمیت در یک ردیف جمع می‌شوند (فوری‌ها هرگز)
   const isDigest = (i: InboxItem) => prefs.digest && !inbox.isUrgent(i) && digestKinds.includes(i.kind);
@@ -141,8 +162,11 @@ export default function Notifications() {
   const pmDigest = (n: PMNotification) => prefs.digest && n.priority === "کم";
   const [digestOpen, setDigestOpen] = useState(false);
   const unreadCount = items.filter((n) => !n.read).length + pmUnread + inbox.unread;
-  const personalList = filter === "unread" ? items.filter((n) => !n.read) : items;
-  const pmList = (filter === "unread" ? mine.filter((n) => !n.read) : mine).filter((n) => !projectF || n.projectId === projectF);
+  const personalList = items.filter((n) => (filter === "unread" ? !n.read : filter === "action" ? n.type === "task" : filter === "mention" ? n.type === "mention" : true));
+  const pmTab = (n: PMNotification) => (filter === "unread" ? !n.read : filter === "action" ? PM_ACTION.has(n.event) : filter === "mention" ? PM_MENTION.has(n.event) : true);
+  const pmList = mine.filter((n) => (isListTab(filter) ? pmTab(n) : true)).filter((n) => !projectF || n.projectId === projectF);
+  const actionCount = inbox.mine.filter((i) => actionKinds.includes(i.kind) && !inbox.isRead(i)).length + mine.filter((n) => PM_ACTION.has(n.event) && !n.read).length + items.filter((n) => n.type === "task" && !n.read).length;
+  const mentionCount = inbox.mine.filter((i) => mentionKinds.includes(i.kind)).length + mine.filter((n) => PM_MENTION.has(n.event)).length + items.filter((n) => n.type === "mention").length;
   const outbox = pm.store.notifications.filter((n) => (!projectF || n.projectId === projectF) && (!recipientF || n.recipient === recipientF));
 
   const toggleRead = (id: string) => setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
@@ -178,18 +202,18 @@ export default function Notifications() {
 
   const openPm = (n: PMNotification) => {
     pm.markRead(n.id);
-    navigate(`/dashboard/projects/${n.projectId}?tab=${n.link.tab}${n.link.entityId ? `&focus=${n.link.entityId}` : ""}`);
+    navigate(`/projects/${n.projectId}?tab=${n.link.tab}${n.link.entityId ? `&focus=${n.link.entityId}` : ""}`);
   };
 
   const PmRow = ({ n, showRecipient = false }: { n: PMNotification; showRecipient?: boolean }) => {
     const def = eventByCode[n.event];
     return (
-      <div className={`p-4 flex items-start gap-3 transition-colors ${!n.read ? "bg-brand-50/40" : ""}`}>
-        <span className="w-9 h-9 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
-          <KanbanSquare size={15} />
+      <div className={`px-5 py-3.5 flex items-start gap-3 transition-colors hover:bg-ink-50 ${!n.read ? "bg-teal-50/45" : ""}`}>
+        <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+          <KanbanSquare size={20} strokeWidth={1.5} />
         </span>
         <button className="flex-1 min-w-0 text-right" onClick={() => openPm(n)}>
-          <p className={`text-sm leading-6 ${n.read ? "text-ink-500" : "text-ink-800 font-medium"}`}>{n.text}</p>
+          <p className={`text-[15px] leading-6 text-ink-900 ${n.read ? "font-medium" : "font-bold"}`}>{n.text}</p>
           <div className="flex items-center gap-1.5 flex-wrap mt-1 text-xs text-ink-400">
             <span className="text-brand-700">{n.projectName}</span>
             <span>· {def ? categoryLabel[def.category] : ""}</span>
@@ -219,7 +243,9 @@ export default function Notifications() {
         >
           {n.read ? <Circle size={16} /> : <CheckCircle2 size={16} className="text-brand-600" />}
         </button>
+        {!n.read && <Badge tone="solid">جدید</Badge>}
         <RowActions onDelete={() => pm.removeNotification(n.id)} size={15} />
+        <ChevronLeft size={18} className="text-ink-400 shrink-0 mt-2.5 max-sm:hidden" aria-hidden />
       </div>
     );
   };
@@ -228,9 +254,9 @@ export default function Notifications() {
     const Icon = kindIcon[n.kind];
     const read = inbox.isRead(n);
     return (
-      <div className={`p-4 flex items-start gap-3 transition-colors ${!read ? "bg-brand-50/40" : ""}`}>
-        <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-600 flex items-center justify-center shrink-0">
-          <Icon size={15} />
+      <div className={`px-5 py-3.5 flex items-start gap-3 transition-colors hover:bg-ink-50 ${!read ? "bg-teal-50/45" : ""}`}>
+        <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+          <Icon size={20} strokeWidth={1.5} />
         </span>
         <button
           className="flex-1 min-w-0 text-right"
@@ -239,8 +265,8 @@ export default function Notifications() {
             navigate(n.link);
           }}
         >
-          <p className={`text-sm leading-6 ${read ? "text-ink-500" : "text-ink-800 font-medium"}`}>{n.text}</p>
-          <p className="text-xs text-ink-400 mt-1 flex items-center gap-1.5 flex-wrap">
+          <p className={`text-[15px] leading-6 text-ink-900 ${read ? "font-medium" : "font-bold"}`}>{n.text}</p>
+          <p className="text-[12.5px] text-ink-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
             {inbox.isUrgent(n) && <Badge tone="danger">فوری</Badge>}
             {inboxKindLabel[n.kind]} · {n.time}
             {n.recipient === "*" && " · همگانی"}
@@ -254,7 +280,9 @@ export default function Notifications() {
         <button onClick={() => inbox.markRead(n.id, !read)} title={read ? "علامت‌گذاری به‌عنوان خوانده‌نشده" : "علامت‌گذاری به‌عنوان خوانده‌شده"} aria-label={read ? "خوانده‌نشده کن" : "خوانده‌شده کن"} className="shrink-0 mt-1 text-ink-300 hover:text-brand-600 transition-colors">
           {read ? <Circle size={16} /> : <CheckCircle2 size={16} className="text-brand-600" />}
         </button>
+        {!read && <Badge tone="solid">جدید</Badge>}
         <RowActions onDelete={() => inbox.hide(n.id)} size={15} />
+        <ChevronLeft size={18} className="text-ink-400 shrink-0 mt-2.5 max-sm:hidden" aria-hidden />
       </div>
     );
   };
@@ -265,13 +293,12 @@ export default function Notifications() {
     <div>
       <PageHeader
         title="اعلان‌ها"
-        description="اعلان‌های برخط، رایانامه، پیامک و پوش مرتبط با فعالیت‌های شما — از جمله رویدادهای پروژه‌هایی که عضو آن هستید"
-        icon={<Bell size={18} />}
+        description="پیگیری رخدادهای مهم از همه‌ی بخش‌های کاریز."
         actions={
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
-              <Button variant="secondary" size="sm" icon={<CheckCheck size={14} />} onClick={markAll}>
-                خواندن همه ({unreadCount.toLocaleString("fa-IR")})
+              <Button variant="outline" size="sm" icon={<CheckCheck size={16} />} onClick={markAll}>
+                همه را خواندم
               </Button>
             )}
             {items.length + mine.length + inbox.mine.length > 0 && (
@@ -285,8 +312,10 @@ export default function Notifications() {
 
       <Tabs<FilterId>
         tabs={[
-          { id: "all", label: "همه", count: items.length + mine.length + inbox.mine.length },
+          { id: "all", label: "همه‌ی اعلان‌ها", count: items.length + mine.length + inbox.mine.length },
           { id: "unread", label: "خوانده‌نشده", count: unreadCount },
+          { id: "action", label: "نیازمند اقدام", count: actionCount },
+          { id: "mention", label: "اشاره به من", count: mentionCount },
           { id: "projects", label: "پروژه‌ها", count: mine.length },
           ...(canAccessAdmin ? [{ id: "outbox" as FilterId, label: "مرکز ارسال (همه‌ی گیرندگان)", count: pm.store.notifications.length }] : []),
           { id: "prefs", label: "تنظیمات اعلان من" },
@@ -317,8 +346,8 @@ export default function Notifications() {
         </div>
       )}
 
-      {(filter === "all" || filter === "unread") && (
-        <div className="card divide-y divide-ink-100">
+      {isListTab(filter) && (
+        <div className="card overflow-hidden divide-y divide-[var(--color-border)]">
           {quietNow && (
             <p className="px-4 py-2 text-[11.5px] text-ink-500 flex items-center gap-1.5 bg-ink-50">
               <Moon size={13} /> ساعات سکوت فعال است — پیامک و پوش تا {prefs.quietTo} نگه داشته می‌شوند (به‌جز «فوری»).
@@ -367,13 +396,13 @@ export default function Notifications() {
           {personalList.map((n) => {
             const Icon = typeIcon[n.type];
             return (
-              <div key={n.id} className={`p-4 flex items-start gap-3 transition-colors ${!n.read ? "bg-brand-50/40" : ""}`}>
-                <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">
-                  <Icon size={15} />
+              <div key={n.id} className={`px-5 py-3.5 flex items-start gap-3 transition-colors ${!n.read ? "bg-teal-50/45" : ""}`}>
+                <span className="w-10 h-10 rounded-[10px] bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                  <Icon size={20} strokeWidth={1.5} />
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${n.read ? "text-ink-500" : "text-ink-800 font-medium"}`}>{n.text}</p>
-                  <p className="text-xs text-ink-400 mt-1">{n.time}</p>
+                  <p className={`text-[15px] leading-6 text-ink-900 ${n.read ? "font-medium" : "font-bold"}`}>{n.text}</p>
+                  <p className="text-[12.5px] text-ink-500 mt-0.5">{n.time}</p>
                 </div>
                 <button
                   onClick={() => toggleRead(n.id)}
@@ -387,7 +416,9 @@ export default function Notifications() {
               </div>
             );
           })}
-          {personalList.length + pmList.length + inboxAll.length === 0 && <EmptyState icon={<Bell size={18} />} title={filter === "unread" ? "اعلان خوانده‌نشده‌ای ندارید" : "اعلانی وجود ندارد"} />}
+          {personalList.length + pmList.length + inboxAll.length === 0 && (
+            <EmptyState icon={<Bell size={18} />} title={filter === "unread" ? "اعلان خوانده‌نشده‌ای ندارید" : filter === "action" ? "موردی منتظر اقدام شما نیست" : filter === "mention" ? "کسی به شما اشاره نکرده است" : "اعلانی وجود ندارد"} />
+          )}
         </div>
       )}
 

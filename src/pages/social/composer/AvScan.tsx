@@ -25,9 +25,9 @@ export function useScannedUpload(source: AvSource, origin?: QuarantineItem["orig
     onBlocked: (f, v) => {
       const why = v.status === "infected" ? `آلوده به «${v.signature}»` : v.reason ?? "خطای اسکن";
       notify(`«${f.name}» ذخیره نشد — ${why}.`, "warning");
-      inbox.send([me.name], "report", `ضدویروس: فایل «${f.name}» ${why} بود و ذخیره نشد.`, "/dashboard/notifications", { system: true });
+      inbox.send([me.name], "report", `ضدویروس: فایل «${f.name}» ${why} بود و ذخیره نشد.`, "/notifications", { system: true });
       const admins = users.filter((u) => u.id !== me.id && t.effectiveOf(u.id, ROOT_ID).has("settings.security")).map((u) => u.name);
-      if (admins.length) inbox.send(admins, "report", `رخداد امنیتی: بارگذاری «${f.name}» توسط «${me.name}» مسدود شد (${why}).`, "/dashboard/settings?section=antivirus", { urgent: true });
+      if (admins.length) inbox.send(admins, "report", `رخداد امنیتی: بارگذاری «${f.name}» توسط «${me.name}» مسدود شد (${why}).`, "/settings?section=antivirus", { urgent: true });
     },
   });
   // سقف نرخ بارگذاری (F10) و مسدودی کاربر (F12) پیش از اسکن

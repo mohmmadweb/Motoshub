@@ -2,12 +2,12 @@
 // «شبکه اجتماعی › رویدادها و جلسات» — مدیریت رویدادها (فهرست / ماه / هفته) روی ماژول events
 // از Motoshub Social API، به‌همراه «جلسات پروژه» (فقط‌خواندنی از ProjectsContext) و «دعوت‌های من».
 // ویرایشگر رویداد (EventEditor) هم‌شکل EventStoreRequest است و از صفحه‌ی جزئیات هم استفاده می‌شود.
-// تقویم یکپارچه‌ی شخصی/تیمی جداگانه در /dashboard/calendar است.
+// تقویم یکپارچه‌ی شخصی/تیمی جداگانه در /calendar است.
 // ---------------------------------------------------------------------------
 import ModuleReportsButton from "../../reports/ModuleReportsButton";
 import { occurrenceDates } from "../../pm/recurrence";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Suspense, lazy, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, ChevronRight, ChevronLeft, Plus, Video, MapPin, Repeat, Check, X, Clock, CalendarClock, MailQuestion, Users, ExternalLink, CalendarRange } from "lucide-react";
 import PageHeader from "../../components/ui/PageHeader";
 import Button from "../../components/ui/Button";
@@ -30,6 +30,12 @@ import { ApiChip, Field, UserPicker, PosterPicker, AttachmentPicker, AttachmentL
 import AvailabilityPanel from "../calendar/AvailabilityPanel";
 import { attendeeFromId } from "../calendar/availability";
 import { fmtMin, toMin } from "../calendar/model";
+
+// ---------------------------------------------------------------- «جلسات و صورتجلسه‌ها» (قرارداد C9 — MeetingsHub از WP5)
+// اگر ماژول جلسات هنوز در این شاخه نیست، همان فهرست «جلسات پروژه» قبلی نمایش داده می‌شود (هیچ امکانی حذف نمی‌شود).
+type HubModule = { default?: ComponentType; MeetingsHub?: ComponentType };
+const hubLoader = Object.values(import.meta.glob<HubModule>("../meetings/MeetingsHub.tsx"))[0];
+const MeetingsHubLazy = hubLoader ? lazy(() => hubLoader().then((m) => ({ default: (m.default ?? m.MeetingsHub) as ComponentType }))) : null;
 
 // ---------------------------------------------------------------- کمکی‌ها (مشترک با EventDetail)
 const dn = (s: string) => dayNum(s) ?? 0;
@@ -72,10 +78,13 @@ export default function EventsCalendar() {
 
   const [params, setParams] = useSearchParams();
   const tabParam = params.get("tab") as PageTab | null;
-  const tab: PageTab = tabParam && pageTabs.includes(tabParam) ? tabParam : "events";
+  // قرارداد C3: /events?new=meeting ← زبانه‌ی «جلسات و صورتجلسه‌ها» (فرم جلسه را ماژول جلسات باز می‌کند)
+  // (ماژول جلسات پارامتر new را پس از باز کردن فرم برمی‌دارد؛ زبانه با همین وضعیت اولیه می‌ماند)
+  const [openedForMeeting] = useState(() => params.get("new") === "meeting");
+  const tab: PageTab = tabParam && pageTabs.includes(tabParam) ? tabParam : params.get("new") === "meeting" || openedForMeeting ? "meetings" : "events";
   const setTab = (t: PageTab) => {
     const next = new URLSearchParams(params);
-    if (t === "events") next.delete("tab");
+    if (t === "events" && !openedForMeeting) next.delete("tab");
     else next.set("tab", t);
     setParams(next, { replace: true });
   };
@@ -161,7 +170,7 @@ export default function EventsCalendar() {
             <ApiChip
               items={[
                 { label: "فهرست رویدادهای منتشرشده", ep: endpoints.eventList() },
-                { label: "پیش‌نویس‌ها (صاحب/مدیر)", ep: { method: "GET", path: "/events/events/drafted/" } },
+                { label: "پیش‌نویس‌ها (صاحب/مدیر)", ep: { method: "GET", path: "/social/events/drafted/" } },
                 { label: "ایجاد رویداد", ep: endpoints.eventCreate() },
                 { label: "دعوت از کاربران", ep: endpoints.eventInvite("{id}") },
                 { label: "پاسخ به دعوت (rsvp)", ep: endpoints.eventRsvp("{id}") },
@@ -169,14 +178,14 @@ export default function EventsCalendar() {
                 { label: "آمار کاربر", ep: endpoints.dashboard("events/events", "user") },
               ]}
             />
-            <Link to="/dashboard/calendar" className="inline-flex">
+            <Link to="/calendar" className="inline-flex">
               <Button icon={<CalendarRange size={14} />}>
                 <span className="hidden sm:inline">تقویم من</span>
               </Button>
             </Link>
             {canCreate && (
               <Button variant="primary" icon={<Plus size={15} />} onClick={() => openNew(s.today)}>
-                رویداد جدید
+                رویداد یا جلسه‌ی جدید
               </Button>
             )}
           </div>
@@ -186,14 +195,21 @@ export default function EventsCalendar() {
       <Tabs<PageTab>
         tabs={[
           { id: "events", label: "رویدادها" },
-          { id: "meetings", label: "جلسات پروژه", count: upcomingMeetings || undefined },
+          { id: "meetings", label: "جلسات و صورتجلسه‌ها", count: upcomingMeetings || undefined },
           { id: "invites", label: "دعوت‌های من", count: pending.length || undefined },
         ]}
         active={tab}
         onChange={setTab}
       />
 
-      {tab === "meetings" && <ProjectMeetingsTab />}
+      {tab === "meetings" &&
+        (MeetingsHubLazy ? (
+          <Suspense fallback={null}>
+            <MeetingsHubLazy />
+          </Suspense>
+        ) : (
+          <ProjectMeetingsTab />
+        ))}
       {tab === "invites" && <InvitesTab />}
 
       {tab === "events" && (
@@ -244,7 +260,7 @@ export default function EventsCalendar() {
             <div className="space-y-2.5">
               {pending.map((ev) => (
                 <div key={ev.id} className="rounded-lg border border-ink-100 p-2.5">
-                  <Link to={`/dashboard/events/${ev.id}`} className="block text-[12.5px] font-medium text-ink-800 hover:text-brand-700 truncate">
+                  <Link to={`/events/${ev.id}`} className="block text-[12.5px] font-medium text-ink-800 hover:text-brand-700 truncate">
                     {ev.title}
                   </Link>
                   <p className="text-[11px] text-ink-400 mt-0.5">
@@ -270,7 +286,7 @@ export default function EventsCalendar() {
             {upcoming.length === 0 && <p className="text-xs text-ink-400">رویداد پیش‌رویی ثبت‌نام نکرده‌اید.</p>}
             <div className="space-y-1.5">
               {upcoming.map(({ ev, next }) => (
-                <Link key={ev.id} to={`/dashboard/events/${ev.id}`} className="block rounded-md px-2.5 py-1.5 hover:opacity-90" style={chipStyle(ev.poster)}>
+                <Link key={ev.id} to={`/events/${ev.id}`} className="block rounded-md px-2.5 py-1.5 hover:opacity-90" style={chipStyle(ev.poster)}>
                   <span className="block text-[12px] font-medium text-ink-800 truncate">{ev.title}</span>
                   <span className="block text-[10.5px] text-ink-500">
                     {next === todayN ? "امروز" : fromDayNum(next!)} · {ev.start_time}
@@ -343,7 +359,7 @@ function Segmented<T extends string>({ value, onChange, options }: { value: T; o
 function EventChip({ ev, compact = false }: { ev: SocialEvent; compact?: boolean }) {
   return (
     <Link
-      to={`/dashboard/events/${ev.id}`}
+      to={`/events/${ev.id}`}
       onClick={(e) => e.stopPropagation()}
       title={`${ev.title} — ${ev.start_time}`}
       className="block rounded px-1.5 py-0.5 text-[10.5px] leading-4 text-ink-800 truncate hover:opacity-80"
@@ -389,7 +405,7 @@ function MonthGrid({ jy, jm, monthStart, todayN, onDay, onPick }: { jy: number; 
               {/* موبایل: نقطه‌ی رنگی */}
               <div className="flex flex-wrap gap-0.5 sm:hidden">
                 {list.slice(0, 4).map((ev) => (
-                  <Link key={ev.id} to={`/dashboard/events/${ev.id}`} onClick={(e) => e.stopPropagation()} className="w-2 h-2 rounded-full" style={{ background: ev.poster ?? "#1f4f99" }} aria-label={ev.title} />
+                  <Link key={ev.id} to={`/events/${ev.id}`} onClick={(e) => e.stopPropagation()} className="w-2 h-2 rounded-full" style={{ background: ev.poster ?? "#1f4f99" }} aria-label={ev.title} />
                 ))}
               </div>
               <div className="hidden sm:block space-y-0.5">
@@ -421,7 +437,7 @@ function WeekGrid({ weekStart, todayN, onDay }: { weekStart: number; todayN: num
             </p>
             <div className="space-y-1">
               {list.map((ev) => (
-                <Link key={ev.id} to={`/dashboard/events/${ev.id}`} className="block rounded-md px-1.5 py-1 hover:opacity-85" style={chipStyle(ev.poster)}>
+                <Link key={ev.id} to={`/events/${ev.id}`} className="block rounded-md px-1.5 py-1 hover:opacity-85" style={chipStyle(ev.poster)}>
                   <span className="block text-[10.5px] text-ink-500 tabular-nums">
                     {ev.start_time}–{ev.end_time}
                   </span>
@@ -460,7 +476,7 @@ function ListView({ from, todayN, events }: { from: number; todayN: number; even
             {g.list.map((ev) => {
               const st = s.myEventStatus(ev.id);
               return (
-                <Link key={ev.id} to={`/dashboard/events/${ev.id}`} className="flex items-center gap-3 rounded-lg border border-ink-100 p-2.5 hover:bg-ink-50">
+                <Link key={ev.id} to={`/events/${ev.id}`} className="flex items-center gap-3 rounded-lg border border-ink-100 p-2.5 hover:bg-ink-50">
                   <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: ev.poster ?? "#1f4f99" }} />
                   <span className="text-[11.5px] text-ink-500 tabular-nums shrink-0 w-[74px]">
                     <Clock size={11} className="inline ml-1" />
@@ -555,7 +571,7 @@ function ProjectMeetingsTab() {
       ) : (
         <div className="card divide-y divide-ink-100">
           {list.map((r) => (
-            <Link key={`${r.pid}:${r.mt.id}:${r.date}`} to={`/dashboard/projects/${r.pid}?tab=minutes&focus=${r.mt.id}`} className={`flex items-center gap-3 p-3 hover:bg-ink-50 ${r.mt.status === "لغوشده" ? "opacity-60" : ""}`}>
+            <Link key={`${r.pid}:${r.mt.id}:${r.date}`} to={`/projects/${r.pid}?tab=minutes&focus=${r.mt.id}`} className={`flex items-center gap-3 p-3 hover:bg-ink-50 ${r.mt.status === "لغوشده" ? "opacity-60" : ""}`}>
               <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: r.color }} />
               <span className="shrink-0 w-[86px] text-[11.5px] text-ink-500 tabular-nums">
                 <span className="block text-ink-700">
@@ -686,7 +702,7 @@ function InviteRow({ ev, from, children }: { ev: SocialEvent; from: string; chil
   return (
     <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3">
       <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: ev.poster ?? "#1f4f99" }} />
-      <Link to={`/dashboard/events/${ev.id}`} className="min-w-0 flex-1 group">
+      <Link to={`/events/${ev.id}`} className="min-w-0 flex-1 group">
         <span className="block text-[13px] font-medium text-ink-800 group-hover:text-brand-700 truncate">{ev.title}</span>
         <span className="block text-[11px] text-ink-400 truncate">
           {ev.start_date} · {ev.start_time}–{ev.end_time} · {ev.is_online ? "آنلاین" : ev.location || "حضوری"} · از طرف {from}
@@ -699,13 +715,14 @@ function InviteRow({ ev, from, children }: { ev: SocialEvent; from: string; chil
 
 // ---------------------------------------------------------------- ویرایشگر (EventStoreRequest)
 /**
- * ایجاد/ویرایش رویداد — POST /events/events/ یا PATCH /events/events/{id}/
+ * ایجاد/ویرایش رویداد — POST /social/events/ یا PATCH /social/events/{id}/
  * «دعوت از» پس از ذخیره با POST …/{id}/invite/ فرستاده می‌شود.
  */
 export function EventEditor({ open, onClose, event, initialDate, onSaved }: { open: boolean; onClose: () => void; event?: SocialEvent | null; initialDate?: string; onSaved?: (id: string) => void }) {
   const s = useSocial();
   const { notify } = useToast();
   const [pendingInvite, setPendingInvite] = useState<{ id: string; ids: string[] } | null>(null);
+  const navigate = useNavigate();
 
   // رویداد تازه‌ساخته بعد از ثبت در انبار دعوت‌ها را می‌گیرد
   useEffect(() => {
@@ -716,7 +733,28 @@ export function EventEditor({ open, onClose, event, initialDate, onSaved }: { op
   }, [pendingInvite, s, notify]);
 
   return (
-    <Modal open={open} onClose={onClose} title={event ? "ویرایش رویداد" : "رویداد جدید"} description={event ? `PATCH /events/events/${event.id}/` : "POST /events/events/"} width="max-w-2xl">
+    <Modal open={open} onClose={onClose} title={event ? "ویرایش رویداد" : "رویداد یا جلسه‌ی جدید"} description={event ? `PATCH /social/events/${event.id}/` : "POST /social/events/"} width="max-w-2xl">
+      {open && !event && (
+        // یک دیالوگ برای هر دو نوع: «جلسه» ← ماژول جلسات و صورتجلسه (/events?new=meeting)
+        <div className="flex items-center gap-2 mb-4" role="radiogroup" aria-label="نوع">
+          <span className="text-xs text-ink-600">نوع:</span>
+          <button type="button" role="radio" aria-checked className="inline-flex items-center h-8 px-3.5 rounded-full border text-[13px] bg-teal-50 border-teal-700 text-teal-700 font-bold">
+            رویداد
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={false}
+            onClick={() => {
+              onClose();
+              navigate("/events?tab=meetings&new=meeting");
+            }}
+            className="inline-flex items-center h-8 px-3.5 rounded-full border text-[13px] bg-[var(--color-card)] border-ink-200 text-ink-600 hover:bg-ink-50"
+          >
+            جلسه
+          </button>
+        </div>
+      )}
       {open && (
         <EditorBody
           event={event ?? null}
@@ -897,7 +935,7 @@ function EditorBody({ event, initialDate, onCancel, onDone }: { event: SocialEve
         {showInvite && (
           <div className="mt-2">
             <UserPicker value={invite} onChange={setInvite} exclude={[s.me, ...(event ? s.eventMembersOf(event.id).map((m) => m.user_id) : [])]} />
-            <p className="text-[11px] text-ink-400 mt-1">پس از ذخیره با POST /events/events/{"{id}"}/invite/ دعوت‌نامه ارسال می‌شود.</p>
+            <p className="text-[11px] text-ink-400 mt-1">پس از ذخیره با POST /social/events/{"{id}"}/invite/ دعوت‌نامه ارسال می‌شود.</p>
           </div>
         )}
       </div>

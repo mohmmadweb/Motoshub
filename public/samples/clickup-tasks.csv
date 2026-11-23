@@ -1,0 +1,4 @@
+Task ID,Task Name,Task Content,Status,Date Created,Due Date,Due Date Text,Start Date,Start Date Text,Parent ID,Assignees,Tags,Priority,List Name,Time Estimated,Time Estimated Text,Checklists
+86a1,طراحی پوستر اطلاع‌رسانی,پوستر برای نصب در مسجد و مدرسه,in progress,1780300800000,1781078400000,"Wednesday, June 10th 2026",1780473600000,"Tuesday, June 2nd 2026",,"[Negar Ahmadi]","[اطلاع‌رسانی, طراحی]",2,کمپین,14400000,4h,"{""Checklist"":[{""name"":""متن پوستر"",""resolved"":true},{""name"":""تأیید روابط عمومی"",""resolved"":false}]}"
+86a2,چاپ پوستر,,to do,1780300800000,1781251200000,"Friday, June 12th 2026",,,86a1,"[Reza Karimi]",[چاپ],3,کمپین,3600000,1h,
+86a3,پخش پیام در گروه محلی,,complete,1780300800000,1780646400000,"Friday, June 5th 2026",,,,"[Mahsa Rezaei, Negar Ahmadi]",[اطلاع‌رسانی],1,کمپین,,,

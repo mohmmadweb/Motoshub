@@ -1,6 +1,7 @@
 @import "tailwindcss";
 /* فونت برند: «ساحل» (Sahel FD نسخه‌ی ۳٫۴، ارقام فارسی) — همان فونت motonext.shub.ir.
-   به‌صورت محلی بسته‌بندی می‌شود؛ بدون وابستگی به CDN خارجی. */
+   به‌صورت محلی بسته‌بندی می‌شود؛ بدون وابستگی به CDN خارجی.
+   وزن ۵۰۰ نمونه‌ی v6.8 روی SemiBold ساحل (۶۰۰) می‌نشیند. */
 @font-face {
   font-family: "Sahel FD";
   src: url("./assets/fonts/Sahel-Light-FD.woff2") format("woff2");
@@ -32,117 +33,330 @@
   font-display: swap;
 }
 
-@theme {
-  --font-sans: "Sahel FD", system-ui, sans-serif;
+/* =======================================================================
+   توکن‌های سیستم طراحی کاریز (نمونه‌ی v6.8)
+   نام خانواده‌های قبلی (brand/navy/ink/emerald/rose/amber) حفظ شده و فقط
+   مقدارها عوض شده‌اند تا همه‌ی صفحه‌ها بدون تغییر TSX ظاهر جدید را بگیرند.
+   ======================================================================= */
+@theme static {
+  --font-sans: "Sahel FD", system-ui, "Segoe UI", sans-serif;
 
-  /* Primary — corporate blue, used for actions/links/active states */
-  --color-brand-50: #eef4fc;
-  --color-brand-100: #d9e7f8;
-  --color-brand-200: #b3cef1;
-  --color-brand-300: #82aee6;
-  --color-brand-400: #4d87d6;
-  --color-brand-500: #2a66bd;
-  --color-brand-600: #1f4f99;
-  --color-brand-700: #1b4079;
-  --color-brand-800: #17325f;
-  --color-brand-900: #112442;
+  /* Primary (brand) = مقیاس سرمه‌ای v6.8؛ 600 = --primary (navy-700)، 700 = hover (navy-800) */
+  --color-brand-50: #eaf1f7;
+  --color-brand-100: #d3e2ee;
+  --color-brand-200: #a9c4db;
+  --color-brand-300: #7ba2c3;
+  --color-brand-400: #2c6190;
+  --color-brand-500: #1d5078;
+  --color-brand-600: #114167;
+  --color-brand-700: #0a2840;
+  --color-brand-800: #07192b;
+  --color-brand-900: #07192b;
 
-  /* Navy — dark surfaces: sidebar, headers */
-  --color-navy-50: #f4f6f9;
-  --color-navy-100: #e3e8ef;
-  --color-navy-200: #c3ccd9;
-  --color-navy-300: #93a2b8;
-  --color-navy-400: #5e7191;
-  --color-navy-500: #3f526f;
-  --color-navy-600: #2c3c56;
-  --color-navy-700: #213044;
-  --color-navy-800: #182536;
-  --color-navy-900: #0f1828;
-  --color-navy-950: #0b1220; /* پس‌زمینه‌ی فوتر عمومی — قبلاً تعریف نشده بود و فوتر شفاف رندر می‌شد */
+  /* Accent = فیروزه‌ای v6.8: انتخاب، زبانه‌ی فعال، فوکوس، لینک، نوار پیشرفت */
+  --color-teal-50: #e3f6f7;
+  --color-teal-100: #c5ebee;
+  --color-teal-200: #93dce1;
+  --color-teal-300: #4dd0d8;
+  --color-teal-400: #1fbdc6;
+  --color-teal-500: #01a9b4;
+  --color-teal-600: #00929c;
+  --color-teal-700: #007c86;
+  --color-teal-800: #00606a;
+  --color-teal-900: #033c41;
 
-  /* Neutral slate scale used across surfaces/text */
-  --color-ink-50: #f6f7f9;
-  --color-ink-100: #eceef1;
-  --color-ink-200: #dde1e6;
-  --color-ink-300: #c1c7d0;
-  --color-ink-400: #5d6b81; /* ≥4.5:1 حتی روی پس‌زمینه‌ی خاکستری صفحه */
-  --color-ink-500: #5b6678; /* 5.8:1 روی سفید */
-  --color-ink-600: #4f5867;
-  --color-ink-700: #383f4c;
-  --color-ink-800: #232831;
-  --color-ink-900: #14171d;
+  /* Navy = سرمه‌ای v6.8 (فوتر و قهرمان عمومی) */
+  --color-navy-50: #eaf1f7;
+  --color-navy-100: #d3e2ee;
+  --color-navy-200: #a9c4db;
+  --color-navy-300: #7ba2c3;
+  --color-navy-400: #4b7fa8;
+  --color-navy-500: #2c6190;
+  --color-navy-600: #1d5078;
+  --color-navy-700: #114167;
+  --color-navy-800: #0a2840;
+  --color-navy-900: #07192b;
+  --color-navy-950: #041120;
 
-  /* Semantic tokens — success/danger/warning/info */
-  --color-success: #059669;
-  --color-success-soft: #ecfdf5;
-  --color-danger: #dc2626;
-  --color-danger-soft: #fef2f2;
-  --color-warning: #d97706;
-  --color-warning-soft: #fffbeb;
-  --color-info: #0284c7;
-  --color-info-soft: #f0f9ff;
+  /* Neutral (ink) = خاکستری‌های آبی‌رنگ n-* — ink-400/500 کف کنتراست ۴٫۵:۱ را نگه می‌دارند */
+  --color-ink-50: #f6f9fb;
+  --color-ink-100: #edf2f6;
+  --color-ink-200: #d5dee6;
+  --color-ink-300: #b6c3cf;
+  --color-ink-400: #5a6b7b; /* n-400 نمونه (#8D9DAC) کنتراست کافی ندارد */
+  --color-ink-500: #5a6b7b;
+  --color-ink-600: #435463;
+  --color-ink-700: #2e3c49;
+  --color-ink-800: #1b2733;
+  --color-ink-900: #0e1a26;
+
+  /* وضعیت‌ها — مقیاس‌های emerald/rose/amber روی رنگ‌های v6.8 (50 = soft، 600 = base، 700 = fg) */
+  --color-emerald-50: #e4f5ec;
+  --color-emerald-100: #cdebdb;
+  --color-emerald-200: #b3e0c8;
+  --color-emerald-300: #7fcba4;
+  --color-emerald-400: #4cb283;
+  --color-emerald-500: #2a9e68;
+  --color-emerald-600: #1e8e5a;
+  --color-emerald-700: #136b42;
+  --color-emerald-800: #0f5634;
+  --color-emerald-900: #0b4128;
+
+  --color-rose-50: #fde8e6;
+  --color-rose-100: #fad3cf;
+  --color-rose-200: #f4b8b2;
+  --color-rose-300: #ec8f87;
+  --color-rose-400: #e0665d;
+  --color-rose-500: #d44a40;
+  --color-rose-600: #c9332b;
+  --color-rose-700: #9f2620;
+  --color-rose-800: #831f1a;
+  --color-rose-900: #661814;
+
+  --color-amber-50: #fff4d6;
+  --color-amber-100: #ffeab3;
+  --color-amber-200: #f8da8f;
+  --color-amber-300: #f0c565;
+  --color-amber-400: #e5a93a;
+  --color-amber-500: #cc8f14;
+  --color-amber-600: #b77700;
+  --color-amber-700: #7a4f00;
+  --color-amber-800: #664200;
+  --color-amber-900: #523500;
+  --color-amber-950: #3f2e06;
+
+  /* Semantic */
+  --color-success: #1e8e5a;
+  --color-success-soft: #e4f5ec;
+  --color-success-fg: #136b42;
+  --color-warning: #b77700;
+  --color-warning-soft: #fff4d6;
+  --color-warning-fg: #7a4f00;
+  --color-danger: #c9332b;
+  --color-danger-soft: #fde8e6;
+  --color-danger-fg: #9f2620;
+  --color-info: #2c6190;
+  --color-info-soft: #eaf1f7;
+  --color-info-fg: #1d5078;
+
+  /* سطح‌ها و نقش‌ها (در تم تیره بازتعریف می‌شوند) */
+  --color-canvas: #f6f9fb;
+  --color-card: #ffffff;
+  --color-border: #edf2f6;
+  --color-input-bg: #ffffff;
+  --color-on-primary: #ffffff;
+  --color-on-danger: #ffffff;
+  --color-outline-fg: #114167;
+  --color-tonal-fg: #114167;
+  --color-link: #007c86;
+  --color-ring: #01a9b4;
+  --color-overlay: rgb(7 25 43 / 0.55);
+
+  /* گوشه‌ها: sm 8 · md/lg 10 (دکمه، ورودی، کاشی) · xl 14 (کارت، پنل) · 2xl 20 (دیالوگ، قهرمان) */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+
+  /* سایه‌ها — ملایم با ته‌رنگ سرمه‌ای؛ xl/2xl روی lg */
+  --shadow-xs: 0 1px 2px rgb(var(--shadow-rgb) / 0.06);
+  --shadow-sm: 0 2px 6px rgb(var(--shadow-rgb) / 0.08);
+  --shadow-md: 0 6px 16px rgb(var(--shadow-rgb) / 0.08);
+  --shadow-lg: 0 12px 28px rgb(var(--shadow-rgb) / 0.12);
+  --shadow-xl: 0 12px 28px rgb(var(--shadow-rgb) / 0.12);
+  --shadow-2xl: 0 12px 28px rgb(var(--shadow-rgb) / 0.12);
+
+  /* حرکت */
+  --ease-kz: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --animate-rise: rise 0.5s var(--ease-kz) both;
+  --animate-sheetin: sheetin 320ms var(--ease-kz) both;
+  --animate-fadein: fadein 200ms var(--ease-kz) both;
+  --animate-toastin: toastin 200ms var(--ease-kz) both;
+  --animate-grow: grow 0.9s var(--ease-kz) 0.2s both;
+
+  /* چیدمان */
+  --container-workspace: 100rem;
+  --container-reading: 42rem;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sheetin {
+    from { opacity: 0; transform: translateX(-24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes toastin {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
 }
 
-/* -----------------------------------------------------------------------
-   حالت تیره — با بازتعریف توکن‌ها؛ کلاس‌های موجود بدون تغییر کار می‌کنند
-   ----------------------------------------------------------------------- */
+:root {
+  --shadow-rgb: 7 25 43;
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --t-slow: 320ms;
+}
+
+/* =======================================================================
+   تم تیره (v6.8) — با بازتعریف توکن‌ها؛ کلاس‌های موجود بدون تغییر کار می‌کنند
+   ======================================================================= */
 :root[data-theme="dark"] {
-  /* مقیاس ink معکوس: سطح‌ها تیره، متن‌ها روشن */
-  --color-ink-50: #121722;
-  --color-ink-100: #1a2030;
-  --color-ink-200: #273044;
-  --color-ink-300: #3b465e;
-  --color-ink-400: #7e8aa0;
-  --color-ink-500: #9aa5b8;
-  --color-ink-600: #bcc5d4;
-  --color-ink-700: #d5dbe6;
-  --color-ink-800: #e8ecf2;
-  --color-ink-900: #f4f6fa;
+  --shadow-rgb: 0 0 0;
 
-  --color-success-soft: #0b2e22;
-  --color-danger-soft: #331416;
-  --color-warning-soft: #33240d;
-  --color-info-soft: #0c2534;
+  --color-canvas: #0b2237;
+  --color-card: #0a2840;
+  --color-border: #1d5078;
+  --color-input-bg: #07192b;
+  --color-on-danger: #07192b;
+  --color-outline-fg: #eaf1f7;
+  --color-tonal-fg: #c5ebee;
+  --color-link: #4dd0d8;
+  --color-ring: #4dd0d8;
+  --color-overlay: rgb(0 0 0 / 0.62);
+
+  /* ink: سطح‌ها تیره، متن‌ها روشن */
+  --color-ink-50: #0b2237;
+  --color-ink-100: #114167;
+  --color-ink-200: #1d5078;
+  --color-ink-300: #2c6190;
+  --color-ink-400: #7ba2c3;
+  --color-ink-500: #a9c4db;
+  --color-ink-600: #c3d6e6;
+  --color-ink-700: #d3e2ee;
+  --color-ink-800: #e2ecf4;
+  --color-ink-900: #eaf1f7;
+
+  /* accent */
+  --color-teal-50: #114167;
+  --color-teal-100: #1d5078;
+  --color-teal-200: #2c6190;
+  --color-teal-600: #4dd0d8;
+  --color-teal-700: #93dce1;
+  --color-teal-800: #c5ebee;
+  --color-teal-900: #e3f6f7;
+
+  --color-navy-50: #114167;
+
+  /* وضعیت‌ها */
+  --color-success: #4cc48c;
+  --color-success-soft: #0f3a2a;
+  --color-success-fg: #7fd6a8;
+  --color-warning: #e5a93a;
+  --color-warning-soft: #3f2e06;
+  --color-warning-fg: #f3c46a;
+  --color-danger: #e5675f;
+  --color-danger-soft: #4a1714;
+  --color-danger-fg: #f5a29c;
+  --color-info: #7ba2c3;
+  --color-info-soft: #123a5c;
+  --color-info-fg: #a9c4db;
+
+  --color-emerald-50: #0f3a2a;
+  --color-emerald-100: #134832;
+  --color-emerald-200: #1c5c40;
+  --color-emerald-300: #2e7d57;
+  --color-emerald-400: #3fa570;
+  --color-emerald-500: #46b880;
+  --color-emerald-600: #4cc48c;
+  --color-emerald-700: #7fd6a8;
+  --color-emerald-800: #a6e4c3;
+  --color-emerald-900: #cdf1dd;
+
+  --color-rose-50: #4a1714;
+  --color-rose-100: #5a1d19;
+  --color-rose-200: #74261f;
+  --color-rose-300: #9a372e;
+  --color-rose-400: #c65047;
+  --color-rose-500: #da5c53;
+  --color-rose-600: #e5675f;
+  --color-rose-700: #f5a29c;
+  --color-rose-800: #f8c0bb;
+  --color-rose-900: #fbdcd9;
+
+  --color-amber-50: #3f2e06;
+  --color-amber-100: #4d3909;
+  --color-amber-200: #64490c;
+  --color-amber-300: #8a6614;
+  --color-amber-400: #c08a25;
+  --color-amber-500: #d89c30;
+  --color-amber-600: #e5a93a;
+  --color-amber-700: #f3c46a;
+  --color-amber-800: #f7d592;
+  --color-amber-900: #fae5ba;
+  --color-amber-950: #fdf2da;
 }
 
-/* سطح‌های سفید و تینت‌های رنگی در حالت تیره */
-:root[data-theme="dark"] .bg-white { background-color: #1a2030; }
-:root[data-theme="dark"] .bg-white\/90 { background-color: rgba(26, 32, 48, 0.9); }
-:root[data-theme="dark"] .bg-white\/80 { background-color: rgba(26, 32, 48, 0.8); }
-:root[data-theme="dark"] .bg-brand-50,
-:root[data-theme="dark"] .bg-brand-50\/50,
-:root[data-theme="dark"] .bg-brand-50\/40 { background-color: color-mix(in srgb, var(--color-brand-600) 16%, #1a2030); }
-:root[data-theme="dark"] .bg-brand-100 { background-color: color-mix(in srgb, var(--color-brand-600) 28%, #1a2030); }
-:root[data-theme="dark"] .border-brand-200 { border-color: color-mix(in srgb, var(--color-brand-500) 35%, #273044); }
-:root[data-theme="dark"] .text-brand-800 { color: var(--color-brand-200); }
-:root[data-theme="dark"] .text-brand-700 { color: var(--color-brand-300); }
-:root[data-theme="dark"] .bg-emerald-50, :root[data-theme="dark"] .bg-emerald-50\/60 { background-color: var(--color-success-soft); }
-:root[data-theme="dark"] .bg-rose-50 { background-color: var(--color-danger-soft); }
-:root[data-theme="dark"] .bg-amber-50, :root[data-theme="dark"] .bg-amber-50\/60 { background-color: var(--color-warning-soft); }
-:root[data-theme="dark"] .bg-sky-50 { background-color: var(--color-info-soft); }
-:root[data-theme="dark"] .border-amber-200 { border-color: #5c4514; }
-:root[data-theme="dark"] .border-emerald-200 { border-color: #14532d; }
-:root[data-theme="dark"] .border-rose-200 { border-color: #6b1f24; }
-:root[data-theme="dark"] .text-amber-800, :root[data-theme="dark"] .text-amber-700 { color: #fbbf24; }
-:root[data-theme="dark"] .text-emerald-700 { color: #34d399; }
-:root[data-theme="dark"] .text-rose-600 { color: #fb7185; }
-:root[data-theme="dark"] .text-ink-950, :root[data-theme="dark"] .text-black { color: var(--color-ink-900); }
+/* تیره + پیش‌تنظیم پیش‌فرض: primary فیروزه‌ای می‌شود (مثل v6.8) و متن روی آن سرمه‌ای */
+:root[data-theme="dark"]:not([style*="--color-brand-600"]),
+:root[data-theme="dark"][style*="#1f4f99"] {
+  --color-on-primary: #07192b;
+  --color-brand-50: #114167 !important;
+  --color-brand-100: #1d5078 !important;
+  --color-brand-200: #2c6190 !important;
+  --color-brand-300: #4b7fa8 !important;
+  --color-brand-400: #4dd0d8 !important;
+  --color-brand-500: #1fbdc6 !important;
+  --color-brand-600: #01a9b4 !important;
+  --color-brand-700: #1fbdc6 !important;
+  --color-brand-800: #93dce1 !important;
+  --color-brand-900: #c5ebee !important;
+}
+
+/* تیره + سایر پیش‌تنظیم‌های رنگ: تینت‌ها از رنگ برند روی سطح کارت ساخته می‌شوند */
+:root[data-theme="dark"][style*="--color-brand-600"]:not([style*="#1f4f99"]) :is(.bg-brand-50, .bg-brand-50\/40, .bg-brand-50\/50, .bg-brand-50\/60) {
+  background-color: color-mix(in srgb, var(--color-brand-600) 18%, var(--color-card));
+}
+:root[data-theme="dark"][style*="--color-brand-600"]:not([style*="#1f4f99"]) .bg-brand-100 {
+  background-color: color-mix(in srgb, var(--color-brand-600) 30%, var(--color-card));
+}
+:root[data-theme="dark"][style*="--color-brand-600"]:not([style*="#1f4f99"]) :is(.border-brand-200, .border-brand-300) {
+  border-color: color-mix(in srgb, var(--color-brand-500) 40%, var(--color-ink-200));
+}
+:root[data-theme="dark"][style*="--color-brand-600"]:not([style*="#1f4f99"]) :is(.text-brand-600, .text-brand-700, .text-brand-800) {
+  color: var(--color-brand-300);
+}
+
+/* سطح‌های سفید و چند کلاس خاص در حالت تیره — در لایه‌ی utilities و با :where تا
+   hover:bg-* و سایر کلاس‌های صفحه همچنان اثر کنند */
+@layer utilities {
+  :where(:root[data-theme="dark"]) .bg-white { background-color: var(--color-card); }
+  :where(:root[data-theme="dark"]) .bg-white\/90 { background-color: color-mix(in srgb, var(--color-card) 90%, transparent); }
+  :where(:root[data-theme="dark"]) .bg-white\/80 { background-color: color-mix(in srgb, var(--color-card) 80%, transparent); }
+  :where(:root[data-theme="dark"]) .border-white { border-color: var(--color-card); }
+  :where(:root[data-theme="dark"]) :is(.text-ink-950, .text-black) { color: var(--color-ink-900); }
+  :where(:root[data-theme="dark"]) .bg-sky-50 { background-color: var(--color-info-soft); }
+  :where(:root[data-theme="dark"]) :is(.text-sky-600, .text-sky-700) { color: var(--color-info-fg); }
+  :where(:root[data-theme="dark"]) .text-navy-700 { color: var(--color-navy-200); }
+  :where(:root[data-theme="dark"]) :is(.bg-ink-900\/10, .bg-ink-900\/20, .bg-ink-900\/30, .bg-ink-900\/40, .bg-ink-900\/45, .bg-ink-900\/50, .bg-ink-900\/60) {
+    background-color: var(--color-overlay);
+  }
+}
+/* متن سفید روی رنگ‌های توپر که در تیره روشن می‌شوند → متن سرمه‌ای (کنتراست) */
+:root[data-theme="dark"] :is(.bg-brand-500, .bg-brand-600, .bg-brand-700, .bg-teal-500, .bg-teal-600).text-white {
+  color: var(--color-on-primary);
+}
+:root[data-theme="dark"] :is(.bg-rose-500, .bg-rose-600, .bg-emerald-500, .bg-emerald-600, .bg-amber-500, .bg-amber-600, .bg-ink-800, .bg-ink-900).text-white {
+  color: var(--color-navy-900);
+}
+/* دکمه‌ها/لینک‌های «انتخاب‌شده» با navy توپر روی کارت تیره دیده نمی‌شوند → primary تیره (فیروزه‌ای) */
+:root[data-theme="dark"] :is(button, a).text-white:is(.bg-navy-900, .bg-navy-800) {
+  background-color: var(--color-brand-600);
+  border-color: var(--color-brand-600);
+  color: var(--color-on-primary);
+}
 :root[data-theme="dark"] .shadow-sm, :root[data-theme="dark"] .shadow-md,
 :root[data-theme="dark"] .shadow-lg, :root[data-theme="dark"] .shadow-xl { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
-
-/* پس‌زمینه گفتگو */
-.chat-surface {
-  background-color: #eef2f7;
-  background-image: radial-gradient(rgba(31, 79, 153, 0.055) 1.2px, transparent 1.2px),
-    radial-gradient(rgba(31, 79, 153, 0.035) 1.2px, transparent 1.2px);
-  background-size: 22px 22px, 22px 22px;
-  background-position: 0 0, 11px 11px;
-}
-:root[data-theme="dark"] .chat-surface {
-  background-color: #0e131d;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1.2px, transparent 1.2px),
-    radial-gradient(rgba(255, 255, 255, 0.025) 1.2px, transparent 1.2px);
-}
 
 /* -----------------------------------------------------------------------
    کف خوانایی سراسری: هیچ متن معناداری زیر ~۱۱.۵px نمایش داده نمی‌شود
@@ -165,16 +379,6 @@
 :root[data-font="large"] .text-\[13px\] { font-size: 15px; }
 :root[data-font="large"] .text-xs { font-size: 13.5px; }
 
-/* کنتراست نشان‌ها و متن‌های رنگی در حالت تیره */
-:root[data-theme="dark"] .text-emerald-600 { color: #34d399; }
-:root[data-theme="dark"] .text-amber-600 { color: #fbbf24; }
-:root[data-theme="dark"] .text-rose-500 { color: #fb7185; }
-:root[data-theme="dark"] .text-sky-700, :root[data-theme="dark"] .text-sky-600 { color: #7dd3fc; }
-:root[data-theme="dark"] .text-brand-600 { color: var(--color-brand-300); }
-:root[data-theme="dark"] .bg-navy-50 { background-color: #1f2a3d; }
-:root[data-theme="dark"] .text-navy-700 { color: #b6c6de; }
-:root[data-theme="dark"] .border-brand-300 { border-color: color-mix(in srgb, var(--color-brand-400) 55%, #273044); }
-
 html,
 body,
 #root {
@@ -182,18 +386,26 @@ body,
   margin: 0;
 }
 
+/* بوم برنامه: subtle + دو هاله‌ی ثابت (teal-400 بالا/انتها، navy-400 پایین/ابتدا) */
 body {
-  background-color: var(--color-ink-50);
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(900px 460px at 88% -120px, color-mix(in srgb, var(--color-teal-400) 11%, transparent), transparent 70%),
+    radial-gradient(760px 420px at 4% 108%, color-mix(in srgb, var(--color-navy-400) 10%, transparent), transparent 70%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--color-ink-900);
   font-family: var(--font-sans);
-  font-size: 14.5px;
+  font-size: 15px;
+  line-height: 1.8;
   font-variant-numeric: tabular-nums;
-  transition: background-color 0.2s, color 0.2s;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--t-base), color var(--t-base);
 }
 
 /* دسترس‌پذیری سراسری: حلقه فوکوس کیبورد + نشانگر کلیک */
 :focus-visible {
-  outline: 2px solid var(--color-brand-500);
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -203,10 +415,50 @@ button, [role="button"], a, select, label[for], summary {
 button:disabled {
   cursor: not-allowed;
 }
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--color-brand-600);
+}
 
 @keyframes slideIn {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+@keyframes icwig {
+  0%, 100% { transform: none; }
+  30% { transform: rotate(-10deg); }
+  60% { transform: rotate(8deg); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes bellp {
+  0%, 86%, 100% { transform: scale(1); }
+  90% { transform: scale(1.18); }
+  95% { transform: scale(0.96); }
+}
+@keyframes sk {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes sp {
+  to { transform: rotate(360deg); }
+}
+@keyframes hdbg {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes hdf {
+  0%, 100% { transform: translate(0, 0) rotate(var(--r, 0deg)); }
+  50% { transform: translate(-10px, 8px) rotate(calc(var(--r, 0deg) + 6deg)); }
+}
+@keyframes hdo {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate(24px, -14px) scale(1.15); opacity: 0.85; }
+}
+@keyframes hdcar {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 
 /* احترام به تنظیم کاهش حرکت کاربر */
@@ -233,99 +485,311 @@ button:disabled {
 }
 
 ::selection {
-  background-color: var(--color-brand-200);
+  background-color: var(--color-teal-100);
 }
 
-.card {
-  background-color: #fff;
-  border: 1px solid var(--color-ink-200);
-  border-radius: 0.625rem;
-}
-:root[data-theme="dark"] .card {
-  background-color: #1a2030;
-}
-
-.tag-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-radius: 0.375rem;
-  padding: 0.125rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.4rem;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  padding: 0.5rem 0.875rem;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.btn:focus-visible {
-  outline: 2px solid var(--color-brand-400);
-  outline-offset: 1px;
-}
-
+/* =======================================================================
+   کلاس‌های مؤلفه — همه در @layer components تا کلاس‌های Tailwind صفحه
+   (padding، رنگ، گوشه) همیشه بر آن‌ها غلبه کنند.
+   ======================================================================= */
 @layer components {
-.input-field {
-  width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-ink-200);
-  background-color: #fff;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-}
-.input-field:focus {
-  border-color: var(--color-brand-400);
-  box-shadow: 0 0 0 3px var(--color-brand-100);
-}
-:root[data-theme="dark"] .input-field {
-  background-color: #121722;
-  color: var(--color-ink-900);
-}
-:root[data-theme="dark"] .input-field:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 30%, transparent);
-}
-.input-field.input-error {
-  border-color: var(--color-danger);
-}
-.field-error {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--color-danger);
-  font-size: 0.72rem;
-  margin-top: 0.3rem;
+  /* ---------- تایپوگرافی ---------- */
+  .t-hero { font-size: 44px; line-height: 64px; font-weight: 900; letter-spacing: -0.5px; }
+  .t-page { font-size: 32px; line-height: 48px; font-weight: 700; }
+  .t-lead { font-size: 16px; line-height: 30px; color: var(--color-ink-500); max-width: var(--container-reading); }
+  .t-sheet { font-size: 24px; line-height: 36px; font-weight: 700; }
+  .t-section { font-size: 20px; line-height: 32px; font-weight: 700; }
+  .t-dialog { font-size: 18px; line-height: 30px; font-weight: 700; }
+  .t-card { font-size: 16px; line-height: 26px; font-weight: 700; }
+  .t-kpi { font-size: 28px; line-height: 44px; font-weight: 700; }
+  .cap { font-size: 12px; line-height: 20px; color: var(--color-ink-500); }
+  @media (max-width: 768px) {
+    .t-hero { font-size: 32px; line-height: 48px; }
+    .t-page { font-size: 26px; line-height: 40px; }
+  }
+  @media (max-width: 480px) {
+    .t-page { font-size: 24px; line-height: 38px; }
+    .t-kpi { font-size: 24px; line-height: 38px; }
+  }
+
+  /* ---------- کارت ---------- */
+  .card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+  }
+  a.card, button.card, .card-link {
+    transition: transform var(--t-base) var(--ease-kz), box-shadow var(--t-base) var(--ease-kz), border-color var(--t-base);
+  }
+  a.card:hover, button.card:hover, .card-link:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  @media (max-width: 640px) {
+    .card-head { flex-wrap: wrap; }
+  }
+
+  /* ---------- نشان (badge) ---------- */
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .tag-pill.tag-sm { padding: 0 8px; font-size: 11.5px; }
+  .tag-dot { width: 6px; height: 6px; border-radius: 999px; background-color: currentColor; flex-shrink: 0; }
+
+  /* ---------- دکمه ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color var(--t-base), border-color var(--t-base), color var(--t-base), box-shadow var(--t-base), transform var(--t-fast);
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+  .btn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: 10px; }
+  .btn:hover:not(:disabled) > svg:first-child { animation: icwig 0.55s var(--ease-kz); }
+  .btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
+  .btn-lg { height: 48px; padding: 0 24px; font-size: 15px; }
+  .btn-icon { width: 40px; padding: 0; }
+  .btn-icon.btn-sm { width: 36px; }
+  .btn-icon.btn-lg { width: 48px; }
+
+  .btn-primary { background-color: var(--color-brand-600); color: var(--color-on-primary); }
+  .btn-primary:hover:not(:disabled) { background-color: var(--color-brand-700); }
+  .btn-outline { background-color: var(--color-card); border-color: var(--color-ink-200); color: var(--color-outline-fg); }
+  .btn-outline:hover:not(:disabled) { background-color: var(--color-ink-50); border-color: var(--color-ink-300); }
+  .btn-tonal { background-color: var(--color-teal-50); color: var(--color-tonal-fg); }
+  .btn-tonal:hover:not(:disabled) { background-color: var(--color-teal-100); }
+  .btn-ghost { background-color: transparent; color: var(--color-ink-700); }
+  .btn-ghost:hover:not(:disabled) { background-color: var(--color-ink-100); }
+  .btn-ghost:active:not(:disabled) { border-color: var(--color-ink-200); }
+  .btn-danger { background-color: var(--color-danger); color: var(--color-on-danger); }
+  .btn-danger:hover:not(:disabled) { background-color: var(--color-danger-fg); }
+  .btn-danger-outline { background-color: var(--color-card); border-color: color-mix(in srgb, var(--color-danger) 45%, transparent); color: var(--color-danger-fg); }
+  .btn-danger-outline:hover:not(:disabled) { background-color: var(--color-danger-soft); }
+  .btn-link { height: auto; padding: 0; color: var(--color-link); text-decoration: underline; text-underline-offset: 4px; }
+  .btn-link:hover:not(:disabled) { text-decoration-thickness: 2px; }
+  .btn-spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    border-inline-end-color: transparent;
+    animation: sp 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* ---------- ورودی‌ها ---------- */
+  .input-field {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--color-ink-200);
+    background-color: var(--color-input-bg);
+    color: var(--color-ink-900);
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 22px;
+    outline: none;
+    transition: border-color var(--t-base), box-shadow var(--t-base);
+  }
+  :is(input, select, button).input-field { min-height: 40px; }
+  textarea.input-field { padding: 10px 12px; line-height: 26px; }
+  .input-field::placeholder { color: var(--color-ink-400); opacity: 0.85; }
+  .input-field:hover:not(:disabled):not(:focus) { border-color: var(--color-ink-300); }
+  .input-field:focus, .input-field:focus-within {
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 25%, transparent);
+  }
+  .input-field:disabled { background-color: var(--color-ink-100); cursor: not-allowed; }
+  .input-field.input-error { border-color: var(--color-danger); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 13px; font-weight: 500; color: var(--color-ink-700); }
+  .field-help { font-size: 12.5px; line-height: 20px; color: var(--color-ink-500); }
+  .field-help.is-ok { color: var(--color-success-fg); }
+  .field-error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-danger-fg);
+    font-size: 12.5px;
+    line-height: 20px;
+    margin-top: 4px;
+  }
+  .input-check { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; }
+
+  /* ---------- جدول ---------- */
+  .table-wrap {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .table-shell {
+    width: 100%;
+    font-size: 13.5px;
+    border-collapse: collapse;
+  }
+  .table-shell th {
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-ink-500);
+    background-color: var(--color-ink-50);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+  .table-shell td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+  }
+  .table-shell tbody tr:last-child td { border-bottom: 0; }
+  .table-shell tbody tr { transition: background-color var(--t-fast); }
+  .table-shell tbody tr:hover { background-color: var(--color-ink-50); }
+
+  /* ---------- اسکلت بارگذاری ---------- */
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-ink-100), var(--color-ink-50), var(--color-ink-100));
+    background-size: 200% 100%;
+    animation: sk 1.4s linear infinite;
+    border-radius: 10px;
+  }
+
+  /* ---------- ورود صفحه: فرزندان پله‌پله بالا می‌آیند ---------- */
+  .rise-stagger > * { animation: var(--animate-rise); }
+  .rise-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+  .rise-stagger > *:nth-child(3) { animation-delay: 0.1s; }
+  .rise-stagger > *:nth-child(4) { animation-delay: 0.15s; }
+  .rise-stagger > *:nth-child(n + 5) { animation-delay: 0.2s; }
+
+  /* ---------- قهرمان «امروز» ---------- */
+  .hero-day {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    color: #fff;
+    box-shadow: var(--shadow-md);
+    background-image: linear-gradient(120deg, var(--color-navy-800) 0%, var(--color-navy-600) 40%, var(--color-teal-700) 75%, var(--color-navy-600) 100%);
+    background-size: 220% 220%;
+    animation: hdbg 24s ease-in-out infinite;
+  }
+  :root[data-theme="dark"] .hero-day {
+    /* v6.8 تیره: همان گرادیان با teal تیره‌تر (teal-700 در تیره بازتعریف شده) */
+    background-image: linear-gradient(120deg, var(--color-navy-800) 0%, var(--color-navy-700) 40%, var(--color-teal-900) 75%, var(--color-navy-700) 100%);
+  }
+  .hero-leaf { position: absolute; pointer-events: none; animation: hdf 14s ease-in-out infinite; }
+  .hero-glow {
+    position: absolute;
+    border-radius: 999px;
+    background-color: rgb(255 255 255 / 0.16);
+    filter: blur(38px);
+    pointer-events: none;
+    animation: hdo 18s ease-in-out infinite;
+  }
+  .hero-caret {
+    display: inline-block;
+    width: 3px;
+    height: 0.9em;
+    margin-inline-start: 4px;
+    vertical-align: -0.08em;
+    background-color: var(--color-teal-300);
+    border-radius: 2px;
+    animation: hdcar 1s steps(1) infinite;
+  }
+  .hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    background-color: rgb(255 255 255 / 0.1);
+    border: 1px solid rgb(255 255 255 / 0.38);
+    transition: background-color var(--t-base);
+  }
+  .hero-btn:hover { background-color: rgb(255 255 255 / 0.18); }
+  .hero-btn.is-solid { background-color: #fff; color: var(--color-navy-800); border-color: #fff; }
+  .hero-btn.is-solid:hover { background-color: var(--color-navy-50); }
+  .hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background-color: rgb(255 255 255 / 0.1);
+    border: 1px solid rgb(255 255 255 / 0.22);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    transition: background-color var(--t-base), transform var(--t-base) var(--ease-kz);
+  }
+  .hero-stat:hover { background-color: rgb(255 255 255 / 0.16); transform: translateY(-2px); }
+  .hero-stat b { font-size: 34px; line-height: 46px; font-weight: 900; }
+  @media (max-width: 768px) {
+    .hero-stat { min-width: 0; flex: 1; }
+    .hero-stat b { font-size: 26px; line-height: 36px; }
+  }
+
+  /* ---------- پس‌زمینه‌ی رشته‌ی گفتگو ---------- */
+  .chat-surface {
+    background-color: var(--color-canvas);
+    background-image:
+      radial-gradient(60% 50% at 0% 0%, color-mix(in srgb, var(--color-navy-300) 42%, transparent), transparent 70%),
+      radial-gradient(55% 45% at 100% 0%, color-mix(in srgb, var(--color-teal-300) 36%, transparent), transparent 70%),
+      radial-gradient(50% 45% at 0% 100%, color-mix(in srgb, var(--color-amber-600) 24%, transparent), transparent 70%),
+      radial-gradient(60% 50% at 100% 100%, color-mix(in srgb, var(--color-teal-100) 70%, transparent), transparent 70%);
+  }
+  :root[data-theme="dark"] .chat-surface {
+    background-image:
+      radial-gradient(60% 50% at 0% 0%, color-mix(in srgb, var(--color-navy-600) 40%, transparent), transparent 70%),
+      radial-gradient(55% 45% at 100% 0%, color-mix(in srgb, var(--color-teal-900) 55%, transparent), transparent 70%),
+      radial-gradient(60% 50% at 100% 100%, color-mix(in srgb, var(--color-navy-700) 50%, transparent), transparent 70%);
+  }
 }
 
-.table-shell {
-  width: 100%;
-  font-size: 0.8125rem;
-  border-collapse: collapse;
+/* -----------------------------------------------------------------------
+   چاپ: پوسته (منو، نوار بالا، ناوبری موبایل) و دکمه‌ها پنهان؛ برگه‌ها باز
+   پوسته با data-shell یا .no-print علامت می‌خورد.
+   ----------------------------------------------------------------------- */
+@media print {
+  body { background: #fff !important; color: #000; font-size: 12pt; }
+  [data-shell], .no-print, .print\:hidden { display: none !important; }
+  .card, .table-wrap { border-color: #ccc !important; box-shadow: none !important; break-inside: avoid; }
+  [data-sheet] { position: static !important; width: 100% !important; max-width: none !important; height: auto !important; box-shadow: none !important; }
+  [data-sheet-scrim] { display: none !important; }
+  * { animation: none !important; transition: none !important; }
 }
-.table-shell th {
-  text-align: right;
-  font-weight: 600;
-  color: var(--color-ink-500);
-  padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid var(--color-ink-200);
-  white-space: nowrap;
-}
-.table-shell td {
-  padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid var(--color-ink-100);
-  vertical-align: middle;
-}
-.table-shell tbody tr:hover {
-  background-color: var(--color-ink-50);
+
+@media (forced-colors: active) {
+  .btn, .tag-pill, .card { border: 1px solid CanvasText; }
 }

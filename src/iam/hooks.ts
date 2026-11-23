@@ -24,7 +24,7 @@ export function usePendingAccessRequests(): { items: PendingRequest[]; count: nu
         roleName: t.iam.roles.find((x) => x.id === r.roleId)?.name ?? "—",
         scopeName: t.scopeLabel(r.scopeId),
       }));
-    return { items, count: items.length, link: "/dashboard/settings?section=access-requests" };
+    return { items, count: items.length, link: "/settings?section=bindings&tab=requests" };
   }, [t]);
 }
 
@@ -113,3 +113,31 @@ export function useScopedSettings(scopeId?: string) {
 
   return { scopeId: id, resolve, canEdit, setValue, clearValue, setLock, overriddenBelow, state };
 }
+
+/**
+ * شکل واقعی `ScopeBranding` (`identity/branding/{scope_id}`) — DATA_ALIGNMENT §9.
+ * نام/رنگ/لوگو از تنظیمات لایه‌ای؛ اگر هیچ لایه‌ای برند نداشته باشد «کاریز».
+ */
+export type ScopeBranding = {
+  organization_name: string;
+  footer_description: string;
+  footer_menu: { title: string; url: string }[];
+  copyright_text: string;
+  default_color_key: string;
+  logo_light: string | null;
+  logo_dark: string | null;
+  updated_by: string | null;
+};
+export function toScopeBranding(b: EffectiveBranding): ScopeBranding {
+  return {
+    organization_name: b.name,
+    footer_description: "",
+    footer_menu: [],
+    copyright_text: `© ${b.name}`,
+    default_color_key: b.color,
+    logo_light: b.logo || null,
+    logo_dark: b.logo || null,
+    updated_by: null,
+  };
+}
+export const brandingEndpoints = { get: { method: "GET", path: "/identity/branding/{scope_id}/" }, me: { method: "GET", path: "/identity/branding/me/" }, logos: { method: "POST", path: "/identity/branding/{scope_id}/logos/" } } as const;

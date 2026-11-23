@@ -1,51 +1,27 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { diffKeys, emitSettingsChange } from "../iam/settingsAudit";
 
-// پارامترهای گردش کار — همه‌ی اعداد ثابت روندها از اینجا خوانده می‌شوند. هر پارامتر به یک
-// ماژول تعلق دارد (settingsMeta[].module) و در «تنظیمات سامانه» زیر همان ماژول ویرایش می‌شود:
-// نوآوری (صندوق / قراردادها / جایزه) و زیرساخت (محدودیت نرخ). مقدارها در مرورگر می‌مانند
-// (motoshub.workflowSettings.v1). API قبلی (useSettings، settingsMeta، defaultSettings) بدون تغییر است.
+// پارامترهای گردش کار — اعداد ثابت روندها از اینجا خوانده می‌شوند. هر پارامتر به یک ماژول تعلق دارد
+// (settingsMeta[].module): گردش کار (یادآوری گزارش — مقدار ریشه‌ی تنظیمات لایه‌ای) و زیرساخت (محدودیت نرخ).
+// مقدارها در مرورگر می‌مانند (motoshub.workflowSettings.v1)؛ کلیدهای قدیمیِ بخش حذف‌شده‌ی «نوآوری و پژوهش»
+// هنگام بارگذاری نادیده گرفته می‌شوند. API قبلی (useSettings، settingsMeta، defaultSettings) بدون تغییر است.
 export type WorkflowSettings = {
   reportReminderDays: number; // یادآوری قبل از سررسید گزارش
-  reviewEscalationDays: number; // مهلت بررسی ناظر/راهبر/مدیر
-  dormantProjectDays: number; // آستانه پروژه خوابیده (بدون تعامل)
-  screeningThreshold: number; // حدنصاب غربالگری (از ۲۰۰)
-  juryThreshold: number; // حدنصاب داوری (از ۱۰۰)
-  legalReviewDays: number; // مهلت پاسخ واحد حقوقی به پیش‌نویس قرارداد
-  retentionPercent: number; // درصد حسن انجام کار
-  prepaymentPercent: number; // سقف درصد پیش‌پرداخت
   rateLimitPerMinute: number; // محدودیت نرخ درخواست
-  editWindowCount: number; // دفعات مجاز ویرایش اثر جایزه نوآوری
 };
 
 export const defaultSettings: WorkflowSettings = {
   reportReminderDays: 7,
-  reviewEscalationDays: 15,
-  dormantProjectDays: 30,
-  screeningThreshold: 80,
-  juryThreshold: 50,
-  legalReviewDays: 7,
-  retentionPercent: 10,
-  prepaymentPercent: 25,
   rateLimitPerMinute: 60,
-  editWindowCount: 1,
 };
 
 /** ماژول صاحب هر پارامتر — مبنای تفکیک در «تنظیمات سامانه» */
-export type SettingsModule = "funds" | "contracts" | "award" | "infra";
-export const settingsModuleLabel: Record<SettingsModule, string> = { funds: "صندوق نوآوری", contracts: "قراردادهای فناورانه", award: "جایزه‌ی نوآوری", infra: "زیرساخت" };
+export type SettingsModule = "workflow" | "infra";
+export const settingsModuleLabel: Record<SettingsModule, string> = { workflow: "گردش کار", infra: "زیرساخت" };
 
 export const settingsMeta: { key: keyof WorkflowSettings; label: string; unit: string; hint: string; module: SettingsModule }[] = [
-  { key: "reportReminderDays", module: "funds", label: "یادآوری سررسید گزارش", unit: "روز قبل", hint: "چند روز قبل از سررسید گزارش (طبق گانت)، یادآوری سیستمی برای مجری ارسال شود" },
-  { key: "reviewEscalationDays", module: "funds", label: "مهلت بررسی گزارش", unit: "روز", hint: "اگر ناظر/راهبر/مدیر صندوق در این مدت بررسی نکند، اعلان اسکالیشن صادر می‌شود" },
-  { key: "dormantProjectDays", module: "funds", label: "آستانه پروژه خوابیده", unit: "روز", hint: "نبود گزارش تعاملات معنادار در این بازه، پروژه را «در معرض توقف» می‌کند (همان مقداری که «تنظیمات صندوق» ویرایش می‌کند)" },
-  { key: "screeningThreshold", module: "funds", label: "حدنصاب غربالگری", unit: "از ۲۰۰", hint: "حداقل امتیاز فرم غربالگری ۲۲ معیاره برای ورود به ارزیابی موشکافانه" },
-  { key: "juryThreshold", module: "funds", label: "حدنصاب داوری", unit: "از ۱۰۰", hint: "حداقل امتیاز ارزیابی ۵ بُعدی داوران برای ادامه مسیر" },
-  { key: "legalReviewDays", module: "contracts", label: "مهلت پاسخ واحد حقوقی", unit: "روز کاری", hint: "حداکثر زمان بررسی پیش‌نویس قرارداد توسط واحد حقوقی" },
-  { key: "retentionPercent", module: "contracts", label: "حسن انجام کار", unit: "٪", hint: "درصد نگه‌داشت از هر پرداخت تا پایان دوره تضمین" },
-  { key: "prepaymentPercent", module: "contracts", label: "سقف پیش‌پرداخت", unit: "٪ مبلغ قرارداد", hint: "حداکثر پیش‌پرداخت در قبال ضمانت‌نامه" },
+  { key: "reportReminderDays", module: "workflow", label: "یادآوری سررسید گزارش", unit: "روز قبل", hint: "چند روز قبل از سررسید گزارش، یادآوری سیستمی ارسال شود" },
   { key: "rateLimitPerMinute", module: "infra", label: "محدودیت نرخ درخواست", unit: "درخواست/دقیقه", hint: "حداکثر درخواست هر کاربر به سامانه در دقیقه" },
-  { key: "editWindowCount", module: "award", label: "دفعات مجاز ویرایش اثر جایزه", unit: "بار", hint: "تعداد دفعاتی که شرکت‌کننده جایزه نوآوری می‌تواند اثرش را ویرایش کند" },
 ];
 export const settingsMetaOf = (module: SettingsModule) => settingsMeta.filter((m) => m.module === module);
 

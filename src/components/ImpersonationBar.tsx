@@ -19,7 +19,7 @@ export function ImpersonationBar() {
     <>
       {/* جای خالی هم‌ارتفاع تا محتوا زیر نوار ثابت نرود */}
       <div className="h-10" aria-hidden />
-      <div role="status" className="fixed top-0 inset-x-0 z-[60] h-10 bg-amber-400 text-amber-950 border-b border-amber-500 shadow-sm" dir="rtl">
+      <div role="status" data-shell className="fixed top-0 inset-x-0 z-[60] h-10 bg-amber-400 text-amber-950 border-b border-amber-500 shadow-sm" dir="rtl">
         <div className="h-full max-w-7xl mx-auto px-3 flex items-center gap-2 text-[12.5px]">
           <Eye size={15} className="shrink-0" />
           <p className="min-w-0 flex-1 truncate">

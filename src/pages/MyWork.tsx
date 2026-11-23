@@ -1,21 +1,34 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ListTodo, AlertTriangle, CalendarClock, ShieldCheck, Eye, Timer, CheckCircle2, Repeat, ListTree } from "lucide-react";
+// ---------------------------------------------------------------------------
+// «فعالیت و وظایف من» (/activities) — v6.8 کار و پروژه: فهرست با صندوق‌های میزیتو
+// (تأخیر/امروز/جاری/بدون زمان/آینده)، کانبان وضعیت‌ها، منتظر تأیید من، دنبال می‌کنم.
+// ‎?new=task‎ (قرارداد C3) فرم کار جدید را باز می‌کند.
+// ---------------------------------------------------------------------------
+import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ListChecks, Plus, ShieldCheck, Timer } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
-import StatCard from "../components/ui/StatCard";
+import Tabs from "../components/ui/Tabs";
+import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
+import Note from "../components/ui/Note";
+import ListRow, { List } from "../components/ui/ListRow";
+import EmptyState from "../components/ui/EmptyState";
 import { useTenancy } from "../context/TenancyContext";
 import { useProjectsPM } from "../context/ProjectsContext";
 import { useToast } from "../components/ui/ToastProvider";
-import { myWork, bucketOf, bucketLabel, type Bucket, type WorkItem } from "../pm/myWork";
-import { columnLabel, isDone, kindOf } from "../pm/selectors";
+import { myWork, type WorkItem } from "../pm/myWork";
+import { isDone, kindOf } from "../pm/selectors";
 import { fa } from "../pm/jalali";
-import { kindTone, priorityTone } from "./project/shared";
-import { ProjectIcon } from "./project/projectIcons";
-import { TaskKey, TypeIcon } from "./project/taskTypes";
+import { STATUS_OF_KIND, taskStatusLabel } from "../pm/api";
+import { controlOf, isProjectManager } from "../pm/rules";
+import type { ColumnKind } from "../pm/types";
+import TaskInbox from "./project/TaskInbox";
+import TaskCreateModal from "./project/TaskCreateModal";
+import TaskSheetHost from "./project/TaskSheetHost";
+import { REOPEN_BLOCKED } from "./project/useRules";
 
-type Tab = "mine" | "approvals" | "watching" | "done";
-const bucketOrder: Bucket[] = ["overdue", "today", "week", "later", "nodate"];
+type Tab = "list" | "board" | "approvals" | "watching";
+const boardKinds: ColumnKind[] = ["todo", "doing", "review", "done"];
 
 export default function MyWork() {
   const { actingUser, hasPermission } = useTenancy();
@@ -23,154 +36,165 @@ export default function MyWork() {
   const { notify } = useToast();
   const me = actingUser.name;
   const w = myWork(pm.projects, me);
-  const [tab, setTab] = useState<Tab>("mine");
-  const canWork = hasPermission("projects.tasks");
+  const [params, setParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>("list");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [open, setOpen] = useState<{ pid: string; id: string } | null>(null);
+  const [dragKey, setDragKey] = useState<string | null>(null);
 
-  const complete = (x: WorkItem) => {
-    const done = x.p.columns.find((c) => c.kind === "done")?.id;
-    const todo = x.p.columns.find((c) => c.kind === "todo")?.id ?? x.p.columns[0]?.id;
-    if (!done || !todo) return;
-    const was = isDone(x.p, x.t);
-    pm.moveTask(x.p.meta.id, x.t.id, was ? todo : done);
-    notify(was ? `«${x.t.title}» دوباره باز شد.` : `«${x.t.title}» انجام شد${x.t.recurrence ? " و نمونه‌ی بعدی آن ساخته شد" : ""}.`);
+  // پروژه‌هایی که کاربر می‌تواند در آن‌ها کار بسازد (عضو/مدیر و مجاز به ایجاد)
+  const creatable = useMemo(
+    () =>
+      pm.projects.filter(
+        (p) => !p.meta.archived && (p.meta.manager === me || p.members.some((m) => m.name === me || m.userId === actingUser.id)) && (isProjectManager(p, me) || controlOf(p).members_create_tasks),
+      ),
+    [pm.projects, me, actingUser.id],
+  );
+  const canCreate = hasPermission("projects.tasks") && creatable.length > 0;
+
+  // C3: ‎/activities?new=task‎
+  useEffect(() => {
+    if (params.get("new") !== "task") return;
+    if (canCreate) setCreateOpen(true);
+    else notify("در هیچ پروژه‌ای اجازه‌ی ساخت کار ندارید؛ از مدیر پروژه بخواهید شما را عضو کند.", "warning");
+    const next = new URLSearchParams(params);
+    next.delete("new");
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  const moveToKind = (x: WorkItem, kind: ColumnKind) => {
+    const col = x.p.columns.find((c) => c.kind === kind);
+    if (!col || col.id === x.t.status) return;
+    if (isDone(x.p, x.t) && kind !== "done" && !pm.isManager(x.p.meta.id)) return notify(REOPEN_BLOCKED, "warning");
+    const prev = x.t.status;
+    pm.moveTask(x.p.meta.id, x.t.id, col.id);
+    notify(`«${x.t.title}» به «${col.label}» رفت.`, { tone: "success", undo: kind === "done" && !pm.isManager(x.p.meta.id) ? undefined : () => pm.moveTask(x.p.meta.id, x.t.id, prev) });
   };
 
-  const Row = ({ x, showCheck = true }: { x: WorkItem; showCheck?: boolean }) => {
-    const dn = isDone(x.p, x.t);
-    const subs = x.p.tasks.filter((s) => s.parentId === x.t.id);
-    return (
-      <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-ink-50">
-        {showCheck && (
-          <input
-            type="checkbox"
-            checked={dn}
-            disabled={!canWork}
-            onChange={() => complete(x)}
-            aria-label={`انجام‌شده: ${x.t.title}`}
-            className="accent-[var(--color-brand-600)] w-4 h-4 shrink-0"
-          />
-        )}
-        <Link to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.key ?? x.t.id}`} className="flex-1 min-w-0">
-          <p className={`text-sm truncate flex items-center gap-1.5 ${dn ? "line-through text-ink-400" : "text-ink-900 hover:text-brand-700"}`}>
-            <TypeIcon type={x.t.type} />
-            <TaskKey t={x.t} />
-            <span className="truncate">{x.t.title}</span>
-          </p>
-          <p className="text-[11px] text-ink-400 flex items-center gap-1.5 mt-0.5 truncate">
-            <span style={{ color: x.p.meta.color }} className="shrink-0">
-              <ProjectIcon name={x.p.meta.icon} size={11} />
-            </span>
-            <span className="truncate">{x.p.meta.name}</span>
-            {x.t.recurrence && <Repeat size={11} className="shrink-0" />}
-            {subs.length > 0 && (
-              <span className="flex items-center gap-0.5 shrink-0">
-                <ListTree size={11} /> {fa(subs.filter((s) => isDone(x.p, s)).length)}/{fa(subs.length)}
-              </span>
-            )}
-            {x.t.timer && <Timer size={11} className="text-rose-600 shrink-0" />}
-          </p>
-        </Link>
-        <Badge tone={priorityTone[x.t.priority]}>{x.t.priority}</Badge>
-        <Badge tone={kindTone[kindOf(x.p, x.t.status)]}>{columnLabel(x.p, x.t.status)}</Badge>
-        <span className={`text-[11px] w-20 text-left shrink-0 ${bucketOf(x.t, pm.refDate) === "overdue" && !dn ? "text-rose-600 font-medium" : "text-ink-500"}`}>{x.t.due}</span>
-      </div>
-    );
+  const boardItems = [...w.open, ...w.done];
+  const onDrop = (e: DragEvent, kind: ColumnKind) => {
+    e.preventDefault();
+    const x = boardItems.find((i) => `${i.p.meta.id}:${i.t.id}` === dragKey);
+    setDragKey(null);
+    if (x) moveToKind(x, kind);
+  };
+  const kindIn = (x: WorkItem): ColumnKind => {
+    const k = kindOf(x.p, x.t.status);
+    return k === "backlog" ? "todo" : k === "blocked" ? "doing" : k;
   };
 
-  const groups = bucketOrder.map((b) => ({ b, items: w.open.filter((x) => bucketOf(x.t, pm.refDate) === b) })).filter((g) => g.items.length);
-  const overdue = w.open.filter((x) => bucketOf(x.t, pm.refDate) === "overdue").length;
-  const week = w.open.filter((x) => ["today", "week"].includes(bucketOf(x.t, pm.refDate))).length;
-
-  const tabs: { id: Tab; label: string; count: number; icon: typeof Eye }[] = [
-    { id: "mine", label: "مسئول من", count: w.open.length, icon: ListTodo },
-    { id: "approvals", label: "منتظر تأیید من", count: w.approvals.length, icon: ShieldCheck },
-    { id: "watching", label: "دنبال می‌کنم", count: w.watching.length, icon: Eye },
-    { id: "done", label: "انجام‌شده", count: w.done.length, icon: CheckCircle2 },
+  const tabs = [
+    { id: "list" as Tab, label: "فهرست", count: w.open.length },
+    { id: "board" as Tab, label: "کانبان" },
+    { id: "approvals" as Tab, label: "منتظر تأیید من", count: w.approvals.length || undefined },
+    { id: "watching" as Tab, label: "دنبال می‌کنم", count: w.watching.length || undefined },
   ];
+
+  const simpleRow = (x: WorkItem, sub?: string) => (
+    <ListRow
+      key={`${x.p.meta.id}-${x.t.id}`}
+      priority={x.t.priority === "بحرانی" ? "زیاد" : x.t.priority}
+      title={x.t.title}
+      badges={<Badge tone="brand">{x.p.meta.name}</Badge>}
+      due={`سررسید ${x.t.due}`}
+      subtitle={sub}
+      onClick={() => setOpen({ pid: x.p.meta.id, id: x.t.id })}
+    />
+  );
 
   return (
     <div>
-      <PageHeader title="فعالیت و وظایف من" description={`همه‌ی تسک‌های «${me}» در همه‌ی پروژه‌ها — بر اساس سررسید مرتب شده‌اند`} icon={<ListTodo size={18} />} />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="تسک‌های باز من" value={fa(w.open.length)} tone="brand" icon={<ListTodo size={16} />} />
-        <StatCard label="عقب‌افتاده" value={fa(overdue)} tone={overdue ? "danger" : "success"} icon={<AlertTriangle size={16} />} />
-        <StatCard label="سررسید تا ۷ روز" value={fa(week)} tone="warning" icon={<CalendarClock size={16} />} />
-        <StatCard label="منتظر تأیید من" value={fa(w.approvals.length)} tone={w.approvals.length ? "warning" : "success"} icon={<ShieldCheck size={16} />} />
-      </div>
+      <PageHeader
+        title="فعالیت و وظایف من"
+        description="کارهای شما در همه‌ی پروژه‌ها، به ترتیب فوریت."
+        icon={<ListChecks size={18} />}
+        actions={
+          canCreate ? (
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
+              کار جدید
+            </Button>
+          ) : undefined
+        }
+        tabs={<Tabs tabs={tabs} active={tab} onChange={setTab} className="" />}
+      />
 
       {w.timers.length > 0 && (
-        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 text-rose-800 text-xs p-3 flex items-center gap-2 flex-wrap">
-          <Timer size={14} /> تایمر روشن:
-          {w.timers.map((x) => (
-            <Link key={x.t.id} to={`/dashboard/projects/${x.p.meta.id}?tab=board&focus=${x.t.id}`} className="underline">
-              {x.t.title}
-            </Link>
-          ))}
-        </div>
+        <Note tone="warning" className="mb-4">
+          <span className="flex items-center gap-2 flex-wrap">
+            <Timer size={14} /> تایمر روشن:
+            {w.timers.map((x) => (
+              <button key={x.t.id} onClick={() => setOpen({ pid: x.p.meta.id, id: x.t.id })} className="underline">
+                {x.t.title}
+              </button>
+            ))}
+          </span>
+        </Note>
       )}
 
-      <div className="flex items-center gap-1 border-b border-ink-200 mb-4 overflow-x-auto" role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 -mb-px whitespace-nowrap ${tab === t.id ? "border-brand-600 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-800"}`}
-          >
-            <t.icon size={14} /> {t.label}
-            <span className="text-[10px] rounded-full px-1.5 bg-ink-100 text-ink-500">{fa(t.count)}</span>
-          </button>
-        ))}
-      </div>
+      {tab === "list" && <TaskInbox person={me} printTitle={`فعالیت و وظایف من — ${me}`} />}
 
-      {tab === "mine" && (
-        <div className="space-y-4">
-          {groups.map((g) => (
-            <div key={g.b} className="card">
-              <p className={`px-3 py-2 text-xs font-bold border-b border-ink-100 ${g.b === "overdue" ? "text-rose-700" : "text-ink-700"}`}>
-                {bucketLabel[g.b]} <span className="font-normal text-ink-400">({fa(g.items.length)})</span>
-              </p>
-              <div className="divide-y divide-ink-100">
-                {g.items.map((x) => (
-                  <Row key={x.t.id} x={x} />
-                ))}
-              </div>
-            </div>
-          ))}
-          {groups.length === 0 && <p className="text-sm text-ink-400 text-center py-10">کار بازی ندارید.</p>}
+      {tab === "board" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {boardKinds.map((k) => {
+            const items = boardItems.filter((x) => kindIn(x) === k);
+            return (
+              <section key={k} onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, k)} className={`rounded-[14px] bg-ink-100 p-2.5 min-h-[200px] ${dragKey ? "outline-dashed outline-2 outline-teal-500/40" : ""}`}>
+                <h3 className="flex items-center justify-between px-1.5 pb-2 text-sm font-bold text-ink-800">
+                  {taskStatusLabel[STATUS_OF_KIND[k]]}
+                  <Badge tone="neutral">{fa(items.length)}</Badge>
+                </h3>
+                <div className="space-y-2">
+                  {items.map((x) => (
+                    <button
+                      key={`${x.p.meta.id}-${x.t.id}`}
+                      draggable
+                      onDragStart={() => setDragKey(`${x.p.meta.id}:${x.t.id}`)}
+                      onDragEnd={() => setDragKey(null)}
+                      onClick={() => setOpen({ pid: x.p.meta.id, id: x.t.id })}
+                      className={`relative w-full text-right rounded-[10px] bg-[var(--color-card)] border border-[var(--color-border)] ps-4 pe-3 py-3 hover:shadow-sm ${dragKey === `${x.p.meta.id}:${x.t.id}` ? "opacity-50" : ""}`}
+                    >
+                      <span className={`absolute inset-y-0 start-0 w-1 rounded-s-[10px] ${x.t.priority === "کم" ? "bg-emerald-600" : x.t.priority === "متوسط" ? "bg-amber-500" : "bg-rose-600"}`} />
+                      <span className="block text-sm font-medium text-ink-900">{x.t.title}</span>
+                      <span className="block text-[12px] text-ink-500 mt-1">
+                        {x.p.meta.name} · {x.t.due}
+                      </span>
+                      <span className="block h-1 mt-2 rounded-full bg-ink-100 overflow-hidden">
+                        <span className="block h-full bg-teal-500" style={{ width: `${isDone(x.p, x.t) ? 100 : x.t.progress}%` }} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
 
       {tab === "approvals" && (
-        <div className="card divide-y divide-ink-100">
-          {w.approvals.map((x) => (
-            <div key={x.t.id}>
-              <Row x={x} showCheck={false} />
-              <p className="px-3 pb-2 -mt-1 text-[11px] text-amber-700">درخواست از «{x.t.approval!.requestedBy}» · {x.t.approval!.at} — برای تأیید یا رد، تسک را باز کنید.</p>
+        <div className="card">
+          <List>{w.approvals.map((x) => simpleRow(x, `درخواست از «${x.t.approval!.requestedBy}» · ${x.t.approval!.at}${x.t.finalApprover === me ? " · تأیید نهایی" : ""}`))}</List>
+          {w.approvals.length === 0 && (
+            <div className="p-5">
+              <EmptyState compact icon={<ShieldCheck size={22} />} title="کاری منتظر تأیید شما نیست" />
             </div>
-          ))}
-          {w.approvals.length === 0 && <p className="text-sm text-ink-400 text-center py-10">درخواست تأییدی منتظر شما نیست.</p>}
+          )}
         </div>
       )}
 
       {tab === "watching" && (
-        <div className="card divide-y divide-ink-100">
-          {w.watching.map((x) => (
-            <Row key={x.t.id} x={x} showCheck={false} />
-          ))}
-          {w.watching.length === 0 && <p className="text-sm text-ink-400 text-center py-10">تسکی را دنبال نمی‌کنید. در جزئیات هر تسک «دنبال کن» را بزنید.</p>}
+        <div className="card">
+          <List>{w.watching.map((x) => simpleRow(x, `مسئول: ${x.t.assignee}`))}</List>
+          {w.watching.length === 0 && (
+            <div className="p-5">
+              <EmptyState compact title="کاری را دنبال نمی‌کنید" description="در جزئیات هر کار «دنبال کن» را بزنید." />
+            </div>
+          )}
         </div>
       )}
 
-      {tab === "done" && (
-        <div className="card divide-y divide-ink-100">
-          {w.done.map((x) => (
-            <Row key={x.t.id} x={x} />
-          ))}
-          {w.done.length === 0 && <p className="text-sm text-ink-400 text-center py-10">هنوز تسکی انجام نداده‌اید.</p>}
-        </div>
-      )}
+      {canCreate && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} projects={creatable} />}
+      <TaskSheetHost pid={open?.pid ?? null} taskId={open?.id ?? null} onClose={() => setOpen(null)} onOpenTask={(id) => open && setOpen({ pid: open.pid, id })} />
     </div>
   );
 }

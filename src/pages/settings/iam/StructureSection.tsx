@@ -294,7 +294,7 @@ function DetailPanel({ node, onPick, onEdit, onCreate, onToggle, onClose }: { no
           {node.active ? "غیرفعال‌سازی" : "فعال‌سازی"}
         </GuardButton>
         {/* F18 — صفحه‌ی اختصاصی سازمان */}
-        <Link to={`/dashboard/org/${node.id}`} className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1 text-[12px] text-ink-700 hover:border-brand-300 hover:text-brand-700">
+        <Link to={`/org/${node.id}`} className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1 text-[12px] text-ink-700 hover:border-brand-300 hover:text-brand-700">
           <Building2 size={13} /> صفحه‌ی سازمان
         </Link>
       </div>

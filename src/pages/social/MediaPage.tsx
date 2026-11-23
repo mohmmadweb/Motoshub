@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «رسانه» — /media/media/posts/
+// «رسانه» — /social/media/posts/
 // شبکه‌ی کاشی‌های تصویر/ویدیو/آلبوم با فیلتر نوع، موضوع، وضعیت و جستجو در کپشن؛
 // فرم بارگذاری هم‌شکل MediaPostStoreRequest. MediaEditor در صفحه‌ی جزئیات هم استفاده می‌شود.
 // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ function MediaForm({ item, onDone }: { item?: MediaPost; onDone: (id?: string) =
           انصراف
         </Button>
         <code dir="ltr" className="text-[10.5px] text-ink-400 mr-auto hidden sm:block">
-          {item ? "PATCH /media/media/posts/{id}/" : "POST /media/media/posts/"}
+          {item ? "PATCH /social/media/posts/{id}/" : "POST /social/media/posts/"}
         </code>
       </div>
     </div>
@@ -155,14 +155,14 @@ function AparatForm({ onDone }: { onDone: (id?: string) => void }) {
           انصراف
         </Button>
         <code dir="ltr" className="text-[10.5px] text-amber-700 mr-auto hidden sm:block">
-          POST /media/media/posts/import-aparat/
+          POST /social/media/posts/import-aparat/
         </code>
       </div>
     </div>
   );
 }
 
-/** اتصال کانال آپارات سازمان — فقط مدیر رسانه (GET/POST /media/media/aparat-channels/) */
+/** اتصال کانال آپارات سازمان — فقط مدیر رسانه (GET/POST /social/media/aparat-channels/) */
 function AparatChannels() {
   const s = useSocial();
   const { notify } = useToast();
@@ -287,7 +287,7 @@ function MediaTile({ m }: { m: MediaPost }) {
   const reactions = s.reactionSummary("media", m.id).total;
   const comments = s.commentsFor("media", m.id).length;
   return (
-    <Link to={`/dashboard/media/${m.id}`} className="block mb-3 break-inside-avoid group">
+    <Link to={`/media/${m.id}`} className="block mb-3 break-inside-avoid group">
       <div className="relative rounded-xl overflow-hidden">
         <Poster color={m.poster} className={`${tileHeights[hash(m.id) % tileHeights.length]} !rounded-none !p-0 !items-stretch`}>
           <span className="flex flex-col justify-between w-full p-2.5 bg-gradient-to-t from-black/55 via-transparent to-transparent">

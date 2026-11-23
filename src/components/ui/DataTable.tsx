@@ -8,6 +8,8 @@ export type Column<T> = {
   label: string;
   render?: (row: T) => ReactNode;
   className?: string;
+  /** ستون کم‌اهمیت: در عرض‌های کوچک (زیر ۷۶۸px) پنهان می‌شود */
+  hideSm?: boolean;
 };
 
 export default function DataTable<T extends { id: string }>({
@@ -36,16 +38,16 @@ export default function DataTable<T extends { id: string }>({
   }, [q, rows, searchKeys]);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 p-3 border-b border-ink-100 flex-wrap">
+    <div className="table-wrap">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)] flex-wrap">
         {searchKeys && (
           <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400" />
+            <Search size={18} strokeWidth={1.5} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={searchPlaceholder}
-              className="input-field !pr-8"
+              className="input-field !pr-9"
             />
           </div>
         )}
@@ -54,7 +56,7 @@ export default function DataTable<T extends { id: string }>({
 
       {filtered.length === 0 ? (
         <div className="p-4">
-          <EmptyState title={emptyTitle} />
+          <EmptyState title={emptyTitle} compact />
         </div>
       ) : (
         <>
@@ -64,7 +66,7 @@ export default function DataTable<T extends { id: string }>({
               <thead>
                 <tr>
                   {columns.map((c) => (
-                    <th key={c.key} className={c.className}>
+                    <th key={c.key} className={`${c.hideSm ? "max-md:hidden" : ""} ${c.className ?? ""}`}>
                       {c.label}
                     </th>
                   ))}
@@ -74,7 +76,7 @@ export default function DataTable<T extends { id: string }>({
                 {filtered.map((row) => (
                   <tr key={row.id} onClick={() => onRowClick?.(row)} className={onRowClick ? "cursor-pointer" : ""}>
                     {columns.map((c) => (
-                      <td key={c.key} className={c.className}>
+                      <td key={c.key} className={`${c.hideSm ? "max-md:hidden" : ""} ${c.className ?? ""}`}>
                         {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—")}
                       </td>
                     ))}
@@ -85,20 +87,20 @@ export default function DataTable<T extends { id: string }>({
           </div>
 
           {/* موبایل: کارت به‌جای جدول عریض — هر ردیف یک کارت جفت برچسب/مقدار */}
-          <div className="sm:hidden divide-y divide-ink-100">
+          <div className="sm:hidden divide-y divide-[var(--color-border)]">
             {filtered.map((row) => (
               <div
                 key={row.id}
                 onClick={() => onRowClick?.(row)}
                 className={`p-3.5 space-y-2 ${onRowClick ? "cursor-pointer active:bg-ink-50" : ""}`}
               >
-                {columns.map((c) => {
+                {columns.filter((c) => !c.hideSm).map((c) => {
                   const value = c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "—");
                   if (value === null || value === "" || value === "—") return null;
                   return (
                     <div key={c.key} className="flex items-start justify-between gap-3">
-                      {c.label && <span className="text-[11px] text-ink-400 shrink-0 pt-0.5">{c.label}</span>}
-                      <span className="text-[13px] text-ink-800 text-left min-w-0 [&_*]:justify-end">{value}</span>
+                      {c.label && <span className="text-xs text-ink-500 shrink-0 pt-0.5">{c.label}</span>}
+                      <span className="text-[13.5px] text-ink-800 text-left min-w-0 [&_*]:justify-end">{value}</span>
                     </div>
                   );
                 })}

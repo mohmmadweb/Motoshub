@@ -65,7 +65,7 @@ export function ProjectKnowledgeFile({ projectId, inProjectPage = false }: { pro
         </div>
         <div className="flex gap-2">
           {!inProjectPage && (
-            <Link to={`/dashboard/projects/${projectId}`} className="text-xs text-brand-700 hover:underline flex items-center gap-1">
+            <Link to={`/projects/${projectId}`} className="text-xs text-brand-700 hover:underline flex items-center gap-1">
               <ExternalLink size={12} /> باز کردن پروژه
             </Link>
           )}

@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Globe2, Users, Lock, Paperclip, X, Upload, Hash, Code2, CornerDownLeft, Check, Trash2, Clock, Search, FileText, Image as ImageIcon, Film } from "lucide-react";
+import { Globe2, Users, Lock, Building2, Paperclip, X, Upload, Hash, Code2, CornerDownLeft, Check, Trash2, Clock, Search, FileText, Image as ImageIcon, Film } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Avatar from "../../components/Avatar";
@@ -15,7 +15,7 @@ import { useToast } from "../../components/ui/ToastProvider";
 import { users } from "../../data/mock";
 import { dayNum } from "../../pm/jalali";
 import { API_BASE, fmtEndpoint, type Ep } from "../../social/endpoints";
-import type { Attachment, EntityName, Privacy, Publishable } from "../../social/types";
+import type { ApiPrivacy, Attachment, EntityName, Privacy, Publishable } from "../../social/types";
 import { privacyLabel } from "../../social/types";
 import { HiddenBadge, ReportButton } from "./moderation";
 import MentionTextarea from "./composer/MentionTextarea";
@@ -51,7 +51,7 @@ export function ApiChip({ items }: { items: { label: string; ep: Ep }[] }) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-block">
-      <button onClick={() => setOpen((v) => !v)} className="text-[11px] px-2 py-1 rounded-md border border-ink-200 text-ink-500 hover:text-ink-800 flex items-center gap-1" title="endpointهای Motoshub Social API که این بخش استفاده می‌کند">
+      <button onClick={() => setOpen((v) => !v)} className="text-[11px] px-2 py-1 rounded-md border border-ink-200 text-ink-500 hover:text-ink-800 flex items-center gap-1" title="endpointهای API کاریز (درگاه Kong) که این بخش استفاده می‌کند">
         <Code2 size={12} /> API
       </button>
       {open && (
@@ -97,7 +97,7 @@ export function UserLine({ id, sub, size = 28, link = true }: { id: string; sub?
     </span>
   );
   return link ? (
-    <Link to={`/dashboard/profile/${id}`} className="hover:opacity-90 min-w-0">
+    <Link to={`/profile/${id}`} className="hover:opacity-90 min-w-0">
       {body}
     </Link>
   ) : (
@@ -138,7 +138,7 @@ export function UserPicker({ value, onChange, exclude = [], placeholder = "جس�
 }
 
 // ---------------------------------------------------------------- privacy
-const privIcon: Record<Privacy, typeof Globe2> = { EVERYONE: Globe2, FRIENDS: Users, ME: Lock };
+const privIcon: Record<ApiPrivacy, typeof Globe2> = { EVERYONE: Globe2, FRIENDS: Users, ME: Lock, SCOPE: Building2 };
 export function PrivacyBadge({ value }: { value: Privacy }) {
   const I = privIcon[value];
   return (
@@ -253,7 +253,7 @@ export function TagList({ tags }: { tags: string[] }) {
   return (
     <span className="flex flex-wrap gap-1">
       {tags.map((t) => (
-        <Link key={t} to={`/dashboard/topics?tag=${encodeURIComponent(t)}`} className="text-[11px] text-brand-700 hover:underline flex items-center">
+        <Link key={t} to={`/hashtags?tag=${encodeURIComponent(t)}`} className="text-[11px] text-brand-700 hover:underline flex items-center">
           <Hash size={10} />
           {t}
         </Link>

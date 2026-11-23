@@ -18,7 +18,7 @@ import PollCard from "../polls/PollCard";
 import { useComposerGuard } from "../composer/WriteGate";
 
 /** متن کوتاه یک پیام برای پیش‌نمایش */
-export const msgPreview = (m: Message | undefined) => (!m ? "این پیام حذف شده است." : m.type === "sticker" ? `برچسب ${m.content}` : m.content || (m.attachments.length ? "📎 پیوست" : ""));
+export const msgPreview = (m: Message | undefined) => (!m ? "این پیام حذف شده است." : m.type === "sticker" ? `برچسب ${m.content}` : m.type === "audio" ? "پیام صوتی" : m.content || (m.attachments.length ? "📎 پیوست" : ""));
 
 // ---------------------------------------------------------------- واکنش‌ها
 /** نوار کوچک واکنش‌ها زیر حباب پیام */

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, EyeOff, History, GitCompare, Paperclip, ShieldCheck, ScrollText, ListTree, BadgeCheck, BellRing, Gavel, Hourglass } from "lucide-react";
+import { Download, Pencil, Upload, Bell, BellOff, Trash2, Send, CheckCircle2, Undo2, Megaphone, Archive, ArchiveRestore, Flag, ThumbsUp, ThumbsDown, Eye, EyeOff, History, GitCompare, Paperclip, ShieldCheck, ScrollText, ListTree, BadgeCheck, BellRing, Gavel, Hourglass, Link2, Printer, FileText, Clock, RotateCcw } from "lucide-react";
 import { retentionInfo } from "../../km/templates";
 import Modal from "../../components/ui/Modal";
+import Sheet from "../../components/ui/Sheet";
+import { scopeOf, visibilityLabel, visibilityOf } from "../../km/api";
+import { kmDocHref } from "../../km/nav";
+import { readMinutes } from "./DashboardSection";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -22,7 +26,7 @@ type Tab = "body" | "info" | "files" | "workflow" | "access" | "relations" | "co
 
 export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: { docId: string | null; onClose: () => void; onEdit: (d: KDoc) => void; onNavigate: (r: KRelation) => void }) {
   const km = useKnowledge();
-  const { hasPermission } = useTenancy();
+  const { hasPermission, holdings, companies } = useTenancy();
   const { notify } = useToast();
   const confirm = useConfirm();
   const download = useMockDownload();
@@ -124,10 +128,38 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
   const va = d.versions[cmpA] ?? d.versions[0];
   const vb = d.versions[cmpB] ?? d.versions[d.versions.length - 1];
   const heads = isArticle ? mdHeadings(d.body ?? "") : [];
+  const space = scopeOf(d, { holdings, companies });
+  // اسناد مرتبط: رابطه‌ی مستقیم سند، سپس هم‌دسته‌های منتشرشده
+  const relatedDocs = [
+    ...d.relations.filter((r) => r.type === "doc").map((r) => km.docs.find((x) => x.id === r.id)),
+    ...km.docs.filter((x) => x.id !== d.id && x.categoryId === d.categoryId && x.status === "منتشرشده"),
+  ]
+    .filter((x, i, arr): x is KDoc => !!x && km.canSee(x) && arr.findIndex((y) => y?.id === x.id) === i)
+    .slice(0, 4);
+  const copyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}#${kmDocHref(d.id)}`;
+    navigator.clipboard?.writeText(url).then(() => notify("پیوند سند کپی شد."), () => notify(url));
+  };
 
   return (
-    <Modal open onClose={onClose} title={d.title} description={`${d.code} · ${d.type} · ${km.categoryPath(d.categoryId)}`} width="max-w-4xl">
+    <Sheet
+      open
+      onClose={onClose}
+      title={d.title}
+      eyebrow={`سند دانش · ${space.name} · ${km.categoryPath(d.categoryId)}`}
+      width="max-w-[920px]"
+      actions={
+        <>
+          <Button size="sm" variant="ghost" iconOnly icon={<Link2 size={16} />} title="کپی پیوند" aria-label="کپی پیوند" onClick={copyLink} />
+          <Button size="sm" variant="ghost" iconOnly icon={<Printer size={16} />} title="چاپ / خروجی PDF" aria-label="چاپ / خروجی PDF" disabled={!canDl} onClick={() => window.print()} />
+        </>
+      }
+    >
       <div className="space-y-4">
+        {/* خط مشخصات v6.8: وضعیت، زمان مطالعه، نوع، و «منتشرشده … توسط … آخرین ویرایش … نسخه» */}
+        <p className="text-[12.5px] text-ink-500 leading-6 -mt-1 flex items-center gap-1.5 flex-wrap">
+          <span dir="ltr">{d.code}</span> · {d.type} · <Clock size={13} /> {fa(readMinutes(d))} دقیقه مطالعه · {d.status === "منتشرشده" ? "منتشرشده" : d.status} {d.createdAt} توسط {d.author} · آخرین ویرایش {d.updatedAt} · نسخه‌ی {fa(d.version)}
+        </p>
         <div className="flex items-center gap-2 flex-wrap">
           <Badge tone={statusTone[d.status]}>{d.status}</Badge>
           <Badge tone={accessTone[d.access]}>دسترسی: {d.access}</Badge>
@@ -215,12 +247,13 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
         </div>
 
         {tab === "body" && isArticle && (
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-5">
             <div className={`min-w-0 ${canDl ? "" : "select-none"}`} onCopy={canDl ? undefined : (e) => e.preventDefault()}>
               <MarkdownView md={d.body ?? ""} />
             </div>
+            <aside className="space-y-4 md:self-start md:sticky md:top-0">
             {heads.length > 1 && (
-              <nav className="hidden md:block self-start sticky top-0 border-r border-ink-100 pr-3" aria-label="فهرست مطالب">
+              <nav className="hidden md:block border-r border-ink-100 pr-3" aria-label="فهرست مطالب">
                 <p className="text-[11px] font-bold text-ink-500 mb-1.5 flex items-center gap-1">
                   <ListTree size={12} /> فهرست مطالب
                 </p>
@@ -231,6 +264,36 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                 ))}
               </nav>
             )}
+            <div className="rounded-[10px] border border-[var(--color-border)] p-3">
+              <p className="text-[12.5px] font-bold text-ink-800 mb-1.5">جزئیات</p>
+              <dl className="text-[12.5px] divide-y divide-ink-100">
+                {[
+                  ["فضا", space.name],
+                  ["نویسنده", d.author],
+                  ["مالک", d.owner],
+                  [d.status === "منتشرشده" ? "منتشر شده" : "ثبت شده", d.createdAt],
+                  ["بازدید", fa(d.views)],
+                  ["بازبینی بعدی", d.reviewDate],
+                  ["دسترسی", `${visibilityLabel[visibilityOf(d.access)]} (${d.access})`],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-2 py-1.5">
+                    <dt className="text-ink-500">{k}</dt>
+                    <dd className="text-ink-800 text-left">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            {relatedDocs.length > 0 && (
+              <div className="rounded-[10px] border border-[var(--color-border)] p-3">
+                <p className="text-[12.5px] font-bold text-ink-800 mb-1.5">اسناد مرتبط</p>
+                {relatedDocs.map((x) => (
+                  <button key={x.id} onClick={() => onNavigate({ type: "doc", id: x.id })} className="w-full flex items-start gap-1.5 py-1.5 text-right text-[12.5px] text-ink-700 hover:text-[var(--color-link)]">
+                    <FileText size={14} className="shrink-0 mt-0.5" /> <span className="leading-5">{x.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            </aside>
           </div>
         )}
 
@@ -369,6 +432,26 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
                       {v.by} · {v.date}
                     </span>
                     {!isArticle && <span className="text-ink-400">{fa(v.files.length)} فایل</span>}
+                    {canEdit && v.version !== d.version && d.status !== "آرشیو" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<RotateCcw size={13} />}
+                        onClick={() =>
+                          confirm({
+                            title: `بازگردانی نسخه‌ی ${fa(v.version)}؟`,
+                            message: `محتوای نسخه‌ی ${fa(v.version)} به‌عنوان نسخه‌ی ${fa(d.version + 1)} ثبت می‌شود؛ تاریخچه حفظ می‌شود.`,
+                            confirmLabel: "بازگردانی",
+                            onConfirm: () => {
+                              km.newVersion(d.id, isArticle ? [] : v.files, `بازگردانی نسخه‌ی ${fa(v.version)}`, isArticle ? v.body ?? "" : undefined);
+                              notify(`نسخه‌ی ${fa(v.version)} بازگردانی شد.`);
+                            },
+                          })
+                        }
+                      >
+                        بازگردانی
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -612,7 +695,7 @@ export default function DocDetailModal({ docId, onClose, onEdit, onNavigate }: {
         )}
       </div>
       <FilePreview doc={preview ? d : null} file={preview} onClose={() => setPreview(null)} />
-    </Modal>
+    </Sheet>
   );
 }
 

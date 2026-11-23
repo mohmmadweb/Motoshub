@@ -3,7 +3,7 @@
 // بازدیدکننده‌ی یکتا، روند بازدید روزانه، واکنش و نظر، نرخ تعامل و تفکیک شرکت.
 // بازدیدهای پایه از داده‌ی نمونه شبیه‌سازی می‌شوند و بازدیدهای واقعیِ هر کاربر
 // در همین مرورگر (viewLog) روی آن‌ها اضافه می‌شوند.
-// endpoint پیشنهادی: GET /content/{kind}/{id}/analytics/ · GET /media/media/posts/{id}/analytics/
+// endpoint پیشنهادی: GET /social/{kind}/{id}/analytics/ · GET /social/media/posts/{id}/analytics/
 // ---------------------------------------------------------------------------
 import { useState } from "react";
 import { BarChart3, Eye, Users, SmilePlus, MessageSquare, Percent } from "lucide-react";

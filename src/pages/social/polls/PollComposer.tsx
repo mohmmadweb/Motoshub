@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// «پیشنهادی» — F01 فرم ساخت نظرسنجی (POST /core/polls/) — از دکمه‌ی «نظرسنجی» کنار پیوست
+// «پیشنهادی» — F01 فرم ساخت نظرسنجی (POST /social/polls/) — از دکمه‌ی «نظرسنجی» کنار پیوست
 // در نگارشگر گروه/کانال و از «نظرسنجی‌های من» در داشبورد.
 // پرسش (الزامی، با هشتگ و منشن — ۱.۹.۶) · ۲ تا ۱۰ گزینه (افزودن/حذف/جابجایی، تصویر اختیاری)
 // · تصویر/ویدیوی پرسش (۱.۳.۱) · تک‌/چندگزینه‌ای با سقف · ناشناس · پایان (تقویم شمسی) · تغییر رأی · نمایش نتیجه.
@@ -38,7 +38,7 @@ const newOpt = (): Opt => ({ key: Math.random().toString(36).slice(2, 8), text: 
 /** chatId ثابت (از نگارشگر گفتگو) یا انتخاب مقصد (از داشبورد) */
 export default function PollComposer({ open, onClose, chatId, onCreated }: { open: boolean; onClose: () => void; chatId?: string; onCreated?: (pollId: string, chatId: string) => void }) {
   return (
-    <Modal open={open} onClose={onClose} title="نظرسنجی جدید" description="POST /core/polls/ («پیشنهادی»)" width="max-w-xl">
+    <Modal open={open} onClose={onClose} title="نظرسنجی جدید" description="POST /social/polls/ («پیشنهادی»)" width="max-w-xl">
       {open && <PollForm chatId={chatId} onDone={onClose} onCreated={onCreated} />}
     </Modal>
   );

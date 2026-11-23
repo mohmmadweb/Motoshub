@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X, Wand2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, X, CalendarRange, ArrowUp, ArrowDown } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import { useToast } from "../../components/ui/ToastProvider";
@@ -147,7 +147,7 @@ export default function TemplateEditorModal({ template, onClose }: { template: P
             <p className="text-xs font-bold text-ink-700">
               تسک‌ها ({fa(rows.length)}) · طول کل: {fa(span)} روز
             </p>
-            <Button size="sm" variant="ghost" icon={<Wand2 size={13} />} onClick={autoSchedule}>
+            <Button size="sm" variant="ghost" icon={<CalendarRange size={13} />} onClick={autoSchedule}>
               زمان‌بندی خودکار از روی وابستگی‌ها
             </Button>
           </div>

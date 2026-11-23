@@ -38,6 +38,7 @@ import IntakeTab from "./project/IntakeTab";
 import ProjectSearch from "./project/ProjectSearch";
 import { useProjectAccess } from "../pm/useProjectAccess";
 import { TAB_RESOURCE, groupLabel, scopeLabel, type ResourceId } from "../pm/access";
+import { useProjectRules } from "./project/useRules";
 
 const validTabs: TabId[] = ["overview", "board", "sprints", "workload", "gantt", "graph", "calendar", "milestones", "budget", "time", "risks", "issues", "team", "communication", "minutes", "documents", "reports", "history", "notifications", "settings", "flow", "decisions", "intake"];
 /** تب‌هایی که برداشته شده‌اند — لینک‌های قدیمی به نمای کلی می‌روند */
@@ -61,6 +62,7 @@ export default function ProjectBoard() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStatus, setCreateStatus] = useState<string | undefined>();
   const [moreOpen, setMoreOpen] = useState(false);
+  const rules = useProjectRules(p);
 
   // دروازه‌ی بیرونی: مجوز سراسری projects.tasks و دست‌کم یک دسترسی ویرایش در این پروژه؛ سپس دسترسی ریز هر بخش
   const viewOnlyMember = !!access.member && access.viewOnly;
@@ -69,7 +71,8 @@ export default function ProjectBoard() {
 
   const requested = tabParam && validTabs.includes(tabParam as TabId) ? (tabParam as TabId) : null;
   const defaultTab: TabId = access.canSeeTab("board") ? "board" : "overview";
-  const view: TabId = !tabParam ? defaultTab : requested && access.canSeeTab(requested) ? requested : "overview";
+  const ganttOff = !!p && p.meta.modules?.gantt === false;
+  const view: TabId = !tabParam ? defaultTab : requested && access.canSeeTab(requested) && !(requested === "gantt" && ganttOff) ? requested : "overview";
   const resLabel = (t: string) => {
     const r = TAB_RESOURCE[t];
     return r ? labelOf[t] ?? t : t;
@@ -109,7 +112,8 @@ export default function ProjectBoard() {
 
   // ---- ساختار تب‌ها: ۶ تب اصلی + «بیشتر» گروه‌بندی‌شده هم‌نام با گروه‌های دسترسی؛ هیچ نمایی حذف نشده
   type TabDef = { id: TabId; label: string; count?: number };
-  const vis = (t: TabDef) => access.canSeeTab(t.id);
+  // گانت ماژول اختیاری پروژه است (میزیتو «ماژول‌ها»)
+  const vis = (t: TabDef) => access.canSeeTab(t.id) && (t.id !== "gantt" || rules.modules.gantt);
   const viewsInTasks: TabDef[] = [
     { id: "board", label: "بورد", count: ts.length },
     { id: "sprints", label: "اسپرینت‌ها" },
@@ -172,7 +176,8 @@ export default function ProjectBoard() {
   const writeRes: ResourceId | null = view === "overview" ? "settings" : TAB_RESOURCE[view] ?? null;
   const canEdit = editable && (!writeRes || access.can(writeRes, "write"));
   const canManage = outer && access.can("settings", "manage");
-  const canTaskWrite = editable && access.can("tasks", "write");
+  // میزیتو: «اعضای عادی کارها را ویرایش کنند» خاموش ← فقط مدیر/مدیران پروژه
+  const canTaskWrite = editable && access.can("tasks", "write") && rules.canEditTasks;
 
   const openCreate = (status?: string) => {
     setCreateStatus(status);
@@ -210,13 +215,13 @@ export default function ProjectBoard() {
               <ProjectIcon name={p.meta.icon} size={18} />
             </span>
           }
-          breadcrumb={[{ label: "پروژه‌های من", to: "/dashboard/projects" }, { label: p.meta.name }]}
+          breadcrumb={[{ label: "پروژه‌های من", to: "/projects" }, { label: p.meta.name }]}
           actions={
             <div className="flex items-center gap-2">
               <ProjectSearch />
-              {canTaskWrite && (
+              {editable && access.can("tasks", "write") && rules.canCreateTasks && (
                 <Button variant="primary" icon={<Plus size={15} />} onClick={() => openCreate()}>
-                  تسک جدید
+                  کار جدید
                 </Button>
               )}
             </div>
@@ -231,7 +236,7 @@ export default function ProjectBoard() {
               {tabParam === "knowledge" && (
                 <>
                   {" "}
-                  <Link to="/dashboard/knowledge?tab=projects" className="underline">
+                  <Link to="/knowledge?tab=projects" className="underline">
                     پرونده‌ی دانش پروژه‌ها
                   </Link>
                 </>
@@ -402,11 +407,11 @@ export default function ProjectBoard() {
 
         {/* جزئیات و ایجاد تسک همیشه با دسترسی بخش «وظایف» سنجیده می‌شوند، از هر تبی که باز شوند */}
         <ProjectPageContext.Provider value={{ ...ctxBase, canEdit: canTaskWrite, can: (perm: string) => canTaskWrite && hasPermission(perm) }}>
-          {canTaskWrite && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
+          {editable && access.can("tasks", "write") && rules.canCreateTasks && <TaskCreateModal open={createOpen} onClose={() => setCreateOpen(false)} defaultStatus={createStatus} />}
           {access.can("tasks") && <TaskDrawer taskId={taskId} onClose={() => setTaskId(null)} />}
         </ProjectPageContext.Provider>
         <p className="sr-only">
-          <Link to="/dashboard/projects">بازگشت به فهرست پروژه‌ها</Link>
+          <Link to="/projects">بازگشت به فهرست پروژه‌ها</Link>
         </p>
       </div>
     </ProjectPageContext.Provider>

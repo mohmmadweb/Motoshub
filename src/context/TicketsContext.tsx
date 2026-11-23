@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// زمینه‌ی «تیکت پشتیبانی» — تیکت‌های همه‌ی کاربران به تیم سازنده‌ی موتوشاب.
+// زمینه‌ی «تیکت پشتیبانی» — تیکت‌های همه‌ی کاربران به تیم سازنده‌ی کاریز.
 // ذخیره در localStorage (motoshub.tickets.v1). هر اکشن یک رویداد تغییرناپذیر به تاریخچه‌ی
 // تیکت اضافه می‌کند؛ هیچ رویدادی ویرایش یا حذف نمی‌شود.
 // باید داخل TenancyProvider قرار بگیرد (هویت کاربر و مجوز tickets.vendor از آن خوانده می‌شود).
@@ -157,7 +157,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
     const t = store.tickets.find((x) => x.id === id);
     if (!t) return;
     const to = [...new Set([...(t.followers ?? []), ...(t.affected ?? [])])].filter((u) => u !== actingUser.id && u !== t.reporterId);
-    if (to.length) inbox.send(to.map(nameOf), "reply", `تیکت ${t.id} («${t.title}»): ${text}`, `/dashboard/tickets?id=${t.id}`);
+    if (to.length) inbox.send(to.map(nameOf), "reply", `تیکت ${t.id} («${t.title}»): ${text}`, `/tickets?id=${t.id}`);
   };
   const setPeople = (id: string, fn: (t: Ticket) => Partial<Ticket> | null) =>
     setStore((s) => ({ ...s, tickets: s.tickets.map((t) => (t.id === id ? { ...t, ...(fn(t) ?? {}) } : t)) }));
@@ -254,7 +254,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
           return fresh.length ? { affected: [...(main.affected ?? []), ...fresh], followers: [...new Set([...(main.followers ?? []), ...fresh])] } : null;
         });
         notifyFollowers(id, `به‌عنوان تکراریِ ${link.id} بسته شد؛ پیگیری در همان تیکت انجام می‌شود.`);
-        if (dup.reporterId !== actingUser.id) inbox.send([dup.reporterName], "reply", `تیکت ${dup.id} تکراریِ ${link.id} است؛ شما به دنبال‌کنندگان تیکت اصلی اضافه شدید.`, `/dashboard/tickets?id=${link.id}`);
+        if (dup.reporterId !== actingUser.id) inbox.send([dup.reporterName], "reply", `تیکت ${dup.id} تکراریِ ${link.id} است؛ شما به دنبال‌کنندگان تیکت اصلی اضافه شدید.`, `/tickets?id=${link.id}`);
       }
       apply(id, (t, _a, at) => {
         if (link.id === t.id || t.links.some((l) => l.id === link.id)) return null;
@@ -295,7 +295,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
       const t = store.tickets.find((x) => x.id === id);
       if (!t || (t.followers ?? []).includes(userId)) return;
       setPeople(id, (x) => ({ followers: [...(x.followers ?? []), userId] }));
-      if (userId !== actingUser.id) inbox.send([nameOf(userId)], "reply", `«${actingUser.name}» شما را دنبال‌کننده‌ی تیکت ${t.id} («${t.title}») کرد؛ به‌روزرسانی‌ها به شما اعلان می‌شود.`, `/dashboard/tickets?id=${t.id}`);
+      if (userId !== actingUser.id) inbox.send([nameOf(userId)], "reply", `«${actingUser.name}» شما را دنبال‌کننده‌ی تیکت ${t.id} («${t.title}») کرد؛ به‌روزرسانی‌ها به شما اعلان می‌شود.`, `/tickets?id=${t.id}`);
     },
     removeFollower: (id, userId) => setPeople(id, (t) => ({ followers: (t.followers ?? []).filter((u) => u !== userId) })),
     meToo: (id) => {
@@ -303,7 +303,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
       if (!t || t.reporterId === actingUser.id || (t.affected ?? []).includes(actingUser.id)) return false;
       setPeople(id, (x) => ({ affected: [...(x.affected ?? []), actingUser.id], followers: [...new Set([...(x.followers ?? []), actingUser.id])] }));
       apply(id, () => ({ events: [{ kind: "affected", text: `«${actingUser.name}» هم این مشکل را دارد (${(2 + (t.affected?.length ?? 0)).toLocaleString("fa-IR")} کاربر درگیر).` }] }));
-      if (t.reporterId !== actingUser.id) inbox.send([t.reporterName], "reply", `«${actingUser.name}» هم مشکل تیکت ${t.id} را دارد.`, `/dashboard/tickets?id=${t.id}`);
+      if (t.reporterId !== actingUser.id) inbox.send([t.reporterName], "reply", `«${actingUser.name}» هم مشکل تیکت ${t.id} را دارد.`, `/tickets?id=${t.id}`);
       return true;
     },
     involved: (t) => t.reporterId === actingUser.id || (t.followers ?? []).includes(actingUser.id) || (t.affected ?? []).includes(actingUser.id),

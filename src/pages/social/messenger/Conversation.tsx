@@ -55,6 +55,7 @@ import PollCard from "../polls/PollCard";
 import PollComposer from "../polls/PollComposer";
 import { firstUrl } from "../../../social/linkPreview";
 import { RSS_BOT_ID } from "../../../social/seed";
+import { MicButton, VoicePlayer, VoiceRecorder } from "./Voice";
 
 export default function Conversation({ mode, root, initialSub, onBack, onInfo }: { mode: MessengerMode; root: Chat; initialSub: string | null; onBack: () => void; onInfo: () => void }) {
   const s = useSocial();
@@ -88,6 +89,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
   const [pollOpen, setPollOpen] = useState(false);
   const [noPreview, setNoPreview] = useState<string | null>(null);
   const scan = useScannedUpload("chat");
+  // پیام صوتی — فقط گفتگوی دو نفره (MZ)
+  const [recording, setRecording] = useState(false);
+  const voiceAllowed = root.chat_type === "direct_message";
   const guard = useComposerGuard();
 
   const isRoom = root.chat_type === "group" || root.chat_type === "channel";
@@ -153,6 +157,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
     setThreadRoot(null);
     setSearchOpen(false);
     setSearchQ("");
+    setRecording(false);
   }, [active.id]);
 
   const resetComposer = () => {
@@ -176,6 +181,15 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
     const r = s.sendMessage(active.id, { content, type: "text", parent_message_id: reply?.id ?? null, uploaded_files: files, tags: tagsIn(content), mentions: extractMentions(content), preview_hidden: !!url && noPreview === url });
     if (!r.ok) return notify(r.error, "warning");
     resetComposer();
+    s.markRead(active.id);
+  };
+
+  const sendVoice = (file: Attachment, duration: number) => {
+    if (!guard.gate("message")) return;
+    const r = s.sendMessage(active.id, { content: "", type: "audio", audio_duration: duration, uploaded_files: [file], parent_message_id: reply?.id ?? null });
+    if (!r.ok) return notify(r.error, "warning");
+    setRecording(false);
+    setReply(null);
     s.markRead(active.id);
   };
 
@@ -286,7 +300,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
           </button>
         ) : (
           other && (
-            <Link to={`/dashboard/profile/${other}`} className="p-2 rounded-lg text-ink-500 hover:bg-ink-100" title="پروفایل" aria-label="پروفایل">
+            <Link to={`/profile/${other}`} className="p-2 rounded-lg text-ink-500 hover:bg-ink-100" title="پروفایل" aria-label="پروفایل">
               <Info size={17} />
             </Link>
           )
@@ -421,7 +435,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                               {m.feed_item && <span className="font-normal text-[10px] text-ink-400 truncate">· {s.feeds.find((f) => f.id === m.feed_item!.feed_id)?.title ?? "خوراک"}</span>}
                             </p>
                           ) : (
-                            <Link to={`/dashboard/profile/${m.user_id}`} className="block text-[11.5px] font-bold mb-0.5 hover:underline" style={{ color: author?.avatarColor }}>
+                            <Link to={`/profile/${m.user_id}`} className="block text-[11.5px] font-bold mb-0.5 hover:underline" style={{ color: author?.avatarColor }}>
                               {author?.name ?? "کاربر"}
                             </Link>
                           ))}
@@ -440,11 +454,13 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                             className="block w-full text-right border-r-2 border-brand-400 bg-ink-50 rounded-md px-2 py-1 mb-1.5"
                           >
                             <span className="block text-[10.5px] font-medium text-brand-700">{parent ? s.userName(parent.user_id) : "پیام"}</span>
-                            <span className="block text-[11px] text-ink-500 truncate">{parent ? (parent.type === "sticker" ? `برچسب ${parent.content}` : parent.content || "پیوست") : "این پیام حذف شده است."}</span>
+                            <span className="block text-[11px] text-ink-500 truncate">{parent ? (parent.type === "sticker" ? `برچسب ${parent.content}` : parent.type === "audio" ? "پیام صوتی" : parent.content || "پیوست") : "این پیام حذف شده است."}</span>
                           </button>
                         )}
                         {m.type === "sticker" ? (
                           <p className="text-5xl leading-none py-1 select-none">{m.content}</p>
+                        ) : m.type === "audio" ? (
+                          <VoicePlayer m={m} />
                         ) : poll ? (
                           <div className="py-0.5">
                             <PollCard pollId={poll} />
@@ -466,7 +482,7 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                             </>
                           )
                         )}
-                        {m.attachments.length > 0 && (
+                        {m.attachments.length > 0 && m.type !== "audio" && (
                           <div className="mt-1.5">
                             <AttachmentList items={m.attachments} />
                           </div>
@@ -588,6 +604,9 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                   ))}
                 </div>
               )}
+              {recording ? (
+                <VoiceRecorder maxSec={Number(s.setting("audio_max_duration_seconds") ?? 300) || 300} maxMb={Number(s.setting("audio_max_size_mb") ?? 25) || 25} onSend={sendVoice} onCancel={() => setRecording(false)} />
+              ) : (
               <div className="flex items-end gap-1.5 p-2">
                 <input
                   ref={fileRef}
@@ -640,10 +659,15 @@ export default function Conversation({ mode, root, initialSub, onBack, onInfo }:
                   placeholder="پیام… (Enter ارسال، Shift+Enter خط جدید، @ برای منشن)"
                   className="block resize-none bg-ink-50 border border-transparent focus:border-brand-300 focus:bg-white rounded-xl px-3 py-2 text-[13px] leading-6 outline-none"
                 />
-                <button onClick={send} disabled={(!text.trim() && !files.length) || (guard.blocked && !editing)} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label={editing ? "ذخیره ویرایش" : "ارسال"}>
-                  <SendHorizontal size={17} className="-scale-x-100" />
-                </button>
+                {voiceAllowed && !editing && !text.trim() && !files.length && !guard.blocked ? (
+                  <MicButton onClick={() => setRecording(true)} />
+                ) : (
+                  <button onClick={send} disabled={(!text.trim() && !files.length) || (guard.blocked && !editing)} className="p-2.5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40" aria-label={editing ? "ذخیره ویرایش" : "ارسال"}>
+                    <SendHorizontal size={17} className="-scale-x-100" />
+                  </button>
+                )}
               </div>
+              )}
             </>
           )}
         </div>

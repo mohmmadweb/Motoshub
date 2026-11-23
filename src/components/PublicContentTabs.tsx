@@ -100,7 +100,7 @@ function ForumTab({ items, link }: { items: ForumTopic[]; link: LinkFn }) {
   return (
     <div className="card divide-y divide-ink-100">
       {items.map((t) => (
-        <Link key={t.id} to={link(`/dashboard/forum/${t.id}`, `/public/forum/${t.id}`)} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
+        <Link key={t.id} to={link(`/forums/${t.id}`, `/public/forum/${t.id}`)} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-medium text-sm truncate text-ink-900">{t.title}</h3>
@@ -133,7 +133,7 @@ function BlogTab({ items, link }: { items: BlogPost[]; link: LinkFn }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {items.map((b) => (
-        <Link key={b.id} to={link("/dashboard/blog", `/public/blog/${b.id}`)} className="card p-5 block hover:border-brand-300 transition-colors">
+        <Link key={b.id} to={link("/blogs", `/public/blog/${b.id}`)} className="card p-5 block hover:border-brand-300 transition-colors">
           <h3 className="font-bold text-sm text-ink-900">{b.title}</h3>
           <p className="text-xs text-ink-500 mt-2 leading-6">{b.excerpt}</p>
           <div className="flex items-center gap-1.5 mt-3">
@@ -162,7 +162,7 @@ function EventsTab({ items, link }: { items: EventItem[]; link: LinkFn }) {
   return (
     <div className="space-y-3">
       {items.map((e) => (
-        <Link key={e.id} to={link("/dashboard/events", `/public/events/${e.id}`)} className="card p-4 flex items-start gap-4 hover:border-brand-300 transition-colors">
+        <Link key={e.id} to={link("/events", `/public/events/${e.id}`)} className="card p-4 flex items-start gap-4 hover:border-brand-300 transition-colors">
           <div className="w-14 h-14 rounded-lg bg-navy-900 text-white flex flex-col items-center justify-center shrink-0">
             <span className="text-[10px] text-navy-300">{e.jalaliDate.split("/")[1] ?? "—"}</span>
             <span className="text-base font-bold leading-tight">{e.jalaliDate.split("/")[2] ?? "—"}</span>
@@ -200,7 +200,7 @@ function MediaTab({ items, link }: { items: MediaItem[]; link: LinkFn }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((m) => (
-        <Link key={m.id} to={link("/dashboard/media", `/public/media/${m.id}`)} className="card overflow-hidden block">
+        <Link key={m.id} to={link("/media", `/public/media/${m.id}`)} className="card overflow-hidden block">
           <div className="h-28 flex items-center justify-center relative shrink-0" style={{ backgroundColor: m.color }}>
             {m.kind === "video" ? <PlayCircle size={28} className="text-white" /> : <ImageIcon size={28} className="text-white" />}
             <span className="absolute top-2 right-2">
@@ -230,7 +230,7 @@ function KnowledgeTab({ items, link }: { items: KnowledgeDoc[]; link: LinkFn }) 
   return (
     <div className="card divide-y divide-ink-100">
       {items.map((d) => (
-        <Link key={d.id} to={link("/dashboard/knowledge", `/public/knowledge/${d.id}`)} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
+        <Link key={d.id} to={link("/knowledge", `/public/knowledge/${d.id}`)} className="p-4 flex items-center justify-between gap-4 hover:bg-ink-50/60">
           <div className="flex items-center gap-3 min-w-0">
             <span className="w-9 h-9 rounded-lg bg-ink-100 text-ink-500 flex items-center justify-center shrink-0">
               <FileText size={15} />
@@ -252,7 +252,7 @@ function NewsTab({ items, link }: { items: NewsItem[]; link: LinkFn }) {
   return (
     <div className="space-y-3">
       {items.map((n) => (
-        <Link key={n.id} to={link("/dashboard/news", `/public/news/${n.id}`)} className="card p-5 block hover:border-brand-300 transition-colors">
+        <Link key={n.id} to={link("/news", `/public/news/${n.id}`)} className="card p-5 block hover:border-brand-300 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-bold text-sm text-ink-900 flex-1">{n.title}</h3>
             {n.pinned && (
@@ -279,7 +279,7 @@ function GroupsTab({ items, link }: { items: Group[]; link: LinkFn }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((g) => (
-        <Link key={g.id} to={link(`/dashboard/groups/${g.id}`, `/public/groups/${g.id}`)} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
+        <Link key={g.id} to={link(`/groups/${g.id}`, `/public/groups/${g.id}`)} className="card p-4 flex flex-col gap-3 hover:border-brand-300 transition-colors">
           <div className="flex items-center justify-between">
             <span
               className="w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold text-base"

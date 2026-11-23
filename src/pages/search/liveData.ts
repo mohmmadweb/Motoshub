@@ -1,12 +1,11 @@
 // ---------------------------------------------------------------------------
-// داده‌ی زنده‌ی «قابل‌دیدن برای کاربر فعلی» — مشترک بین جستجوی سراسری، پروفایل و دستیار.
+// داده‌ی زنده‌ی «قابل‌دیدن برای کاربر فعلی» — مشترک بین جستجوی سراسری و پروفایل.
 // هر مجموعه دقیقاً با همان قواعد ماژول خودش فیلتر می‌شود:
 //   شبکه اجتماعی ← canView (لایه‌ی سازمانی + privacy) و وضعیت انتشار
 //   گفتگو/پیام/فایل ← عضویت در گفتگو
 //   دانش ← canSee (سطح دسترسی + ACL)
 //   پروژه ← filterScoped + قاعده‌ی «فقط اعضا/خصوصی»
 //   افراد ← visibleUserIds
-//   نوآوری ← filterScoped + مجوز فهرست هر ماژول
 //   تیکت ← تیکت‌های خودم / سازمان (tickets.view-org) / تیم سازنده
 // ---------------------------------------------------------------------------
 import { useMemo } from "react";
@@ -14,7 +13,6 @@ import { useTenancy } from "../../context/TenancyContext";
 import { useSocial } from "../../context/SocialContext";
 import { useProjectsPM } from "../../context/ProjectsContext";
 import { useKnowledge } from "../../context/KnowledgeContext";
-import { useInnovation } from "../../context/InnovationContext";
 import { useTicketsMaybe } from "../../context/TicketsContext";
 import { users } from "../../data/mock";
 import type { Scoped } from "../../data/tenancy";
@@ -34,10 +32,10 @@ export function ownerScopeOf(item: Scoped & { scopeId?: string }): string {
 export const datePart = (s?: string | null) => (s ? s.split(" ")[0] : "");
 
 export function chatLink(c: Pick<Chat, "id" | "chat_type">) {
-  return c.chat_type === "group" ? `/dashboard/groups/${c.id}` : c.chat_type === "channel" ? `/dashboard/channels/${c.id}` : `/dashboard/chat/${c.id}`;
+  return c.chat_type === "group" ? `/groups/${c.id}` : c.chat_type === "channel" ? `/channels/${c.id}` : `/conversations/${c.id}`;
 }
 export function contentLink(kind: string, id: string) {
-  return kind === "news" ? `/dashboard/news/${id}` : kind === "blogs" ? `/dashboard/blog/${id}` : `/dashboard/magazines/${id}`;
+  return kind === "news" ? `/news/${id}` : kind === "blogs" ? `/blogs/${id}` : `/magazines/${id}`;
 }
 
 export function useVisibleData() {
@@ -45,7 +43,6 @@ export function useVisibleData() {
   const s = useSocial();
   const pm = useProjectsPM();
   const km = useKnowledge();
-  const inn = useInnovation();
   const tk = useTicketsMaybe();
   const { hasPermission: can, filterScoped, actingUser, iam, contextId } = t;
 
@@ -88,22 +85,14 @@ export function useVisibleData() {
     const visibleIds = new Set(t.visibleUserIds());
     const people = users.filter((u) => visibleIds.has(u.id) || u.id === actingUser.id);
 
-    const calls = can("research.list") ? filterScoped(inn.calls) : [];
-    const contracts = can("contracts.list") ? filterScoped(inn.contracts) : [];
-    const funds = can("funds.list") ? filterScoped(inn.employment) : [];
-    const nf = can("funds.list") ? filterScoped(inn.nfProjects) : [];
-    const courses = can("training.list") ? filterScoped(inn.courses) : [];
-    const awards = can("award.list") ? inn.awardEntries : [];
-    const entities = can("research.list") ? inn.entities : [];
-
     const subtree = new Set(descendantsOrSelf(iam, contextId).map((n) => n.id));
     const tickets = tk
       ? tk.tickets.filter((x) => x.reporterId === actingUser.id || tk.isVendor || (can("tickets.view-org") && subtree.has(x.reporterScopeId)))
       : [];
 
-    return { content, media, events, topics, answers, chats, messages, files, docs, projects, people, calls, contracts, funds, nf, courses, awards, entities, tickets, memberChatIds };
+    return { content, media, events, topics, answers, chats, messages, files, docs, projects, people, tickets, memberChatIds };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, pm.projects, km, inn, tk, t]);
+  }, [s, pm.projects, km, tk, t]);
 }
 
 export type VisibleData = ReturnType<typeof useVisibleData>;

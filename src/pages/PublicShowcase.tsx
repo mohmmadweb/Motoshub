@@ -17,9 +17,10 @@ import type {
   ForumTopic, BlogPost, EventItem, MediaItem, KnowledgeDoc, NewsItem, Group,
 } from "../data/mock";
 import { newsImg, blogImg, mediaImg, eventImg, bgStyle } from "../data/images";
+import { PublicFaqList } from "./social/FaqPage";
 
-type Section = "forum" | "blog" | "events" | "media" | "knowledge" | "news" | "groups";
-const validSections: Section[] = ["forum", "blog", "events", "media", "knowledge", "news", "groups"];
+type Section = "forum" | "blog" | "events" | "media" | "knowledge" | "news" | "groups" | "faqs";
+const validSections: Section[] = ["forum", "blog", "events", "media", "knowledge", "news", "groups", "faqs"];
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 export default function PublicShowcase() {
@@ -49,6 +50,14 @@ export default function PublicShowcase() {
         {sec === "knowledge" && <KnowledgeSection items={publicKnowledge} />}
         {sec === "news"      && <NewsSection      items={publicNews} />}
         {sec === "groups"    && <GroupsSection    items={publicGroups} />}
+        {sec === "faqs" && (
+          // سوالات متداول عمومی — GET /social/faqs/published/
+          <div className="px-4 lg:px-12 max-w-5xl mx-auto py-7">
+            <h1 className="text-2xl font-extrabold text-ink-900 mb-1">سوالات متداول</h1>
+            <p className="text-sm text-ink-400 mb-5">پاسخ کوتاه به پرتکرارترین پرسش‌ها</p>
+            <PublicFaqList />
+          </div>
+        )}
       </main>
 
       {/* Login CTA */}

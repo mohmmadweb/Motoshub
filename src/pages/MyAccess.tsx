@@ -378,7 +378,7 @@ function RequestAccess({ initial, scopes, onClose }: { initial: { scopeId: strin
     if (!res.ok) return notify(res.reason, "warning");
     const names = managers.ids.map(userName);
     const dur = durationDays ? ` برای ${durationLabel(durationDays)}` : " (دائمی)";
-    inbox.send(names, "access", `«${me.name}» درخواست نقش «${role.name}» در «${t.scopeLabel(scopeId)}»${dur} را دارد. دلیل: ${reason.trim()}`, "/dashboard/settings?section=access-requests");
+    inbox.send(names, "access", `«${me.name}» درخواست نقش «${role.name}» در «${t.scopeLabel(scopeId)}»${dur} را دارد. دلیل: ${reason.trim()}`, "/settings?section=access-requests");
     notify(`درخواست ثبت و برای ${names.join("، ")} فرستاده شد؛ وضعیت را در «درخواست‌های من» ببینید.`, "success");
     onClose();
   };

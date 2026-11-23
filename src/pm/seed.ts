@@ -564,13 +564,13 @@ export function seedProjects(): ProjectState[] {
   });
   const pr4 = seedPr4();
   pr4.meta = { ...pr4.meta, scope: base[0].meta.scope, holdingId: base[0].meta.holdingId, companyId: base[0].meta.companyId, authorId: base[0].meta.authorId };
-  return [...base, pr4].map(enrichV7);
+  return [...base, pr4].map(enrichV7).map(withMizito);
 }
 
 // ===========================================================================
 // نسخه‌ی ۷ داده‌ی نمونه: کلید تسک، نوع کار و اپیک، بایگانی تسک، نوع وابستگی، نمای ذخیره‌شده،
 // تاریخچه‌ی جابه‌جایی وضعیت (برای تحلیل جریان)، بازبینی دوره‌ای، دفتر تصمیمات، فرم درخواست،
-// تنظیمات جلسات، پیوند نوآوری، فضای کاری IAM و یک پروژه‌ی خاتمه‌یافته با ارزیابی نهایی.
+// تنظیمات جلسات، شرکت مجری، فضای کاری IAM و یک پروژه‌ی خاتمه‌یافته با ارزیابی نهایی.
 // ===========================================================================
 
 const projectKeys: Record<string, string> = { pr1: "QGJ", pr2: "KMS", pr3: "WAG", pr4: "LDT" };
@@ -648,7 +648,7 @@ function extraTasks(pid: string): PMTask[] {
     ];
   if (pid === "pr2")
     return [
-      task({ id: "t30", type: "epic", title: "جستجوی هوشمند اسناد", assignee: "مهندس بردیا کوشا", start: "۱۴۰۵/۰۲/۰۱", due: "۱۴۰۵/۰۳/۲۵", status: "doing", priority: "بحرانی", createdAt: "۱۴۰۵/۰۱/۳۰" }),
+      task({ id: "t30", type: "epic", title: "جستجوی پیشرفته‌ی اسناد", assignee: "مهندس بردیا کوشا", start: "۱۴۰۵/۰۲/۰۱", due: "۱۴۰۵/۰۳/۲۵", status: "doing", priority: "بحرانی", createdAt: "۱۴۰۵/۰۱/۳۰" }),
       task({ id: "t31", type: "epic", title: "استقرار، دسترسی‌ها و آموزش", assignee: "دبیرخانه", start: "۱۴۰۵/۰۳/۱۰", due: "۱۴۰۵/۰۴/۱۵", status: "todo", priority: "زیاد", createdAt: "۱۴۰۵/۰۱/۳۰" }),
     ];
   if (pid === "pr3") return [task({ id: "t30", type: "epic", title: "آماده‌سازی واگذاری اموال", assignee: "واحد حقوقی", start: "۱۴۰۵/۰۳/۰۱", due: "۱۴۰۵/۰۵/۱۰", status: "doing", priority: "زیاد", createdAt: "۱۴۰۵/۰۳/۰۱" })];
@@ -675,7 +675,7 @@ function enrichV7(s: ProjectState): ProjectState {
   p.intakeOpen = true;
 
   if (pid === "pr1") {
-    p.meta = { ...p.meta, fundId: "fn1", contractId: "ct1", opportunityId: "rs3", companyName: "شرکت عمران روستایی قلعه‌گنج" };
+    p.meta = { ...p.meta, companyName: "شرکت عمران روستایی قلعه‌گنج" };
     p.deps = p.deps.map((d) => (d.predecessor === "t2" && d.successor === "t4" ? { ...d, type: "SS" as const, lag: 10 } : d.predecessor === "t14" && d.successor === "t15" ? { ...d, type: "FF" as const, lag: 1 } : d));
     p.deps.push({ id: "dp20", predecessor: "t32", successor: "t13", createdAt: "۱۴۰۵/۰۳/۰۳", type: "FS", lag: 0 });
     p.meetings.push({ id: "mt5", title: "تماس صوتی هفتگی با پیمانکار عمرانی", date: "۱۴۰۵/۰۳/۱۰", time: "۰۸:۳۰", duration: 20, mode: "صوتی", participants: ["محسن مردعلی", "تیم عمرانی"], description: "پیگیری رفع نشتی و برنامه‌ی تحویل مدارس.", taskIds: ["t32", "t13"], status: "برنامه‌ریزی‌شده" });
@@ -705,7 +705,7 @@ function enrichV7(s: ProjectState): ProjectState {
     ];
   }
   if (pid === "pr2") {
-    p.meta = { ...p.meta, opportunityId: "rs1", companyName: "شرکت داده‌پردازی بنیاد" };
+    p.meta = { ...p.meta, companyName: "شرکت داده‌پردازی بنیاد" };
     p.deps = p.deps.map((d) => (d.predecessor === "t6" && d.successor === "t19" ? { ...d, type: "FS" as const, lag: 1 } : d.predecessor === "t17" && d.successor === "t6" ? { ...d, type: "SS" as const, lag: 3 } : d));
     p.stageGates = [{ id: "sg1", date: "۱۴۰۵/۰۳/۰۳", decision: "اصلاح", reason: "تأخیر ماژول جستجو و ریسک بحرانی تیم سامانه.", actions: "افزودن یک توسعه‌دهنده‌ی پاره‌وقت و بازتعریف محدوده‌ی MVP جستجو.", nextReview: "۱۴۰۵/۰۳/۱۷", by: "وحید خاوئی", phase: "اجرا", snapshot: { progress: 41, budgetUsage: 30, health: "زرد", openRisks: 2 } }];
     p.decisions = [{ id: "dcs1", title: "تبدیل خودکار کدگذاری به‌جای بازنویسی دستی فایل‌ها", reason: "۱۸٪ فایل‌ها Windows-1256 هستند؛ اسکریپت تبدیل ۳ روز و بازنویسی دستی ۳ هفته زمان می‌برد.", owner: "مهندس بردیا کوشا", date: "۱۴۰۵/۰۳/۰۶", alternatives: "ورود دستی توسط دبیرخانه؛ کنار گذاشتن فایل‌های قدیمی", link: { type: "issue", id: "is1", label: "ناسازگاری کدگذاری فایل‌ها" }, createdBy: "وحید خاوئی" }];
@@ -763,7 +763,6 @@ function seedPr4(): ProjectState {
       financeOfficer: "واحد مالی",
       groupId: "pg1",
       createdAt: "۱۴۰۴/۱۰/۲۵",
-      fundId: "fn2",
       companyName: "تعاونی بانوان کارآفرین",
     },
     columns: defaultColumns(),
@@ -833,3 +832,47 @@ export function nextProjectKey(existing: (string | undefined)[]): string {
   for (let n = existing.length + 1; ; n++) if (!used.has(`PR${n}`)) return `PR${n}`;
 }
 
+
+// ===========================================================================
+// نسخه‌ی ۸ (میزیتو، «پیشنهادی»): ماژول‌ها و تنظیمات کنترلی پروژه، فازهای WBS، الگوی وظیفه،
+// مسئولان هم‌زمان + تأییدکننده‌ی نهایی، یادآوری جدا از سررسید و وزن کار.
+// خودتوان است: اگر پروژه از قبل فاز داشته باشد دست نمی‌خورد (برای مهاجرت داده‌ی نسخه‌ی ۷ هم استفاده می‌شود).
+// ===========================================================================
+const phaseSeed: Record<string, { title: string; tasks: string[] }[]> = {
+  pr1: [
+    { title: "مطالعات و تأمین", tasks: ["t9", "t10"] },
+    { title: "اجرای زیرساخت", tasks: ["t1", "t3", "t13", "t32"] },
+    { title: "کارگاه‌های اشتغال", tasks: ["t2", "t11", "t4", "t12"] },
+    { title: "تحویل و اختتام", tasks: ["t14", "t15"] },
+  ],
+};
+
+export function withMizito(s: ProjectState): ProjectState {
+  if (s.phases) return s;
+  const p: ProjectState = structuredClone(s);
+  const pid = p.meta.id;
+  p.meta = {
+    ...p.meta,
+    modules: p.meta.modules ?? { gantt: true, org_minutes: pid === "pr1" || pid === "pr2" },
+    settings: p.meta.settings ?? { members_create_tasks: true, members_edit_tasks: true, members_extend_due: pid !== "pr1", board_removal_needs_manager: pid === "pr1" },
+  };
+  p.phases = (phaseSeed[pid] ?? []).map((ph, i) => ({ id: `ph${i + 1}`, title: ph.title, order: i + 1, createdAt: p.meta.createdAt }));
+  const phaseOf = new Map((phaseSeed[pid] ?? []).flatMap((ph, i) => ph.tasks.map((t) => [t, `ph${i + 1}`] as const)));
+  p.tasks = p.tasks.map((t) => {
+    const ph = phaseOf.get(t.id) ?? (t.parentId ? phaseOf.get(t.parentId) : undefined);
+    const x: PMTask = { ...t, ...(ph ? { phaseId: ph } : {}) };
+    if (pid === "pr1" && t.id === "t2") Object.assign(x, { coAssignees: ["تیم عمرانی"], finalApprover: "محسن مردعلی", weight: 5, reminder: "۱۴۰۵/۰۳/۰۸" });
+    if (pid === "pr1" && t.id === "t11") Object.assign(x, { coAssignees: ["وحید خاوئی"], weight: 3 });
+    if (pid === "pr1" && t.id === "t4") Object.assign(x, { reminder: "۱۴۰۵/۰۳/۰۵", weight: 2 });
+    if (pid === "pr1" && t.id === "t12") Object.assign(x, { reminder: "۱۴۰۵/۰۳/۱۸" });
+    return x;
+  });
+  p.taskTemplates =
+    pid === "pr1"
+      ? [
+          { id: "tt1", name: "بازدید نظارتی", active: true, title: "بازدید نظارتی از کارگاه", description: "بازدید میدانی، تکمیل فرم نظارت و ثبت عکس‌های پیشرفت.", priority: "متوسط", type: "task", labels: ["عمرانی"], checklist: ["هماهنگی با دهیاری", "تکمیل فرم نظارت", "بارگذاری عکس‌ها"], estHours: 6, weight: 2, durationDays: 3, createdBy: "محسن مردعلی" },
+          { id: "tt2", name: "گزارش ماهانه‌ی کارفرما", active: true, title: "تهیه‌ی گزارش ماهانه‌ی کارفرما", description: "خلاصه‌ی پیشرفت فیزیکی و مالی ماه برای کارفرما.", priority: "متوسط", type: "task", labels: ["مستندات"], checklist: ["جمع‌آوری آمار پیشرفت", "تأیید واحد مالی", "ارسال برای کارفرما"], estHours: 8, weight: 1, durationDays: 5, createdBy: "محسن مردعلی" },
+        ]
+      : [];
+  return p;
+}

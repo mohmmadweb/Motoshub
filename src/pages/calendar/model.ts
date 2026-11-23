@@ -16,7 +16,7 @@ export type Layer = "events" | "meetings" | "tasks" | "milestones" | "sprints" |
 export const layerOrder: Layer[] = ["events", "meetings", "tasks", "milestones", "sprints", "personal", "holidays"];
 export const layerMeta: Record<Layer, { label: string; color: string }> = {
   events: { label: "رویدادها", color: "#1f4f99" },
-  meetings: { label: "جلسات پروژه", color: "#7c3aed" },
+  meetings: { label: "جلسات و صورتجلسه‌ها", color: "#7c3aed" },
   tasks: { label: "سررسید وظایف", color: "#d97706" },
   milestones: { label: "نقاط عطف", color: "#db2777" },
   sprints: { label: "اسپرینت‌ها", color: "#0d9488" },
@@ -149,11 +149,63 @@ export type CollectInput = {
   personal: PersonalItem[];
   /** آیا کاربر می‌تواند جلسات این پروژه را جابه‌جا کند */
   canEditMeeting?: (p: ProjectState) => boolean;
+  /** صورتجلسه‌های سازمانی که کاربر در آن‌هاست (MeetingsContext) */
+  orgMeetings?: { id: string; title: string; date: string; time: string; duration: number; sub: string; href: string; cancelled: boolean; online: boolean; location: string }[];
+  /** «تقویم سازمان»: همه‌ی رویدادهای منتشرشده‌ی قابل‌مشاهده، نه فقط رویدادهای من */
+  allEvents?: boolean;
 };
 
-const evLink = (id: string) => `/dashboard/events/${id}`;
-export const meetingLink = (pid: string, id: string) => `/dashboard/projects/${pid}?tab=minutes&focus=${id}`;
-export const taskLink = (pid: string, id: string) => `/dashboard/projects/${pid}?tab=board&focus=${id}`;
+/**
+ * مدل خواندنی واقعی تقویم (`/api/v1/workspace/calendar/items/`) — هر ماژول با source/source_id
+ * قلم خودش را می‌فرستد؛ CalItem فقط مدل نمایش همین است.
+ */
+export type CalendarItemApi = {
+  id: number | string;
+  type: string;
+  type_label: string;
+  source: string;
+  source_id: string;
+  title: string;
+  description: string;
+  location: string;
+  starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
+  timezone: string;
+  recurrence_rule: string | null;
+  recurrence_until: string | null;
+  snapshot: Record<string, unknown>;
+  status: "confirmed" | "tentative" | "cancelled";
+  visibility: "private" | "public";
+};
+const pad = (n: number) => String(n).padStart(2, "0");
+export function toCalendarItem(it: CalItem): CalendarItemApi {
+  const d = new Date(it.day * 86400000).toISOString().slice(0, 10);
+  const t = (m: number | null) => (m === null ? "00:00" : `${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+  return {
+    id: it.key,
+    type: it.layer,
+    type_label: it.kindLabel ?? layerMeta[it.layer].label,
+    source: it.source?.kind ?? it.layer,
+    source_id: it.source?.id ?? it.key,
+    title: it.title,
+    description: it.description ?? "",
+    location: it.location ?? "",
+    starts_at: `${d}T${t(it.start)}:00`,
+    ends_at: it.end === null ? null : `${d}T${t(it.end)}:00`,
+    all_day: it.start === null,
+    timezone: "Asia/Tehran",
+    recurrence_rule: null,
+    recurrence_until: null,
+    snapshot: { color: it.color, busy: !!it.busy },
+    status: it.dim ? "cancelled" : it.tentative ? "tentative" : "confirmed",
+    visibility: it.layer === "personal" ? "private" : "public",
+  };
+}
+
+const evLink = (id: string) => `/events/${id}`;
+export const meetingLink = (pid: string, id: string) => `/meetings/${encodeURIComponent(`p~${pid}~${id}`)}`;
+export const taskLink = (pid: string, id: string) => `/projects/${pid}?tab=board&focus=${id}`;
 
 /** پروژه‌هایی که کاربر در آن‌ها عضو/مدیر است */
 export function myProjects(projects: ProjectState[], meId: string, meName: string) {
@@ -169,8 +221,9 @@ export function collectItems(x: CollectInput): CalItem[] {
   if (x.layers.events) {
     const mine = new Map(x.eventMembers.filter((m) => m.user_id === x.meId && m.status !== "declined").map((m) => [m.event_id, m]));
     x.events.forEach((ev) => {
-      const m = mine.get(ev.id);
-      if (!m || !x.visibleEvent(ev)) return;
+      const own = mine.get(ev.id);
+      if (!x.visibleEvent(ev) || (!own && (!x.allEvents || (ev as { is_draft?: boolean }).is_draft))) return;
+      const m = own ?? ({ status: "accepted", member_type: "viewer", user_id: x.meId, event_id: ev.id } as unknown as NonNullable<typeof own>);
       days.forEach((d) => {
         if (!occursOn(ev, d)) return;
         const st = toMin(ev.start_time);
@@ -185,14 +238,14 @@ export function collectItems(x: CollectInput): CalItem[] {
           sub: ev.is_online ? "آنلاین" : ev.location || "حضوری",
           tentative: m.status === "invited",
           link: evLink(ev.id),
-          busy: m.status !== "invited",
+          busy: !!own && m.status !== "invited",
           source: { kind: "event", id: ev.id, occDate: fromDayNum(d), series: false },
           editable: ev.user_id === x.meId && !ev.is_repeat && (ev.end_date || ev.start_date) === ev.start_date && st !== null,
           description: ev.description,
           location: ev.is_online ? ev.meeting_link : ev.location,
           details: [
             ["نوع", "رویداد"],
-            ["وضعیت من", m.member_type === "owner" ? "برگزارکننده" : m.status === "invited" ? "دعوت‌شده (بی‌پاسخ)" : m.status === "accepted" ? "می‌آیم" : "عضو شده"],
+            ["وضعیت من", !own ? "—" : m.member_type === "owner" ? "برگزارکننده" : m.status === "invited" ? "دعوت‌شده (بی‌پاسخ)" : m.status === "accepted" ? "می‌آیم" : "عضو شده"],
             ["مکان", ev.is_online ? "آنلاین" : ev.location || "—"],
           ],
         });
@@ -243,6 +296,33 @@ export function collectItems(x: CollectInput): CalItem[] {
         }),
       );
 
+  // صورتجلسه‌های سازمانی که در آن‌ها هستم
+  if (x.layers.meetings)
+    (x.orgMeetings ?? []).forEach((om) => {
+      const d = dayNum(om.date);
+      if (d === null || d < x.from || d > x.to) return;
+      const st = toMin(om.time);
+      out.push({
+        key: `om:${om.id}`,
+        layer: "meetings",
+        title: om.title,
+        day: d,
+        start: st,
+        end: st === null ? null : st + (om.duration || 60),
+        color: layerMeta.meetings.color,
+        sub: om.sub,
+        dim: om.cancelled,
+        busy: !om.cancelled,
+        link: om.href,
+        location: om.online ? "برخط" : om.location,
+        kindLabel: "صورتجلسه",
+        details: [
+          ["نوع", "صورتجلسه‌ی سازمانی"],
+          ["شیوه و محل", om.online ? "برخط" : om.location || "حضوری"],
+        ],
+      });
+    });
+
   // سررسید وظایف من
   if (x.layers.tasks)
     mineP.forEach((p) =>
@@ -288,7 +368,7 @@ export function collectItems(x: CollectInput): CalItem[] {
           color: layerMeta.milestones.color,
           sub: p.meta.name,
           dim: ms.status === "انجام‌شده",
-          link: `/dashboard/projects/${p.meta.id}?tab=milestones`,
+          link: `/projects/${p.meta.id}?tab=milestones`,
           details: [
             ["پروژه", p.meta.name],
             ["وضعیت", ms.status],
@@ -320,7 +400,7 @@ export function collectItems(x: CollectInput): CalItem[] {
             color: layerMeta.sprints.color,
             sub: p.meta.name,
             dim: sp.status === "تکمیل‌شده",
-            link: `/dashboard/projects/${p.meta.id}?tab=sprints`,
+            link: `/projects/${p.meta.id}?tab=sprints`,
             details: [
               ["پروژه", p.meta.name],
               ["بازه", `${sp.start} تا ${sp.end}`],

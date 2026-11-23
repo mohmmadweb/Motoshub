@@ -65,6 +65,54 @@ export type PMTask = {
   approval?: TaskApproval;
   /** تایمر در حال اجرا (زمان شروع به میلی‌ثانیه) */
   timer?: { by: string; startedAt: number };
+  // ---- «پیشنهادی» (میزیتو؛ در API فعلی نیست — DATA_ALIGNMENT §2 TaskProposed) ----
+  /** مسئولان هم‌زمان دیگر (assignee = مسئول اول). با «انجام شد» هر یک، کار برای همه بسته می‌شود */
+  coAssignees?: string[];
+  /** تأییدکننده‌ی نهایی: «انجام شد» کار را به بازبینی می‌برد تا او تأیید (انجام‌شده) یا رد (بازگشت به در حال انجام) کند */
+  finalApprover?: string;
+  /** فاز WBS (ProjectPhase.id) */
+  phaseId?: string;
+  /** وزن (چگالی) کار */
+  weight?: number;
+  /** تاریخ یادآوری (جدا از سررسید/مهلت) — تأخیر فقط از سررسید حساب می‌شود */
+  reminder?: string;
+  /** درخواست حذف/بایگانی از بورد که منتظر تأیید مدیر پروژه است */
+  removalRequest?: { kind: "delete" | "archive"; by: string; at: string; reason?: string };
+};
+
+/** فاز پروژه (WBS: فاز ← کار ← زیرکار) — «پیشنهادی» `projects/{id}/phases/`؛ بازه‌ی تاریخ از کارهای فاز مشتق می‌شود */
+export type ProjectPhase = { id: string; title: string; order: number; createdAt: string };
+
+/** الگوی وظیفه (میزیتو «الگوی وظیفه») — مدیر پروژه می‌سازد، اعضا در پروژه‌های دیگرشان هم استفاده می‌کنند */
+export type TaskTemplate = {
+  id: string;
+  name: string;
+  active: boolean;
+  title: string;
+  description: string;
+  priority: PMPriority;
+  type?: TaskType;
+  labels: string[];
+  checklist: string[];
+  estHours: number;
+  weight?: number;
+  /** مدت پیش‌فرض (روز) از شروع تا سررسید */
+  durationDays: number;
+  createdBy: string;
+};
+
+/** ماژول‌های اختیاری هر پروژه (میزیتو «ماژول‌ها») */
+export type ProjectModules = { gantt: boolean; org_minutes: boolean };
+/** تنظیمات کنترلی پروژه (میزیتو «مدیریت پروژه پیشرفته») */
+export type ProjectControlSettings = {
+  /** اعضای عادی کار تازه بسازند */
+  members_create_tasks: boolean;
+  /** اعضای عادی کارها را ویرایش کنند */
+  members_edit_tasks: boolean;
+  /** اعضای عادی سررسید/یادآوری را عقب ببرند (تمدید) */
+  members_extend_due: boolean;
+  /** حذف یا بایگانی کار از بورد فقط با تأیید مدیر پروژه */
+  board_removal_needs_manager: boolean;
 };
 
 export type Recurrence = "روزانه" | "هفتگی" | "ماهانه";
@@ -329,13 +377,14 @@ export type ProjectMeta = {
   nextTaskNo?: number;
   /** فضای کاری = یک واحد ساختار سازمانی IAM (هلدینگ/شرکت/واحد)؛ workspace برچسب آن است */
   scopeId?: string;
-  /** پیوند به موجودیت‌های نوآوری (اختیاری) */
-  fundId?: string;
-  contractId?: string;
-  opportunityId?: string;
+  /** شرکت / مجری (اختیاری) */
   companyName?: string;
   /** گروه‌ها/کانال‌های پیام‌رسان سامانه که به این پروژه وصل‌اند (شناسه‌ی گفتگو در SocialContext) */
   chatIds?: string[];
+  /** «پیشنهادی»: ماژول‌های اختیاری (گانت، صورتجلسه‌ی سازمانی) */
+  modules?: ProjectModules;
+  /** «پیشنهادی»: تنظیمات کنترلی اعضا */
+  settings?: ProjectControlSettings;
 } & Scoped;
 
 /** رکورد تاریخچه — شکل API: ProjectActivityLog {user_id, event_category, description, metadata, created_at} */
@@ -492,7 +541,7 @@ export type ProjectClosure = {
 };
 
 /** دفتر تصمیمات — تصمیم دستی یا تکمیل جزئیات یک مصوبه‌ی صورت‌جلسه */
-export type DecisionLink = { type: "task" | "risk" | "milestone" | "meeting" | "issue" | "fund" | "contract" | "opportunity"; id: string; label: string };
+export type DecisionLink = { type: "task" | "risk" | "milestone" | "meeting" | "issue"; id: string; label: string };
 export type DecisionRecord = {
   id: string;
   title: string;
@@ -572,4 +621,9 @@ export type ProjectState = {
   taskTypes?: TaskType[];
   defaultTaskType?: TaskType;
   defaultTaskPriority?: PMPriority;
+  // ---- میزیتو (پیشنهادی) ----
+  /** فازهای WBS */
+  phases?: ProjectPhase[];
+  /** الگوهای وظیفه‌ی این پروژه */
+  taskTemplates?: TaskTemplate[];
 };

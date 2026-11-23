@@ -32,8 +32,8 @@ export const tours: Tour[] = [
     summary: "منو، جستجو، تغییر سازمان یا نقش و اعلان‌ها — در کمتر از یک دقیقه.",
     role_scope: "all",
     steps: [
-      { route: "/dashboard", title: "به موتوشاب خوش آمدید", body: "این تور کوتاه بخش‌های اصلی را نشان می‌دهد. هر وقت خواستید رد شوید؛ از «راهنمای تعاملی» در سربرگ یا مرکز راهنما دوباره اجرا می‌شود.", help_article: "intro" },
-      { selector: "[data-tour=nav], [data-tour=nav-mobile]", title: "منوی اصلی", body: "همه‌ی بخش‌ها در هفت دسته: داشبورد، همکاران، دانش و محتوا، شبکه اجتماعی، پروژه و فعالیت‌ها، دانش و نوآوری و تنظیمات سامانه. هر نقش فقط بخش‌های مجاز خودش را می‌بیند.", help_article: "faq-menu" },
+      { route: "/dashboard", title: "به کاریز خوش آمدید", body: "این تور کوتاه بخش‌های اصلی را نشان می‌دهد. هر وقت خواستید رد شوید؛ از «راهنمای سامانه» در نوار بالا یا مرکز راهنما دوباره اجرا می‌شود.", help_article: "intro" },
+      { selector: "[data-tour=nav], [data-tour=nav-mobile]", title: "منوی اصلی", body: "همه‌ی بخش‌ها در دسته‌های داشبورد، همکاران، دانش و محتوا، شبکه اجتماعی، پروژه‌ها و فعالیت‌ها و مدیریت سیستم. هر نقش فقط بخش‌های مجاز خودش را می‌بیند.", help_article: "faq-menu" },
       { selector: "[data-tour=search]", title: "جستجوی سراسری", body: "در همه‌ی محتوا، افراد، پروژه‌ها و اسناد جستجو کنید. با Ctrl+K هم به هر صفحه سریع بروید.", help_article: "intro" },
       { selector: "[data-tour=scope]", title: "تغییر سازمان یا نقش", body: "اگر در چند شرکت یا با چند نقش عضو هستید، از اینجا «کانتکست» کاری را عوض کنید؛ دسترسی‌ها و داده‌ها با آن تغییر می‌کند.", help_article: "context" },
       { selector: "[data-tour=notifications]", title: "اعلان‌ها", body: "دعوت‌ها، پاسخ‌ها، منشن‌ها و کارهای ارجاعی اینجا جمع می‌شوند.", help_article: "intro" },
@@ -45,12 +45,12 @@ export const tours: Tour[] = [
     title: "گروه‌ها و گفتگو",
     summary: "گفتگوی مستقیم، گروه‌های دارای تاپیک و کانال‌های اطلاع‌رسانی.",
     role_scope: "all",
-    base_route: "/dashboard/groups",
+    base_route: "/groups",
     perm: "groups.list",
     steps: [
-      { route: "/dashboard/groups", selector: "main h1", title: "گروه‌ها", body: "گروه‌های عضو شما و گروه‌های عمومی سازمان؛ هر گروه می‌تواند تاپیک‌های جدا داشته باشد.", help_article: "chat" },
-      { route: "/dashboard/chat", selector: "main h1", title: "گفتگوها", body: "پیام مستقیم، پیام‌های ذخیره‌شده و بات‌ها. با @ همکاران را منشن کنید.", help_article: "chat" },
-      { route: "/dashboard/channels", selector: "main h1", title: "کانال‌ها", body: "انتشار یک‌طرفه‌ی پیام توسط مدیران — برای اطلاعیه‌ها و خبرنامه‌ها.", help_article: "chat" },
+      { route: "/groups", selector: "main h1", title: "گروه‌ها", body: "گروه‌های عضو شما و گروه‌های عمومی سازمان؛ هر گروه می‌تواند تاپیک‌های جدا داشته باشد.", help_article: "chat" },
+      { route: "/conversations", selector: "main h1", title: "گفتگوها", body: "پیام مستقیم، پیام‌های ذخیره‌شده و بات‌ها. با @ همکاران را منشن کنید.", help_article: "chat" },
+      { route: "/channels", selector: "main h1", title: "کانال‌ها", body: "انتشار یک‌طرفه‌ی پیام توسط مدیران — برای اطلاعیه‌ها و خبرنامه‌ها.", help_article: "chat" },
     ],
   },
   {
@@ -58,12 +58,12 @@ export const tours: Tour[] = [
     title: "انتشار محتوا",
     summary: "خبر، وبلاگ، مجله، رسانه و دسته‌بندی‌ها.",
     role_scope: "all",
-    base_route: "/dashboard/news",
+    base_route: "/news",
     perm: "news.list",
     steps: [
-      { route: "/dashboard/news", selector: "main h1", title: "اخبار سازمان", body: "خبرها با دامنه‌ی انتشار (سراسری/هلدینگ/شرکت)، سطح دسترسی و زمان‌بندی منتشر می‌شوند.", help_article: "content" },
-      { route: "/dashboard/blog", selector: "main h1", title: "وبلاگ‌ها", body: "تجربه‌ها و یادداشت‌های همکاران؛ ممکن است پیش از انتشار بازبینی شوند.", help_article: "content" },
-      { route: "/dashboard/topics", selector: "main h1", title: "هشتگ‌ها", body: "هر هشتگ مطالب مرتبط همه‌ی بخش‌ها را کنار هم می‌آورد.", help_article: "content" },
+      { route: "/news", selector: "main h1", title: "اخبار سازمان", body: "خبرها با دامنه‌ی انتشار (سراسری/هلدینگ/شرکت)، سطح دسترسی و زمان‌بندی منتشر می‌شوند.", help_article: "content" },
+      { route: "/blogs", selector: "main h1", title: "وبلاگ‌ها", body: "تجربه‌ها و یادداشت‌های همکاران؛ ممکن است پیش از انتشار بازبینی شوند.", help_article: "content" },
+      { route: "/hashtags", selector: "main h1", title: "هشتگ‌ها", body: "هر هشتگ مطالب مرتبط همه‌ی بخش‌ها را کنار هم می‌آورد.", help_article: "content" },
     ],
   },
   {
@@ -71,24 +71,24 @@ export const tours: Tour[] = [
     title: "مدیریت دانش",
     summary: "بانک دانش، درس‌آموخته‌ها و مرکز راهنما.",
     role_scope: "all",
-    base_route: "/dashboard/knowledge",
+    base_route: "/knowledge",
     perm: "knowledge.list",
     steps: [
-      { route: "/dashboard/knowledge", selector: "main h1", title: "مدیریت دانش", body: "اسناد، مصوبات و درس‌آموخته‌ها با طبقه‌بندی، سطح دسترسی و گردش کار تأیید.", help_article: "km-bank" },
-      { route: "/dashboard/knowledge?tab=help", selector: "main h1", title: "مرکز راهنما", body: "مقاله‌ها، پرسش‌های پرتکرار و تورهای تعاملی همین‌جاست.", help_article: "faq-help" },
+      { route: "/knowledge", selector: "main h1", title: "مدیریت دانش", body: "اسناد، مصوبات و درس‌آموخته‌ها با طبقه‌بندی، سطح دسترسی و گردش کار تأیید.", help_article: "km-bank" },
+      { route: "/knowledge/help", selector: "main h1", title: "مرکز راهنما", body: "مقاله‌ها، پرسش‌های پرتکرار و تورهای تعاملی همین‌جاست.", help_article: "faq-help" },
     ],
   },
   {
     id: "projects",
     title: "پروژه‌ها",
-    summary: "پروژه‌های من، کارهای من و گزارش فعالیت.",
+    summary: "پروژه‌ها، کارهای من و گزارش فعالیت.",
     role_scope: "all",
-    base_route: "/dashboard/projects",
+    base_route: "/projects",
     perm: "projects.list",
     steps: [
-      { route: "/dashboard/projects", selector: "main h1", title: "پروژه‌های من", body: "بورد، گانت، بودجه، ریسک و جلسات هر پروژه — با دسترسی بخش‌به‌بخش اعضا.", help_article: "projects" },
-      { route: "/dashboard/my-work", selector: "main h1", title: "فعالیت و وظایف من", body: "همه‌ی تسک‌های شما در همه‌ی پروژه‌ها، مرتب بر اساس سررسید.", help_article: "my-work" },
-      { route: "/dashboard/activity", selector: "main h1", title: "گزارش فعالیت‌های من", body: "ثبت کارکرد روزانه و مرخصی و ارسال برای تأیید.", help_article: "activity" },
+      { route: "/projects", selector: "main h1", title: "پروژه‌ها", body: "بورد، گانت، بودجه، ریسک و جلسات هر پروژه — با دسترسی بخش‌به‌بخش اعضا.", help_article: "projects" },
+      { route: "/activities", selector: "main h1", title: "فعالیت و وظایف من", body: "همه‌ی تسک‌های شما در همه‌ی پروژه‌ها، مرتب بر اساس سررسید.", help_article: "my-work" },
+      { route: "/activity-report", selector: "main h1", title: "گزارش فعالیت‌های من", body: "ثبت کارکرد روزانه و مرخصی و ارسال برای تأیید.", help_article: "activity" },
     ],
   },
   {
@@ -96,12 +96,12 @@ export const tours: Tour[] = [
     title: "راهبری",
     summary: "مدیریت سامانه: ساختار، نقش‌ها، برند و لاگ ممیزی (ویژه‌ی راهبران).",
     role_scope: "admin",
-    base_route: "/dashboard/settings",
+    base_route: "/settings",
     steps: [
-      { route: "/dashboard/settings", selector: "main h1", title: "مدیریت سامانه", body: "همه‌ی تنظیمات به تفکیک ماژول؛ هر مدیر فقط بخش‌هایی را می‌بیند که در واحد فعلی اختیارش را دارد.", help_article: "settings" },
+      { route: "/settings", selector: "main h1", title: "مدیریت سامانه", body: "همه‌ی تنظیمات به تفکیک ماژول؛ هر مدیر فقط بخش‌هایی را می‌بیند که در واحد فعلی اختیارش را دارد.", help_article: "settings" },
       { selector: "nav[aria-label='بخش‌های تنظیمات'], select[aria-label='بخش تنظیمات']", title: "بخش‌ها و جستجو", body: "بین بخش‌ها جابه‌جا شوید یا با «جستجو در تنظیمات» مستقیم به یک فیلد برسید.", help_article: "settings" },
-      { route: "/dashboard/settings?section=roles", selector: "main h1", title: "نقش‌ها و مجوزها", body: "نقش سفارشی بسازید و فقط مجوزهایی را بدهید که خودتان دارید (بدون افزایش امتیاز).", help_article: "custom-roles" },
-      { route: "/dashboard/settings?section=audit-log", selector: "main h1", title: "لاگ ممیزی", body: "هر تغییر با قبل/بعد ثبت می‌شود و خروجی CSV دارد.", help_article: "audit" },
+      { route: "/admin/roles", selector: "main h1", title: "نقش‌ها و مجوزها", body: "نقش سفارشی بسازید و فقط مجوزهایی را بدهید که خودتان دارید (بدون افزایش امتیاز).", help_article: "custom-roles" },
+      { route: "/admin/history", selector: "main h1", title: "لاگ ممیزی", body: "هر تغییر با قبل/بعد ثبت می‌شود و خروجی CSV دارد.", help_article: "audit" },
     ],
   },
 ];
@@ -120,7 +120,7 @@ function useTourAccess() {
   const { canAccessAdmin, hasPermission } = useTenancy();
   return (t: Tour) => (t.role_scope !== "admin" || canAccessAdmin || hasPermission("settings.system")) && (!t.perm || hasPermission(t.perm));
 }
-const helpHref = (id: string) => `/dashboard/knowledge?tab=help&article=${encodeURIComponent(id)}`;
+const helpHref = (id: string) => `/knowledge/help?article=${encodeURIComponent(id)}`;
 
 /** اولین عنصر دیده‌شدنی از فهرست انتخابگرها */
 function findTarget(selector?: string): HTMLElement | null {

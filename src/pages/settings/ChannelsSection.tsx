@@ -39,7 +39,7 @@ const DEFAULTS: ChannelsConfig = {
   sender: "10008663",
   apiKey: "",
   emailFrom: "no-reply@shub.ir",
-  emailName: "موتوشاب",
+  emailName: "کاریز",
   enabled: { sms: true, email: true, push: false },
   monthlyQuota: 50000,
   usedThisMonth: 18240,
@@ -73,7 +73,7 @@ export default function ChannelsSection() {
   const [d, setD] = useState<ChannelsConfig>(saved);
   const [showKey, setShowKey] = useState(false);
   const [testTo, setTestTo] = useState("");
-  const [testText, setTestText] = useState("پیام آزمایشی موتوشاب");
+  const [testText, setTestText] = useState("پیام آزمایشی کاریز");
   const [sending, setSending] = useState(false);
   const canEdit = hasPermission("settings.system");
 

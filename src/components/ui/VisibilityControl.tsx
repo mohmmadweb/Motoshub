@@ -17,23 +17,23 @@ export function VisibilityBadge({ visibility }: { visibility: Visibility }) {
 export function VisibilityPicker({ value, onChange }: { value: Visibility; onChange: (v: Visibility) => void }) {
   return (
     <div>
-      <label className="text-xs font-medium text-ink-600 block mb-1.5">سطح دسترسی</label>
+      <label className="field-label block mb-1.5">سطح دسترسی</label>
       <div className="flex items-center gap-2">
         <button
           onClick={() => onChange("عمومی")}
-          className={`flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-md border ${
-            value === "عمومی" ? "border-brand-400 bg-brand-50 text-brand-700 font-medium" : "border-ink-200 text-ink-500"
+          className={`flex-1 flex items-center justify-center gap-1.5 text-[13px] min-h-10 px-2 rounded-[10px] border transition-colors ${
+            value === "عمومی" ? "border-teal-700 bg-teal-50 text-teal-700 font-bold" : "border-ink-200 text-ink-600 hover:bg-ink-50"
           }`}
         >
-          <Globe2 size={12} /> عمومی — همه‌ی اعضا ببینند
+          <Globe2 size={16} strokeWidth={1.5} /> عمومی — همه‌ی اعضا ببینند
         </button>
         <button
           onClick={() => onChange("خصوصی")}
-          className={`flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-md border ${
-            value === "خصوصی" ? "border-brand-400 bg-brand-50 text-brand-700 font-medium" : "border-ink-200 text-ink-500"
+          className={`flex-1 flex items-center justify-center gap-1.5 text-[13px] min-h-10 px-2 rounded-[10px] border transition-colors ${
+            value === "خصوصی" ? "border-teal-700 bg-teal-50 text-teal-700 font-bold" : "border-ink-200 text-ink-600 hover:bg-ink-50"
           }`}
         >
-          <Lock size={12} /> خصوصی — محدود
+          <Lock size={16} strokeWidth={1.5} /> خصوصی — محدود
         </button>
       </div>
     </div>
@@ -50,7 +50,7 @@ export function VisibilityToggle({
   size?: "sm" | "xs";
 }) {
   const isPublic = visibility === "عمومی";
-  const pad = size === "xs" ? "px-1.5 py-1 text-[10px]" : "px-2.5 py-1.5 text-xs";
+  const pad = size === "xs" ? "h-6 px-2 text-[11.5px]" : "h-7 px-2.5 text-xs";
   return (
     <button
       onClick={(e) => {
@@ -58,8 +58,8 @@ export function VisibilityToggle({
         onChange();
       }}
       title={isPublic ? "تبدیل به خصوصی" : "تبدیل به عمومی (نمایش در تب محتوای عمومی داشبورد)"}
-      className={`flex items-center gap-1 rounded-md border font-medium ${pad} ${
-        isPublic ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "border-ink-200 bg-ink-50 text-ink-500 hover:bg-ink-100"
+      className={`inline-flex items-center gap-1 rounded-full border font-medium ${pad} ${
+        isPublic ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "border-ink-200 bg-ink-50 text-ink-600 hover:bg-ink-100"
       }`}
     >
       {isPublic ? <Globe2 size={size === "xs" ? 10 : 12} /> : <Lock size={size === "xs" ? 10 : 12} />}

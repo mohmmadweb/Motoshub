@@ -1,0 +1,7 @@
+Summary,Issue key,Issue id,Issue Type,Status,Priority,Assignee,Reporter,Created,Due date,Description,Labels,Labels,Parent,Sprint,Original Estimate
+پرتال ثبت درخواست اهالی,KRZ-1,10001,Epic,In Progress,High,Reza Karimi,Negar Ahmadi,01/Jun/26 9:00 AM,30/Jun/26 5:00 PM,فاز اول پرتال,portal,,,KRZ Sprint 1,
+فرم ثبت درخواست تعمیر,KRZ-2,10002,Story,To Do,Medium,Mahsa Rezaei,Negar Ahmadi,02/Jun/26 10:15 AM,12/Jun/26 5:00 PM,فرم با پیوست عکس,portal,frontend,10001,KRZ Sprint 1,57600
+اعتبارسنجی شماره‌ی تماس,KRZ-3,10003,Sub-task,Done,Low,Mahsa Rezaei,Mahsa Rezaei,03/Jun/26 11:00 AM,05/Jun/26 5:00 PM,,frontend,,10002,KRZ Sprint 1,7200
+پیامک تأیید ثبت,KRZ-4,10004,Sub-task,In Review,Medium,Reza Karimi,Mahsa Rezaei,03/Jun/26 11:20 AM,08/Jun/26 5:00 PM,,sms,,10002,KRZ Sprint 1,14400
+خطای نمایش تاریخ شمسی در فهرست,KRZ-5,10005,Bug,Blocked,Highest,Reza Karimi,Negar Ahmadi,04/Jun/26 8:45 AM,06/Jun/26 5:00 PM,در مرورگر قدیمی تاریخ میلادی نمایش داده می‌شود,bug,frontend,10001,KRZ Sprint 1,10800
+گزارش ماهانه‌ی درخواست‌ها,KRZ-6,10006,Task,Backlog,Lowest,,Negar Ahmadi,05/Jun/26 2:00 PM,,,report,,,,28800

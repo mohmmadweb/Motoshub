@@ -16,6 +16,7 @@ import SocialAdmin from "../social/SocialAdmin";
 import { SystemVarsCard } from "../AdminSections";
 import { ScopedKeysCard } from "./ScopedSettingsSection";
 import { SectionHead } from "./iam/shared";
+import { kmHref } from "../../km/nav";
 
 export function ModuleLinkCard({ icon, title, text, to, cta }: { icon: ReactNode; title: string; text: string; to: string; cta: string }) {
   return (
@@ -36,7 +37,7 @@ export function ModuleLinkCard({ icon, title, text, to, cta }: { icon: ReactNode
 export function KnowledgeSettingsPanel() {
   return (
     <div className="space-y-4">
-      <ModuleLinkCard icon={<Library size={17} />} title="مدیریت دانش" text="همین تنظیمات در خود ماژول (مدیریت دانش ← تنظیمات و دسترسی‌ها) هم هست؛ هر دو یک منبع دارند." to="/dashboard/knowledge?tab=settings" cta="باز کردن در ماژول" />
+      <ModuleLinkCard icon={<Library size={17} />} title="مدیریت دانش" text="همین تنظیمات در خود ماژول (مدیریت دانش ← تنظیمات و دسترسی‌ها) هم هست؛ هر دو یک منبع دارند." to={kmHref("settings")} cta="باز کردن در ماژول" />
       <KnowledgeSettings />
     </div>
   );
@@ -92,7 +93,7 @@ export function NotificationQueuePanel() {
     <div className="space-y-4">
       <SectionHead icon={<BellRing size={18} />} title="صف اعلان و خلاصه‌ی روزانه" description="ظرفیت ارسال و زمان خلاصه‌ی روزانه برای کل سامانه. ترجیح هر کاربر (کانال‌ها، ساعات سکوت، خلاصه) در صفحه‌ی اعلان‌های خودش است." />
       <SystemVarsCard areas={["notify"]} notify={notify} auditArea="اعلان‌ها" disabled={!hasPermission("settings.system")} />
-      <ModuleLinkCard icon={<BellRing size={17} />} title="تنظیمات اعلان من" text="کانال دریافت به تفکیک نوع رویداد، ساعات سکوت و خلاصه‌ی روزانه‌ی شخصی — در صفحه‌ی «اعلان‌ها» زبانه‌ی «تنظیمات اعلان من»." to="/dashboard/notifications" cta="رفتن به اعلان‌ها" />
+      <ModuleLinkCard icon={<BellRing size={17} />} title="تنظیمات اعلان من" text="کانال دریافت به تفکیک نوع رویداد، ساعات سکوت و خلاصه‌ی روزانه‌ی شخصی — در صفحه‌ی «اعلان‌ها» زبانه‌ی «تنظیمات اعلان من»." to="/notifications" cta="رفتن به اعلان‌ها" />
     </div>
   );
 }

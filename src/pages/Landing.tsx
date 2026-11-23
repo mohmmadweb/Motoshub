@@ -3,7 +3,8 @@ import { Building2, Users, BookOpen, KanbanSquare, ShieldCheck, ArrowLeft, Check
 import SiteHeader from "../components/SiteHeader";
 import PublicFooter from "../components/PublicFooter";
 import { LandingSlideshow } from "../components/Slideshow";
-import { holdings, companies } from "../data/tenancy";
+import { useTenancy } from "../context/TenancyContext";
+import { useSocial } from "../context/SocialContext";
 
 const modules = [
   { icon: Users, title: "شبکه اجتماعی سازمانی", desc: "گروه، انجمن، رویداد، گپ، اعلان و اخبار داخلی برای واحدها و هلدینگ‌ها" },
@@ -12,15 +13,26 @@ const modules = [
   { icon: Building2, title: "چندسازمانی (Multi-tenant)", desc: "هر مشتری، فضای کاری، اعضا و برند کاملاً مستقل خودش را دارد" },
 ];
 
-// آمار معنادار برای بازدیدکننده — از ساختار واقعی سازمان، نه اصطلاحات داخلی تیم فنی
-const totalUsers = companies.reduce((s, c) => s + c.users, 0);
-const stats = [
-  { value: holdings.length.toLocaleString("fa-IR"), label: "هلدینگ زیرمجموعه" },
-  { value: companies.length.toLocaleString("fa-IR"), label: "شرکت متصل" },
-  { value: totalUsers.toLocaleString("fa-IR"), label: "کاربر سازمانی" },
-];
+/** آمار صفحه‌ی اول — از داده‌ی همین سامانه محاسبه می‌شود (ساختار IAM، اعضا و محتوای عمومی منتشرشده)؛
+ *  هیچ عدد ثابتی (مثل ۱۷۹/۱۱/۳۲/۷۸ کلاینت فعلی) کپی نمی‌شود. */
+function useLandingStats() {
+  const { iam } = useTenancy();
+  const s = useSocial();
+  const scopes = iam.scopes.filter((x) => x.active);
+  const members = new Set(iam.memberships.filter((m) => m.status === "active").map((m) => (m as { userId?: string; principal_id?: string }).userId ?? (m as { principal_id?: string }).principal_id));
+  const pub = <T extends { is_public: boolean; is_draft: boolean; privacy: string; deleted_at: string | null }>(xs: T[]) => xs.filter((x) => x.is_public && !x.is_draft && x.privacy === "EVERYONE" && !x.deleted_at).length;
+  const n = (v: number) => v.toLocaleString("fa-IR");
+  return [
+    { value: n(scopes.filter((x) => x.type === "holding").length), label: "هلدینگ زیرمجموعه" },
+    { value: n(scopes.filter((x) => x.type === "company").length), label: "شرکت متصل" },
+    { value: n(members.size), label: "عضو فعال" },
+    { value: n(pub(s.content) + pub(s.media) + pub(s.events) + pub(s.topics)), label: "مطلب عمومی منتشرشده" },
+  ];
+}
 
 export default function Landing() {
+  const stats = useLandingStats();
+  const { holdings } = useTenancy();
   return (
     <div dir="rtl" className="min-h-screen bg-white flex flex-col">
       <SiteHeader />
@@ -38,7 +50,7 @@ export default function Landing() {
             <div className="max-w-2xl">
               {/* برچسب معرفی — متن ساده، نه چیزی شبیه دکمه */}
               <p className="text-[12px] font-bold text-brand-200 tracking-wide mb-4">
-                پلتفرم شبکه اجتماعی و فضای کاری سازمانی
+                کاریز — فضای کار سازمانی
               </p>
               <h1 className="text-3xl lg:text-[2.6rem] font-extrabold leading-[1.35] text-white">
                 یک پلتفرم، چند سازمان مستقل —

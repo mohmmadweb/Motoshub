@@ -25,6 +25,8 @@ import PortfolioTimeline from "./project/PortfolioTimeline";
 import { ScopePicker } from "./project/SettingsExtras";
 import type { ProjectTemplate } from "../pm/templates";
 import { useProjectDefaults } from "./settings/projectDefaults";
+import CopyProjectDialog from "./project/CopyProjectDialog";
+import { Copy } from "lucide-react";
 
 const healthTone: Record<string, BadgeTone> = {
   سبز: "success",
@@ -56,6 +58,7 @@ export default function Projects() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortId>("recent");
   const [projectOpen, setProjectOpen] = useState(false);
+  const [copyOf, setCopyOf] = useState<ProjectState | null>(null);
   const [playbookOpen, setPlaybookOpen] = useState(false);
   const [runPb, setRunPb] = useState<PMPlaybookTemplate | null>(null);
   const [runTarget, setRunTarget] = useState("");
@@ -240,7 +243,7 @@ export default function Projects() {
     });
     notify(`پروژه «${name.trim()}» ایجاد شد${templateId ? " — تسک‌ها، وابستگی‌ها و مایل‌ستون‌ها از قالب ساخته شدند" : ""}.`);
     closeProjectModal();
-    navigate(`/dashboard/projects/${newId}?tab=${templateId ? "graph" : "overview"}`);
+    navigate(`/projects/${newId}?tab=${templateId ? "graph" : "overview"}`);
   };
 
   const submitPlaybook = () => {
@@ -416,7 +419,7 @@ export default function Projects() {
                 const left = (dayNum(p.meta.deadline) ?? 0) - (dayNum(pm.refDate) ?? 0);
                 const lateCount = activeTasks(p).filter((t) => isOverdue(p, t, pm.refDate)).length;
                 return (
-                  <Link key={p.meta.id} to={`/dashboard/projects/${p.meta.id}`} className={`group card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3 ${p.meta.archived ? "opacity-70" : ""}`}>
+                  <Link key={p.meta.id} to={`/projects/${p.meta.id}`} className={`group card p-4 hover:border-brand-300 transition-colors flex flex-col gap-3 ${p.meta.archived ? "opacity-70" : ""}`}>
                     <div className="flex items-start gap-2.5">
                       <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${p.meta.color} 14%, transparent)`, color: p.meta.color }}>
                         <ProjectIcon name={p.meta.icon} size={17} />
@@ -429,6 +432,11 @@ export default function Projects() {
                         <span className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <RowActions onEdit={canManageItem(p.meta, "projects.edit") ? () => startEditProject(p) : undefined} onDelete={canManageItem(p.meta, "projects.delete") ? () => removeProject(p) : undefined} size={13} />
                         </span>
+                        {hasPermission("projects.create") && (
+                          <button onClick={() => setCopyOf(p)} className="p-1 text-ink-300 hover:text-teal-700 opacity-0 group-hover:opacity-100 focus:opacity-100" title="کپی پروژه با ساختار بورد و کارها" aria-label="کپی پروژه">
+                            <Copy size={14} />
+                          </button>
+                        )}
                         <button onClick={() => pm.toggleStar(p.meta.id)} className={`p-1 ${p.meta.starred ? "text-amber-500" : "text-ink-300 hover:text-amber-500"}`} title={p.meta.starred ? "برداشتن علامت مهم" : "علامت‌گذاری به‌عنوان مهم"} aria-label="علامت مهم">
                           <Star size={14} fill={p.meta.starred ? "currentColor" : "none"} />
                         </button>
@@ -478,7 +486,7 @@ export default function Projects() {
                     const g = pm.store.groups.find((x) => x.id === p.meta.groupId);
                     const progress = projectProgress(p);
                     return (
-                      <tr key={p.meta.id} className="border-b border-ink-100 hover:bg-ink-50 cursor-pointer" onClick={() => navigate(`/dashboard/projects/${p.meta.id}`)}>
+                      <tr key={p.meta.id} className="border-b border-ink-100 hover:bg-ink-50 cursor-pointer" onClick={() => navigate(`/projects/${p.meta.id}`)}>
                         <td className="p-3">
                           <span className="flex items-center gap-2 font-medium text-ink-900">
                             <span style={{ color: p.meta.color }}>
@@ -790,7 +798,7 @@ export default function Projects() {
                 pm.startPlaybook(runPb.id, runTarget);
                 notify(`اجرای قالب «${runPb.name}» آغاز شد — یک چک‌لیست ${fa(runPb.steps.length)} مرحله‌ای برای تیم ایجاد شد.`, "info");
                 setRunPb(null);
-                navigate(`/dashboard/projects/${runTarget}?tab=history`);
+                navigate(`/projects/${runTarget}?tab=history`);
               }}
             >
               شروع اجرا
@@ -799,6 +807,7 @@ export default function Projects() {
         )}
       </Modal>
       <TemplateEditorModal template={tplEdit} onClose={() => setTplEdit(null)} />
+      {copyOf && <CopyProjectDialog p={copyOf} onClose={() => setCopyOf(null)} />}
     </div>
   );
 }
